@@ -1,0 +1,16 @@
+{
+  "name": "@memegen/server-kit",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "dependencies": {
+    "@memegen/shared": "workspace:*",
+    "postgres": "^3.4.9",
+    "hono": "^4.9.0",
+    "@hono/node-server": "^2.1.3",
+    "zod": "^4.1.0"
+  }
+}

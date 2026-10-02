@@ -1,0 +1,14 @@
+{
+  "name": "@memegen/render",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@memegen/shared": "workspace:*",
+    "mediabunny": "^1.61.0",
+    "gifuct-js": "^2.1.2",
+    "gifenc": "^1.0.3"
+  }
+}

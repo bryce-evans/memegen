@@ -1,0 +1,11 @@
+node_modules
+.data
+dist
+.env
+*.log
+test-results
+playwright-report
+
+# Demo assets (fonts, templates, fixture media): kept locally, not committed
+demo/
+e2e/fixtures/

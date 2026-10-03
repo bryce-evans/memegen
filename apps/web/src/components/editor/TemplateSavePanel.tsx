@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Asset, TextLayer } from "@memegen/shared";
-import { Button, Dialog, Field, Inline, Panel, Text, TextField } from "@memegen/ui";
+import { Button, Dialog, Inline, Panel, Text, TextField } from "@memegen/ui";
 import { createTemplate } from "../../api.ts";
 import { useAuth } from "../../auth.tsx";
+import { plural } from "../../format.ts";
+import { useAction } from "../../useAction.ts";
 import { ErrorView, SignInPrompt } from "../common.tsx";
-import { TagInput } from "../tags.tsx";
+import { TagField } from "../tagInputs.tsx";
 
 /** "distracted-boyfriend_v2.jpg" → "distracted boyfriend v2". */
 function nameFromFile(filename: string): string {
@@ -26,8 +28,7 @@ export function TemplateSavePanel({ asset, layers }: { asset: Asset; layers: Tex
   const [name, setName] = useState(() => nameFromFile(asset.filename));
   const [tags, setTags] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const { busy, error, run } = useAction();
 
   if (!user) {
     return (
@@ -38,19 +39,12 @@ export function TemplateSavePanel({ asset, layers }: { asset: Asset; layers: Tex
   }
 
   async function create() {
-    setBusy(true);
-    setError(null);
-    try {
-      const template = await createTemplate({ name: name.trim(), assetId: asset.id, defaultLayers: layers, tags });
-      navigate(`/create?template=${template.id}`);
-    } catch (err) {
-      setError(err);
-      setConfirming(false);
-      setBusy(false);
-    }
+    const template = await run(() => createTemplate({ name: name.trim(), assetId: asset.id, defaultLayers: layers, tags }));
+    if (template) navigate(`/create?template=${template.id}`);
+    else setConfirming(false);
   }
 
-  const boxes = `${layers.length} text ${layers.length === 1 ? "box" : "boxes"}`;
+  const boxes = plural(layers.length, "text box", "text boxes");
   return (
     <Panel heading="Save template" className="save-panel">
       <TextField
@@ -62,9 +56,14 @@ export function TemplateSavePanel({ asset, layers }: { asset: Asset; layers: Tex
         disabled={busy}
         data-testid="template-name"
       />
-      <Field as="div" label="Tags" description="Base tags always stay on the template; others can add more.">
-        <TagInput value={tags} onChange={setTags} testId="template-tags" disabled={busy} />
-      </Field>
+      <TagField
+        value={tags}
+        onChange={setTags}
+        testId="template-tags"
+        description="Base tags always stay on the template; others can add more."
+        disabled={busy}
+        allowCreate
+      />
       <Text size="sm" tone="muted">
         The {boxes} and their placeholder text become the template's defaults.
       </Text>

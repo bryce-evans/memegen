@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { composeFrame, layerBoxes, type DecodedMedia, type LayerBox } from "@memegen/render";
+import { composeFrame, type DecodedMedia, type LayerBox } from "@memegen/render";
 import { layerStateAt, type TextLayer } from "@memegen/shared";
 import { Alert } from "@memegen/ui";
 
@@ -11,7 +11,7 @@ export interface StageProps {
   /** Bumped whenever a font finishes loading so text is re-measured. */
   fontsVersion: number;
   onSelect: (id: string | null) => void;
-  /** Move a layer to (x, y) fractions at the current frame. */
+  /** Move a layer to (x, y) fractions at the current frame; the caller clamps. */
   onMove: (id: string, x: number, y: number) => void;
 }
 
@@ -23,9 +23,6 @@ interface Drag {
   x0: number;
   y0: number;
 }
-
-/** Keep anchors near the media; the shared schema accepts -1..2. */
-const clampAnchor = (v: number) => Math.min(1.5, Math.max(-0.5, v));
 
 export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect, onMove }: StageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,8 +65,7 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!ctx) return;
-      composeFrame(ctx, image, layers, pixelWidth, pixelHeight, t);
-      setBoxes(layerBoxes(ctx, layers, pixelWidth, pixelHeight, t));
+      setBoxes(composeFrame(ctx, image, layers, pixelWidth, pixelHeight, t));
       setError(null);
       setReady(true);
     };
@@ -94,9 +90,7 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId || displayWidth <= 0) return;
     const displayHeight = (displayWidth * media.height) / media.width;
-    const x = clampAnchor(d.x0 + (e.clientX - d.startX) / displayWidth);
-    const y = clampAnchor(d.y0 + (e.clientY - d.startY) / displayHeight);
-    onMove(d.id, x, y);
+    onMove(d.id, d.x0 + (e.clientX - d.startX) / displayWidth, d.y0 + (e.clientY - d.startY) / displayHeight);
   }
 
   function endDrag(e: PointerEvent<HTMLDivElement>) {
@@ -148,7 +142,7 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
         })}
       </div>
       {error && (
-        <Alert tone="error" data-testid="editor-error">
+        <Alert tone="danger" data-testid="editor-error">
           Could not draw frame: {error}
         </Alert>
       )}

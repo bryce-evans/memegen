@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
 import { isVisibleAt, type TextLayer } from "@memegen/shared";
-import { Icon, IconButton, Text } from "@memegen/ui";
+import { Icon, IconButton, Panel, Text } from "@memegen/ui";
 
 const THUMB_HEIGHT = 48;
 
@@ -58,7 +58,7 @@ export function Timeline({ media, frame, playing, selectedLayer, onSeek, onToggl
   const t = media.times[frame] ?? 0;
 
   return (
-    <div className="timeline">
+    <Panel variant="flush" className="timeline">
       <div className="transport">
         <IconButton size="sm" variant="quiet" data-testid="prev-frame" onClick={() => onSeek((frame - 1 + count) % count)} label="Previous frame">
           <Icon name="prev" />
@@ -95,7 +95,7 @@ export function Timeline({ media, frame, playing, selectedLayer, onSeek, onToggl
           />
         ))}
       </div>
-    </div>
+    </Panel>
   );
 }
 

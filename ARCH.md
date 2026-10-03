@@ -55,6 +55,7 @@ flowchart LR
 - Per-layer visibility window `start/end` (seconds, null = unbounded).
 - Per-layer `keyframes[] {t, x, y, opacity}`; linear interpolation, clamped at the ends (`packages/shared/src/animation.ts`). Empty keyframes = fixed layer.
 - The editor shows every decoded frame on a timeline; "set keyframe" stores the current frame's timestamp, which is how per-frame placement works.
+- Every layer edit rule lives in `animation.ts` as a pure `TextLayer → TextLayer` function, and the editor only applies them: `placeAt` (static layers move their anchor, animated layers get a keyframe at the current time; x/y clamped to -0.5..1.5 by `clampAnchor`, for dragging and the X/Y fields alike), `addKeyframeAt`, `removeKeyframe` (removing the last keyframe keeps its state as the static position), `clearAnimation` and `setWindow` (an edge that would invert the window clears the other edge).
 
 ### Storage (component 1)
 - `StorageProvider` interface (`put/get(range?)/delete`) with a factory table keyed by name (`providers/registry.ts`). Built-ins: `local` (filesystem) and `s3` (AWS SDK v3, works with any S3-compatible endpoint). A new provider is one entry in that table; no other code changes.

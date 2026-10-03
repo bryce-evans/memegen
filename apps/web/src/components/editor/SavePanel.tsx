@@ -1,23 +1,13 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ensureLayerFonts, exportMeme, ExportAbortedError, type DecodedMedia } from "@memegen/render";
-import {
-  TAG_KINDS,
-  limitViolations,
-  stillExportSize,
-  tagSlug,
-  type Meme,
-  type TagKind,
-  type TextLayer,
-  type UploadLimits,
-  type Visibility,
-} from "@memegen/shared";
-import { Alert, Button, Field, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
-import { ApiError, createMeme, createTag, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
+import { limitViolations, stillExportSize, type Meme, type TextLayer, type UploadLimits, type Visibility } from "@memegen/shared";
+import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
+import { ApiError, createMeme, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { useAuth } from "../../auth.tsx";
 import { downloadBlob, fileSlug } from "../../media.ts";
 import { ErrorView, SignInPrompt } from "../common.tsx";
-import { TagInput } from "../tags.tsx";
+import { TagField } from "../tagInputs.tsx";
 
 export interface SavePanelProps {
   media: DecodedMedia;
@@ -52,6 +42,17 @@ export function SavePanel(props: SavePanelProps) {
   const abortRef = useRef<AbortController | null>(null);
   const busy = progress !== null;
   const saving = user !== null && canSave;
+
+  // Leaving the editor cancels an export/upload in flight; a save that still finishes must not navigate away from
+  // wherever the user went.
+  const left = useRef(false);
+  useEffect(() => {
+    left.current = false;
+    return () => {
+      left.current = true;
+      abortRef.current?.abort();
+    };
+  }, []);
 
   async function run(task: (signal: AbortSignal) => Promise<void>) {
     const ac = new AbortController();
@@ -110,7 +111,7 @@ export function SavePanel(props: SavePanelProps) {
       } else {
         meme = await createMeme({ ...common, templateId: target.templateId, post });
       }
-      navigate(`/m/${meme.id}`);
+      if (!left.current) navigate(`/m/${meme.id}`);
     });
 
   const alreadyPosted = editingMeme !== null && editingMeme.postedAt !== null;
@@ -138,10 +139,7 @@ export function SavePanel(props: SavePanelProps) {
             <option value="public">Public</option>
             <option value="private">Private (only you)</option>
           </SelectField>
-          <Field as="div" label="Tags">
-            <TagInput value={tags} onChange={setTags} suggestions={suggestedTags} testId="meme-tags" disabled={busy} />
-          </Field>
-          <NewTagForm disabled={busy} onCreated={(slug) => setTags((ts) => (ts.includes(slug) ? ts : [...ts, slug]))} />
+          <TagField value={tags} onChange={setTags} suggestions={suggestedTags} testId="meme-tags" disabled={busy} allowCreate />
         </>
       )}
       <Inline className="save-actions">
@@ -183,73 +181,5 @@ export function SavePanel(props: SavePanelProps) {
       {!user && <SignInPrompt action="save or post memes" />}
       {user && !canSave && <Alert tone="info">Only the owner can save changes to this meme.</Alert>}
     </Panel>
-  );
-}
-
-/** Create a tag (e.g. a team) and put it on the meme being saved; an existing tag of that name is just added. */
-function NewTagForm({ disabled, onCreated }: { disabled: boolean; onCreated: (slug: string) => void }) {
-  const [name, setName] = useState("");
-  const [kind, setKind] = useState<TagKind>("team");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setBusy(true);
-    setError(null);
-    try {
-      let slug: string;
-      try {
-        slug = (await createTag({ name: trimmed, kind })).slug;
-      } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) throw err;
-        slug = tagSlug(trimmed);
-      }
-      setName("");
-      onCreated(slug);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Field as="div" label="New tag">
-      <form className="new-tag" onSubmit={submit}>
-        <TextField
-          size="sm"
-          className="new-tag-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Tag name"
-          aria-label="Tag name"
-          maxLength={60}
-          disabled={disabled}
-          data-testid="new-tag-name"
-        />
-        <SelectField
-          size="sm"
-          className="new-tag-kind"
-          value={kind}
-          onChange={(e) => setKind(e.target.value as TagKind)}
-          disabled={disabled}
-          data-testid="new-tag-kind"
-          aria-label="Tag kind"
-        >
-          {TAG_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </SelectField>
-        <Button size="sm" type="submit" disabled={disabled || busy || !name.trim()} data-testid="new-tag-submit">
-          Create tag
-        </Button>
-      </form>
-      {error !== null && <ErrorView error={error} />}
-    </Field>
   );
 }

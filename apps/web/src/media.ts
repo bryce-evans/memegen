@@ -1,17 +1,19 @@
 import { decodeMedia, type DecodedMedia } from "@memegen/render";
-import { limitViolations, type MediaKind, type UploadLimits } from "@memegen/shared";
+import {
+  SUPPORTED_TYPES,
+  extensionForMime,
+  limitViolations,
+  supportedTypesLabel,
+  type MediaKind,
+  type UploadLimits,
+} from "@memegen/shared";
 import { ApiError } from "./api.ts";
-
-export const MEDIA_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/quicktime,.mp4,.mov";
-export const FONT_ACCEPT = ".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2";
 
 /** Best guess from the browser-reported type/extension; the server sniffs the real type. */
 function mediaKindOf(file: File): MediaKind | null {
   const name = file.name.toLowerCase();
-  if (file.type === "image/gif" || name.endsWith(".gif")) return "gif";
-  if (file.type.startsWith("image/")) return "image";
-  if (file.type.startsWith("video/") || name.endsWith(".mp4") || name.endsWith(".mov")) return "video";
-  return null;
+  const type = SUPPORTED_TYPES.find((t) => t.mime === file.type || name.endsWith(t.ext));
+  return type && type.kind !== "font" ? type.kind : null;
 }
 
 /**
@@ -20,7 +22,7 @@ function mediaKindOf(file: File): MediaKind | null {
  */
 export async function precheckMedia(file: File, limits: UploadLimits): Promise<DecodedMedia> {
   const kind = mediaKindOf(file);
-  if (!kind) throw new Error(`unsupported file type ${file.type || file.name}; use an image, GIF, MP4 or MOV`);
+  if (!kind) throw new Error(`unsupported file type ${file.type || file.name}; use ${supportedTypesLabel("media")}`);
   const sizeViolations = limitViolations(file.size, null, limits);
   if (sizeViolations.length) throw new ApiError(413, "file is over the upload limits", sizeViolations);
   const media = await decodeMedia(file, kind);
@@ -48,18 +50,9 @@ export function fileSlug(title: string): string {
   );
 }
 
-const EXTENSION_BY_MIME: Record<string, string> = {
-  "image/png": ".png",
-  "image/jpeg": ".jpg",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
-  "video/mp4": ".mp4",
-  "video/quicktime": ".mov",
-};
-
 /** File extension (with dot) for a stored asset: from its filename, else its mime type. */
 export function assetExtension(asset: { filename: string; mime: string }): string {
-  return asset.filename.match(/\.[a-z0-9]+$/i)?.[0].toLowerCase() ?? EXTENSION_BY_MIME[asset.mime] ?? "";
+  return asset.filename.match(/\.[a-z0-9]+$/i)?.[0].toLowerCase() ?? extensionForMime(asset.mime) ?? "";
 }
 
 /** Save a blob through a temporary `<a download>`. */

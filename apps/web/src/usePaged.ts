@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Page } from "@memegen/shared";
 
-export interface Paged<T> {
+export interface Paged<T extends { id: string }> {
   items: T[];
   setItems: (update: (items: T[]) => T[]) => void;
+  /** Swap in a newer version of a listed item (matched by id). */
+  replace: (item: T) => void;
   loading: boolean;
   error: unknown;
   hasMore: boolean;
@@ -12,7 +14,7 @@ export interface Paged<T> {
 }
 
 /** Offset-paginated list; `key` changes reset it (e.g. new filters). */
-export function usePaged<T>(key: string, load: (offset: number) => Promise<Page<T>>): Paged<T> {
+export function usePaged<T extends { id: string }>(key: string, load: (offset: number) => Promise<Page<T>>): Paged<T> {
   const [items, setItemsState] = useState<T[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,7 @@ export function usePaged<T>(key: string, load: (offset: number) => Promise<Page<
   return {
     items: current ? items : [],
     setItems: setItemsState,
+    replace: (item) => setItemsState((prev) => prev.map((x) => (x.id === item.id ? item : x))),
     loading: loading || !current,
     error,
     hasMore: current && nextOffset !== null,

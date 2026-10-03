@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import type { Comment, Meme } from "@memegen/shared";
+import { COMMENT_MAX_LENGTH, type Comment, type Meme } from "@memegen/shared";
 import { Button, PageHeader, Spinner, Text, TextArea } from "@memegen/ui";
 import { createComment, deleteComment, listComments } from "../api.ts";
 import { useAuth } from "../auth.tsx";
-import { timeAgo } from "../time.ts";
+import { useAction } from "../useAction.ts";
 import { usePaged } from "../usePaged.ts";
-import { ErrorView, SignInPrompt } from "./common.tsx";
+import { ErrorView, LoadMoreButton, SignInPrompt, TimeAgo } from "./common.tsx";
 
 /**
  * Mirrors the server's delete rule: a comment with replies stays as a placeholder; otherwise it goes, and a
@@ -28,7 +28,7 @@ function removeComment(items: Comment[], target: Comment): Comment[] {
 /** Discussion under a meme: top-level comments with one level of replies. `onCountChange` gets ±1 per post/delete. */
 export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (delta: number) => void }) {
   const { user } = useAuth();
-  const list = usePaged<Comment>(`${meme.id}:${user?.id ?? ""}`, (offset) => listComments(meme.id, offset));
+  const list = usePaged<Comment>(`${meme.id}:${user?.id ?? ""}`, (offset) => listComments(meme.id, { offset }));
   const open = meme.postedAt !== null && meme.visibility === "public";
   const canPost = open && user !== null;
 
@@ -63,11 +63,7 @@ export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (
         ))}
       </ol>
       {list.loading && <Spinner label="Loading…" />}
-      {list.hasMore && !list.loading && (
-        <div className="load-more">
-          <Button onClick={list.loadMore}>More comments</Button>
-        </div>
-      )}
+      <LoadMoreButton hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} label="More comments" />
       {open && !user && <SignInPrompt action="join the discussion" />}
       {canPost && <CommentForm memeId={meme.id} parentId={null} onPosted={added} />}
     </section>
@@ -83,20 +79,11 @@ function CommentItem(props: {
   const { comment, canReply, onPosted, onDelete } = props;
   const { user } = useAuth();
   const [replying, setReplying] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const { busy, error, run } = useAction();
   const isReply = comment.parentId !== null;
 
-  async function remove() {
-    if (!window.confirm("Delete this comment?")) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await onDelete(comment);
-    } catch (err) {
-      setError(err);
-      setBusy(false);
-    }
+  function remove() {
+    if (window.confirm("Delete this comment?")) void run(() => onDelete(comment));
   }
 
   return (
@@ -110,9 +97,7 @@ function CommentItem(props: {
           </Link>
         )}
         {" · "}
-        <time dateTime={comment.createdAt} title={new Date(comment.createdAt).toLocaleString()}>
-          {timeAgo(comment.createdAt)}
-        </time>
+        <TimeAgo iso={comment.createdAt} />
       </Text>
       <Text tone={comment.deleted ? "muted" : "default"} className="comment-body" data-testid="comment-body">
         {comment.deleted ? "This comment was deleted." : comment.body}
@@ -158,24 +143,17 @@ function CommentItem(props: {
 /** New top-level comment (`parentId` null) or a reply to a top-level comment. */
 function CommentForm({ memeId, parentId, onPosted }: { memeId: string; parentId: string | null; onPosted: (comment: Comment) => void }) {
   const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const { busy, error, run } = useAction();
   const reply = parentId !== null;
 
-  async function submit(e: FormEvent) {
+  function submit(e: FormEvent) {
     e.preventDefault();
     if (!body.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
+    void run(async () => {
       const comment = await createComment(memeId, body.trim(), parentId);
       setBody("");
       onPosted(comment);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (
@@ -185,7 +163,7 @@ function CommentForm({ memeId, parentId, onPosted }: { memeId: string; parentId:
         onChange={(e) => setBody(e.target.value)}
         placeholder={reply ? "Write a reply…" : "Add a comment…"}
         aria-label={reply ? "Reply" : "Comment"}
-        maxLength={2000}
+        maxLength={COMMENT_MAX_LENGTH}
         rows={reply ? 2 : 3}
         disabled={busy}
         data-testid={reply ? "reply-input" : "comment-input"}

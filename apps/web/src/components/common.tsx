@@ -1,29 +1,24 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ComponentPropsWithoutRef, type FormEvent } from "react";
 import type { Asset } from "@memegen/shared";
 import { Alert, Button, TextField } from "@memegen/ui";
 import { ApiError, contentUrl } from "../api.ts";
 import { useAuth } from "../auth.tsx";
+import { timeAgo } from "../time.ts";
+import { useAction } from "../useAction.ts";
 
 /** `inHeader` marks the header instance, which carries the e2e test ids (prompts elsewhere reuse the form). */
 export function LoginForm({ inHeader = false }: { inHeader?: boolean }) {
   const { signIn } = useAuth();
   const [username, setUsername] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const { busy, error, run } = useAction();
 
-  async function submit(e: FormEvent) {
+  function submit(e: FormEvent) {
     e.preventDefault();
     if (!username.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
+    void run(async () => {
       await signIn(username.trim());
       setUsername("");
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (
@@ -66,7 +61,7 @@ export function ErrorView({ error, testId }: { error: unknown; testId?: string }
   const message = error instanceof Error ? error.message : String(error);
   const details = error instanceof ApiError ? error.details : [];
   return (
-    <Alert tone="error" data-testid={testId}>
+    <Alert tone="danger" data-testid={testId}>
       <strong>{message}</strong>
       {details.length > 0 && (
         <ul>
@@ -79,11 +74,45 @@ export function ErrorView({ error, testId }: { error: unknown; testId?: string }
   );
 }
 
-export function MediaView({ asset, alt, testId }: { asset: Asset; alt: string; testId?: string }) {
+/** An asset as `<img>` or (muted, looping) `<video>`; `controls` adds the video's native controls. */
+export function MediaView({ asset, alt, testId, controls }: { asset: Asset; alt: string; testId?: string; controls?: boolean }) {
   if (asset.kind === "video") {
-    return <video data-testid={testId} src={contentUrl(asset)} muted loop autoPlay playsInline aria-label={alt} />;
+    return (
+      <video data-testid={testId} src={contentUrl(asset)} controls={controls} muted loop autoPlay playsInline aria-label={alt} />
+    );
   }
   return <img data-testid={testId} src={contentUrl(asset)} alt={alt} loading="lazy" />;
+}
+
+/** Relative time ("3m ago") with the full local date and time as its tooltip. */
+export function TimeAgo({ iso, ...rest }: { iso: string } & Omit<ComponentPropsWithoutRef<"time">, "dateTime" | "title" | "children">) {
+  return (
+    <time dateTime={iso} title={new Date(iso).toLocaleString()} {...rest}>
+      {timeAgo(iso)}
+    </time>
+  );
+}
+
+interface LoadMoreProps {
+  hasMore: boolean;
+  loading: boolean;
+  onLoadMore: () => void;
+}
+
+/**
+ * Click-to-page: meme feeds (the e2e `loadAll` helper drives their `load-more` button) and lists with more
+ * content after them (a section below, a comment form), which auto-loading would keep pushing away. A list that
+ * ends the page uses `LoadMoreSentinel` instead.
+ */
+export function LoadMoreButton({ hasMore, loading, onLoadMore, label = "Load more", testId }: LoadMoreProps & { label?: string; testId?: string }) {
+  if (!hasMore || loading) return null;
+  return (
+    <div className="load-more">
+      <Button data-testid={testId} onClick={onLoadMore}>
+        {label}
+      </Button>
+    </div>
+  );
 }
 
 /**
@@ -91,7 +120,7 @@ export function MediaView({ asset, alt, testId }: { asset: Asset; alt: string; t
  * The observer is rebuilt after every page, and a fresh observer reports the current intersection right away,
  * so a short page that leaves the marker on screen keeps loading until it scrolls away or the list ends.
  */
-export function LoadMoreSentinel({ hasMore, loading, onLoadMore }: { hasMore: boolean; loading: boolean; onLoadMore: () => void }) {
+export function LoadMoreSentinel({ hasMore, loading, onLoadMore }: LoadMoreProps) {
   const ref = useRef<HTMLDivElement>(null);
   const loadRef = useRef(onLoadMore);
   loadRef.current = onLoadMore;

@@ -114,6 +114,11 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - `rows.ts` holds row types, base selects (`memeSelect` exposes aliases `m`, `u`, `v`; callers may append joins), `toX` mappers, and `withVariations`/`nest`, which load children for a whole page in one query (template lists, hot templates, comment replies).
 - Query/body schemas come from `@memegen/shared`; `idParam`, `page()`, `UserRow`/`toUser`, and `AssetRow`/`toAsset`/`findAssetRow` from `@memegen/server-kit`, so the API never imports the storage service.
 
+### Web app code layout (`apps/web`)
+- `pages/` are route screens only; they import from `components/`, never from each other, and components never import pages. The feed model (period/sort labels, feed kinds, URL filters, `GalleryFilters`, `GalleryFeed`) lives in `components/feed.tsx`; `GalleryFilters` decides itself whether the skin puts it at the requested placement.
+- Data loading goes through three hooks: `useAsync(key, load)` for one value (a key change hides the old value at once and drops late results; `keepStale` keeps it on screen for background refreshes like the tag sidebar), `usePaged` for offset lists (`replace(item)` swaps in an updated item by id), and `useAction()` for mutations (busy/error, no state updates after unmount).
+- Paging: a list that ends the page loads its next page from an IntersectionObserver sentinel (the template browser). Lists with content after them (tag-page templates, comments) and meme feeds use a "Load more" button; the e2e `loadAll` helper drives the feeds' `load-more` button.
+
 ### Votes, ranking, stats
 - `votes(user_id, meme_id, value ±1, created_at)`, one per user per meme. A trigger keeps `memes.upvotes/downvotes` up to date; `score` is a generated column.
 - Votes double as per-user activity (no separate store): `GET /api/me/activity` lists every meme the viewer voted on, likes and dislikes together (`myVote` says which), newest vote first (`votes_user_time` index; changing a vote refreshes `created_at`, clearing it deletes the row). Only the owner sees it: the profile's "Recent activity" tab.

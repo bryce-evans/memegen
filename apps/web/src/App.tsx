@@ -14,14 +14,14 @@ import {
   SkinSwitcher,
   Text,
   Wordmark,
-  useSkin,
   useSkinFavicon,
 } from "@memegen/ui";
 import { AuthProvider, useAuth } from "./auth.tsx";
 import { LoginForm } from "./components/common.tsx";
-import { TagSearch, TagSidebar } from "./components/tags.tsx";
+import { GalleryFilters, feedKindFor } from "./components/feed.tsx";
+import { TagSearch, TagSidebar } from "./components/tagNav.tsx";
 import { Editor } from "./pages/Editor.tsx";
-import { GalleryFilters, Popular, Recent, feedKindFor, hasFeedControls } from "./pages/Gallery.tsx";
+import { Popular, Recent } from "./pages/Gallery.tsx";
 import { Leaderboard } from "./pages/Leaderboard.tsx";
 import { MemeDetail } from "./pages/MemeDetail.tsx";
 import { Profile } from "./pages/Profile.tsx";
@@ -65,7 +65,6 @@ function SiteHeader() {
 function SideColumn() {
   const { user } = useAuth();
   const { pathname } = useLocation();
-  const { layout } = useSkin();
   const feedKind = feedKindFor(pathname);
   return (
     <Sidebar>
@@ -97,9 +96,7 @@ function SideColumn() {
           )}
         </NavList>
       </SidebarSection>
-      {layout.filters === "sidebar" && feedKind && hasFeedControls(feedKind) && (
-        <GalleryFilters kind={feedKind} placement="sidebar" />
-      )}
+      {feedKind && <GalleryFilters kind={feedKind} placement="sidebar" />}
       <TagSidebar />
     </Sidebar>
   );

@@ -1,34 +1,24 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import type { Asset, Meme } from "@memegen/shared";
-import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, MediaGrid, Text } from "@memegen/ui";
+import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, MediaGrid, Spinner, Text } from "@memegen/ui";
 import { favoriteMeme, voteMeme } from "../api.ts";
 import { useAuth } from "../auth.tsx";
-import { timeAgo } from "../time.ts";
-import { ErrorView, MediaView } from "./common.tsx";
+import { plural } from "../format.ts";
+import { useAction } from "../useAction.ts";
+import type { Paged } from "../usePaged.ts";
+import { ErrorView, LoadMoreButton, MediaView, TimeAgo } from "./common.tsx";
 import { TagChips } from "./tags.tsx";
 
 /** 👍/👎 with up/down counts (downvotes shown negative); clicking your current vote clears it. */
 export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
   const { user } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const { busy, error, setError, run } = useAction();
   const votable = meme.postedAt !== null && meme.visibility === "public";
 
-  async function vote(dir: -1 | 1) {
-    if (!user) {
-      setError(new Error("Sign in (top right) to vote."));
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      onChange(await voteMeme(meme.id, meme.myVote === dir ? 0 : dir));
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
+  function vote(dir: -1 | 1) {
+    if (!user) return setError(new Error("Sign in (top right) to vote."));
+    void run(async () => onChange(await voteMeme(meme.id, meme.myVote === dir ? 0 : dir)));
   }
 
   const disabledReason = votable ? undefined : "Only posted public memes can be voted on";
@@ -36,6 +26,7 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
     <div className="votes">
       <Button
         size="sm"
+        tone="warning"
         className="vote vote-up"
         onClick={() => vote(1)}
         disabled={busy || !votable}
@@ -48,6 +39,7 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
       </Button>
       <Button
         size="sm"
+        tone="info"
         className="vote vote-down"
         onClick={() => vote(-1)}
         disabled={busy || !votable}
@@ -69,24 +61,12 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
 /** ☆/★ toggle that saves someone else's posted public meme to your Favorites; hidden on your own and unposted memes. */
 export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
   const { user } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const { busy, error, setError, run } = useAction();
   if (user?.id === meme.owner.id || meme.postedAt === null || meme.visibility !== "public") return null;
 
-  async function toggle() {
-    if (!user) {
-      setError(new Error("Sign in (top right) to save favorites."));
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      onChange(await favoriteMeme(meme.id, !meme.favorited));
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
+  function toggle() {
+    if (!user) return setError(new Error("Sign in (top right) to save favorites."));
+    void run(async () => onChange(await favoriteMeme(meme.id, !meme.favorited)));
   }
 
   const label = meme.favorited ? "Remove from favorites" : "Add to favorites";
@@ -94,6 +74,7 @@ export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme
     <>
       <Button
         size="sm"
+        tone="warning"
         className="favorite"
         onClick={toggle}
         disabled={busy}
@@ -119,12 +100,7 @@ export function MemeBadges({ meme }: { meme: Meme }) {
 }
 
 export function MemeAge({ meme }: { meme: Meme }) {
-  const iso = meme.postedAt ?? meme.createdAt;
-  return (
-    <time className="age" dateTime={iso} title={new Date(iso).toLocaleString()} data-testid="meme-age">
-      {timeAgo(iso)}
-    </time>
-  );
+  return <TimeAgo iso={meme.postedAt ?? meme.createdAt} className="age" data-testid="meme-age" />;
 }
 
 /**
@@ -202,7 +178,7 @@ export function MemeCard({ meme, onChange, span = 1 }: { meme: Meme; onChange: (
         <Link
           to={`/m/${meme.id}#comments`}
           className="comment-count"
-          aria-label={`${meme.commentCount} ${meme.commentCount === 1 ? "comment" : "comments"}`}
+          aria-label={plural(meme.commentCount, "comment")}
           title="Discussion"
           data-testid="meme-comment-count"
         >
@@ -224,5 +200,22 @@ export function MemeGrid({ memes, onChange }: { memes: Meme[]; onChange: (meme: 
         <MemeCard key={m.id} meme={m} onChange={onChange} span={columnSpan(m.outputAsset, columns)} />
       ))}
     </MediaGrid>
+  );
+}
+
+/**
+ * A paged meme list: its error, the grid (cards update in place after votes/favorites), and "Load more".
+ * Extra props, e.g. `data-*` naming the query, go on the `meme-feed` box.
+ */
+export function MemeFeed({ list, ...rest }: { list: Paged<Meme> } & ComponentPropsWithoutRef<"div">) {
+  return (
+    <>
+      {list.error !== null && <ErrorView error={list.error} />}
+      <div className="meme-feed" data-testid="meme-feed" aria-busy={list.loading} {...rest}>
+        {!(list.loading && list.items.length === 0) && <MemeGrid memes={list.items} onChange={list.replace} />}
+        {list.loading && <Spinner label="Loading…" />}
+        <LoadMoreButton hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} testId="load-more" />
+      </div>
+    </>
   );
 }

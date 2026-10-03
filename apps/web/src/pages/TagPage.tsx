@@ -1,33 +1,20 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import type { Tag, Template } from "@memegen/shared";
-import { Badge, Button, EmptyState, Icon, MediaGrid, PageHeader, Spinner, Text } from "@memegen/ui";
+import type { Template } from "@memegen/shared";
+import { Badge, EmptyState, Icon, PageHeader, Text } from "@memegen/ui";
 import { getTag, listTemplates } from "../api.ts";
 import { useAuth } from "../auth.tsx";
-import { ErrorView } from "../components/common.tsx";
-import { TemplateCard } from "../components/templates.tsx";
+import { ErrorView, LoadMoreButton } from "../components/common.tsx";
+import { GalleryFeed } from "../components/feed.tsx";
+import { TemplateGrid } from "../components/templates.tsx";
+import { plural } from "../format.ts";
+import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
-import { GalleryFeed } from "./Gallery.tsx";
 
 export function TagPage() {
   const { slug = "" } = useParams();
   const { user } = useAuth();
-  const [tag, setTag] = useState<Tag | null>(null);
-  const [error, setError] = useState<unknown>(null);
-  const templates = usePaged<Template>(`${slug}:${user?.id ?? ""}`, (offset) => listTemplates("", offset, 24, slug));
-
-  useEffect(() => {
-    let cancelled = false;
-    setTag(null);
-    setError(null);
-    getTag(slug).then(
-      (t) => !cancelled && setTag(t),
-      (err) => !cancelled && setError(err),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
+  const { data: tag, error } = useAsync(slug, () => getTag(slug));
+  const templates = usePaged<Template>(`${slug}:${user?.id ?? ""}`, (offset) => listTemplates({ tag: slug, offset }));
 
   if (error !== null) return <ErrorView error={error} />;
 
@@ -47,29 +34,15 @@ export function TagPage() {
         {tag?.description && <Text>{tag.description}</Text>}
         {tag && (
           <Text tone="muted">
-            {tag.templateCount} {tag.templateCount === 1 ? "template" : "templates"} · {tag.memeCount}{" "}
-            {tag.memeCount === 1 ? "meme" : "memes"}
+            {plural(tag.templateCount, "template")} · {plural(tag.memeCount, "meme")}
           </Text>
         )}
       </header>
 
       <div data-testid="tag-templates">
         <PageHeader level={2} title="Templates" />
-        {templates.error !== null && <ErrorView error={templates.error} />}
-        {!templates.loading && templates.items.length === 0 && templates.error === null && (
-          <EmptyState icon={<Icon name="image" />} title="No templates with this tag." />
-        )}
-        <MediaGrid>
-          {templates.items.map((t) => (
-            <TemplateCard key={t.id} template={t} />
-          ))}
-        </MediaGrid>
-        {templates.loading && <Spinner label="Loading…" />}
-        {templates.hasMore && !templates.loading && (
-          <div className="load-more">
-            <Button onClick={templates.loadMore}>More templates</Button>
-          </div>
-        )}
+        <TemplateGrid list={templates} empty={<EmptyState icon={<Icon name="image" />} title="No templates with this tag." />} />
+        <LoadMoreButton hasMore={templates.hasMore} loading={templates.loading} onLoadMore={templates.loadMore} label="More templates" />
       </div>
 
       <div data-testid="tag-memes">

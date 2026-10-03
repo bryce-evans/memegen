@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { badgesFor, type Meme, type Page, type UserProfile } from "@memegen/shared";
-import { Badge, Button, PageHeader, SegmentedControl, Spinner, Text } from "@memegen/ui";
-import { getMyActivity, getMyFavorites, getUser, getUserMemes } from "../api.ts";
+import { badgesFor, type Meme, type Page } from "@memegen/shared";
+import { Badge, PageHeader, SegmentedControl, Text } from "@memegen/ui";
+import { getMyActivity, getMyFavorites, getUser, getUserMemes, type PageParams } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
-import { MemeGrid } from "../components/memes.tsx";
+import { MemeFeed } from "../components/memes.tsx";
+import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
 const PROFILE_TABS = ["memes", "favorites", "activity"] as const;
 type ProfileTab = (typeof PROFILE_TABS)[number];
 const TAB_LABELS: Record<ProfileTab, string> = { memes: "Memes", favorites: "Favorites", activity: "Recent activity" };
-const LOADERS: Record<Exclude<ProfileTab, "memes">, (offset: number) => Promise<Page<Meme>>> = {
+const LOADERS: Record<Exclude<ProfileTab, "memes">, (page: PageParams) => Promise<Page<Meme>>> = {
   favorites: getMyFavorites,
   activity: getMyActivity,
 };
@@ -20,28 +20,14 @@ export function Profile() {
   const { username = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [error, setError] = useState<unknown>(null);
+  const { data: profile, error } = useAsync(username, () => getUser(username));
   // Favorites and recent activity (votes) are the owner's own; everyone else only sees the memes tab.
   const isOwner = user?.username === username;
   const tabParam = params.get("tab");
   const tab: ProfileTab = (isOwner && PROFILE_TABS.find((t) => t === tabParam)) || "memes";
   const memes = usePaged<Meme>(`${username}:${tab}:${user?.id ?? ""}`, (offset) =>
-    tab === "memes" ? getUserMemes(username, offset) : LOADERS[tab](offset),
+    tab === "memes" ? getUserMemes(username, { offset }) : LOADERS[tab]({ offset }),
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    setProfile(null);
-    setError(null);
-    getUser(username).then(
-      (p) => !cancelled && setProfile(p),
-      (err) => !cancelled && setError(err),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [username]);
 
   if (error !== null) return <ErrorView error={error} />;
 
@@ -93,20 +79,7 @@ export function Profile() {
           options={PROFILE_TABS.map((t) => ({ value: t, label: TAB_LABELS[t], testId: `profile-tab-${t}` }))}
         />
       )}
-      {memes.error !== null && <ErrorView error={memes.error} />}
-      <div className="meme-feed" data-testid="meme-feed" data-tab={tab} aria-busy={memes.loading}>
-        {!(memes.loading && memes.items.length === 0) && (
-          <MemeGrid memes={memes.items} onChange={(m) => memes.setItems((items) => items.map((x) => (x.id === m.id ? m : x)))} />
-        )}
-        {memes.loading && <Spinner label="Loading…" />}
-        {memes.hasMore && !memes.loading && (
-          <div className="load-more">
-            <Button data-testid="load-more" onClick={memes.loadMore}>
-              Load more
-            </Button>
-          </div>
-        )}
-      </div>
+      <MemeFeed list={memes} data-tab={tab} />
     </section>
   );
 }

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { LEADERBOARD_SORTS, badgesFor, type LeaderboardEntry, type LeaderboardSort } from "@memegen/shared";
+import { LEADERBOARD_SORTS, badgesFor, type LeaderboardSort } from "@memegen/shared";
 import { EmptyState, Icon, PageHeader, SegmentedControl, Spinner } from "@memegen/ui";
 import { getLeaderboard } from "../api.ts";
 import { ErrorView } from "../components/common.tsx";
+import { useAsync } from "../useAsync.ts";
 
 const SORT_LABELS: Record<LeaderboardSort, string> = { hScore: "h-score", highScore: "High score", memeCount: "Memes" };
 
@@ -11,21 +11,7 @@ export function Leaderboard() {
   const [params, setParams] = useSearchParams();
   const byParam = params.get("by");
   const by: LeaderboardSort = LEADERBOARD_SORTS.find((s) => s === byParam) ?? "hScore";
-  const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setEntries(null);
-    setError(null);
-    getLeaderboard(by).then(
-      (rows) => !cancelled && setEntries(rows),
-      (err) => !cancelled && setError(err),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [by]);
+  const { data: entries, error, loading } = useAsync(by, () => getLeaderboard(by));
 
   return (
     <section>
@@ -42,8 +28,8 @@ export function Leaderboard() {
         }
       />
       {error !== null && <ErrorView error={error} />}
-      <div data-testid="leaderboard" aria-busy={entries === null && error === null}>
-        {entries === null && error === null && <Spinner label="Loading…" />}
+      <div data-testid="leaderboard" aria-busy={loading}>
+        {loading && <Spinner label="Loading…" />}
         {entries?.length === 0 && <EmptyState icon={<Icon name="chart" />} title="Nobody has posted a meme yet." />}
         {entries && entries.length > 0 && (
           <table className="leaderboard">

@@ -1,3 +1,4 @@
+import { assetContentPath } from "@memegen/shared";
 import type {
   Asset,
   Comment,
@@ -93,15 +94,19 @@ function qs(params: Record<string, string | number | null | undefined>): string 
   return s ? `?${s}` : "";
 }
 
+/** Offset paging for list calls; omitted fields take the defaults each call documents. */
+export interface PageParams {
+  offset?: number;
+  limit?: number;
+}
+
 // ---- storage --------------------------------------------------------------
 
 export function contentUrl(asset: Pick<Asset, "contentPath">): string {
   return `/storage${asset.contentPath}`;
 }
 
-export function fontUrl(assetId: string): string {
-  return `/storage/assets/${assetId}/content`;
-}
+export const fontUrl = (assetId: string) => contentUrl({ contentPath: assetContentPath(assetId) });
 
 export const getLimits = () => request<UploadLimits>("/storage/limits");
 
@@ -132,11 +137,11 @@ export const getMe = () => request<UserProfile>("/api/me");
 
 export const getUser = (username: string) => request<UserProfile>(`/api/users/${encodeURIComponent(username)}`);
 
-export const getUserMemes = (username: string, offset = 0, limit = 24) =>
+export const getUserMemes = (username: string, { offset = 0, limit = 24 }: PageParams = {}) =>
   request<Page<Meme>>(`/api/users/${encodeURIComponent(username)}/memes${qs({ offset, limit })}`);
 
-export const listTemplates = (q: string, offset = 0, limit = 24, tag?: string) =>
-  request<Page<Template>>(`/api/templates${qs({ q, offset, limit, tag })}`);
+export const listTemplates = ({ q, tag, offset = 0, limit = 24 }: PageParams & { q?: string; tag?: string } = {}) =>
+  request<Page<Template>>(`/api/templates${qs({ q, tag, offset, limit })}`);
 
 export const getTemplate = (id: string) => request<Template>(`/api/templates/${id}`);
 
@@ -162,7 +167,8 @@ export const createTemplate = (input: CreateTemplateInput) =>
 export const addTemplateTags = (id: string, tags: string[]) =>
   request<Template>(`/api/templates/${id}/tags`, { method: "POST", json: { tags } });
 
-export const listTags = (q = "", kind?: TagKind, limit = 100) => request<Tag[]>(`/api/tags${qs({ q, kind, limit })}`);
+export const listTags = ({ q, kind, limit = 100 }: { q?: string; kind?: TagKind; limit?: number } = {}) =>
+  request<Tag[]>(`/api/tags${qs({ q, kind, limit })}`);
 
 export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURIComponent(slug)}`);
 
@@ -200,22 +206,24 @@ export const deleteMeme = (id: string) => request<void>(`/api/memes/${id}`, { me
 export const voteMeme = (id: string, value: -1 | 0 | 1) =>
   request<Meme>(`/api/memes/${id}/vote`, { method: "PUT", json: { value } });
 
-export const getGallery = (period: Period, sort: GallerySort, offset = 0, limit = 24, tag?: string) =>
-  request<Page<Meme>>(`/api/gallery${qs({ period, sort, offset, limit, tag })}`);
+export const getGallery = ({ period, sort, tag, offset = 0, limit = 24 }: PageParams & { period: Period; sort: GallerySort; tag?: string }) =>
+  request<Page<Meme>>(`/api/gallery${qs({ period, sort, tag, offset, limit })}`);
 
 export const getLeaderboard = (by: LeaderboardSort, limit = 50) =>
   request<LeaderboardEntry[]>(`/api/leaderboard${qs({ by, limit })}`);
 
 /** Recent activity: memes the signed-in user voted on (either way), newest vote first. */
-export const getMyActivity = (offset = 0, limit = 24) => request<Page<Meme>>(`/api/me/activity${qs({ offset, limit })}`);
+export const getMyActivity = ({ offset = 0, limit = 24 }: PageParams = {}) =>
+  request<Page<Meme>>(`/api/me/activity${qs({ offset, limit })}`);
 
 /** Memes the signed-in user starred, most recently starred first. */
-export const getMyFavorites = (offset = 0, limit = 24) => request<Page<Meme>>(`/api/me/favorites${qs({ offset, limit })}`);
+export const getMyFavorites = ({ offset = 0, limit = 24 }: PageParams = {}) =>
+  request<Page<Meme>>(`/api/me/favorites${qs({ offset, limit })}`);
 
 export const favoriteMeme = (id: string, favorite: boolean) =>
   request<Meme>(`/api/memes/${id}/favorite`, { method: "PUT", json: { favorite } });
 
-export const listComments = (memeId: string, offset = 0, limit = 50) =>
+export const listComments = (memeId: string, { offset = 0, limit = 50 }: PageParams = {}) =>
   request<Page<Comment>>(`/api/memes/${memeId}/comments${qs({ offset, limit })}`);
 
 export const createComment = (memeId: string, body: string, parentId: string | null = null) =>

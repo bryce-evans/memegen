@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
 import { Button, Icon, Inline, LinkButton, Spinner, Text } from "@memegen/ui";
@@ -7,31 +7,19 @@ import { useAuth } from "../auth.tsx";
 import { Comments } from "../components/comments.tsx";
 import { ErrorView, MediaView } from "../components/common.tsx";
 import { FavoriteButton, MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
-import { TagChips, TagEditor } from "../components/tags.tsx";
+import { TagEditor } from "../components/tagInputs.tsx";
+import { TagChips } from "../components/tags.tsx";
 import { assetExtension, fileSlug } from "../media.ts";
+import { useAction } from "../useAction.ts";
+import { useAsync } from "../useAsync.ts";
 
 export function MemeDetail() {
   const { id = "" } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const [meme, setMeme] = useState<Meme | null>(null);
-  const [error, setError] = useState<unknown>(null);
-  const [actionError, setActionError] = useState<unknown>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setMeme(null);
-    setError(null);
-    getMeme(id).then(
-      (m) => !cancelled && setMeme(m),
-      (err) => !cancelled && setError(err),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [id, user?.id]);
+  const { data: meme, error, setData: setMeme } = useAsync(`${id}:${user?.id ?? ""}`, () => getMeme(id));
+  const { busy, error: actionError, run } = useAction();
 
   // Router navigations don't scroll to fragments; jump to `#comments` once the page has rendered.
   const loaded = meme !== null;
@@ -39,17 +27,17 @@ export function MemeDetail() {
     if (loaded && hash) document.getElementById(hash.slice(1))?.scrollIntoView();
   }, [loaded, hash]);
 
-  async function act(fn: () => Promise<Meme | void>) {
-    setBusy(true);
-    setActionError(null);
-    try {
-      const result = await fn();
-      if (result) setMeme(result);
-    } catch (err) {
-      setActionError(err);
-    } finally {
-      setBusy(false);
-    }
+  /** Owner actions that return the meme's new version. */
+  function act(fn: () => Promise<Meme>) {
+    void run(async () => setMeme(await fn()));
+  }
+
+  function remove(meme: Meme) {
+    if (!window.confirm("Delete this meme?")) return;
+    void run(async () => {
+      await deleteMeme(meme.id);
+      navigate(`/u/${meme.owner.username}`);
+    });
   }
 
   if (error !== null) return <ErrorView error={error} />;
@@ -60,11 +48,7 @@ export function MemeDetail() {
   return (
     <section className="detail">
       <div className="detail-media">
-        {meme.outputAsset.kind === "video" ? (
-          <video data-testid="meme-media" src={contentUrl(meme.outputAsset)} controls loop autoPlay muted playsInline />
-        ) : (
-          <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} testId="meme-media" />
-        )}
+        <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} testId="meme-media" controls />
       </div>
       <aside className="detail-side">
         <h1 className="detail-title" data-testid="meme-title">
@@ -126,18 +110,7 @@ export function MemeDetail() {
             <Button disabled={busy} data-testid="edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
               Edit
             </Button>
-            <Button
-              variant="danger"
-              disabled={busy}
-              data-testid="delete-meme"
-              onClick={() =>
-                act(async () => {
-                  if (!window.confirm("Delete this meme?")) return;
-                  await deleteMeme(meme.id);
-                  navigate(`/u/${meme.owner.username}`);
-                })
-              }
-            >
+            <Button variant="danger" disabled={busy} data-testid="delete-meme" onClick={() => remove(meme)}>
               Delete
             </Button>
           </Inline>

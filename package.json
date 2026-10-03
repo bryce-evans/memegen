@@ -11,18 +11,20 @@
     "node": ">=23.6"
   },
   "scripts": {
-    "dev": "node scripts/dev.ts",
-    "db:migrate": "node --env-file-if-exists=.env packages/server-kit/src/migrate.ts",
-    "seed": "node --env-file-if-exists=.env scripts/seed.ts",
+    "dev": "node --env-file-if-exists=config/dev.env scripts/dev.ts",
+    "db:migrate": "node --env-file-if-exists=config/dev.env packages/server-kit/src/migrate.ts",
+    "seed": "node --env-file-if-exists=config/dev.env scripts/seed.ts",
     "test": "node --test --test-concurrency=1 \"packages/*/src/**/*.test.ts\" \"services/*/src/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json && tsc -b apps/web",
     "build": "bun run --cwd apps/web build",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "seed:mock": "node --env-file-if-exists=config/dev.env scripts/mock/seed.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.3",
+    "gifenc": "^1.0.3",
     "typescript": "~6.0.2",
     "yaml": "^2.9.1"
   },

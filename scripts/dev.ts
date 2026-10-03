@@ -7,12 +7,13 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const node = process.execPath;
-const envFile = "--env-file-if-exists=.env";
+// Fallback when not launched via run.sh (which exports the chosen config).
+const envFile = "--env-file-if-exists=config/dev.env";
 
 const procs: [string, string, string[], string][] = [
   ["storage", node, [envFile, "--watch", "services/storage/src/server.ts"], root],
   ["api", node, [envFile, "--watch", "services/api/src/server.ts"], root],
-  ["web", "bunx", ["vite"], `${root}apps/web`],
+  ["web", "bunx", ["vite", "--port", process.env.WEB_PORT ?? "5173", "--strictPort"], `${root}apps/web`],
 ];
 
 function run(cmd: string, args: string[], cwd: string): Promise<number> {

@@ -129,6 +129,20 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - Bun is the package manager/script runner/builder (`bun install`, `bun run …`); Vite builds the web app.
 - Postgres for metadata; local disk (`.data/storage`) for files by default.
 
+### Running and configuration
+- `run.sh <config> <command>` is the single entry point. A config is a plain `KEY=value` file. `run.sh` exports it literally (no shell expansion), and Node's `--env-file` reads the same format as a fallback.
+- `config/dev.env` is committed with no secrets. `config/prod.env` is gitignored and copied from `config/prod.env.example`.
+- `MODE=prod` guards:
+  - mock seeding, `dev`, `test`, and `e2e` are refused
+  - `INTERNAL_TOKEN` must be set and not the dev value
+  - placeholder `DATABASE_URL`s are rejected
+  - masked values only in `config` output
+- `start` serves the built SPA with `scripts/serve-web.ts`, a dependency-free Node server:
+  - SPA fallback; immutable caching for `assets/`
+  - proxies `/api` and `/storage` exactly like the Vite dev proxy; `/internal` is never proxied
+- `run.sh` supervises storage, API, and web as a group: if any process exits, the rest stop and `run.sh` returns its status. It is bash 3.2-compatible (macOS default).
+- **UI skins**: see `packages/ui/README.md`. Components read design tokens, and `<html data-skin>` selects default/apple/material/google/spectrum; a skin can also replace whole components.
+
 ## Service contracts
 
 All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validation issues or cap violations, human-readable).

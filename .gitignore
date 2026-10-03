@@ -1,7 +1,8 @@
 node_modules
 .data
 dist
-.env
+config/*.env
+!config/dev.env
 *.log
 test-results
 playwright-report

@@ -22,63 +22,15 @@ The editor and gallery are routes of one Vite app. Meme rendering (text overlay,
 - PostgreSQL 14+
 - A Chromium-based browser, Safari 17+, or Firefox 130+ (WebCodecs) to export video memes. Images and GIFs work everywhere.
 
-## Setup
+## Quick start
+
+Everything goes through `run.sh` and a config file:
 
 ```sh
-bun install
-cp .env.example .env            # defaults work for a local Postgres on :5432
-```
-
-### 1. Start the database
-
-Homebrew:
-
-```sh
-brew services start postgresql@16
-createdb memegen
-createdb memegen_test           # only needed for `bun run test`
-```
-
-Or Docker:
-
-```sh
-docker run -d --name memegen-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16
-docker exec memegen-pg createdb -U postgres memegen
-docker exec memegen-pg createdb -U postgres memegen_test
-# then set DATABASE_URL=postgres://postgres@localhost:5432/memegen in .env
-```
-
-Apply migrations (`bun run dev` also does this on start):
-
-```sh
-bun run db:migrate
-```
-
-### 2. Seed fonts and templates (optional, recommended)
-
-Imports Impact plus the OFL fonts, and about 260 templates and variations, from a [jacebrowning/memegen](https://github.com/jacebrowning/memegen) checkout:
-
-```sh
-git clone --depth 1 https://github.com/jacebrowning/memegen demo/jacebrowning-memegen
-bun run seed -- --from demo/jacebrowning-memegen          # add --limit 20 for a quick subset
-```
-
-The seed is safe to re-run: it dedupes files by hash and templates by slug.
-
-## Running
-
-Everything at once (migrations, storage, API, web with prefixed logs; servers reload on change):
-
-```sh
-bun run dev
-```
-
-Or each piece in its own terminal:
-
-```sh
-bun run --cwd services/storage start    # backend: storage service  :4001
-bun run --cwd services/api start        # backend: API service      :4000
-bun run --cwd apps/web dev              # frontend: editor + gallery :5173
+git clone --depth 1 https://github.com/jacebrowning/memegen demo/jacebrowning-memegen   # optional: fonts + ~260 templates
+./run.sh config/dev.env setup    # bun install, create databases if missing, migrate
+./run.sh config/dev.env seed     # mock users/memes/votes + the template import
+./run.sh config/dev.env dev      # storage :4001 + API :4000 + web :5173, reloading on change
 ```
 
 Then open:
@@ -86,23 +38,77 @@ Then open:
 - **Gallery**: http://localhost:5173/. Sort by Best or New over today, week, month, year, or all time.
 - **Editor**: http://localhost:5173/create. Upload media, or choose a template at http://localhost:5173/templates and click "Use".
 - **Tags**: search tags in the side column, or open `/t/<tag>`. Templates are tagged `oldschool`/`movie` or with team tags (e.g. `google-memes`), and memes inherit their template's tags.
+- **Skins**: switch between Default, Apple, Material, Google, and Spectrum in the header, or add `?skin=<id>` to a URL.
 
 Sign in with any username in the header. There are no passwords yet: the dev login only sets a user id header, which is not secure (see ARCH.md, "Auth").
+
+## run.sh and configs
+
+```
+./run.sh <config> <command>
+```
+
+| Command | What it does |
+|---|---|
+| `setup` | `bun install`, create the database(s) if missing, run migrations |
+| `migrate` | apply pending migrations |
+| `seed` | load mock data if `SEED_MOCK=true`; import templates if `SEED_TEMPLATES_FROM` is set |
+| `dev` | storage + API + Vite dev server with reload *(dev only)* |
+| `build` | production build of the web app (`apps/web/dist`) |
+| `start` | build, migrate, then run storage + API + `scripts/serve-web.ts`, which serves `dist` and proxies `/api` and `/storage`. If any process exits, all stop. |
+| `test` / `e2e` | unit/integration tests / Playwright browser tests *(dev only)*; extra args pass through |
+| `config` | print the resolved config with secrets masked |
+
+Configs are plain `KEY=value` files:
+
+- **`config/dev.env`** (committed): local Postgres, local file storage, mock data on, all test commands allowed.
+- **`config/prod.env`** (gitignored; copy from `config/prod.env.example`): real user data. `MODE=prod` enables guards. `run.sh` refuses mock seeding, `dev`, `test`, and `e2e`, and requires a strong `INTERNAL_TOKEN` and a real `DATABASE_URL`.
+
+```sh
+cp config/prod.env.example config/prod.env   # then edit: DATABASE_URL, INTERNAL_TOKEN, S3_*
+./run.sh config/prod.env setup
+./run.sh config/prod.env start               # web on WEB_PORT (8080 in the template)
+```
+
+Auth is still the dev placeholder, so put a real `AuthProvider` in place before exposing prod to untrusted users.
+
+Individual `bun run …` scripts (`dev`, `db:migrate`, `seed`, `seed:mock`) still work and fall back to `config/dev.env`.
+
+### Database
+
+`setup` creates missing databases with `createdb`, so Postgres just needs to be running. Homebrew:
+
+```sh
+brew services start postgresql@16
+```
+
+Or Docker (then point the `*_DATABASE_URL` values at `postgres://postgres@localhost:5432/...`):
+
+```sh
+docker run -d --name memegen-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16
+```
+
+### Seeding
+
+- **Templates and fonts** (`SEED_TEMPLATES_FROM`): imports Impact plus the OFL fonts and about 260 templates and variations from a [jacebrowning/memegen](https://github.com/jacebrowning/memegen) checkout. It dedupes by hash/slug, so re-runs are safe. Pass `--limit 20` through `seed` for a quick subset.
+- **Mock data** (`SEED_MOCK=true`, dev only): a deterministic dataset defined in `scripts/mock/data.ts`, with all media generated in code. The e2e suite uses the same dataset, and re-running is a no-op. It contains:
+  - authors `mock-alice`, `mock-bob`, `mock-carol`, `mock-dave`, plus voter accounts
+  - templates, with one variation, tagged `oldschool`/`movie`
+  - a dozen memes posted between 1 hour and 400 days ago, with votes, a private meme, and a draft
 
 ## Tests
 
 ```sh
-bun run test         # unit/integration: shared logic, storage caps, API rules (memegen_test DB, wiped)
-bun run test:e2e     # Playwright browser flows (memegen_e2e DB, wiped)
-bun run test:e2e:ui  # same, in Playwright's UI mode
-bun run typecheck    # servers/packages/e2e + web app
-bun run build        # production build of the web app → apps/web/dist
+./run.sh config/dev.env test                       # unit/integration: shared logic, storage caps, API rules (memegen_test DB, wiped)
+./run.sh config/dev.env e2e                        # Playwright browser flows, every skin (memegen_e2e DB, wiped)
+./run.sh config/dev.env e2e --project=google       # one skin; any Playwright args pass through
+bun run test:e2e:ui                                # Playwright UI mode
+bun run typecheck                                  # servers/packages/e2e + web app (incl. packages/ui)
 ```
 
-End-to-end setup (once):
+End-to-end setup (once; `setup` already creates `memegen_e2e`):
 
 ```sh
-createdb memegen_e2e
 bunx playwright install chromium   # Playwright's own browser bits
 ```
 
@@ -132,7 +138,7 @@ The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) agai
 
 ## Configuration
 
-All settings are environment variables; see [.env.example](.env.example).
+All settings are `KEY=value` entries in the config file you pass to `run.sh` (see `config/dev.env` and `config/prod.env.example` for every key).
 
 - `STORAGE_PROVIDER`: `local` (default, files in `.data/storage`) or `s3` (`S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, …).
 - Upload caps: every file must be ≤ 20 MB. Longest edge: images 4096 px, GIFs 1024 px, videos 1920 px. Frames: GIFs 500, videos 1800. Override with `MAX_*` variables.

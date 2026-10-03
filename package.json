@@ -8,10 +8,10 @@
     "apps/*"
   ],
   "engines": {
-    "node": ">=23.6"
+    "node": ">=24.2"
   },
   "scripts": {
-    "dev": "node --env-file-if-exists=config/dev.env scripts/dev.ts",
+    "dev": "node --env-file-if-exists=config/dev.env scripts/run.ts --watch",
     "db:migrate": "node --env-file-if-exists=config/dev.env packages/server-kit/src/migrate.ts",
     "seed": "node --env-file-if-exists=config/dev.env scripts/seed.ts",
     "test": "node --test --test-concurrency=1 \"packages/*/src/**/*.test.ts\" \"services/*/src/**/*.test.ts\"",
@@ -31,6 +31,7 @@
   "dependencies": {
     "@memegen/server-kit": "workspace:*",
     "@memegen/shared": "workspace:*",
-    "@memegen/storage": "workspace:*"
+    "@memegen/storage": "workspace:*",
+    "@memegen/ui": "workspace:*"
   }
 }

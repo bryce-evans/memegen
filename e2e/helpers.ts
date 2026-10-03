@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import type { Asset, Meme, Template, User } from "@memegen/shared";
 
 export const fixture = (name: string) => join(import.meta.dirname, "fixtures", name);
@@ -19,21 +19,35 @@ export async function apiUser(request: APIRequestContext, username: string): Pro
   return ((await res.json()) as { user: User }).user;
 }
 
-export async function apiUpload(request: APIRequestContext, user: User, file: string): Promise<Asset> {
-  const res = await request.post("/storage/assets", {
-    headers: { "x-user-id": user.id },
-    multipart: { file: { name: file, mimeType: "application/octet-stream", buffer: readFileSync(fixture(file)) } },
-  });
-  expect(res.status(), await res.text()).toBe(201);
-  return (await res.json()) as Asset;
+export async function apiGet<T>(request: APIRequestContext, path: string, user?: User): Promise<T> {
+  const res = await request.get(path, { headers: user ? { "x-user-id": user.id } : {} });
+  expect(res.ok(), `${path}: ${res.status()}`).toBeTruthy();
+  return (await res.json()) as T;
 }
 
-/** A public template added by `user` from a fixture, through the API. */
-export async function apiTemplate(request: APIRequestContext, user: User, file: string, name = file): Promise<Template> {
-  const asset = await apiUpload(request, user, file);
-  const res = await request.post("/api/templates", { headers: { "x-user-id": user.id }, data: { name, assetId: asset.id } });
-  expect(res.status(), await res.text()).toBe(201);
-  return (await res.json()) as Template;
+/** POST as `user` (JSON, or multipart for FormData), expecting `status`. */
+export async function apiPost<T>(request: APIRequestContext, path: string, user: User, data: unknown, status = 201): Promise<T> {
+  const body = data instanceof FormData ? { multipart: data } : { data };
+  const res = await request.post(path, { headers: { "x-user-id": user.id }, ...body });
+  expect(res.status(), await res.text()).toBe(status);
+  return (await res.json()) as T;
+}
+
+export async function apiUpload(request: APIRequestContext, user: User, file: string): Promise<Asset> {
+  const form = new FormData();
+  form.set("file", new File([new Uint8Array(readFileSync(fixture(file)))], file, { type: "application/octet-stream" }));
+  return apiPost<Asset>(request, "/storage/assets", user, form);
+}
+
+/** A public template added by `user` through the API: on `assetId`, else on a fresh upload of `file` (still.png). */
+export async function apiTemplate(
+  request: APIRequestContext,
+  user: User,
+  opts: { file?: string; assetId?: string; name?: string; parentId?: string; tags?: string[] } = {},
+): Promise<Template> {
+  const { file = "still.png", name = file, ...body } = opts;
+  const assetId = body.assetId ?? (await apiUpload(request, user, file)).id;
+  return apiPost<Template>(request, "/api/templates", user, { ...body, name, assetId });
 }
 
 /** A posted meme created purely through the API (fixture as the output; a fresh template unless one is given). */
@@ -42,20 +56,23 @@ export async function apiMeme(
   user: User,
   body: { title: string; visibility?: "public" | "private"; post?: boolean; tags?: string[]; templateId?: string },
 ): Promise<Meme> {
-  const templateId = body.templateId ?? (await apiTemplate(request, user, "still.png", body.title)).id;
+  const templateId = body.templateId ?? (await apiTemplate(request, user, { name: body.title })).id;
   const output = await apiUpload(request, user, "still.png");
-  const res = await request.post("/api/memes", {
-    headers: { "x-user-id": user.id },
-    data: { layers: [], post: true, ...body, templateId, outputAssetId: output.id },
-  });
-  expect(res.status(), await res.text()).toBe(201);
-  return (await res.json()) as Meme;
+  return apiPost<Meme>(request, "/api/memes", user, { layers: [], post: true, ...body, templateId, outputAssetId: output.id });
 }
 
-export async function apiGet<T>(request: APIRequestContext, path: string, user?: User): Promise<T> {
-  const res = await request.get(path, { headers: user ? { "x-user-id": user.id } : {} });
-  expect(res.ok(), `${path}: ${res.status()}`).toBeTruthy();
-  return (await res.json()) as T;
+export const memeCard = (scope: Page | Locator, id: string) => scope.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
+export const tagChip = (scope: Page | Locator, slug: string) => scope.locator(`[data-testid="tag-chip"][data-tag="${slug}"]`);
+export const timelineFrame = (page: Page, index: number) => page.locator(`[data-testid="timeline-frame"][data-index="${index}"]`);
+
+/** Add community tags through a template's details ("+ tags", type each, save). */
+export async function addCommunityTags(scope: Page | Locator, tags: string[]): Promise<void> {
+  await scope.getByTestId("template-tags-add").click();
+  for (const tag of tags) {
+    await scope.getByTestId("tags-input").fill(tag);
+    await scope.getByTestId("tags-input").press("Enter");
+  }
+  await scope.getByTestId("tags-save").click();
 }
 
 /** Stream summary of a downloaded file via ffprobe (codec_type → frame count). */
@@ -108,11 +125,20 @@ export async function download(request: APIRequestContext, asset: Asset): Promis
   return res.body();
 }
 
-/** Open a fixture in the editor: add it as a template (through the API) for the signed-in `username`, then Use it. */
-export async function editFixture(page: Page, request: APIRequestContext, username: string, file: string): Promise<Template> {
-  const template = await apiTemplate(request, await apiUser(request, username), file, `${username} ${file}`);
+/** Sign in as `username`, add `file` as their template (through the API), and open it in the editor once the stage is ready. */
+export async function editFixture(
+  page: Page,
+  request: APIRequestContext,
+  username: string,
+  file: string,
+): Promise<{ template: Template; user: User }> {
+  await page.goto("/");
+  await signIn(page, username);
+  const user = await apiUser(request, username);
+  const template = await apiTemplate(request, user, { file, name: `${username} ${file}` });
   await page.goto(`/create?template=${template.id}`);
-  return template;
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  return { template, user };
 }
 
 /** Wait for the feed to finish loading, then click "Load more" until the list is complete. */

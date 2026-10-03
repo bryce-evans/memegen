@@ -15,18 +15,16 @@ test("upload caps are enforced before upload, with the reason shown", async ({ p
 });
 
 test("custom font upload becomes selectable and changes the render", async ({ page, request }) => {
-  await page.goto("/");
-  await signIn(page, scoped("typographer"));
+  const fontName = scoped("My Font");
   await editFixture(page, request, scoped("typographer"), "still.png");
-  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await page.getByTestId("layer-item").first().click();
 
   await page.getByTestId("font-upload").setInputFiles({
-    name: `${scoped("My Font")}.ttf`,
+    name: `${fontName}.ttf`,
     mimeType: "font/ttf",
     buffer: readFileSync(fixture("TitilliumWeb-Black.ttf")),
   });
-  const option = page.getByTestId("layer-font").locator("option", { hasText: scoped("My Font") });
+  const option = page.getByTestId("layer-font").locator("option", { hasText: fontName });
   await expect(option).toHaveCount(1);
   // Baseline on the fallback family; the uploaded font must visibly change the text.
   await page.getByTestId("layer-font").selectOption("");

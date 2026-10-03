@@ -10,14 +10,15 @@
  *   variation. Text boxes from `config.yml` become `defaultLayers`.
  * - Idempotent: assets dedupe by sha256 and templates by slug.
  */
+import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { parse as parseYaml } from "yaml";
 import { newTextLayer, type Asset, type TextLayer, type TextStyle } from "@memegen/shared";
-import { createSql, HttpError, migrate, uploadLimitsFromEnv, type Sql } from "@memegen/server-kit";
-import { AssetStore, createProviders, findAssetRow, toAsset } from "@memegen/storage";
-import { createHash } from "node:crypto";
+import { createSql, findAssetRow, HttpError, migrate, toAsset, type Sql } from "@memegen/server-kit";
+import { assetStoreFromEnv, type AssetStore } from "@memegen/storage";
+import { insertTemplate, tagTemplate } from "./lib.ts";
 
 const { values } = parseArgs({
   options: { from: { type: "string" }, limit: { type: "string" } },
@@ -85,7 +86,7 @@ function textStyle(style: string | undefined): TextStyle {
   return "none";
 }
 
-export function toLayers(cfg: JbConfig, fontIds: Map<string, string>, durationSec: number | null): TextLayer[] {
+function toLayers(cfg: JbConfig, fontIds: Map<string, string>, durationSec: number | null): TextLayer[] {
   const impact = fontIds.get("impact") ?? null;
   return (cfg.text ?? []).map((t, i) => {
     const scaleX = t.scale_x ?? 1;
@@ -133,16 +134,7 @@ async function upsertTemplate(
 ): Promise<{ id: string; created: boolean }> {
   const [existing] = await sql<{ id: string }[]>`select id from templates where slug = ${slug}`;
   if (existing) return { id: existing.id, created: false };
-  const [row] = await sql<{ id: string }[]>`
-    insert into templates ${sql({
-      slug,
-      name: fields.name,
-      asset_id: fields.assetId,
-      parent_id: fields.parentId,
-      default_layers: sql.json(fields.layers as never),
-      is_public: true,
-    })} returning id`;
-  return { id: row!.id, created: true };
+  return { id: await insertTemplate(sql, { slug, ...fields }), created: true };
 }
 
 const MEDIA = /\.(png|jpe?g|gif|webp)$/i;
@@ -154,7 +146,7 @@ function titleCase(stem: string): string {
 async function main() {
   const sql = createSql();
   await migrate(sql);
-  const store = new AssetStore(sql, createProviders(process.env.STORAGE_PROVIDER || "local"), uploadLimitsFromEnv());
+  const store = assetStoreFromEnv(sql);
 
   const fontIds = new Map<string, string>();
   for (const font of FONTS) {
@@ -197,10 +189,7 @@ async function main() {
         if (isParent) {
           parentId = result.id;
           // Classic image macros; variations and memes inherit the tag through the match views.
-          await sql`
-            insert into template_tags (template_id, tag_id)
-            select ${result.id}, id from tags where slug = 'oldschool'
-            on conflict do nothing`;
+          await tagTemplate(sql, result.id, ["oldschool"]);
         }
         if (result.created) created++;
       } catch (err) {
@@ -216,4 +205,4 @@ async function main() {
   await sql.end();
 }
 
-if (import.meta.main) await main();
+await main();

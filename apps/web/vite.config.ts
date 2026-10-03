@@ -1,6 +1,10 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+// The services' URLs default to their ports on this host; set API_URL/STORAGE_URL only for split hosts.
+const apiUrl = process.env.API_URL || `http://localhost:${process.env.API_PORT || 4000}`
+const storageUrl = process.env.STORAGE_URL || `http://localhost:${process.env.STORAGE_PORT || 4001}`
+
 export default defineConfig({
   plugins: [react()],
   // Deps of linked workspace packages are found late; pre-bundle them so Vite doesn't
@@ -15,9 +19,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': { target: process.env.API_URL ?? 'http://localhost:4000', changeOrigin: true },
+      '/api': { target: apiUrl, changeOrigin: true },
       '/storage': {
-        target: process.env.STORAGE_URL ?? 'http://localhost:4001',
+        target: storageUrl,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/storage/, ''),
       },

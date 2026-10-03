@@ -19,7 +19,7 @@ The editor and gallery are routes of one Vite app. Meme rendering (text overlay,
 ## Requirements
 
 - [Bun](https://bun.sh) ≥ 1.3: installs packages, runs scripts, builds
-- Node.js ≥ 23.6: runs the servers (`.ts` executed directly via type stripping)
+- Node.js ≥ 24.2: runs the servers (`.ts` executed directly via type stripping)
 - PostgreSQL 14+
 - A Chromium-based browser, Safari 17+, or Firefox 130+ (WebCodecs) to export video memes. Images and GIFs work everywhere.
 
@@ -55,11 +55,13 @@ Sign in with any username except the reserved `memegen` in the header. There are
 | `setup` | `bun install`, create the database(s) if missing, run migrations |
 | `migrate` | apply pending migrations |
 | `seed` | load mock data if `SEED_MOCK=true`; import templates if `SEED_TEMPLATES_FROM` is set |
-| `dev` | storage + API + Vite dev server with reload *(dev only)* |
+| `dev` | migrate, then storage + API + Vite dev server with reload *(dev only)* |
 | `build` | production build of the web app (`apps/web/dist`) |
-| `start` | build, migrate, then run storage + API + `scripts/serve-web.ts`, which serves `dist` and proxies `/api` and `/storage`. If any process exits, all stop. |
+| `start` | build, migrate, then run storage + API + `scripts/serve-web.ts`, which serves `dist` and proxies `/api` and `/storage` |
 | `test` / `e2e` | unit/integration tests / Playwright browser tests *(dev only)*; extra args pass through |
 | `config` | print the resolved config with secrets masked |
+
+`dev` and `start` run `scripts/run.ts` (`--watch` / `--prod`), which prefixes each line of output with its process (`[api] …`). If any process exits, or on Ctrl-C, all stop.
 
 Configs are plain `KEY=value` files:
 
@@ -146,6 +148,7 @@ The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) agai
 
 All settings are `KEY=value` entries in the config file you pass to `run.sh` (see `config/dev.env` and `config/prod.env.example` for every key).
 
+- `WEB_PORT`, `API_PORT`, `STORAGE_PORT`: the web app proxies `/api` and `/storage` to `localhost` on those ports. Set `API_URL`/`STORAGE_URL` only when the services run on other hosts.
 - `STORAGE_PROVIDER`: `local` (default, files in `.data/storage`) or `s3` (`S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, …).
 - Upload caps: every file must be ≤ 20 MB. Longest edge: images 4096 px, GIFs 1024 px, videos 1920 px. Frames: GIFs 500, videos 1800. Override with `MAX_*` variables.
 - `INTERNAL_TOKEN`: guards `/internal/*` on the API (e.g. a user's secret negative h-score).

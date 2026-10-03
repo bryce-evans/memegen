@@ -1,8 +1,9 @@
 import { test as base, expect } from "@playwright/test";
+import { SKIN_IDS, type BuiltinSkinId } from "@memegen/ui/skin-ids";
 
-/** Skins the suite runs under; mirrors `SKIN_IDS` in @memegen/ui. */
-export const E2E_SKINS = ["default", "apple", "matte", "google", "studio", "spectrum"] as const;
-export type E2ESkin = (typeof E2E_SKINS)[number];
+/** Skins the suite runs under: every built-in skin. */
+export const E2E_SKINS = SKIN_IDS;
+export type E2ESkin = BuiltinSkinId;
 
 /** `test` with a per-project `skin` option, applied before any app script runs. */
 export const test = base.extend<{ skin: E2ESkin }>({

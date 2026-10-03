@@ -1,6 +1,6 @@
 import { expect, scoped, test } from "./test.ts";
-import type { Meme, Template, TemplateUsage } from "@memegen/shared";
-import { apiGet, apiUpload, apiUser, fixture, memeIdFromUrl, signIn } from "./helpers.ts";
+import { tagSlug, type Meme, type Template, type TemplateUsage } from "@memegen/shared";
+import { addCommunityTags, apiGet, apiTemplate, apiUser, fixture, memeIdFromUrl, signIn, tagChip } from "./helpers.ts";
 
 test("templates: add one, add a variation, add tags, use the variation with a new team tag, find it all by tag", async ({
   page,
@@ -9,7 +9,7 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   const curator = scoped("curator");
   const base = scoped("E2E Base");
   const teamTag = scoped("Adobe Memes");
-  const teamSlug = teamTag.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const teamSlug = tagSlug(teamTag);
   await page.goto("/");
   await signIn(page, curator);
   await page.getByTestId("nav-create").click();
@@ -58,27 +58,19 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
 
   // An animated variation (the UI no longer uploads variations; the API still does).
   const user = await apiUser(request, curator);
-  const parentId = await card.getAttribute("data-template-id");
-  const gif = await apiUpload(request, user, "anim.gif");
-  const variation = await request.post("/api/templates", {
-    headers: { "x-user-id": user.id },
-    data: { name: `${base} (anim)`, assetId: gif.id, parentId },
-  });
-  expect(variation.status(), await variation.text()).toBe(201);
+  const parentId = (await card.getAttribute("data-template-id"))!;
+  await apiTemplate(request, user, { file: "anim.gif", name: `${base} (anim)`, parentId });
 
   // Use opens the editor; tags, usage and variations sit under the stage.
   await card.getByTestId("use-template").click();
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   const details = page.getByTestId("template-details");
-  await expect(details.locator('[data-testid="tag-chip"][data-tag="e2e-base"]')).toHaveAttribute("data-base", "true");
+  await expect(tagChip(details, "e2e-base")).toHaveAttribute("data-base", "true");
   await expect(details.getByTestId("usage-chart")).toBeVisible();
 
   // Tags added after creation are community tags, not base tags.
-  await details.getByTestId("template-tags-add").click();
-  await details.getByTestId("tags-input").fill("movie");
-  await details.getByTestId("tags-input").press("Enter");
-  await details.getByTestId("tags-save").click();
-  const movieChip = details.locator('[data-testid="tag-chip"][data-tag="movie"]');
+  await addCommunityTags(details, ["movie"]);
+  const movieChip = tagChip(details, "movie");
   await expect(movieChip).toBeVisible();
   await expect(movieChip).not.toHaveAttribute("data-base", "true");
 
@@ -126,14 +118,8 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
 
 test("templates: another user can add tags but the author's base tags stay marked", async ({ page, request }) => {
   const author = await apiUser(request, scoped("tag-author"));
-  const asset = await apiUpload(request, author, "still.png");
   const name = scoped("E2E Tagged");
-  const res = await request.post("/api/templates", {
-    headers: { "x-user-id": author.id },
-    data: { name, assetId: asset.id, tags: ["oldschool"] },
-  });
-  expect(res.status(), await res.text()).toBe(201);
-  const template = (await res.json()) as Template;
+  const template = await apiTemplate(request, author, { name, tags: ["oldschool"] });
   expect(template.baseTags).toEqual(["oldschool"]);
 
   await page.goto("/create");
@@ -141,15 +127,12 @@ test("templates: another user can add tags but the author's base tags stay marke
   await page.getByTestId("template-search").fill(name);
   await page.locator(`[data-testid="template-card"][data-template-id="${template.id}"]`).getByTestId("use-template").click();
   const details = page.getByTestId("template-details");
-  await expect(details.locator('[data-testid="tag-chip"][data-tag="oldschool"]')).toHaveAttribute("data-base", "true");
+  await expect(tagChip(details, "oldschool")).toHaveAttribute("data-base", "true");
 
-  await details.getByTestId("template-tags-add").click();
-  await details.getByTestId("tags-input").fill("reaction");
-  await details.getByTestId("tags-input").press("Enter");
-  await details.getByTestId("tags-save").click();
-  await expect(details.locator('[data-testid="tag-chip"][data-tag="reaction"]')).toBeVisible();
-  await expect(details.locator('[data-testid="tag-chip"][data-tag="reaction"]')).not.toHaveAttribute("data-base", "true");
-  await expect(details.locator('[data-testid="tag-chip"][data-tag="oldschool"]')).toHaveAttribute("data-base", "true");
+  await addCommunityTags(details, ["reaction"]);
+  await expect(tagChip(details, "reaction")).toBeVisible();
+  await expect(tagChip(details, "reaction")).not.toHaveAttribute("data-base", "true");
+  await expect(tagChip(details, "oldschool")).toHaveAttribute("data-base", "true");
 
   const after = await apiGet<Template>(request, `/api/templates/${template.id}`);
   expect(after.tags).toEqual(["oldschool", "reaction"]);

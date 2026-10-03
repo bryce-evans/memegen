@@ -22,7 +22,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 usage() {
-  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
+  # The header comment block (line 2 up to the first non-comment line).
+  sed -n '2,/^[^#]/{/^#/s/^# \{0,1\}//p;}' "$0"
   exit "${1:-1}"
 }
 die() {
@@ -69,11 +70,11 @@ need() {
 }
 
 check_tools() {
-  need node "https://nodejs.org, >= 23.6"
+  need node "https://nodejs.org, >= 24.2"
   need bun "https://bun.sh"
   local major minor
   IFS=. read -r major minor _ <<<"$(node -p 'process.versions.node')"
-  ((major > 23 || (major == 23 && minor >= 6))) || die "node >= 23.6 required (have $(node -v))"
+  ((major > 24 || (major == 24 && minor >= 2))) || die "node >= 24.2 required (have $(node -v))"
 }
 
 # Create the database named in a URL if it doesn't exist (needs createdb/psql locally).
@@ -91,33 +92,6 @@ ensure_db() {
 
 migrate() {
   node packages/server-kit/src/migrate.ts
-}
-
-# Run commands as a group; stop all when any exits or on Ctrl-C. (bash 3.2-safe: no `wait -n`.)
-GROUP_PIDS=""
-stop_group() {
-  [[ -z "$GROUP_PIDS" ]] || kill $GROUP_PIDS 2>/dev/null || true
-}
-run_group() {
-  trap 'stop_group; exit 130' INT TERM
-  trap stop_group EXIT
-  for cmd in "$@"; do
-    bash -c "exec $cmd" &
-    GROUP_PIDS="$GROUP_PIDS $!"
-  done
-  while :; do
-    for pid in $GROUP_PIDS; do
-      if ! kill -0 "$pid" 2>/dev/null; then
-        local status=0
-        wait "$pid" || status=$?
-        echo "run.sh: process $pid exited ($status); stopping the rest" >&2
-        stop_group
-        wait 2>/dev/null || true
-        return "$status"
-      fi
-    done
-    sleep 1
-  done
 }
 
 check_prod
@@ -155,18 +129,14 @@ case "$COMMAND" in
     ;;
   dev)
     dev_only
-    exec node scripts/dev.ts
+    exec node scripts/run.ts --watch
     ;;
   build)
     bun run build
     ;;
   start)
     bun run build
-    migrate
-    run_group \
-      "node services/storage/src/server.ts" \
-      "node services/api/src/server.ts" \
-      "node scripts/serve-web.ts"
+    exec node scripts/run.ts --prod
     ;;
   test)
     dev_only

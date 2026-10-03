@@ -162,13 +162,14 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 ### Testing
 - `node --test` (`bun run test`): pure logic in `packages/shared` (interpolation, limits, fit-to-box layout) plus storage/API behavior through `app.request()` against a fresh `memegen_test` schema (caps, ranges, stats, hierarchy, visibility, votes, usage, tags).
 - Playwright (`bun run test:e2e`): full browser flows against real servers on separate ports and a fresh `memegen_e2e` DB. Exported files are checked with `ffprobe` (frame counts, audio passthrough). Uses branded Chrome, since Playwright's Chromium lacks H.264/AAC for WebCodecs.
-- Mock dataset (`scripts/mock/data.ts` + `seed.ts`): deterministic users, templates, memes backdated across periods, and votes, with expected stats and orderings exported for specs. `./run.sh config/dev.env seed` loads it into dev (`SEED_MOCK=true`; refused in prod); e2e setup loads it into `memegen_e2e`. Media is generated in code.
+- Mock dataset (`scripts/mock/data.ts`, written by `seed-data.ts`; `seed.ts` is the dev CLI): deterministic users, templates, memes backdated across periods, and votes, with expected stats and orderings exported for specs. Rankings and stats in `MOCK_EXPECT` are hand-written as an independent oracle; facts like which memes are hidden are derived from `MOCK_MEMES`. `./run.sh config/dev.env seed` loads it into dev (`SEED_MOCK=true`; refused in prod); e2e setup loads it into `memegen_e2e`. Media is generated in code. Both seed scripts share their template SQL (`scripts/lib.ts`) and build the asset store with `assetStoreFromEnv`.
+- e2e specs reuse contracts instead of copying them: the skin matrix is `SKIN_IDS` (`@memegen/ui/skin-ids`, React-free), expected slugs come from `tagSlug`. API setup goes through `apiPost`/`apiTemplate`/`apiMeme` in `e2e/helpers.ts`.
 - Each e2e spec runs once per skin (one Playwright project per skin). Identities are suffixed per project (`scoped()`), and vote assertions are relative to what's shown, so all projects share one seeded DB.
 - The UI exposes `data-testid` hooks plus readiness markers (`stage-canvas[data-ready]`, `timeline[data-complete]`), so specs wait on state rather than sleeps.
 - Vite pre-bundles the linked render package's deps (`optimizeDeps.include`); otherwise the first editor load triggers a dep re-optimization reload.
 
 ### Runtime and tooling
-- Servers: Node ≥ 23.6 running `.ts` directly (type stripping; erasable syntax only), Hono + `@hono/node-server`, `postgres` (porsager) client.
+- Servers: Node ≥ 24.2 running `.ts` directly (type stripping; erasable syntax only), Hono + `@hono/node-server`, `postgres` (porsager) client.
 - Bun is the package manager/script runner/builder (`bun install`, `bun run …`); Vite builds the web app.
 - Postgres for metadata; local disk (`.data/storage`) for files by default.
 
@@ -183,7 +184,8 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - `start` serves the built SPA with `scripts/serve-web.ts`, a dependency-free Node server:
   - SPA fallback; immutable caching for `assets/`
   - proxies `/api` and `/storage` exactly like the Vite dev proxy; `/internal` is never proxied
-- `run.sh` supervises storage, API, and web as a group: if any process exits, the rest stop and `run.sh` returns its status. It is bash 3.2-compatible (macOS default).
+- One supervisor, `scripts/run.ts` (`--watch`: servers under `node --watch` + Vite; `--prod`: `serve-web.ts`), runs migrations, then storage, API, and web, prefixing each output line with its process. If any process exits (or on Ctrl-C/SIGTERM) the rest stop and it exits with that process's status. `run.sh dev`/`start` and `bun run dev` exec it; the process list lives in `scripts/services.ts`, which Playwright's `webServer` also uses.
+- The web proxies default to `http://localhost:${API_PORT}` / `${STORAGE_PORT}`; `API_URL`/`STORAGE_URL` are only overrides for split hosts, so changing a port can't leave a proxy pointing at the old one.
 - **UI skins**: see `packages/ui/README.md`. Components read design tokens, and `<html data-skin>` selects default/apple/matte/google/studio/spectrum; a skin can also replace whole components.
 
 ## Service contracts

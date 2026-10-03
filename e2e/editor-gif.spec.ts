@@ -1,15 +1,12 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, dragLayer, editFixture, fixture, memeIdFromUrl, probeStreams, signIn, stagePixels } from "./helpers.ts";
+import { apiGet, download, dragLayer, editFixture, memeIdFromUrl, probeStreams, stagePixels, timelineFrame } from "./helpers.ts";
 
 test("gif: every frame on the timeline, keyframed animation, start window, GIF export keeps frames", async ({
   page,
   request,
 }) => {
-  await page.goto("/");
-  await signIn(page, scoped("gifmaker"));
-  await editFixture(page, request, scoped("gifmaker"), "anim.gif");
-  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  const { user } = await editFixture(page, request, scoped("gifmaker"), "anim.gif");
 
   const timeline = page.getByTestId("timeline");
   await expect(timeline).toHaveAttribute("data-complete", "true");
@@ -29,13 +26,13 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   await page.getByTestId("layer-text").fill("slide");
   await page.getByTestId("add-keyframe").click();
   await expect(page.getByTestId("keyframe-item")).toHaveCount(1);
-  await page.locator('[data-testid="timeline-frame"][data-index="11"]').click();
+  await timelineFrame(page, 11).click();
   await expect(page.getByTestId("current-frame")).toHaveText("12 / 12");
   await dragLayer(page, 0, 0, 40);
   await expect(page.getByTestId("keyframe-item")).toHaveCount(2);
 
   // Text only from frame 3 on.
-  await page.locator('[data-testid="timeline-frame"][data-index="2"]').click();
+  await timelineFrame(page, 2).click();
   await page.getByTestId("set-start").click();
 
   await page.getByTestId("meme-title").fill("E2E gif");
@@ -44,7 +41,6 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   const id = await memeIdFromUrl(page);
   await expect(page.getByTestId("meme-media")).toHaveJSProperty("tagName", "IMG");
 
-  const user = await apiUser(request, scoped("gifmaker"));
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.outputAsset).toMatchObject({ kind: "gif", width: 160, height: 120, frameCount: 12 });
   const slide = meme.layers[0]!;

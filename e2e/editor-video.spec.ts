@@ -1,12 +1,9 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, editFixture, fixture, memeIdFromUrl, probeStreams, signIn } from "./helpers.ts";
+import { apiGet, download, editFixture, memeIdFromUrl, probeStreams, timelineFrame } from "./helpers.ts";
 
 test("video: frame-accurate timeline, MP4 export keeps every frame and the audio track", async ({ page, request }) => {
-  await page.goto("/");
-  await signIn(page, scoped("director"));
-  await editFixture(page, request, scoped("director"), "clip.mp4");
-  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  const { user } = await editFixture(page, request, scoped("director"), "clip.mp4");
   await expect(page.getByTestId("timeline")).toHaveAttribute("data-complete", "true");
   await expect(page.getByTestId("timeline-frame")).toHaveCount(30);
 
@@ -16,7 +13,7 @@ test("video: frame-accurate timeline, MP4 export keeps every frame and the audio
 
   await page.getByTestId("layer-item").first().click();
   await page.getByTestId("layer-text").fill("rolling");
-  await page.locator('[data-testid="timeline-frame"][data-index="15"]').click();
+  await timelineFrame(page, 15).click();
   await page.getByTestId("set-end").click();
 
   await page.getByTestId("meme-title").fill("E2E video");
@@ -24,7 +21,6 @@ test("video: frame-accurate timeline, MP4 export keeps every frame and the audio
   const id = await memeIdFromUrl(page);
   await expect(page.getByTestId("meme-media")).toHaveJSProperty("tagName", "VIDEO");
 
-  const user = await apiUser(request, scoped("director"));
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.outputAsset).toMatchObject({ kind: "video", mime: "video/mp4", width: 320, height: 240, frameCount: 30 });
   expect(meme.layers[0]!.end).toBeCloseTo(0.5, 2);

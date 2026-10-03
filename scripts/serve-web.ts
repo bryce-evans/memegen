@@ -1,6 +1,7 @@
 /**
  * Production web server: serves the built SPA (apps/web/dist) and proxies
  * /api → API_URL and /storage → STORAGE_URL (prefix stripped), mirroring the Vite dev proxy.
+ * The URLs default to API_PORT/STORAGE_PORT on this host.
  * /internal is never proxied.
  */
 import { createReadStream } from "node:fs";
@@ -11,8 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const DIST = fileURLToPath(new URL("../apps/web/dist/", import.meta.url));
 const PORT = Number(process.env.WEB_PORT ?? 8080);
-const API_URL = new URL(process.env.API_URL ?? "http://localhost:4000");
-const STORAGE_URL = new URL(process.env.STORAGE_URL ?? "http://localhost:4001");
+const API_URL = new URL(process.env.API_URL || `http://localhost:${process.env.API_PORT || 4000}`);
+const STORAGE_URL = new URL(process.env.STORAGE_URL || `http://localhost:${process.env.STORAGE_PORT || 4001}`);
 
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",

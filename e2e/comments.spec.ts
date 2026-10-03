@@ -1,5 +1,5 @@
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiMeme, apiUser, signIn } from "./helpers.ts";
+import { apiGet, apiMeme, apiPost, apiUser, memeCard, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("comments: post, reply, see the count on the card, delete (placeholder while replies remain)", async ({ page, request }) => {
@@ -35,7 +35,7 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   // Persisted; the card links to the discussion with the count.
   expect((await apiGet<Meme>(request, `/api/memes/${meme.id}`)).commentCount).toBe(2);
   await page.goto(`/u/${author.username}`);
-  const count = page.locator(`[data-testid="meme-card"][data-meme-id="${meme.id}"]`).getByTestId("meme-comment-count");
+  const count = memeCard(page, meme.id).getByTestId("meme-comment-count");
   await expect(count).toContainText("2");
   await count.click();
   await expect(page).toHaveURL(new RegExp(`/m/${meme.id}#comments$`));
@@ -56,11 +56,7 @@ test("comments: only the author can delete; drafts note that posting opens the d
   const author = await apiUser(request, scoped("op2"));
   const meme = await apiMeme(request, author, { title: scoped("Hands off") });
   const writer = await apiUser(request, scoped("writer"));
-  const res = await request.post(`/api/memes/${meme.id}/comments`, {
-    headers: { "x-user-id": writer.id },
-    data: { body: "mine" },
-  });
-  expect(res.status(), await res.text()).toBe(201);
+  await apiPost(request, `/api/memes/${meme.id}/comments`, writer, { body: "mine" });
 
   await page.goto(`/m/${meme.id}`);
   await signIn(page, author.username);

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, memeIdFromUrl, openFeed, pngSize, signIn, stagePixels } from "./helpers.ts";
+import { apiGet, apiUser, memeCard, memeIdFromUrl, openFeed, pngSize, signIn, stagePixels } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("create: pick a template, add top + bottom text, download, save to profile, post to gallery", async ({
@@ -44,14 +44,14 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   expect(meme.templateId).not.toBeNull();
 
   await page.getByTestId("nav-profile").click();
-  await expect(page.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`)).toBeVisible();
+  await expect(memeCard(page, id)).toBeVisible();
 
   // Post it and find it at the top of Recent.
   await page.goto(`/m/${id}`);
   await page.getByTestId("post-meme").click();
   await expect(page.getByTestId("meme-status")).toContainText("posted");
   await openFeed(page, { feed: "recent" });
-  const posted = page.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
+  const posted = memeCard(page, id);
   await expect(posted).toBeVisible();
   await expect(posted).toContainText(`Workflow ${username}`);
 });

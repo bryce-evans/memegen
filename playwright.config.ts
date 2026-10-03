@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_SKINS, type E2ESkin } from "./e2e/test.ts";
+import { services } from "./scripts/services.ts";
 
 /**
  * Browser end-to-end tests. Runs isolated servers on their own ports against the
@@ -13,6 +14,10 @@ export const E2E_ENV = {
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? "postgres://localhost:5432/memegen_e2e",
   API_PORT: String(API_PORT),
   STORAGE_PORT: String(STORAGE_PORT),
+  WEB_PORT: String(WEB_PORT),
+  // Pinned so an API_URL/STORAGE_URL override in the caller's config can't point Vite at another stack.
+  API_URL: `http://localhost:${API_PORT}`,
+  STORAGE_URL: `http://localhost:${STORAGE_PORT}`,
   STORAGE_PROVIDER: "local",
   LOCAL_STORAGE_DIR: ".data/e2e-storage",
   INTERNAL_TOKEN: "e2e-internal-token",
@@ -42,29 +47,11 @@ export default defineConfig<{ skin: E2ESkin }>({
     name: skin,
     use: { ...devices["Desktop Chrome"], channel: process.env.E2E_CHANNEL ?? "chrome", skin },
   })),
-  webServer: [
-    {
-      command: "node services/storage/src/server.ts",
-      port: STORAGE_PORT,
-      env: serverEnv,
-      reuseExistingServer: false,
-    },
-    {
-      command: "node services/api/src/server.ts",
-      port: API_PORT,
-      env: serverEnv,
-      reuseExistingServer: false,
-    },
-    {
-      command: `bunx vite --port ${WEB_PORT} --strictPort`,
-      cwd: "apps/web",
-      port: WEB_PORT,
-      env: {
-        ...serverEnv,
-        API_URL: `http://localhost:${API_PORT}`,
-        STORAGE_URL: `http://localhost:${STORAGE_PORT}`,
-      },
-      reuseExistingServer: false,
-    },
-  ],
+  webServer: services({ watch: false, web: "vite" }, serverEnv).map((s) => ({
+    command: [s.command, ...s.args].join(" "),
+    cwd: s.cwd,
+    port: s.port,
+    env: serverEnv,
+    reuseExistingServer: false,
+  })),
 });

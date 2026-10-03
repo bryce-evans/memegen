@@ -1,12 +1,9 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, dragLayer, editFixture, memeIdFromUrl, openFeed, signIn, stagePixels } from "./helpers.ts";
+import { apiGet, download, dragLayer, editFixture, memeCard, memeIdFromUrl, openFeed, stagePixels } from "./helpers.ts";
 
 test("still image: edit and drag text on a template, tag, save draft, post, show in Recent", async ({ page, request }) => {
-  await page.goto("/");
-  await signIn(page, scoped("imgfan"));
-  await editFixture(page, request, scoped("imgfan"), "still.png");
-  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  const { user } = await editFixture(page, request, scoped("imgfan"), "still.png");
   await expect(page.getByTestId("timeline")).toHaveCount(0); // stills have no timeline
 
   const layer = page.getByTestId("layer-item").first();
@@ -27,7 +24,6 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   await expect(page.getByTestId("meme-status")).toContainText("draft");
   await expect(page.getByTestId("meme-title")).toHaveText("E2E still");
 
-  const user = await apiUser(request, scoped("imgfan"));
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   // 640×480 template, exported upscaled to the 1200px minimum edge.
   expect(meme.outputAsset).toMatchObject({ kind: "image", width: 1200, height: 900 });
@@ -42,7 +38,7 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   await expect(page.getByTestId("meme-status")).toContainText("posted");
 
   await openFeed(page, { feed: "recent" });
-  const card = page.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
+  const card = memeCard(page, id);
   await expect(card).toBeVisible();
   await expect(card.getByTestId("tag-chip")).toHaveAttribute("data-tag", "movie");
   await expect(card.getByTestId("meme-age")).toHaveText(/now|ago/);

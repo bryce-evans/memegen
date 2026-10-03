@@ -1,5 +1,5 @@
 import { MOCK_EXPECT, MOCK_TEMPLATES } from "../scripts/mock/data.ts";
-import { apiMeme, apiUser, loadAll, mockTitles, openFeed, signIn } from "./helpers.ts";
+import { apiMeme, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("profile: open an author from the gallery and see their stats, badges and public memes", async ({ page }) => {
@@ -44,7 +44,6 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   const starred = await apiMeme(request, author, { title: scoped("Star me") });
   const voter = scoped("critic");
   const own = await apiMeme(request, await apiUser(request, voter), { title: scoped("My own") });
-  const cardOf = (id: string) => page.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
 
   await page.goto(`/m/${liked.id}`);
   await signIn(page, voter);
@@ -76,9 +75,9 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   await expect(page).toHaveURL(/\?tab=favorites$/);
   await expect(feed).toHaveAttribute("data-tab", "favorites");
   await expect(feed).toHaveAttribute("aria-busy", "false");
-  await expect(cardOf(starred.id)).toBeVisible();
-  await expect(cardOf(starred.id).getByTestId("favorite")).toHaveAttribute("aria-pressed", "true");
-  await expect(cardOf(liked.id)).toHaveCount(0); // a like is not a favorite
+  await expect(memeCard(page, starred.id)).toBeVisible();
+  await expect(memeCard(page, starred.id).getByTestId("favorite")).toHaveAttribute("aria-pressed", "true");
+  await expect(memeCard(page, liked.id)).toHaveCount(0); // a like is not a favorite
 
   await page.getByTestId("profile-tab-activity").click();
   await expect(page).toHaveURL(/\?tab=activity$/);
@@ -88,8 +87,8 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   // Newest vote first (earlier runs of this spec may have left older votes below); starring alone is not activity.
   expect(ids.slice(0, 2)).toEqual([disliked.id, liked.id]);
   expect(ids).not.toContain(starred.id);
-  await expect(cardOf(liked.id).getByTestId("vote-up")).toHaveAttribute("aria-pressed", "true");
-  await expect(cardOf(disliked.id).getByTestId("vote-down")).toHaveAttribute("aria-pressed", "true");
+  await expect(memeCard(page, liked.id).getByTestId("vote-up")).toHaveAttribute("aria-pressed", "true");
+  await expect(memeCard(page, disliked.id).getByTestId("vote-down")).toHaveAttribute("aria-pressed", "true");
 
   // Someone else opening those tabs only sees the voter's memes.
   await page.getByTestId("sign-out").click();
@@ -97,6 +96,6 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   await page.goto(`/u/${voter}?tab=favorites`);
   await expect(feed).toHaveAttribute("aria-busy", "false");
   await expect(page.getByTestId("profile-tab-favorites")).toHaveCount(0);
-  await expect(cardOf(starred.id)).toHaveCount(0);
-  await expect(cardOf(own.id)).toBeVisible();
+  await expect(memeCard(page, starred.id)).toHaveCount(0);
+  await expect(memeCard(page, own.id)).toBeVisible();
 });

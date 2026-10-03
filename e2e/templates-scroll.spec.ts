@@ -1,4 +1,4 @@
-import { apiUpload, apiUser } from "./helpers.ts";
+import { apiTemplate, apiUpload, apiUser } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("templates: the create page loads more matches as the end of the list scrolls into view", async ({ page, request }) => {
@@ -8,11 +8,7 @@ test("templates: the create page loads more matches as the end of the list scrol
   const user = await apiUser(request, scoped("scroller"));
   const asset = await apiUpload(request, user, "still.png");
   for (let i = 0; i < total; i++) {
-    const res = await request.post("/api/templates", {
-      headers: { "x-user-id": user.id },
-      data: { name: `${prefix} ${String(i).padStart(2, "0")}`, assetId: asset.id },
-    });
-    expect(res.status(), await res.text()).toBe(201);
+    await apiTemplate(request, user, { assetId: asset.id, name: `${prefix} ${String(i).padStart(2, "0")}` });
   }
 
   await page.goto("/create");

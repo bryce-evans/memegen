@@ -60,18 +60,26 @@ export const MOCK_MEMES: MockMeme[] = [
   { key: "draft", title: "Mock: Draft", owner: "mock-alice", template: "classic", ageHours: 5, up: 0, down: 0, draft: true, top: "half", bottom: "finished" },
 ];
 
-/** What the UI must show for the dataset (before any test votes). */
+const meme = (key: string): MockMeme => MOCK_MEMES.find((m) => m.key === key)!;
+const isPublic = (m: MockMeme) => !m.draft && m.visibility !== "private";
+const titles = (memes: MockMeme[]) => memes.map((m) => m.title);
+
+/**
+ * What the UI must show for the dataset (before any test votes). Rankings and stats are hand-written so
+ * they check the server independently; the rest is read off MOCK_MEMES.
+ */
 export const MOCK_EXPECT = {
   /** mock-alice: posted memes (incl. private) scored 8, 3, 3, 1, 0, -1. */
   aliceStats: { memeCount: 6, highScore: 8, hScore: 3 },
   /** Public memes alice's profile shows to other users. */
-  alicePublicTitles: ["Mock: Top of the Week", "Mock: Flop", "Mock: Solid", "Mock: Also Solid", "Mock: Meh"],
+  alicePublicTitles: titles(MOCK_MEMES.filter((m) => m.owner === "mock-alice" && isPublic(m))),
   /** Best within the last month, highest first (others may interleave). */
   bestMonth: ["Mock: Top of the Week", "Mock: Monthly Classic", "Mock: Solid"],
   /** Not posted within the last month. */
   olderThanMonth: ["Mock: Meh", "Mock: Half Year Hit", "Mock: Ancient Legend"],
   bestAllTime: ["Mock: Ancient Legend", "Mock: Top of the Week", "Mock: Half Year Hit", "Mock: Monthly Classic"],
   newest: ["Mock: Fresh Today", "Mock: Top of the Week", "Mock: Flop", "Mock: Controversial"],
-  hidden: ["Mock: Secret", "Mock: Draft"],
-  controversial: { title: "Mock: Controversial", up: 1, down: 2 },
+  /** Drafts and private memes never reach the gallery. */
+  hidden: titles(MOCK_MEMES.filter((m) => !isPublic(m))),
+  controversial: meme("controversial"),
 } as const;

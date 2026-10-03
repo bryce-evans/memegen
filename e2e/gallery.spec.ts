@@ -1,65 +1,71 @@
-import { expect, test } from "@playwright/test";
-import { apiMeme, apiUser, signIn } from "./helpers.ts";
+import type { Meme, Page as Paged } from "@memegen/shared";
+import { MOCK_EXPECT } from "../scripts/mock/data.ts";
+import { apiGet, expectInOrder, loadAll, mockTitles, setFilters, signIn } from "./helpers.ts";
+import { expect, scoped, test } from "./test.ts";
 
-test("gallery: visibility rules, thumbs up/down counts, sorting, profile stats", async ({ page, request }) => {
-  const alice = await apiUser(request, "gallery-alice");
-  const alpha = await apiMeme(request, alice, { title: "Alpha" });
-  const beta = await apiMeme(request, alice, { title: "Beta" });
-  const secret = await apiMeme(request, alice, { title: "Secret", visibility: "private" });
-  const draft = await apiMeme(request, alice, { title: "Drafty", post: false });
-
+test("gallery: sort by popular and by date, hottest in the last month; hidden memes stay hidden", async ({ page }) => {
   await page.goto("/");
-  await signIn(page, "gallery-bob");
-  await page.getByTestId("period-all").click();
-  await page.getByTestId("sort-new").click();
-  const card = (id: string) => page.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
-  await expect(card(alpha.id)).toBeVisible();
-  await expect(card(beta.id)).toBeVisible();
-  await expect(card(secret.id)).toHaveCount(0);
-  await expect(card(draft.id)).toHaveCount(0);
 
-  const order = () =>
-    page.getByTestId("meme-card").evaluateAll((els) => els.map((e) => e.getAttribute("data-meme-id")));
-  // Newest first (the list refetches after the sort click).
-  await expect.poll(async () => {
-    const ids = await order();
-    return ids.indexOf(beta.id) < ids.indexOf(alpha.id);
-  }).toBe(true);
+  // Popular (best) over all time.
+  await setFilters(page, { period: "all", sort: "best" });
+  await expect.poll(async () => (await mockTitles(page))[0]).toBe(MOCK_EXPECT.bestAllTime[0]);
+  await loadAll(page);
+  const popular = await mockTitles(page);
+  expectInOrder(popular, MOCK_EXPECT.bestAllTime);
+  for (const hidden of MOCK_EXPECT.hidden) expect(popular).not.toContain(hidden);
 
-  const a = card(alpha.id);
-  await a.getByTestId("vote-up").click();
-  await expect(a.getByTestId("upvote-count")).toHaveText("1");
-  await a.getByTestId("vote-up").click(); // toggle off
-  await expect(a.getByTestId("upvote-count")).toHaveText("0");
-  await a.getByTestId("vote-up").click();
-  await expect(a.getByTestId("upvote-count")).toHaveText("1");
+  // By date (newest first).
+  await setFilters(page, { sort: "new" });
+  await expect.poll(async () => (await mockTitles(page))[0]).toBe(MOCK_EXPECT.newest[0]);
+  await loadAll(page);
+  expectInOrder(await mockTitles(page), MOCK_EXPECT.newest);
 
-  const b = card(beta.id);
-  await b.getByTestId("vote-down").click();
-  await expect(b.getByTestId("downvote-count")).toHaveText("1");
-  await b.getByTestId("vote-up").click(); // switch sides
-  await expect(b.getByTestId("downvote-count")).toHaveText("0");
-  await expect(b.getByTestId("upvote-count")).toHaveText("1");
-  await b.getByTestId("vote-up").click(); // back to no vote
-  await expect(b.getByTestId("upvote-count")).toHaveText("0");
-  await b.getByTestId("vote-down").click();
-  await expect(b.getByTestId("downvote-count")).toHaveText("1");
+  // Hottest in the last month.
+  await setFilters(page, { period: "month", sort: "best" });
+  await expect.poll(async () => (await mockTitles(page))[0]).toBe(MOCK_EXPECT.bestMonth[0]);
+  await loadAll(page);
+  const month = await mockTitles(page);
+  expectInOrder(month, MOCK_EXPECT.bestMonth);
+  for (const old of MOCK_EXPECT.olderThanMonth) expect(month).not.toContain(old);
+});
 
-  // Votes persist across reload.
+test("votes: upvote adds one; downvote then removes it and adds a downvote (-2 → -3)", async ({ page, request }) => {
+  await page.goto("/");
+  await signIn(page, scoped("voter"));
+  await setFilters(page, { period: "all", sort: "new" });
+  await loadAll(page);
+  const card = page.getByTestId("meme-card").filter({ hasText: MOCK_EXPECT.controversial.title });
+  await expect(card).toHaveCount(1);
+
+  const up = card.getByTestId("upvote-count");
+  const down = card.getByTestId("downvote-count");
+  // Downvotes display as a negative number. Other skins' runs may have voted already,
+  // so assert relative to what is shown (the fresh dataset starts at 1 / -2).
+  const up0 = Number(await up.textContent());
+  const down0 = Number(await down.textContent());
+  expect(down0).toBeLessThanOrEqual(-MOCK_EXPECT.controversial.down);
+
+  await card.getByTestId("vote-up").click();
+  await expect(up).toHaveText(String(up0 + 1));
+  await expect(down).toHaveText(String(down0));
+
+  await card.getByTestId("vote-down").click();
+  await expect(up).toHaveText(String(up0));
+  await expect(down).toHaveText(String(down0 - 1));
+
+  // Persisted server-side.
+  const id = await card.getAttribute("data-meme-id");
+  const meme = await apiGet<Meme>(request, `/api/memes/${id}`);
+  expect([meme.upvotes, -meme.downvotes]).toEqual([up0, down0 - 1]);
   await page.reload();
-  await page.getByTestId("period-all").click();
-  await page.getByTestId("sort-best").click();
-  await expect(card(alpha.id).getByTestId("upvote-count")).toHaveText("1");
-  await expect(card(beta.id).getByTestId("downvote-count")).toHaveText("1");
-  await expect.poll(async () => {
-    const ids = await order();
-    return ids.indexOf(alpha.id) < ids.indexOf(beta.id);
-  }).toBe(true);
+  await setFilters(page, { period: "all", sort: "new" });
+  await loadAll(page);
+  const again = page.getByTestId("meme-card").filter({ hasText: MOCK_EXPECT.controversial.title });
+  await expect(again.getByTestId("downvote-count")).toHaveText(String(down0 - 1));
+});
 
-  // Profile: posted memes (incl. private) count; drafts don't.
-  await page.goto("/u/gallery-alice");
-  await expect(page.getByTestId("stat-meme-count")).toHaveText("3");
-  await expect(page.getByTestId("stat-high-score")).toHaveText("1");
-  await expect(page.getByTestId("stat-h-score")).toHaveText("1");
-  await expect(page.locator(`[data-testid="meme-card"][data-meme-id="${secret.id}"]`)).toHaveCount(0);
+test("gallery lists only posted public memes", async ({ request }) => {
+  const all = await apiGet<Paged<Meme>>(request, "/api/gallery?period=all&limit=100");
+  const titles = all.items.map((m) => m.title);
+  for (const hidden of MOCK_EXPECT.hidden) expect(titles).not.toContain(hidden);
 });

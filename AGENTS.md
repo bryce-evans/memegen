@@ -27,8 +27,10 @@ How to run, seed, and test: **[README.md](README.md)**. Design, contracts, and t
 
 ## Verification
 
-- `bun run typecheck` and `bun run test`. Tests run serially and recreate the `memegen_test` schema.
-- UI or render changes: `bun run test:e2e` (Playwright; see README "Tests"). Specs live in `e2e/`, with fixtures in `e2e/fixtures/`.
+- Run everything through `./run.sh config/dev.env <command>` (see README "run.sh and configs"). Never point commands at `config/prod.env`, and never add test or mock behavior that bypasses `MODE=prod` guards.
+- `bun run typecheck` and `./run.sh config/dev.env test`. Tests run serially and recreate the `memegen_test` schema.
+- UI or render changes: `./run.sh config/dev.env e2e` (Playwright, every skin; see README "Tests"). Specs live in `e2e/`, with fixtures in `e2e/fixtures/`.
+  - Use the e2e helpers `setFilters`/`loadAll`. They wait on the URL and on `meme-feed[aria-busy="false"]`.
   - `demo/` and `e2e/fixtures/` are gitignored local assets. Never commit media or fonts. Recreate fixtures with the README commands.
   - Select elements by `data-testid` only.
   - Wait on state (`data-ready` on `stage-canvas`, `data-complete` on `timeline`, `expect.poll` for refetched lists), never on timeouts.

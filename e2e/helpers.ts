@@ -111,3 +111,50 @@ export async function uploadMedia(page: Page, file: string): Promise<void> {
   await expect(input).toBeEnabled();
   await input.setInputFiles(fixture(file));
 }
+
+/** Wait for the feed to finish loading, then click "Load more" until the list is complete. */
+export async function loadAll(page: Page): Promise<void> {
+  const feed = page.getByTestId("meme-feed");
+  const more = page.getByTestId("load-more");
+  await expect(feed).toHaveAttribute("aria-busy", "false");
+  while (await more.isVisible()) {
+    const before = await page.getByTestId("meme-card").count();
+    await more.click();
+    await expect.poll(() => page.getByTestId("meme-card").count()).toBeGreaterThan(before);
+    await expect(feed).toHaveAttribute("aria-busy", "false");
+  }
+}
+
+/** Pick gallery period/sort and wait until the URL reflects both and the feed has reloaded. */
+export async function setFilters(page: Page, filters: { period?: string; sort?: string }): Promise<void> {
+  if (filters.sort) await page.getByTestId(`sort-${filters.sort}`).click();
+  if (filters.period) await page.getByTestId(`period-${filters.period}`).click();
+  await expect
+    .poll(() => {
+      const params = new URL(page.url()).searchParams;
+      return (
+        (!filters.period || params.get("period") === filters.period) && (!filters.sort || params.get("sort") === filters.sort)
+      );
+    })
+    .toBe(true);
+  await expect(page.getByTestId("meme-feed")).toHaveAttribute("aria-busy", "false");
+}
+
+/** Mock-dataset meme titles in on-screen order (cards created by other specs are skipped). */
+export async function mockTitles(page: Page): Promise<string[]> {
+  const texts = await page.getByTestId("meme-card").allInnerTexts();
+  return texts.map((t) => /Mock: [^\n]+/.exec(t)?.[0]?.trim()).filter((t): t is string => Boolean(t));
+}
+
+/** `expected` appears in `actual` in this relative order. */
+export function expectInOrder(actual: string[], expected: readonly string[]): void {
+  const positions = expected.map((title) => actual.indexOf(title));
+  expect(positions, `missing from ${JSON.stringify(actual)}`).not.toContain(-1);
+  expect(positions).toEqual([...positions].sort((a, b) => a - b));
+}
+
+/** Width/height from a PNG's IHDR chunk. */
+export function pngSize(bytes: Buffer): { width: number; height: number } {
+  expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG");
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}

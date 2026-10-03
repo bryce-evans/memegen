@@ -127,12 +127,15 @@ cp "../../demo/jacebrowning-memegen/fonts/SIL Open Font License.txt" OFL.txt
 cd ../..
 ```
 
-The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) against `memegen_e2e` and `.data/e2e-storage`, so it doesn't touch a running `bun run dev`. It drives branded **Google Chrome** (`channel: "chrome"`), because MP4 export needs Chrome's H.264/AAC WebCodecs. Set `E2E_CHANNEL=chromium` to use Playwright's Chromium; the video spec will then fail. The specs cover:
+The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) against `memegen_e2e` and `.data/e2e-storage`, so it doesn't touch a running dev stack. It reseeds that database with the mock dataset on every run. Every spec runs once per UI skin (Playwright projects `default`, `apple`, `material`, `google`, `spectrum`). It drives branded **Google Chrome** (`channel: "chrome"`), because MP4 export needs Chrome's H.264/AAC WebCodecs. Set `E2E_CHANNEL=chromium` to use Playwright's Chromium; the video spec will then fail. The specs cover:
 
+- the core workflow: pick a template, add top and bottom text, download, save to profile, post, find it in the gallery
+- gallery sorting (popular, newest, hottest this month) and voting (up +1; down removes the upvote and moves the negative downvote count, e.g. −2 → −3), checked against the mock dataset
+- profile stats (meme count, high score, h-score) reached from a gallery card
 - still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, and exported frame counts/audio checked with `ffprobe`
-- gallery visibility, voting and sorting, and profile stats
 - templates and variations, tags and tag search, hot templates
 - upload caps and custom fonts
+- skin selection: `?skin=`, the header switcher, persistence across reloads
 
 `ffprobe` (from ffmpeg) must be on `PATH` for the e2e media checks. The app itself does not need ffmpeg.
 

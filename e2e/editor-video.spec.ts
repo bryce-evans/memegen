@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
 import { apiGet, apiUser, download, fixture, memeIdFromUrl, probeStreams, signIn, uploadMedia } from "./helpers.ts";
 
 test("video: frame-accurate timeline, MP4 export keeps every frame and the audio track", async ({ page, request }) => {
   await page.goto("/");
-  await signIn(page, "director");
+  await signIn(page, scoped("director"));
   await page.getByTestId("nav-create").click();
   await uploadMedia(page, "clip.mp4");
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
@@ -25,7 +25,7 @@ test("video: frame-accurate timeline, MP4 export keeps every frame and the audio
   const id = await memeIdFromUrl(page);
   await expect(page.getByTestId("meme-media")).toHaveJSProperty("tagName", "VIDEO");
 
-  const user = await apiUser(request, "director");
+  const user = await apiUser(request, scoped("director"));
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.outputAsset).toMatchObject({ kind: "video", mime: "video/mp4", width: 320, height: 240, frameCount: 30 });
   expect(meme.layers[0]!.end).toBeCloseTo(0.5, 2);

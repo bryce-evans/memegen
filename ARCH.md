@@ -121,6 +121,8 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 ### Testing
 - `node --test` (`bun run test`): pure logic in `packages/shared` (interpolation, limits, fit-to-box layout) plus storage/API behavior through `app.request()` against a fresh `memegen_test` schema (caps, ranges, stats, hierarchy, visibility, votes, usage, tags).
 - Playwright (`bun run test:e2e`): full browser flows against real servers on separate ports and a fresh `memegen_e2e` DB. Exported files are checked with `ffprobe` (frame counts, audio passthrough). Uses branded Chrome, since Playwright's Chromium lacks H.264/AAC for WebCodecs.
+- Mock dataset (`scripts/mock/data.ts` + `seed.ts`): deterministic users, templates, memes backdated across periods, and votes, with expected stats and orderings exported for specs. `./run.sh config/dev.env seed` loads it into dev (`SEED_MOCK=true`; refused in prod); e2e setup loads it into `memegen_e2e`. Media is generated in code.
+- Each e2e spec runs once per skin (one Playwright project per skin). Identities are suffixed per project (`scoped()`), and vote assertions are relative to what's shown, so all projects share one seeded DB.
 - The UI exposes `data-testid` hooks plus readiness markers (`stage-canvas[data-ready]`, `timeline[data-complete]`), so specs wait on state rather than sleeps.
 - Vite pre-bundles the linked render package's deps (`optimizeDeps.include`); otherwise the first editor load triggers a dep re-optimization reload.
 

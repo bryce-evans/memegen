@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
 import { apiGet, apiUser, download, dragLayer, fixture, memeIdFromUrl, probeStreams, signIn, stagePixels, uploadMedia } from "./helpers.ts";
 
@@ -7,7 +7,7 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   request,
 }) => {
   await page.goto("/");
-  await signIn(page, "gifmaker");
+  await signIn(page, scoped("gifmaker"));
   await page.getByTestId("nav-create").click();
   await uploadMedia(page, "anim.gif");
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
@@ -45,7 +45,7 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   const id = await memeIdFromUrl(page);
   await expect(page.getByTestId("meme-media")).toHaveJSProperty("tagName", "IMG");
 
-  const user = await apiUser(request, "gifmaker");
+  const user = await apiUser(request, scoped("gifmaker"));
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.outputAsset).toMatchObject({ kind: "gif", width: 160, height: 120, frameCount: 12 });
   const slide = meme.layers[0]!;

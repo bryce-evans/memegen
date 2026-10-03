@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, dragLayer, fixture, memeIdFromUrl, signIn, stagePixels, uploadMedia } from "./helpers.ts";
+import { apiGet, apiUser, download, dragLayer, memeIdFromUrl, setFilters, signIn, stagePixels, uploadMedia } from "./helpers.ts";
 
 test("still image: upload, edit and drag text, tag, save draft, post, show in gallery", async ({ page, request }) => {
   await page.goto("/");
-  await signIn(page, "imgfan");
+  await signIn(page, scoped("imgfan"));
   await page.getByTestId("nav-create").click();
 
   await uploadMedia(page, "still.png");
@@ -29,7 +29,7 @@ test("still image: upload, edit and drag text, tag, save draft, post, show in ga
   await expect(page.getByTestId("meme-status")).toContainText("draft");
   await expect(page.getByTestId("meme-title")).toHaveText("E2E still");
 
-  const user = await apiUser(request, "imgfan");
+  const user = await apiUser(request, scoped("imgfan"));
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.outputAsset).toMatchObject({ kind: "image", width: 640, height: 480 });
   expect(meme.layers[0]).toMatchObject({ text: "when the e2e passes", textStyle: "mock" });
@@ -43,7 +43,7 @@ test("still image: upload, edit and drag text, tag, save draft, post, show in ga
   await expect(page.getByTestId("meme-status")).toContainText("posted");
 
   await page.getByTestId("nav-gallery").click();
-  await page.getByTestId("period-day").click();
+  await setFilters(page, { period: "day", sort: "new" });
   const card = page.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
   await expect(card).toBeVisible();
   await expect(card.getByTestId("tag-chip")).toHaveAttribute("data-tag", "movie");

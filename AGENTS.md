@@ -10,7 +10,7 @@ How to run, seed, and test: **[README.md](README.md)**. Design, contracts, and t
 - `services/storage`: asset upload/serve, `StorageProvider` registry, server-side probing and caps.
 - `services/api`: users, templates, memes, votes, gallery, stats.
 - `apps/web`: React SPA (editor + gallery). Build UI only from `@memegen/ui` components; app CSS (`apps/web/src/styles.css`) is layout-only and uses design tokens, never hard-coded colors.
-- `packages/ui`: skinnable components, design tokens, and skins (`default`, `apple`, `material`, `google`, `spectrum`). See its README.
+- `packages/ui`: skinnable components, design tokens, and skins (`default`, `apple`, `matte`, `google`, `studio`, `spectrum`). See its README.
 - `e2e`: Playwright specs, fixtures, and isolated-DB setup (`setup-db.ts` refuses non-`e2e` databases).
 - `db/migrations`: append-only SQL files (`NNN_name.sql`). Never edit an applied migration; add a new one.
 

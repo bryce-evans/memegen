@@ -1,6 +1,6 @@
 /*
  * apple skin: Apple Human Interface Guidelines look (macOS / iOS on the web).
- * System grays, SF type, systemBlue accent, translucent header, source-list sidebar, raised segmented thumbs.
+ * Light only. System grays, SF type, systemBlue accent, translucent header, source-list sidebar, raised segmented thumbs.
  * Blues/reds/greens/oranges used for text are the HIG "accessible" variants so text meets WCAG AA.
  */
 
@@ -118,62 +118,6 @@
   --ui-duration-slow: 400ms;
   --ui-easing-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ui-easing-emphasized: cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-skin="apple"] {
-    color-scheme: dark;
-
-    --apple-blue: #0a84ff;
-    --apple-fill: rgb(118 118 128 / 0.24);
-    --apple-fill-track: rgb(118 118 128 / 0.24);
-    --apple-thumb: #636366;
-    --apple-thumb-shadow: 0 3px 8px rgb(0 0 0 / 0.3), 0 3px 1px rgb(0 0 0 / 0.1);
-    --apple-selection: rgb(10 132 255 / 0.24);
-    --apple-inset-bg: #2c2c2e;
-    --apple-hairline: 0 0 0 0.5px rgb(255 255 255 / 0.08);
-
-    --ui-color-bg: #000000;
-    --ui-color-surface: #1c1c1e;
-    --ui-color-surface-raised: #2c2c2e;
-    --ui-color-surface-sunken: #000000;
-    --ui-color-text: #f5f5f7;
-    --ui-color-text-muted: #98989d;
-    --ui-color-primary: #0071e3;
-    --ui-color-primary-hover: #0a7bf0;
-    --ui-color-on-primary: #ffffff;
-    --ui-color-tonal: rgb(10 132 255 / 0.22);
-    --ui-color-on-tonal: #64b5ff;
-    --ui-color-danger: #ff453a;
-    --ui-color-on-danger: #ffffff;
-    --ui-color-danger-container: rgb(255 69 58 / 0.16);
-    --ui-color-on-danger-container: #ffa39e;
-    --ui-color-success: #30d158;
-    --ui-color-warning: #ff9f0a;
-    --ui-color-info: #7d7aff;
-    --ui-color-info-container: rgb(94 92 230 / 0.16);
-    --ui-color-border: #38383a;
-    --ui-color-border-strong: #636366;
-    --ui-color-separator: rgb(84 84 88 / 0.6);
-    --ui-color-focus-ring: rgb(10 132 255 / 0.6);
-    --ui-color-link: #2997ff;
-    --ui-color-overlay: rgb(0 0 0 / 0.6);
-    --ui-state-hover: rgb(255 255 255 / 0.06);
-    --ui-state-press: rgb(255 255 255 / 0.1);
-    --ui-color-header-bg: rgb(22 22 23 / 0.72);
-    --ui-color-input-bg: #1c1c1e;
-    --ui-color-media-bg: #1c1c1e;
-    --ui-color-checker-a: #1c1c1e;
-    --ui-color-checker-b: #242426;
-
-    --ui-shadow-1: 0 0 0 0.5px rgb(255 255 255 / 0.06);
-    --ui-shadow-2: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 10px 30px rgb(0 0 0 / 0.6);
-    --ui-shadow-3: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 22px 70px rgb(0 0 0 / 0.7);
-
-    --ui-slider-track-color: rgb(120 120 128 / 0.36);
-    --ui-slider-thumb-border: none;
-    --ui-slider-thumb-shadow: 0 3px 8px rgb(0 0 0 / 0.35), 0 3px 1px rgb(0 0 0 / 0.12);
-  }
 }
 
 /* ---- shell ------------------------------------------------------------------- */
@@ -343,21 +287,21 @@
 }
 
 /* Header search: one rounded gray field with the magnifier leading it. */
-:root[data-skin="apple"] .tag-search--header .tag-search-field {
+:root[data-skin="apple"] .tag-search .tag-search-field {
   flex-direction: row-reverse;
   border-radius: 10px;
   background-color: var(--apple-fill-track);
 }
-:root[data-skin="apple"] .tag-search--header .tag-search-field:focus-within {
+:root[data-skin="apple"] .tag-search .tag-search-field:focus-within {
   outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
 }
-:root[data-skin="apple"] .tag-search--header .tag-search-field .ui-input {
+:root[data-skin="apple"] .tag-search .tag-search-field .ui-input {
   padding-left: 2px;
   border: none;
   border-radius: 0 10px 10px 0;
   background-color: transparent;
 }
-:root[data-skin="apple"] .tag-search--header .tag-search-field .ui-input:focus {
+:root[data-skin="apple"] .tag-search .tag-search-field .ui-input:focus {
   outline: none;
 }
 :root[data-skin="apple"] .tag-search-submit {
@@ -372,7 +316,7 @@
   background-color: transparent;
   color: var(--apple-blue);
 }
-:root[data-skin="apple"] .tag-search--header .tag-suggestions {
+:root[data-skin="apple"] .tag-search .tag-suggestions {
   margin-top: 6px;
   padding: 6px;
   border: none;

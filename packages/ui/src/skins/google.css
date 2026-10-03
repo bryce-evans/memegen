@@ -201,21 +201,21 @@
 }
 
 /* Header search: light field + solid blue search button. */
-:root[data-skin="google"] .tag-search--header .tag-search-field .ui-input {
+:root[data-skin="google"] .tag-search .tag-search-field .ui-input {
   min-height: 29px;
 }
-:root[data-skin="google"] .tag-search--header .tag-search-submit {
+:root[data-skin="google"] .tag-search .tag-search-submit {
   min-width: 40px;
   min-height: 29px;
   margin-left: -1px;
   border-radius: 0 2px 2px 0;
 }
-:root[data-skin="google"] .tag-search--header .tag-search-submit .ui-icon {
+:root[data-skin="google"] .tag-search .tag-search-submit .ui-icon {
   width: 13px;
   height: 13px;
   stroke-width: 2.5;
 }
-:root[data-skin="google"] .tag-search--header .tag-suggestions {
+:root[data-skin="google"] .tag-search .tag-suggestions {
   margin-top: -1px;
   padding: var(--ui-space-2) 0;
   border-color: #ccc;
@@ -223,10 +223,10 @@
   background: #fff;
   box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
 }
-:root[data-skin="google"] .tag-search--header .tag-suggestions .ui-nav-item {
+:root[data-skin="google"] .tag-search .tag-suggestions .ui-nav-item {
   padding: 4px 10px;
 }
-:root[data-skin="google"] .tag-search--header .tag-suggestions .ui-nav-item:hover {
+:root[data-skin="google"] .tag-search .tag-suggestions .ui-nav-item:hover {
   background: #eee;
 }
 
@@ -404,9 +404,6 @@
   text-transform: uppercase;
   text-shadow: none;
   letter-spacing: 0;
-}
-:root[data-skin="google"] .sidebar-action .ui-button-icon {
-  display: none;
 }
 
 /* Votes: compact gray mini jfk-buttons; pressed state keeps the vote colors. */

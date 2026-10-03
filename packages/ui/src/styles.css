@@ -2,6 +2,7 @@
 @import "./tokens.css";
 @import "./components.css";
 @import "./skins/apple.css";
-@import "./skins/material.css";
+@import "./skins/matte.css";
 @import "./skins/google.css";
+@import "./skins/studio.css";
 @import "./skins/spectrum.css";

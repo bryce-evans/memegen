@@ -13,7 +13,7 @@ import {
 import type { ComponentOverrides } from "./overrides.ts";
 
 /** Built-in skins, in switcher order. */
-export const SKIN_IDS = ["default", "apple", "material", "google", "spectrum"] as const;
+export const SKIN_IDS = ["default", "apple", "matte", "google", "studio", "spectrum"] as const;
 export type BuiltinSkinId = (typeof SKIN_IDS)[number];
 
 /**
@@ -25,12 +25,8 @@ export type SkinId = BuiltinSkinId | Extract<keyof CustomSkinIds, string>;
 
 /** Structural hints a skin gives the app; the app decides what each placement means. */
 export interface SkinLayout {
-  /** Where the app's search field lives. */
-  search: "sidebar" | "header";
   /** Where page-level view controls (sort, period) live: the sidebar, or the page header beside the title. */
   filters: "sidebar" | "header";
-  /** Promote the app's primary action to a prominent button at the top of the sidebar. */
-  sidebarAction: boolean;
 }
 
 export interface Skin {
@@ -39,9 +35,14 @@ export interface Skin {
   /** Replacement implementations; each receives exactly the props of the component it replaces. */
   components?: Partial<ComponentOverrides>;
   layout?: Partial<SkinLayout>;
+  /**
+   * Classes added to `<html>` while the skin is active, for design-system CSS that scopes its tokens to classes
+   * (e.g. Spectrum's `spectrum spectrum--dark spectrum--medium`).
+   */
+  rootClassName?: string;
 }
 
-export const DEFAULT_LAYOUT: SkinLayout = { search: "sidebar", filters: "sidebar", sidebarAction: false };
+export const DEFAULT_LAYOUT: SkinLayout = { filters: "sidebar" };
 
 /** `localStorage` key holding the chosen skin id. */
 export const SKIN_STORAGE_KEY = "memegen.skin";
@@ -58,17 +59,23 @@ export function registerSkin(skin: Skin): void {
   for (const listener of listeners) listener();
 }
 
-/** The registered definition for `id`, e.g. to extend a built-in: `registerSkin({ ...getSkin("material")!, components })`. */
+/** The registered definition for `id`, e.g. to extend a built-in: `registerSkin({ ...getSkin("matte")!, components })`. */
 export function getSkin(id: SkinId): Skin | undefined {
   return registry.get(id);
 }
 
 for (const skin of [
   { id: "default", label: "Default" },
-  { id: "apple", label: "Apple", layout: { search: "header", filters: "header" } },
-  { id: "material", label: "Material", layout: { search: "header", sidebarAction: true } },
-  { id: "google", label: "Google", layout: { search: "header", filters: "header", sidebarAction: true } },
-  { id: "spectrum", label: "Spectrum", layout: { search: "header", filters: "header" } },
+  { id: "apple", label: "Apple", layout: { filters: "header" } },
+  { id: "matte", label: "Matte" },
+  { id: "google", label: "Google", layout: { filters: "header" } },
+  { id: "studio", label: "Studio", layout: { filters: "header" } },
+  {
+    id: "spectrum",
+    label: "Spectrum",
+    layout: { filters: "header" },
+    rootClassName: "spectrum spectrum--dark spectrum--medium",
+  },
 ] satisfies Skin[]) {
   registerSkin(skin);
 }
@@ -124,9 +131,14 @@ export function SkinProvider({ children, fallback = "default" }: { children: Rea
   const skins = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const [skin, setSkinState] = useState<SkinId>(() => initialSkin(fallback));
 
+  const rootClassName = skins.find((s) => s.id === skin)?.rootClassName;
   useLayoutEffect(() => {
-    document.documentElement.dataset.skin = skin;
-  }, [skin]);
+    const root = document.documentElement;
+    root.dataset.skin = skin;
+    const classes = rootClassName?.split(/\s+/).filter(Boolean) ?? [];
+    root.classList.add(...classes);
+    return () => root.classList.remove(...classes);
+  }, [skin, rootClassName]);
 
   // Persist the initial pick too, so a `?skin=` link sticks after navigating away from it.
   useEffect(() => writeStorage(skin), [skin]);

@@ -1,7 +1,7 @@
 import { test as base, expect } from "@playwright/test";
 
 /** Skins the suite runs under; mirrors `SKIN_IDS` in @memegen/ui. */
-export const E2E_SKINS = ["default", "apple", "material", "google", "spectrum"] as const;
+export const E2E_SKINS = ["default", "apple", "matte", "google", "studio", "spectrum"] as const;
 export type E2ESkin = (typeof E2E_SKINS)[number];
 
 /** `test` with a per-project `skin` option, applied before any app script runs. */

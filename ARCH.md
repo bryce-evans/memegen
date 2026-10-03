@@ -6,7 +6,7 @@ Online meme generator: upload media, overlay (optionally animated) text, publish
 
 ```
 apps/web            React + Vite SPA: editor, templates, gallery, profiles      (component 3 + 4 UI)
-packages/ui         Skinnable React components + design tokens (default/apple/material/google/spectrum)
+packages/ui         Skinnable React components + design tokens (default/apple/matte/google/studio/spectrum)
 packages/render     Browser render engine: decode → composite → encode (TS)   (component 2)
 packages/shared     Types, zod schemas, upload limits, animation + text layout (used everywhere)
 packages/server-kit Node server plumbing: config, Postgres, migrations, auth, http helpers
@@ -129,7 +129,10 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 ### UI skins (`packages/ui`)
 - All web UI goes through `@memegen/ui`: typed React components that extend native element props and render native controls (`<select>`, `<input type=file|range|color>`), so platform behavior, a11y and automation work identically in every skin.
 - A skin is `data-skin="<id>"` on `<html>` plus CSS: `tokens.css` holds the default (dark) token set on `:root`; `skins/<id>.css` overrides tokens and adds component tweaks under `:root[data-skin="<id>"]`. Components and `apps/web/src/styles.css` read only tokens (no hard-coded colors).
-- Built-ins: `default`, `apple` (HIG), `material` (M3), `google` (2012 internal Memegen / Kennedy), `spectrum` (Spectrum 2 / Firefly). Light-first skins follow `prefers-color-scheme`.
+- Built-ins: `default`, `apple` (HIG, light only), `matte` (M3-inspired), `google` (2012 internal Memegen / Kennedy), `studio` (a light creative-studio look; formerly called "spectrum" though it used none of Spectrum's CSS), `spectrum` (real Spectrum 2 via `@spectrum-css/tokens`, styled like Firefly, dark). `matte` and `studio` follow `prefers-color-scheme`.
+- `Skin.rootClassName` adds classes to `<html>` while a skin is active, for design-system CSS that scopes tokens to classes (Spectrum's `.spectrum--dark` etc.), so those tokens never reach other skins.
+- Adobe Clean (Spectrum's typeface) is licensed through Adobe Fonts only, so it is never bundled or hot-linked; the `spectrum` stack uses it when installed and otherwise the bundled Source Sans 3 (OFL), Spectrum's documented fallback.
+- The favicon follows the skin: `useSkinFavicon` draws the wordmark's first letter on a canvas (canvas, not SVG, so it can use the page's web fonts) in the skin's wordmark font, case, and color or gradient over its page background, and swaps the `<link rel="icon">` on every skin change. `apps/web/public/favicon.svg` covers the first paint.
 - Choice: `?skin=` → `localStorage["memegen.skin"]` → `default`; `SkinProvider` persists changes and the header's `skin-select` switches.
 - Skins can replace any component (`Skin.components`, typed by `ComponentOverrides`) and give layout hints (`Skin.layout`: tag search in sidebar or header, sort/period in sidebar or beside the title, a primary "Create meme" button atop the sidebar). Hints move controls; they never duplicate them, so test ids stay unique.
 - Trade-off: hints mean the app branches on skin in a few places; in exchange CSS-only skins can still look structurally like their design systems.
@@ -159,7 +162,7 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
   - SPA fallback; immutable caching for `assets/`
   - proxies `/api` and `/storage` exactly like the Vite dev proxy; `/internal` is never proxied
 - `run.sh` supervises storage, API, and web as a group: if any process exits, the rest stop and `run.sh` returns its status. It is bash 3.2-compatible (macOS default).
-- **UI skins**: see `packages/ui/README.md`. Components read design tokens, and `<html data-skin>` selects default/apple/material/google/spectrum; a skin can also replace whole components.
+- **UI skins**: see `packages/ui/README.md`. Components read design tokens, and `<html data-skin>` selects default/apple/matte/google/studio/spectrum; a skin can also replace whole components.
 
 ## Service contracts
 

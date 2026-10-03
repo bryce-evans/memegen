@@ -1,16 +1,21 @@
 # @memegen/ui
 
-Skinnable React components and design tokens for the memegen web app. One component API, five looks:
+Skinnable React components and design tokens for the memegen web app. One component API, six looks:
 
 | id | Looks like |
 |---|---|
 | `default` | memegen's dark, yellow-accent UI |
-| `apple` | Apple HIG (SF stack, translucent toolbar, segmented controls, source-list sidebar) |
-| `material` | Material Design 3 (tonal palette, pill buttons, nav-rail indicator, state layers) |
+| `apple` | Apple HIG (SF stack, translucent toolbar, segmented controls, source-list sidebar); light only |
+| `matte` | Material Design 3-inspired (tonal palette, pill buttons, nav-rail indicator, state layers) |
 | `google` | Google's internal Memegen, circa 2012 ("Kennedy": Arial 13px, jfk-buttons, red CREATE MEME) |
-| `spectrum` | Adobe Spectrum 2 / Firefly (Adobe Clean stack, rounder, black CTA pills, blue selection) |
+| `studio` | A light creative-studio look (rounder, black CTA pills, blue selection, gradient wordmark) |
+| `spectrum` | Real Adobe Spectrum 2, styled like Firefly: `@spectrum-css/tokens` values, dark, pill buttons, accent-blue "new" action, raised content sheet |
 
-`apple`, `material` and `spectrum` are light-first and follow `prefers-color-scheme: dark`; `default` is dark; `google` is light only.
+`matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple` and `google` are light only.
+
+`spectrum` puts Spectrum's token classes (`spectrum spectrum--dark spectrum--medium`) on `<html>` through `Skin.rootClassName`, so `--spectrum-*` properties exist only while it is active. Its font stack prefers Adobe Clean (licensed through Adobe Fonts, so never bundled; used when installed) and falls back to the bundled Source Sans 3 (OFL, `@fontsource-variable/source-sans-3`).
+
+`useSkinFavicon(letter)` keeps the page favicon in step with the skin: the letter drawn on a canvas in the skin's wordmark style (font, weight, case, color or gradient) over its page background.
 
 ## Setup
 
@@ -31,7 +36,7 @@ import { SkinProvider, SkinSwitcher } from "@memegen/ui";
 1. **Tokens.** `src/tokens.css` defines every design decision as a custom property on `:root` (the default skin): color roles (`--ui-color-bg`, `-surface`, `-surface-raised`, `-text`, `-text-muted`, `-primary`, `-on-primary`, `-tonal`, `-danger`, `-success`, `-warning`, `-info`, `-border`, `-separator`, `-focus-ring`, `-link`, `-overlay`, `-media-bg`…), state layers (`--ui-state-hover/press`), typography, shape (`--ui-radius-*`), spacing (`--ui-space-1…8`), elevation (`--ui-shadow-*`), control sizes, motion, and layout (`--ui-sidebar-width`, `--ui-grid-min`…).
 2. **Components** (`src/components.css`) read only tokens.
 3. **Skins** (`src/skins/<id>.css`) override tokens under `:root[data-skin="<id>"]`, plus component tweaks scoped the same way where tokens are not enough (Apple's raised segmented thumb, Google's gradient jfk-buttons, Spectrum's masonry gallery…).
-4. **Layout hints** (`Skin.layout`) let a skin move app controls without duplicating them: `search: "sidebar" | "header"`, `filters: "sidebar" | "header"` (sort/period beside the page title), `sidebarAction: boolean` (a primary "Create" button atop the sidebar). The app reads them via `useSkin().layout`.
+4. **Layout hints** (`Skin.layout`) let a skin move app controls without duplicating them: `filters: "sidebar" | "header"` (sort/period beside the page title). The app reads them via `useSkin().layout`.
 5. **Component overrides** (`Skin.components`) replace any component for one skin (below).
 
 App CSS should also use tokens only, so it follows every skin.
@@ -72,7 +77,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 
 ## Overriding a component for one skin
 
-`Skin.components` maps a component name (`ComponentOverrides`) to a replacement that receives exactly the original's props. Every exported component checks the active skin and renders the override if there is one. Example: use a third-party Material button for the `material` skin only.
+`Skin.components` maps a component name (`ComponentOverrides`) to a replacement that receives exactly the original's props. Every exported component checks the active skin and renders the override if there is one. Example: use a third-party Material button for the `matte` skin only.
 
 ```tsx
 import { Button as MuiButton } from "@mui/material";
@@ -95,7 +100,7 @@ function MuiSkinButton({ variant = "secondary", size = "md", pressed, icon, clas
 }
 
 // Keep the built-in definition (label, layout hints), add the override.
-registerSkin({ ...getSkin("material")!, components: { Button: MuiSkinButton } });
+registerSkin({ ...getSkin("matte")!, components: { Button: MuiSkinButton } });
 ```
 
 Replacements must forward `data-testid`, `aria-*` and event props to the element the user interacts with, and keep native controls native where the app relies on them (`<select>`, `<input type=file>`).

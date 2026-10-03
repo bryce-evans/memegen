@@ -214,11 +214,8 @@ export function TagEditor(props: { tags: string[]; onSave: (tags: string[]) => P
   );
 }
 
-/**
- * Tag search: Enter (or a suggestion) opens the tag page. In the sidebar the suggestions list inline; in the
- * header they drop down under the field while it has focus.
- */
-export function TagSearch({ placement }: { placement: "sidebar" | "header" }) {
+/** Header tag search: Enter (or a suggestion) opens the tag page; suggestions drop down while the field has focus. */
+export function TagSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const suggestions = useTagSuggestions(query, 8);
@@ -234,8 +231,8 @@ export function TagSearch({ placement }: { placement: "sidebar" | "header" }) {
     if (slug) go(slug);
   }
 
-  const form = (
-    <form className={`tag-search tag-search--${placement}`} onSubmit={submit} role="search">
+  return (
+    <form className="tag-search" onSubmit={submit} role="search">
       <div className="tag-search-field">
         <TextField
           type="search"
@@ -245,11 +242,9 @@ export function TagSearch({ placement }: { placement: "sidebar" | "header" }) {
           aria-label="Search tags"
           data-testid="tag-search"
         />
-        {placement === "header" && (
-          <IconButton type="submit" variant="primary" label="Search" className="tag-search-submit">
-            <Icon name="search" />
-          </IconButton>
-        )}
+        <IconButton type="submit" variant="primary" label="Search" className="tag-search-submit">
+          <Icon name="search" />
+        </IconButton>
       </div>
       {suggestions.length > 0 && (
         <NavList className="tag-suggestions">
@@ -271,8 +266,6 @@ export function TagSearch({ placement }: { placement: "sidebar" | "header" }) {
       )}
     </form>
   );
-
-  return placement === "sidebar" ? <SidebarSection heading="Tags">{form}</SidebarSection> : form;
 }
 
 /** Side-column popular/team tag lists; refetched on navigation so tags created in the editor show up. */

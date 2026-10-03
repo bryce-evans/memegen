@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
   AppShell,
   Button,
@@ -15,6 +15,7 @@ import {
   Text,
   Wordmark,
   useSkin,
+  useSkinFavicon,
 } from "@memegen/ui";
 import { AuthProvider, useAuth } from "./auth.tsx";
 import { LoginForm } from "./components/common.tsx";
@@ -26,17 +27,20 @@ import { MemeDetail } from "./pages/MemeDetail.tsx";
 import { Profile } from "./pages/Profile.tsx";
 import { TagPage } from "./pages/TagPage.tsx";
 
+const BRAND = "memegen";
+
 function SiteHeader() {
   const { user, signOut } = useAuth();
-  const { layout } = useSkin();
+  // The tab icon is the wordmark's first letter, drawn in the active skin's wordmark style.
+  useSkinFavicon(BRAND[0]!);
   return (
     <Header
       brand={
         <Link to="/">
-          <Wordmark text="memegen" />
+          <Wordmark text={BRAND} />
         </Link>
       }
-      center={layout.search === "header" ? <TagSearch placement="header" /> : undefined}
+      center={<TagSearch />}
     >
       <SkinSwitcher data-testid="skin-select" />
       {user ? (
@@ -61,24 +65,22 @@ function SiteHeader() {
 function SideColumn() {
   const { user } = useAuth();
   const { pathname } = useLocation();
-  const [params] = useSearchParams();
   const { layout } = useSkin();
   const feedKind = feedKindFor(pathname);
-  // Profile and favorites share a path, so mark them by hand instead of letting NavLink match both.
-  const onOwnProfile = user !== null && pathname === `/u/${user.username}`;
-  const favoritesActive = onOwnProfile && params.get("tab") === "liked";
   return (
     <Sidebar>
-      {layout.sidebarAction && (
-        <LinkButton as={Link} to="/create" variant="primary" icon={<Icon name="plus" />} className="sidebar-action">
-          Create meme
-        </LinkButton>
-      )}
-      <SidebarSection as="nav" aria-label="Pages" heading="Browse">
+      <LinkButton
+        as={NavLink}
+        to="/create"
+        variant="primary"
+        icon={<Icon name="plus" />}
+        className="sidebar-action"
+        data-testid="nav-create"
+      >
+        Create
+      </LinkButton>
+      <SidebarSection as="nav" aria-label="Pages">
         <NavList>
-          <NavItem as={NavLink} to="/create" icon={<Icon name="plus" />} data-testid="nav-create">
-            Create
-          </NavItem>
           <NavItem as={NavLink} to="/recent" icon={<Icon name="clock" />} data-testid="nav-recent">
             Recent
           </NavItem>
@@ -89,33 +91,15 @@ function SideColumn() {
             Leaderboard
           </NavItem>
           {user && (
-            <>
-              <NavItem
-                as={Link}
-                to={`/u/${user.username}`}
-                active={onOwnProfile && !favoritesActive}
-                icon={<Icon name="user" />}
-                data-testid="nav-profile"
-              >
-                Profile
-              </NavItem>
-              <NavItem
-                as={Link}
-                to={`/u/${user.username}?tab=liked`}
-                active={favoritesActive}
-                icon={<Icon name="star" />}
-                data-testid="nav-favorites"
-              >
-                Your favorites
-              </NavItem>
-            </>
+            <NavItem as={NavLink} to={`/u/${user.username}`} icon={<Icon name="user" />} data-testid="nav-profile">
+              Profile
+            </NavItem>
           )}
         </NavList>
       </SidebarSection>
       {layout.filters === "sidebar" && feedKind && hasFeedControls(feedKind) && (
         <GalleryFilters kind={feedKind} placement="sidebar" />
       )}
-      {layout.search === "sidebar" && <TagSearch placement="sidebar" />}
       <TagSidebar />
     </Sidebar>
   );

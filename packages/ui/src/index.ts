@@ -14,6 +14,7 @@ export {
   type SkinLayout,
 } from "./skin.tsx";
 export type { ComponentOverrides } from "./overrides.ts";
+export { useSkinFavicon } from "./favicon.ts";
 export { cx, type ControlSize, type LoosePolymorphicProps, type PolymorphicProps } from "./cx.ts";
 export * from "./components/buttons.tsx";
 export * from "./components/display.tsx";

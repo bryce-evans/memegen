@@ -1,0 +1,624 @@
+/*
+ * spectrum skin: Adobe Spectrum 2 as seen in Firefly. Lighter, bolder, rounder: a #F8F8F8 nav zone with the
+ * content on a white sheet, pill buttons with a near-black CTA, Spectrum blue for selection/focus/fills, soft
+ * shadows instead of borders, and the Firefly gradient only on the wordmark (plus a faint CTA hover glow).
+ */
+
+:root[data-skin="spectrum"] {
+  color-scheme: light;
+
+  /* ---- color roles ---- */
+  --ui-color-bg: #f8f8f8;
+  --ui-color-surface: #ffffff;
+  --ui-color-surface-raised: #e9e9e9;
+  --ui-color-surface-sunken: #f3f3f3;
+  --ui-color-text: #222222;
+  --ui-color-text-muted: #6e6e6e;
+  --ui-color-primary: #3b63fb;
+  --ui-color-primary-hover: #274dea;
+  --ui-color-on-primary: #ffffff;
+  --ui-color-tonal: #292929;
+  --ui-color-on-tonal: #ffffff;
+  --ui-color-danger: #d73220;
+  --ui-color-on-danger: #ffffff;
+  --ui-color-danger-container: #fff0ee;
+  --ui-color-on-danger-container: #a1210f;
+  --ui-color-success: #007a4d;
+  --ui-color-warning: #b95100;
+  --ui-color-info: #274dea;
+  --ui-color-info-container: #f0f3ff;
+  --ui-color-border: #e1e1e1;
+  --ui-color-border-strong: #b1b1b1;
+  --ui-color-separator: #e1e1e1;
+  --ui-color-focus-ring: #3b63fb;
+  --ui-color-link: #274dea;
+  --ui-color-overlay: rgb(0 0 0 / 0.4);
+  --ui-state-hover: rgb(0 0 0 / 0.05);
+  --ui-state-press: rgb(0 0 0 / 0.1);
+  --ui-color-header-bg: #ffffff;
+  --ui-header-backdrop: none;
+  --ui-color-sidebar-bg: transparent;
+  --ui-color-input-bg: #ffffff;
+  --ui-color-media-bg: #f1f1f1;
+  --ui-color-checker-a: #ededed;
+  --ui-color-checker-b: #f8f8f8;
+
+  /* Skin-private roles. */
+  --sp-cta: #222222;
+  --sp-cta-hover: #000000;
+  --sp-on-cta: #ffffff;
+  --sp-cta-glow: 0 3px 14px -3px rgb(122 60 255 / 0.45), 0 6px 20px -6px rgb(255 122 61 / 0.45);
+  --sp-negative: #d73220;
+  --sp-negative-hover: #b7291a;
+  --sp-field-border: #d0d0d0;
+  --sp-segment-track: #e9e9e9;
+  --sp-segment-thumb: #ffffff;
+  --sp-segment-thumb-shadow: 0 1px 3px rgb(0 0 0 / 0.14);
+  --sp-nav-selected: #e9e9e9;
+  --sp-brand-gradient: linear-gradient(95deg, #7a3cff 0%, #c934c9 38%, #e93a9a 62%, #ff7a3d 100%);
+
+  /* ---- typography ---- */
+  --ui-font-family: "Adobe Clean", "Adobe Clean Spectrum VF", "Source Sans 3", "Source Sans Pro", system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  --ui-font-family-display: var(--ui-font-family);
+  --ui-font-size-xs: 12px;
+  --ui-font-size-sm: 13px;
+  --ui-font-size-md: 14px;
+  --ui-font-size-lg: 18px;
+  --ui-font-size-xl: 28px;
+  --ui-font-size-2xl: 28px;
+  --ui-line-height: 1.5;
+  --ui-font-weight-regular: 400;
+  --ui-font-weight-medium: 600;
+  --ui-font-weight-semibold: 700;
+  --ui-font-weight-bold: 700;
+  --ui-font-weight-heading: 800;
+  --ui-font-weight-button: 700;
+  --ui-font-weight-brand: 900;
+  --ui-letter-spacing-heading: -0.02em;
+  --ui-label-transform: none;
+  --ui-label-tracking: 0;
+  --ui-label-size: 12px;
+
+  /* ---- shape ---- */
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 8px;
+  --ui-radius-lg: 12px;
+  --ui-radius-xl: 16px;
+  --ui-radius-pill: 999px;
+  --ui-radius-control: var(--ui-radius-pill);
+  --ui-radius-field: var(--ui-radius-md);
+  --ui-radius-card: var(--ui-radius-xl);
+  --ui-radius-media: var(--ui-radius-xl);
+  --ui-radius-chip: var(--ui-radius-md);
+  --ui-border-width: 1px;
+
+  /* ---- spacing ---- */
+  --ui-space-1: 2px;
+  --ui-space-2: 4px;
+  --ui-space-3: 8px;
+  --ui-space-4: 12px;
+  --ui-space-5: 16px;
+  --ui-space-6: 20px;
+  --ui-space-7: 24px;
+  --ui-space-8: 32px;
+
+  /* ---- elevation ---- */
+  --ui-shadow-1: 0 1px 4px rgb(0 0 0 / 0.08);
+  --ui-shadow-2: 0 1px 4px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.08);
+  --ui-shadow-3: 0 4px 12px rgb(0 0 0 / 0.08), 0 12px 32px rgb(0 0 0 / 0.12);
+  --ui-shadow-header: none;
+
+  /* ---- controls ---- */
+  --ui-control-height-sm: 28px;
+  --ui-control-height-md: 36px;
+  --ui-control-padding-x: 16px;
+  --ui-slider-track-height: 4px;
+  --ui-slider-track-color: #d5d5d5;
+  --ui-slider-thumb-size: 18px;
+  --ui-slider-thumb-color: #ffffff;
+  --ui-slider-thumb-border: 2px solid #222222;
+  --ui-slider-thumb-shadow: none;
+  --ui-progress-height: 6px;
+  --ui-focus-ring-width: 2px;
+  --ui-focus-ring-offset: 2px;
+  --ui-icon-size: 18px;
+  --ui-icon-stroke: 2.25;
+  --ui-nav-icon-display: inline-flex;
+
+  /* ---- layout ---- */
+  --ui-sidebar-width: 216px;
+  --ui-header-height: 60px;
+  --ui-grid-min: 240px;
+  --ui-grid-gap: 16px;
+
+  /* ---- motion ---- */
+  --ui-duration-fast: 130ms;
+  --ui-duration-normal: 200ms;
+  --ui-duration-slow: 300ms;
+  --ui-easing-standard: cubic-bezier(0.45, 0, 0.4, 1);
+  --ui-easing-emphasized: cubic-bezier(0.2, 0, 0, 1.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="spectrum"] {
+    color-scheme: dark;
+
+    --ui-color-bg: #1b1b1b;
+    --ui-color-surface: #2c2c2c;
+    --ui-color-surface-raised: #3a3a3a;
+    --ui-color-surface-sunken: #232323;
+    --ui-color-text: #ebebeb;
+    --ui-color-text-muted: #b0b0b0;
+    --ui-color-primary: #5d89ff;
+    --ui-color-primary-hover: #7a9fff;
+    --ui-color-on-primary: #000000;
+    --ui-color-tonal: #ebebeb;
+    --ui-color-on-tonal: #1b1b1b;
+    --ui-color-danger: #ff7b69;
+    --ui-color-on-danger: #ffffff;
+    --ui-color-danger-container: rgb(255 112 92 / 0.12);
+    --ui-color-on-danger-container: #ffb6aa;
+    --ui-color-success: #4cc38a;
+    --ui-color-warning: #ff9d55;
+    --ui-color-info: #7a9fff;
+    --ui-color-info-container: rgb(93 137 255 / 0.14);
+    --ui-color-border: #3a3a3a;
+    --ui-color-border-strong: #6d6d6d;
+    --ui-color-separator: #3a3a3a;
+    --ui-color-focus-ring: #5d89ff;
+    --ui-color-link: #7a9fff;
+    --ui-color-overlay: rgb(0 0 0 / 0.6);
+    --ui-state-hover: rgb(255 255 255 / 0.06);
+    --ui-state-press: rgb(255 255 255 / 0.12);
+    --ui-color-header-bg: #2c2c2c;
+    --ui-color-input-bg: #232323;
+    --ui-color-media-bg: #232323;
+    --ui-color-checker-a: #262626;
+    --ui-color-checker-b: #303030;
+
+    --sp-cta: #ffffff;
+    --sp-cta-hover: #dedede;
+    --sp-on-cta: #000000;
+    --sp-cta-glow: 0 3px 16px -3px rgb(122 60 255 / 0.6), 0 6px 22px -6px rgb(255 122 61 / 0.5);
+    --sp-negative: #d73220;
+    --sp-negative-hover: #e8462f;
+    --sp-field-border: #4f4f4f;
+    --sp-segment-track: #1f1f1f;
+    --sp-segment-thumb: #444444;
+    --sp-segment-thumb-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+    --sp-nav-selected: #3a3a3a;
+    --sp-brand-gradient: linear-gradient(95deg, #9d6bff 0%, #d65ae0 38%, #ff5fae 62%, #ff8f57 100%);
+
+    --ui-shadow-1: 0 1px 4px rgb(0 0 0 / 0.35);
+    --ui-shadow-2: 0 1px 4px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.4);
+    --ui-shadow-3: 0 4px 12px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.5);
+
+    --ui-slider-track-color: #4f4f4f;
+    --ui-slider-thumb-color: #1b1b1b;
+    --ui-slider-thumb-border: 2px solid #ebebeb;
+  }
+}
+
+/* ---- shell: gray nav zone, white content sheet ------------------------------ */
+
+:root[data-skin="spectrum"] .ui-header {
+  gap: var(--ui-space-4) var(--ui-space-7);
+  padding: var(--ui-space-3) var(--ui-space-7);
+}
+
+:root[data-skin="spectrum"] .ui-wordmark {
+  font-size: 22px;
+  letter-spacing: -0.035em;
+  background: var(--sp-brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+:root[data-skin="spectrum"] .ui-shell {
+  gap: var(--ui-space-6);
+  padding: var(--ui-space-6) var(--ui-space-6) var(--ui-space-7) var(--ui-space-5);
+}
+:root[data-skin="spectrum"] .ui-main {
+  min-height: calc(100vh - var(--ui-header-height) - 2 * var(--ui-space-6));
+  padding: var(--ui-space-7) 28px;
+  border-radius: var(--ui-radius-xl);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-1);
+}
+
+:root[data-skin="spectrum"] .ui-sidebar {
+  gap: var(--ui-space-7);
+}
+:root[data-skin="spectrum"] .ui-sidebar-heading {
+  margin: 0 0 var(--ui-space-2) 12px;
+  font-weight: var(--ui-font-weight-bold);
+}
+:root[data-skin="spectrum"] .ui-nav-item {
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 12px;
+  color: var(--ui-color-text);
+}
+:root[data-skin="spectrum"] .ui-nav-item-icon {
+  color: var(--ui-color-text-muted);
+}
+:root[data-skin="spectrum"] .ui-nav-item.is-active,
+:root[data-skin="spectrum"] .ui-nav-item[aria-current="page"] {
+  background-color: var(--sp-nav-selected);
+  box-shadow: none;
+  font-weight: var(--ui-font-weight-bold);
+}
+:root[data-skin="spectrum"] :is(.ui-nav-item.is-active, .ui-nav-item[aria-current="page"]) .ui-nav-item-icon {
+  color: var(--ui-color-text);
+}
+
+:root[data-skin="spectrum"] .ui-page-header {
+  margin-bottom: var(--ui-space-6);
+}
+:root[data-skin="spectrum"] .ui-page-title {
+  line-height: 1.15;
+}
+:root[data-skin="spectrum"] .ui-panel-title,
+:root[data-skin="spectrum"] .ui-page-header--section .ui-page-title {
+  font-weight: var(--ui-font-weight-bold);
+  letter-spacing: -0.01em;
+}
+
+/* ---- buttons: pills, gray secondary, near-black CTA ------------------------ */
+
+:root[data-skin="spectrum"] .ui-button {
+  border-color: transparent;
+}
+:root[data-skin="spectrum"] .ui-button:hover:not(:disabled, .is-disabled) {
+  border-color: transparent;
+}
+:root[data-skin="spectrum"] .ui-button--sm {
+  padding: 0 12px;
+}
+:root[data-skin="spectrum"] .ui-button--primary {
+  background-color: var(--sp-cta);
+  color: var(--sp-on-cta);
+}
+:root[data-skin="spectrum"] .ui-button--primary:hover:not(:disabled, .is-disabled) {
+  background-color: var(--sp-cta-hover);
+  box-shadow: var(--sp-cta-glow);
+}
+:root[data-skin="spectrum"] .ui-button--quiet {
+  background-color: transparent;
+}
+:root[data-skin="spectrum"] .ui-button--danger {
+  background-color: var(--sp-negative);
+  color: #ffffff;
+}
+:root[data-skin="spectrum"] .ui-button--danger:hover:not(:disabled, .is-disabled) {
+  background-color: var(--sp-negative-hover);
+}
+:root[data-skin="spectrum"] .ui-button[aria-pressed="true"] {
+  background-color: var(--ui-color-tonal);
+  color: var(--ui-color-on-tonal);
+}
+:root[data-skin="spectrum"] .ui-icon-button {
+  padding: 0;
+}
+:root[data-skin="spectrum"] .ui-icon-button.ui-button--sm {
+  padding: 0;
+}
+
+/* Votes keep their warning/info tint over the pressed style above. */
+:root[data-skin="spectrum"] .vote {
+  font-weight: var(--ui-font-weight-bold);
+}
+:root[data-skin="spectrum"] .vote-up[aria-pressed="true"] {
+  color: var(--ui-color-warning);
+  border-color: color-mix(in srgb, var(--ui-color-warning) 45%, transparent);
+  background-color: color-mix(in srgb, var(--ui-color-warning) 12%, var(--ui-color-surface));
+}
+:root[data-skin="spectrum"] .vote-down[aria-pressed="true"] {
+  color: var(--ui-color-info);
+  border-color: color-mix(in srgb, var(--ui-color-info) 45%, transparent);
+  background-color: color-mix(in srgb, var(--ui-color-info) 12%, var(--ui-color-surface));
+}
+
+/* Editor layer list: a selectable list, not toggle pills. */
+:root[data-skin="spectrum"] .layer-name {
+  border-radius: var(--ui-radius-md);
+  font-weight: var(--ui-font-weight-regular);
+}
+:root[data-skin="spectrum"] .layer-name[aria-pressed="true"] {
+  background-color: var(--sp-nav-selected);
+  color: var(--ui-color-text);
+  font-weight: var(--ui-font-weight-bold);
+}
+
+/* ---- segmented: gray track, raised selected chip ---------------------------- */
+
+:root[data-skin="spectrum"] .ui-segmented {
+  gap: 2px;
+  padding: 2px;
+  border: none;
+  border-radius: var(--ui-radius-md);
+  background: var(--sp-segment-track);
+}
+:root[data-skin="spectrum"] .ui-segmented-option {
+  min-height: calc(var(--ui-control-height-md) - 4px);
+  padding: 0 14px;
+  border-radius: 6px;
+  color: var(--ui-color-text);
+}
+:root[data-skin="spectrum"] .ui-segmented--sm .ui-segmented-option {
+  min-height: var(--ui-control-height-sm);
+  padding: 0 12px;
+}
+:root[data-skin="spectrum"] .ui-segmented-option:hover:not(:disabled) {
+  background-color: var(--ui-state-hover);
+}
+:root[data-skin="spectrum"] .ui-segmented-option[aria-pressed="true"],
+:root[data-skin="spectrum"] .ui-segmented-option[aria-pressed="true"]:hover:not(:disabled) {
+  background-color: var(--sp-segment-thumb);
+  box-shadow: var(--sp-segment-thumb-shadow);
+  font-weight: var(--ui-font-weight-bold);
+}
+:root[data-skin="spectrum"] .ui-segmented--vertical {
+  padding: 0;
+  background: transparent;
+}
+:root[data-skin="spectrum"] .ui-segmented--vertical .ui-segmented-option {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: var(--ui-radius-md);
+}
+:root[data-skin="spectrum"] .ui-segmented--vertical .ui-segmented-option[aria-pressed="true"] {
+  background-color: var(--sp-nav-selected);
+  box-shadow: none;
+}
+
+/* ---- fields: 8px, 2px border, blue on focus -------------------------------- */
+
+:root[data-skin="spectrum"] .ui-field-label {
+  font-size: var(--ui-font-size-sm);
+}
+:root[data-skin="spectrum"] .ui-input,
+:root[data-skin="spectrum"] .ui-select-control {
+  padding: 0 12px;
+  border: 2px solid var(--sp-field-border);
+}
+:root[data-skin="spectrum"] .ui-select-control {
+  padding-right: 32px;
+}
+:root[data-skin="spectrum"] .ui-input:focus,
+:root[data-skin="spectrum"] .ui-select-control:focus {
+  border-color: var(--ui-color-focus-ring);
+  outline: none;
+}
+:root[data-skin="spectrum"] .ui-select-control:focus-visible {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+:root[data-skin="spectrum"] .ui-input[aria-invalid="true"] {
+  border-color: var(--ui-color-danger);
+}
+:root[data-skin="spectrum"] .ui-textarea {
+  padding: 8px 12px;
+}
+:root[data-skin="spectrum"] .ui-select::after {
+  right: 12px;
+  background: var(--ui-color-text);
+}
+:root[data-skin="spectrum"] .ui-color {
+  border: 2px solid var(--sp-field-border);
+  border-radius: var(--ui-radius-md);
+}
+:root[data-skin="spectrum"] .ui-color::-webkit-color-swatch {
+  border-radius: 4px;
+}
+:root[data-skin="spectrum"] .ui-color::-moz-color-swatch {
+  border-radius: 4px;
+}
+
+/* Header search: one gray pill with a round CTA inside. */
+:root[data-skin="spectrum"] .tag-search--header .tag-search-field {
+  align-items: center;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-color-surface-sunken);
+  transition: border-color var(--ui-duration-fast) var(--ui-easing-standard);
+}
+:root[data-skin="spectrum"] .tag-search--header .tag-search-field:hover {
+  background: var(--ui-color-surface-raised);
+}
+:root[data-skin="spectrum"] .tag-search--header .tag-search-field:focus-within {
+  border-color: var(--ui-color-focus-ring);
+  background: var(--ui-color-input-bg);
+}
+:root[data-skin="spectrum"] .tag-search--header .tag-search-field .ui-input {
+  min-height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--ui-radius-pill);
+  background: transparent;
+}
+:root[data-skin="spectrum"] .tag-search--header .tag-search-submit {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--ui-radius-pill);
+}
+:root[data-skin="spectrum"] .tag-search--header .tag-suggestions {
+  margin-top: 6px;
+  padding: var(--ui-space-3);
+  border-color: transparent;
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-3);
+}
+
+/* ---- sliders / progress ----------------------------------------------------- */
+
+:root[data-skin="spectrum"] .ui-slider::-webkit-slider-thumb {
+  box-sizing: border-box;
+}
+:root[data-skin="spectrum"] .ui-slider::-moz-range-thumb {
+  box-sizing: border-box;
+}
+:root[data-skin="spectrum"] .ui-progress,
+:root[data-skin="spectrum"] .ui-progress::-webkit-progress-value {
+  border-radius: 4px;
+}
+
+/* ---- cards, masonry gallery, chips, badges --------------------------------- */
+
+:root[data-skin="spectrum"] .ui-media-grid {
+  display: block;
+  columns: var(--ui-grid-min);
+  column-gap: var(--ui-grid-gap);
+}
+:root[data-skin="spectrum"] .ui-media-grid > * {
+  break-inside: avoid;
+  margin: 0 0 var(--ui-space-7);
+}
+
+:root[data-skin="spectrum"] .ui-card {
+  border-color: transparent;
+}
+:root[data-skin="spectrum"] .ui-card--borderless {
+  padding: 0;
+  border-radius: 0;
+}
+:root[data-skin="spectrum"] .ui-card--borderless:hover {
+  background-color: transparent;
+}
+:root[data-skin="spectrum"] .ui-card--borderless .ui-card-media {
+  transition:
+    transform var(--ui-duration-normal) var(--ui-easing-standard),
+    box-shadow var(--ui-duration-normal) var(--ui-easing-standard);
+}
+:root[data-skin="spectrum"] .ui-card--borderless:hover .ui-card-media {
+  transform: translateY(-2px);
+  box-shadow: var(--ui-shadow-3);
+}
+:root[data-skin="spectrum"] .ui-card--borderless .ui-card-body {
+  padding: 10px 2px 0;
+}
+:root[data-skin="spectrum"] .ui-card-title {
+  font-weight: var(--ui-font-weight-bold);
+}
+:root[data-skin="spectrum"] .ui-card-meta {
+  font-size: var(--ui-font-size-xs);
+}
+
+:root[data-skin="spectrum"] .ui-chip {
+  padding: 1px 8px;
+  border-color: transparent;
+  color: var(--ui-color-text);
+  font-size: var(--ui-font-size-xs);
+}
+:root[data-skin="spectrum"] .ui-chip--suggest {
+  border: 1px dashed var(--ui-color-border-strong);
+  background-color: transparent;
+}
+
+:root[data-skin="spectrum"] .ui-badge {
+  border-color: transparent;
+  border-radius: var(--ui-radius-sm);
+  color: var(--ui-color-text);
+  font-weight: var(--ui-font-weight-bold);
+}
+:root[data-skin="spectrum"] .ui-badge--primary {
+  color: var(--ui-color-link);
+}
+:root[data-skin="spectrum"] :is(.ui-badge--primary, .ui-badge--info, .ui-badge--success, .ui-badge--warning, .ui-badge--danger) {
+  border-color: transparent;
+  background: color-mix(in srgb, currentColor 13%, var(--ui-color-surface));
+}
+
+/* ---- feedback & panels ------------------------------------------------------ */
+
+:root[data-skin="spectrum"] .ui-alert {
+  border-width: 2px;
+  border-radius: var(--ui-radius-md);
+}
+:root[data-skin="spectrum"] .ui-alert--info {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ui-color-info) 40%, transparent);
+  background: var(--ui-color-info-container);
+}
+:root[data-skin="spectrum"] .ui-empty {
+  border: 2px dashed var(--sp-field-border);
+  background: var(--ui-color-surface);
+}
+:root[data-skin="spectrum"] .ui-empty-title {
+  font-weight: var(--ui-font-weight-bold);
+}
+
+:root[data-skin="spectrum"] .ui-panel {
+  border-color: var(--ui-color-border);
+  box-shadow: var(--ui-shadow-1);
+}
+:root[data-skin="spectrum"] .ui-panel--inset {
+  border-color: transparent;
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-color-surface-sunken);
+  box-shadow: none;
+}
+
+/* ---- app surfaces ----------------------------------------------------------- */
+
+:root[data-skin="spectrum"] .stage {
+  border-color: transparent;
+}
+:root[data-skin="spectrum"] .timeline,
+:root[data-skin="spectrum"] .stats div {
+  border-color: var(--ui-color-border);
+}
+:root[data-skin="spectrum"] .thumb {
+  border-radius: var(--ui-radius-md);
+}
+:root[data-skin="spectrum"] .thumb canvas {
+  border-radius: 6px;
+}
+:root[data-skin="spectrum"] .hot-row {
+  gap: var(--ui-space-5);
+}
+:root[data-skin="spectrum"] .hot-card img,
+:root[data-skin="spectrum"] .hot-card video {
+  transition:
+    transform var(--ui-duration-normal) var(--ui-easing-standard),
+    box-shadow var(--ui-duration-normal) var(--ui-easing-standard);
+}
+:root[data-skin="spectrum"] .hot-card:hover img,
+:root[data-skin="spectrum"] .hot-card:hover video {
+  transform: translateY(-2px);
+  box-shadow: var(--ui-shadow-2);
+}
+:root[data-skin="spectrum"] .variation {
+  border: none;
+  border-radius: var(--ui-radius-md);
+}
+:root[data-skin="spectrum"] .tag-page.team .tag-head {
+  border-left: none;
+  border-radius: var(--ui-radius-lg);
+}
+
+/* ---- narrow ----------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  :root[data-skin="spectrum"] .ui-header {
+    padding: var(--ui-space-3) var(--ui-space-5);
+  }
+  :root[data-skin="spectrum"] .ui-shell {
+    gap: var(--ui-space-4);
+    padding: var(--ui-space-4) var(--ui-space-3) var(--ui-space-5);
+  }
+  :root[data-skin="spectrum"] .ui-main {
+    min-height: 0;
+    padding: var(--ui-space-6) var(--ui-space-5);
+  }
+  :root[data-skin="spectrum"] .ui-sidebar-heading {
+    margin: 0 var(--ui-space-3) 0 var(--ui-space-3);
+  }
+  :root[data-skin="spectrum"] .ui-segmented--sm .ui-segmented-option {
+    padding: 0 9px;
+  }
+}

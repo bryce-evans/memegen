@@ -1,0 +1,139 @@
+/*
+ * Design tokens. `:root` is the default skin (dark, yellow accent); `skins/*.css` override these under
+ * `:root[data-skin="<id>"]`. Components and app styles read only these custom properties.
+ */
+:root {
+  color-scheme: dark;
+
+  /* ---- color roles ---- */
+  --ui-color-bg: #0f1115;
+  --ui-color-surface: #181b22;
+  --ui-color-surface-raised: #20242d;
+  --ui-color-surface-sunken: #0b0d10;
+  --ui-color-text: #e7e9ee;
+  --ui-color-text-muted: #8b93a3;
+  --ui-color-primary: #ffcc33;
+  --ui-color-primary-hover: #ffd75c;
+  --ui-color-on-primary: #1a1400;
+  /* Tonal (selected/secondary-emphasis) fill and its text. */
+  --ui-color-tonal: #2a2f3a;
+  --ui-color-on-tonal: #e7e9ee;
+  --ui-color-danger: #ff5c5c;
+  --ui-color-on-danger: #1a0000;
+  --ui-color-danger-container: rgb(255 92 92 / 0.1);
+  --ui-color-on-danger-container: #ffc9c9;
+  --ui-color-success: #6be3b0;
+  --ui-color-warning: #ff8a3d;
+  --ui-color-info: #7a8cff;
+  --ui-color-info-container: rgb(122 140 255 / 0.1);
+  --ui-color-border: #2c313c;
+  --ui-color-border-strong: #8b93a3;
+  --ui-color-separator: #2c313c;
+  --ui-color-focus-ring: #ffcc33;
+  --ui-color-link: #ffcc33;
+  --ui-color-overlay: rgb(0 0 0 / 0.6);
+  /* Hover/press state layers, painted over any fill. */
+  --ui-state-hover: rgb(255 255 255 / 0.04);
+  --ui-state-press: rgb(255 255 255 / 0.08);
+  --ui-color-header-bg: rgb(15 17 21 / 0.92);
+  --ui-header-backdrop: blur(8px);
+  --ui-color-sidebar-bg: transparent;
+  --ui-color-input-bg: #0f1115;
+  /* Letterbox behind media (images/videos/canvas). */
+  --ui-color-media-bg: #000;
+  /* Two tones of the transparency checkerboard behind the editor stage. */
+  --ui-color-checker-a: #1b1e25;
+  --ui-color-checker-b: #15171d;
+
+  /* ---- typography ---- */
+  --ui-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ui-font-family-display: var(--ui-font-family);
+  --ui-font-size-xs: 0.75rem;
+  --ui-font-size-sm: 0.85rem;
+  --ui-font-size-md: 15px;
+  --ui-font-size-lg: 1.05rem;
+  --ui-font-size-xl: 1.4rem;
+  --ui-font-size-2xl: 1.8rem;
+  --ui-line-height: 1.45;
+  --ui-font-weight-regular: 400;
+  --ui-font-weight-medium: 500;
+  --ui-font-weight-semibold: 600;
+  --ui-font-weight-bold: 700;
+  --ui-font-weight-heading: 700;
+  --ui-font-weight-button: 400;
+  --ui-font-weight-brand: 800;
+  --ui-letter-spacing-heading: -0.01em;
+  /* Small uppercase section labels in the sidebar. */
+  --ui-label-transform: uppercase;
+  --ui-label-tracking: 0.08em;
+  --ui-label-size: 0.72rem;
+
+  /* ---- shape ---- */
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 8px;
+  --ui-radius-lg: 10px;
+  --ui-radius-xl: 14px;
+  --ui-radius-pill: 999px;
+  --ui-radius-control: var(--ui-radius-md);
+  --ui-radius-field: var(--ui-radius-md);
+  --ui-radius-card: var(--ui-radius-lg);
+  --ui-radius-media: var(--ui-radius-lg);
+  --ui-radius-chip: var(--ui-radius-pill);
+  --ui-border-width: 1px;
+
+  /* ---- spacing ---- */
+  --ui-space-1: 0.125rem;
+  --ui-space-2: 0.25rem;
+  --ui-space-3: 0.5rem;
+  --ui-space-4: 0.75rem;
+  --ui-space-5: 1rem;
+  --ui-space-6: 1.25rem;
+  --ui-space-7: 1.5rem;
+  --ui-space-8: 2rem;
+
+  /* ---- elevation ---- */
+  --ui-shadow-1: none;
+  --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.4);
+  --ui-shadow-3: 0 12px 32px rgb(0 0 0 / 0.5);
+  --ui-shadow-header: none;
+
+  /* ---- controls ---- */
+  --ui-control-height-sm: 1.8rem;
+  --ui-control-height-md: 2.4rem;
+  --ui-control-padding-x: 0.8rem;
+  --ui-slider-track-height: 4px;
+  --ui-slider-track-color: #2c313c;
+  --ui-slider-thumb-size: 14px;
+  --ui-slider-thumb-color: #ffcc33;
+  --ui-slider-thumb-border: none;
+  --ui-slider-thumb-shadow: none;
+  --ui-progress-height: 6px;
+  --ui-focus-ring-width: 2px;
+  --ui-focus-ring-offset: 2px;
+  --ui-icon-size: 1.15em;
+  --ui-icon-stroke: 2;
+  /* Nav items show their icons (`inline-flex`) or not (`none`). */
+  --ui-nav-icon-display: none;
+
+  /* ---- layout ---- */
+  --ui-sidebar-width: 200px;
+  --ui-content-max-width: 1600px;
+  --ui-header-height: 3.6rem;
+  --ui-grid-min: 240px;
+  --ui-grid-gap: 1.5rem 1.25rem;
+
+  /* ---- motion ---- */
+  --ui-duration-fast: 120ms;
+  --ui-duration-normal: 200ms;
+  --ui-duration-slow: 320ms;
+  --ui-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ui-easing-emphasized: cubic-bezier(0.3, 0, 0, 1.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ui-duration-fast: 0ms;
+    --ui-duration-normal: 0ms;
+    --ui-duration-slow: 0ms;
+  }
+}

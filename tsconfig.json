@@ -25,5 +25,8 @@
     "scripts",
     "e2e",
     "playwright.config.ts"
+  ],
+  "exclude": [
+    "packages/ui"
   ]
 }

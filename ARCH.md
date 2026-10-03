@@ -6,6 +6,7 @@ Online meme generator: upload media, overlay (optionally animated) text, publish
 
 ```
 apps/web            React + Vite SPA: editor, templates, gallery, profiles      (component 3 + 4 UI)
+packages/ui         Skinnable React components + design tokens (default/apple/material/google/spectrum)
 packages/render     Browser render engine: decode → composite → encode (TS)   (component 2)
 packages/shared     Types, zod schemas, upload limits, animation + text layout (used everywhere)
 packages/server-kit Node server plumbing: config, Postgres, migrations, auth, http helpers
@@ -21,6 +22,7 @@ flowchart LR
   subgraph Browser
     web[apps/web] --> render[packages/render]
     web --> shared[packages/shared]
+    web --> ui[packages/ui]
     render --> shared
   end
   web -- /storage --> storage[services/storage :4001]
@@ -107,6 +109,14 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - No passwords yet. `POST /api/session {username}` finds or creates the user; the client sends `X-User-Id` on requests.
 - Behind an `AuthProvider` interface (`packages/server-kit/src/auth.ts`); a real provider (OAuth/session) replaces `HeaderAuthProvider` without touching route code.
 - **Not secure**: anyone can act as anyone. Fine for local development only.
+
+### UI skins (`packages/ui`)
+- All web UI goes through `@memegen/ui`: typed React components that extend native element props and render native controls (`<select>`, `<input type=file|range|color>`), so platform behavior, a11y and automation work identically in every skin.
+- A skin is `data-skin="<id>"` on `<html>` plus CSS: `tokens.css` holds the default (dark) token set on `:root`; `skins/<id>.css` overrides tokens and adds component tweaks under `:root[data-skin="<id>"]`. Components and `apps/web/src/styles.css` read only tokens (no hard-coded colors).
+- Built-ins: `default`, `apple` (HIG), `material` (M3), `google` (2012 internal Memegen / Kennedy), `spectrum` (Spectrum 2 / Firefly). Light-first skins follow `prefers-color-scheme`.
+- Choice: `?skin=` → `localStorage["memegen.skin"]` → `default`; `SkinProvider` persists changes and the header's `skin-select` switches.
+- Skins can replace any component (`Skin.components`, typed by `ComponentOverrides`) and give layout hints (`Skin.layout`: tag search in sidebar or header, sort/period in sidebar or beside the title, a primary "Create meme" button atop the sidebar). Hints move controls; they never duplicate them, so test ids stay unique.
+- Trade-off: hints mean the app branches on skin in a few places; in exchange CSS-only skins can still look structurally like their design systems.
 
 ### Testing
 - `node --test` (`bun run test`): pure logic in `packages/shared` (interpolation, limits, fit-to-box layout) plus storage/API behavior through `app.request()` against a fresh `memegen_test` schema (caps, ranges, stats, hierarchy, visibility, votes, usage, tags).

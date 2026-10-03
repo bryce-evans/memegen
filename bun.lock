@@ -60,6 +60,18 @@
         "zod": "^4.1.0",
       },
     },
+    "packages/ui": {
+      "name": "@memegen/ui",
+      "devDependencies": {
+        "@types/react": "^19.2.18",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+      },
+      "peerDependencies": {
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+      },
+    },
     "services/api": {
       "name": "@memegen/api",
       "dependencies": {
@@ -136,6 +148,8 @@
     "@memegen/shared": ["@memegen/shared@workspace:packages/shared"],
 
     "@memegen/storage": ["@memegen/storage@workspace:services/storage"],
+
+    "@memegen/ui": ["@memegen/ui@workspace:packages/ui"],
 
     "@memegen/web": ["@memegen/web@workspace:apps/web"],
 

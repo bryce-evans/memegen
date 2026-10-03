@@ -1,0 +1,791 @@
+/*
+ * google skin: Google's internal Memegen circa 2012 (Google Apps "Kennedy" look).
+ * White canvas, Arial 13px, red page titles, gray-gradient "jfk-button"s, blue action buttons,
+ * red "CREATE" button, pale-yellow notices. Light only.
+ */
+
+:root[data-skin="google"] {
+  color-scheme: light;
+
+  /* ---- color roles ---- */
+  --ui-color-bg: #fff;
+  --ui-color-surface: #fff;
+  --ui-color-surface-raised: #f5f5f5;
+  --ui-color-surface-sunken: #f1f1f1;
+  --ui-color-text: #222;
+  --ui-color-text-muted: #767676;
+  --ui-color-primary: #4d90fe;
+  --ui-color-primary-hover: #357ae8;
+  --ui-color-on-primary: #fff;
+  --ui-color-tonal: #eee;
+  --ui-color-on-tonal: #333;
+  --ui-color-danger: #dd4b39;
+  --ui-color-on-danger: #fff;
+  --ui-color-danger-container: #fce8e6;
+  --ui-color-on-danger-container: #222;
+  --ui-color-success: #188038;
+  --ui-color-warning: #b06000;
+  --ui-color-info: #15c;
+  --ui-color-info-container: #f9edbe;
+  --ui-color-border: #d9d9d9;
+  --ui-color-border-strong: #c6c6c6;
+  --ui-color-separator: #e5e5e5;
+  --ui-color-focus-ring: #4d90fe;
+  --ui-color-link: #15c;
+  --ui-color-overlay: rgb(255 255 255 / 0.75);
+  --ui-state-hover: #f5f5f5;
+  --ui-state-press: #eee;
+  --ui-color-header-bg: #fff;
+  --ui-header-backdrop: none;
+  --ui-color-sidebar-bg: transparent;
+  --ui-color-input-bg: #fff;
+  --ui-color-media-bg: #f1f1f1;
+  --ui-color-checker-a: #fff;
+  --ui-color-checker-b: #eee;
+
+  /* ---- typography ---- */
+  --ui-font-family: Arial, Helvetica, sans-serif;
+  --ui-font-family-display: Arial, Helvetica, sans-serif;
+  --ui-font-size-xs: 11px;
+  --ui-font-size-sm: 12px;
+  --ui-font-size-md: 13px;
+  --ui-font-size-lg: 15px;
+  --ui-font-size-xl: 20px;
+  --ui-font-size-2xl: 24px;
+  --ui-line-height: 1.4;
+  --ui-font-weight-regular: 400;
+  --ui-font-weight-medium: 700;
+  --ui-font-weight-semibold: 700;
+  --ui-font-weight-bold: 700;
+  --ui-font-weight-heading: 700;
+  --ui-font-weight-button: 700;
+  --ui-font-weight-brand: 400;
+  --ui-letter-spacing-heading: 0;
+  --ui-label-transform: uppercase;
+  --ui-label-tracking: 0;
+  --ui-label-size: 11px;
+
+  /* ---- shape ---- */
+  --ui-radius-sm: 2px;
+  --ui-radius-md: 2px;
+  --ui-radius-lg: 2px;
+  --ui-radius-xl: 2px;
+  --ui-radius-pill: 2px;
+  --ui-radius-control: 2px;
+  --ui-radius-field: 1px;
+  --ui-radius-card: 2px;
+  --ui-radius-media: 0;
+  --ui-radius-chip: 2px;
+  --ui-border-width: 1px;
+
+  /* ---- spacing (px: html font-size is 13px here) ---- */
+  --ui-space-1: 2px;
+  --ui-space-2: 4px;
+  --ui-space-3: 6px;
+  --ui-space-4: 10px;
+  --ui-space-5: 13px;
+  --ui-space-6: 16px;
+  --ui-space-7: 20px;
+  --ui-space-8: 28px;
+
+  /* ---- elevation ---- */
+  --ui-shadow-1: none;
+  --ui-shadow-2: 0 2px 4px rgb(0 0 0 / 0.2);
+  --ui-shadow-3: 0 4px 16px rgb(0 0 0 / 0.2);
+  --ui-shadow-header: none;
+
+  /* ---- controls ---- */
+  --ui-control-height-sm: 27px;
+  --ui-control-height-md: 29px;
+  --ui-control-padding-x: 8px;
+  --ui-slider-track-height: 4px;
+  --ui-slider-track-color: #e5e5e5;
+  --ui-slider-thumb-size: 13px;
+  --ui-slider-thumb-color: #f5f5f5;
+  --ui-slider-thumb-border: 1px solid #a0a0a0;
+  --ui-slider-thumb-shadow: 0 1px 1px rgb(0 0 0 / 0.1);
+  --ui-progress-height: 4px;
+  --ui-focus-ring-width: 1px;
+  --ui-focus-ring-offset: 1px;
+  --ui-icon-size: 14px;
+  --ui-icon-stroke: 2;
+  --ui-nav-icon-display: inline-flex;
+
+  /* ---- layout ---- */
+  --ui-sidebar-width: 170px;
+  --ui-content-max-width: 1600px;
+  --ui-header-height: 60px;
+  --ui-grid-min: 200px;
+  --ui-grid-gap: 16px 10px;
+
+  /* ---- motion: Kennedy was nearly instant ---- */
+  --ui-duration-fast: 80ms;
+  --ui-duration-normal: 130ms;
+  --ui-duration-slow: 218ms;
+  --ui-easing-standard: ease;
+  --ui-easing-emphasized: ease-out;
+}
+
+:root[data-skin="google"] body {
+  -webkit-font-smoothing: auto;
+}
+
+:root[data-skin="google"] :is(h1, h2, h3, h4) {
+  line-height: 1.25;
+}
+
+/* ---- top bar ------------------------------------------------------------------ */
+
+:root[data-skin="google"] .ui-header {
+  min-height: var(--ui-header-height);
+  padding: 0 var(--ui-space-6);
+  column-gap: var(--ui-space-7);
+  border-bottom-color: #ebebeb;
+}
+:root[data-skin="google"] .ui-header-brand {
+  min-width: var(--ui-sidebar-width);
+}
+:root[data-skin="google"] .ui-header-center {
+  max-width: 600px;
+}
+:root[data-skin="google"] .ui-header-actions {
+  gap: var(--ui-space-4);
+  color: #444;
+}
+@media (max-width: 760px) {
+  :root[data-skin="google"] .ui-header {
+    padding: var(--ui-space-3) var(--ui-space-5);
+  }
+  :root[data-skin="google"] .ui-header-brand {
+    min-width: 0;
+  }
+  :root[data-skin="google"] .ui-sidebar .ui-sidebar-heading,
+  :root[data-skin="google"] .ui-sidebar .sidebar-action {
+    margin-left: 0;
+  }
+  :root[data-skin="google"] .ui-sidebar .ui-nav-item {
+    padding: 3px 8px 3px 0;
+  }
+}
+
+:root[data-skin="google"] .ui-wordmark {
+  font-family: Catull, Georgia, "Times New Roman", serif;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+:root[data-skin="google"] .ui-wordmark-letter:first-child {
+  text-transform: uppercase;
+}
+:root[data-skin="google"] .ui-wordmark-letter:nth-child(1) {
+  color: #4285f4;
+}
+:root[data-skin="google"] .ui-wordmark-letter:nth-child(2) {
+  color: #ea4335;
+}
+:root[data-skin="google"] .ui-wordmark-letter:nth-child(3) {
+  color: #fbbc05;
+}
+:root[data-skin="google"] .ui-wordmark-letter:nth-child(4) {
+  color: #4285f4;
+}
+:root[data-skin="google"] .ui-wordmark-letter:nth-child(5) {
+  color: #34a853;
+}
+:root[data-skin="google"] .ui-wordmark-letter:nth-child(6) {
+  color: #ea4335;
+}
+:root[data-skin="google"] .ui-wordmark-letter:nth-child(7) {
+  color: #4285f4;
+}
+
+/* Header search: light field + solid blue search button. */
+:root[data-skin="google"] .tag-search--header .tag-search-field .ui-input {
+  min-height: 29px;
+}
+:root[data-skin="google"] .tag-search--header .tag-search-submit {
+  min-width: 40px;
+  min-height: 29px;
+  margin-left: -1px;
+  border-radius: 0 2px 2px 0;
+}
+:root[data-skin="google"] .tag-search--header .tag-search-submit .ui-icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.5;
+}
+:root[data-skin="google"] .tag-search--header .tag-suggestions {
+  margin-top: -1px;
+  padding: var(--ui-space-2) 0;
+  border-color: #ccc;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+}
+:root[data-skin="google"] .tag-search--header .tag-suggestions .ui-nav-item {
+  padding: 4px 10px;
+}
+:root[data-skin="google"] .tag-search--header .tag-suggestions .ui-nav-item:hover {
+  background: #eee;
+}
+
+/* ---- left rail -------------------------------------------------------------- */
+
+:root[data-skin="google"] .ui-sidebar {
+  gap: var(--ui-space-6);
+}
+:root[data-skin="google"] .ui-sidebar-heading {
+  margin: 0 0 var(--ui-space-2) 8px;
+  font-weight: 700;
+  color: var(--ui-color-text-muted);
+}
+:root[data-skin="google"] .ui-nav-list {
+  gap: 0;
+}
+:root[data-skin="google"] .ui-nav-item {
+  gap: 8px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 0;
+  color: #222;
+}
+:root[data-skin="google"] .ui-nav-item:hover {
+  color: #222;
+  background-color: transparent;
+}
+:root[data-skin="google"] .ui-nav-item:hover .ui-nav-item-label {
+  text-decoration: underline;
+}
+:root[data-skin="google"] .ui-nav-item.is-active,
+:root[data-skin="google"] .ui-nav-item[aria-current="page"] {
+  color: #dd4b39;
+  background-color: transparent;
+  box-shadow: none;
+  font-weight: 700;
+}
+:root[data-skin="google"] .ui-nav-item-icon {
+  color: #777;
+}
+:root[data-skin="google"] .ui-nav-item-icon .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+:root[data-skin="google"] :is(.ui-nav-item.is-active, .ui-nav-item[aria-current="page"]) .ui-nav-item-icon {
+  color: #dd4b39;
+}
+:root[data-skin="google"] .ui-nav-item-trailing {
+  font-size: 11px;
+}
+:root[data-skin="google"] .tag-item.team,
+:root[data-skin="google"] .tag-item.team .ui-nav-item-trailing {
+  color: var(--ui-color-success);
+}
+
+/* ---- page headers --------------------------------------------------------- */
+
+:root[data-skin="google"] .ui-page-header--page {
+  justify-content: flex-start;
+  column-gap: 28px;
+  min-height: 29px;
+  margin-bottom: var(--ui-space-6);
+}
+:root[data-skin="google"] .ui-page-title,
+:root[data-skin="google"] .detail-title {
+  color: #dd4b39;
+  font-size: 20px;
+  font-weight: 400;
+}
+:root[data-skin="google"] .ui-page-header--section .ui-page-title {
+  color: #222;
+  font-size: 15px;
+  font-weight: 700;
+}
+:root[data-skin="google"] .tag-name {
+  color: var(--ui-color-text-muted);
+}
+
+/* ---- jfk-buttons ------------------------------------------------------------ */
+
+:root[data-skin="google"] .ui-button {
+  --g-top: #f5f5f5;
+  --g-bot: #f1f1f1;
+  --g-border: #dcdcdc;
+  --g-text: #444;
+  --g-hover-top: #f8f8f8;
+  --g-hover-bot: #f1f1f1;
+  --g-hover-border: #c6c6c6;
+  --g-hover-text: #222;
+  --g-press-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
+  min-height: var(--ui-control-height-md);
+  min-width: 54px;
+  padding: 0 8px;
+  border-color: var(--g-border);
+  border-radius: 2px;
+  background: linear-gradient(var(--g-top), var(--g-bot));
+  color: var(--g-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 27px;
+  box-shadow: none;
+}
+:root[data-skin="google"] .ui-button:hover:not(:disabled, .is-disabled) {
+  border-color: var(--g-hover-border);
+  background-image: linear-gradient(var(--g-hover-top), var(--g-hover-bot));
+  color: var(--g-hover-text);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.1);
+}
+:root[data-skin="google"] .ui-button:active:not(:disabled, .is-disabled) {
+  box-shadow: var(--g-press-shadow);
+}
+:root[data-skin="google"] .ui-button:focus-visible {
+  border-color: #4d90fe;
+  outline-offset: 1px;
+}
+:root[data-skin="google"] .ui-button--sm {
+  min-height: var(--ui-control-height-sm);
+  min-width: 0;
+  line-height: 25px;
+}
+:root[data-skin="google"] .ui-icon-button {
+  min-width: var(--ui-control-height-md);
+  padding: 0 6px;
+}
+:root[data-skin="google"] .ui-icon-button.ui-button--sm {
+  min-width: var(--ui-control-height-sm);
+}
+/* jfk-button-action */
+:root[data-skin="google"] .ui-button--primary {
+  --g-top: #4d90fe;
+  --g-bot: #4787ed;
+  --g-border: #3079ed;
+  --g-text: #fff;
+  --g-hover-top: #4d90fe;
+  --g-hover-bot: #357ae8;
+  --g-hover-border: #2f5bb7;
+  --g-hover-text: #fff;
+  --g-press-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+}
+/* jfk red (also the "CREATE" button) */
+:root[data-skin="google"] .ui-button--danger,
+:root[data-skin="google"] .sidebar-action {
+  --g-top: #dd4b39;
+  --g-bot: #d14836;
+  --g-border: #c53727;
+  --g-text: #fff;
+  --g-hover-top: #dd4b39;
+  --g-hover-bot: #c53727;
+  --g-hover-border: #b0281a;
+  --g-hover-text: #fff;
+  --g-press-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+}
+:root[data-skin="google"] .ui-button--quiet {
+  --g-top: transparent;
+  --g-bot: transparent;
+  --g-border: transparent;
+}
+:root[data-skin="google"] .ui-button[aria-pressed="true"] {
+  --g-top: #eee;
+  --g-bot: #e0e0e0;
+  --g-border: #ccc;
+  --g-text: #333;
+  --g-hover-top: #eee;
+  --g-hover-bot: #e0e0e0;
+  --g-hover-border: #c6c6c6;
+  --g-hover-text: #222;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
+}
+
+:root[data-skin="google"] .sidebar-action {
+  min-width: 72px;
+  min-height: 29px;
+  padding: 0 16px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  text-shadow: none;
+  letter-spacing: 0;
+}
+:root[data-skin="google"] .sidebar-action .ui-button-icon {
+  display: none;
+}
+
+/* Votes: compact gray mini jfk-buttons; pressed state keeps the vote colors. */
+:root[data-skin="google"] .votes {
+  gap: 4px;
+}
+:root[data-skin="google"] .vote {
+  min-height: 21px;
+  min-width: 0;
+  padding: 0 6px;
+  border-radius: 2px;
+  font-size: 11px;
+  line-height: 19px;
+}
+:root[data-skin="google"] .vote .ui-icon {
+  width: 11px;
+  height: 11px;
+}
+:root[data-skin="google"] .vote-up[aria-pressed="true"] {
+  --g-top: #fdf3e5;
+  --g-bot: #f8e6cc;
+  --g-border: var(--ui-color-warning);
+  --g-text: var(--ui-color-warning);
+  --g-hover-top: #fdf3e5;
+  --g-hover-bot: #f5dcb8;
+  --g-hover-border: var(--ui-color-warning);
+  --g-hover-text: var(--ui-color-warning);
+}
+:root[data-skin="google"] .vote-down[aria-pressed="true"] {
+  --g-top: #eaf1fd;
+  --g-bot: #d9e6fb;
+  --g-border: var(--ui-color-info);
+  --g-text: var(--ui-color-info);
+  --g-hover-top: #eaf1fd;
+  --g-hover-bot: #cfdffa;
+  --g-hover-border: var(--ui-color-info);
+  --g-hover-text: var(--ui-color-info);
+}
+:root[data-skin="google"] .score {
+  font-size: 11px;
+  color: var(--ui-color-text-muted);
+}
+
+/* ---- joined jfk segmented buttons -------------------------------------------- */
+
+:root[data-skin="google"] .ui-segmented {
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+:root[data-skin="google"] .ui-segmented-option {
+  position: relative;
+  min-height: var(--ui-control-height-sm);
+  min-width: 54px;
+  margin-left: -1px;
+  padding: 0 8px;
+  border: 1px solid #dcdcdc;
+  border-radius: 0;
+  background: linear-gradient(#f5f5f5, #f1f1f1);
+  color: #444;
+  font-size: 11px;
+  font-weight: 700;
+}
+:root[data-skin="google"] .ui-segmented-option:first-child {
+  margin-left: 0;
+  border-radius: 2px 0 0 2px;
+}
+:root[data-skin="google"] .ui-segmented-option:last-child {
+  border-radius: 0 2px 2px 0;
+}
+:root[data-skin="google"] .ui-segmented-option:only-child {
+  border-radius: 2px;
+}
+:root[data-skin="google"] .ui-segmented-option:hover:not(:disabled) {
+  z-index: 1;
+  border-color: #c6c6c6;
+  background: linear-gradient(#f8f8f8, #f1f1f1);
+  color: #222;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.1);
+}
+:root[data-skin="google"] .ui-segmented-option[aria-pressed="true"],
+:root[data-skin="google"] .ui-segmented-option[aria-pressed="true"]:hover:not(:disabled) {
+  z-index: 2;
+  border-color: #c6c6c6;
+  background: linear-gradient(#eee, #e0e0e0);
+  color: #333;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
+}
+:root[data-skin="google"] .ui-segmented-option:focus-visible {
+  z-index: 3;
+  border-color: #4d90fe;
+}
+:root[data-skin="google"] .ui-segmented--sm .ui-segmented-option {
+  min-height: var(--ui-control-height-sm);
+  padding: 0 8px;
+  font-size: 11px;
+}
+/* Vertical: plain rail list like the nav. */
+:root[data-skin="google"] .ui-segmented--vertical {
+  gap: 0;
+}
+:root[data-skin="google"] .ui-segmented--vertical .ui-segmented-option,
+:root[data-skin="google"] .ui-segmented--vertical .ui-segmented-option:hover:not(:disabled) {
+  min-height: 24px;
+  margin: 0;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #222;
+  font-size: 13px;
+  font-weight: 400;
+}
+:root[data-skin="google"] .ui-segmented--vertical .ui-segmented-option:hover:not(:disabled) {
+  text-decoration: underline;
+}
+:root[data-skin="google"] .ui-segmented--vertical .ui-segmented-option[aria-pressed="true"] {
+  background: transparent;
+  box-shadow: none;
+  color: #dd4b39;
+  font-weight: 700;
+}
+
+/* ---- fields ------------------------------------------------------------------ */
+
+:root[data-skin="google"] .ui-field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #444;
+}
+:root[data-skin="google"] .ui-input,
+:root[data-skin="google"] .ui-color {
+  min-height: var(--ui-control-height-md);
+  padding: 0 8px;
+  border: 1px solid #d9d9d9;
+  border-top-color: #c0c0c0;
+  border-radius: 1px;
+  background-color: #fff;
+}
+:root[data-skin="google"] .ui-color {
+  padding: 0;
+}
+:root[data-skin="google"] .ui-input:hover:not(:disabled, :focus),
+:root[data-skin="google"] .ui-color:hover {
+  border-color: #b9b9b9;
+  border-top-color: #a0a0a0;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
+}
+:root[data-skin="google"] .ui-input:focus {
+  outline: none;
+  border-color: #4d90fe;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+}
+:root[data-skin="google"] .ui-input[aria-invalid="true"] {
+  border-color: #dd4b39;
+}
+:root[data-skin="google"] .ui-input--sm {
+  min-height: var(--ui-control-height-sm);
+  font-size: 13px;
+}
+:root[data-skin="google"] .ui-textarea {
+  min-height: 4.5rem;
+  padding: 4px 8px;
+}
+
+/* Selects: jfk gray buttons with a small triangle. */
+:root[data-skin="google"] .ui-select-control {
+  min-height: var(--ui-control-height-sm);
+  padding: 0 24px 0 8px;
+  border: 1px solid #dcdcdc;
+  border-radius: 2px;
+  background: linear-gradient(#f5f5f5, #f1f1f1);
+  color: #444;
+  font-size: 11px;
+  font-weight: 700;
+}
+:root[data-skin="google"] .ui-select-control:hover:not(:disabled, :focus) {
+  border-color: #c6c6c6;
+  background: linear-gradient(#f8f8f8, #f1f1f1);
+  color: #222;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.1);
+}
+:root[data-skin="google"] .ui-select-control:focus {
+  outline: none;
+  border-color: #4d90fe;
+}
+:root[data-skin="google"] .ui-select::after {
+  right: 9px;
+  width: 7px;
+  height: 4px;
+  margin-top: -2px;
+  background: #777;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 4'%3E%3Cpath d='M0 0h7L3.5 4z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+:root[data-skin="google"] .ui-select--sm .ui-select-control {
+  font-size: 11px;
+}
+
+:root[data-skin="google"] .ui-slider::-webkit-slider-runnable-track {
+  border-radius: 0;
+}
+:root[data-skin="google"] .ui-slider::-moz-range-track,
+:root[data-skin="google"] .ui-slider::-moz-range-progress {
+  border-radius: 0;
+}
+
+/* ---- grid, cards, chips, badges -------------------------------------------- */
+
+:root[data-skin="google"] .ui-card {
+  border-color: #e5e5e5;
+}
+:root[data-skin="google"] .ui-card--borderless,
+:root[data-skin="google"] .ui-card--borderless:hover {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+}
+:root[data-skin="google"] .ui-card--borderless .ui-card-body {
+  padding: 5px 0 0;
+}
+:root[data-skin="google"] .ui-card-body {
+  padding: 8px;
+}
+:root[data-skin="google"] .ui-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #222;
+}
+:root[data-skin="google"] .ui-card-meta {
+  font-size: 11px;
+  color: var(--ui-color-text-muted);
+}
+:root[data-skin="google"] .ui-card-meta a:hover {
+  color: #15c;
+}
+:root[data-skin="google"] .ui-card-actions {
+  gap: 4px;
+  margin: 6px 0 2px;
+}
+
+:root[data-skin="google"] .ui-chip-group {
+  gap: 3px;
+  margin: 4px 0;
+}
+:root[data-skin="google"] .ui-chip {
+  padding: 0 5px;
+  border-color: #ddd;
+  border-radius: 2px;
+  background-color: #eee;
+  color: #555;
+  font-size: 11px;
+  line-height: 16px;
+}
+:root[data-skin="google"] :is(a, button).ui-chip:hover:not(:disabled) {
+  border-color: #ccc;
+  background-color: #ddd;
+  background-image: none;
+  color: #222;
+}
+:root[data-skin="google"] .ui-chip--suggest {
+  border-color: #ccc;
+  background-color: #fff;
+  color: #15c;
+}
+:root[data-skin="google"] .ui-chip--removable {
+  color: #222;
+}
+:root[data-skin="google"] .ui-chip-remove {
+  border-radius: 0;
+}
+:root[data-skin="google"] .ui-chip-remove:hover:not(:disabled) {
+  background: #ccc;
+}
+
+:root[data-skin="google"] .ui-badge {
+  padding: 0 4px;
+  border-color: #ddd;
+  border-radius: 2px;
+  background: #eee;
+  color: #555;
+  font-size: 11px;
+  font-weight: 400;
+}
+:root[data-skin="google"] :is(.ui-badge--primary, .ui-badge--info, .ui-badge--success, .ui-badge--warning, .ui-badge--danger) {
+  background: #fff;
+}
+:root[data-skin="google"] .ui-badge--primary {
+  color: #15c;
+}
+:root[data-skin="google"] .ui-badge--danger {
+  color: #c53727;
+}
+
+/* ---- feedback --------------------------------------------------------------- */
+
+:root[data-skin="google"] .ui-progress,
+:root[data-skin="google"] .ui-progress::-webkit-progress-bar {
+  border-radius: 0;
+  background-color: #e5e5e5;
+}
+:root[data-skin="google"] .ui-progress::-webkit-progress-value,
+:root[data-skin="google"] .ui-progress::-moz-progress-bar {
+  border-radius: 0;
+  background: #4d90fe;
+}
+
+/* Kennedy notices: small pale-yellow (info) / pale-red (error) boxes. */
+:root[data-skin="google"] .ui-alert {
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px 12px;
+  border-radius: 2px;
+  color: #222;
+}
+:root[data-skin="google"] .ui-alert--info {
+  border: 1px solid #f0c36d;
+  background: #f9edbe;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+}
+:root[data-skin="google"] .ui-alert--error {
+  border: 1px solid #e8a39b;
+  background: #fce8e6;
+  color: #222;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+}
+
+:root[data-skin="google"] .ui-spinner-icon {
+  border-width: 2px;
+}
+
+:root[data-skin="google"] .ui-empty {
+  border-color: #ccc;
+}
+
+/* ---- panels ----------------------------------------------------------------- */
+
+:root[data-skin="google"] .ui-panel {
+  padding: 12px;
+  border-color: #e5e5e5;
+  background: #fff;
+}
+:root[data-skin="google"] .ui-panel-title {
+  color: #222;
+  font-size: 14px;
+  font-weight: 700;
+}
+:root[data-skin="google"] .ui-panel--inset {
+  padding: 8px 10px;
+  background: #fafafa;
+}
+:root[data-skin="google"] .ui-panel--inset .ui-panel-title {
+  font-size: 13px;
+}
+
+/* ---- app surfaces ------------------------------------------------------------ */
+
+:root[data-skin="google"] .stage,
+:root[data-skin="google"] .timeline,
+:root[data-skin="google"] .stats div {
+  border-color: #e5e5e5;
+}
+:root[data-skin="google"] .transport {
+  background: #f5f5f5;
+  border-bottom-color: #e5e5e5;
+}
+:root[data-skin="google"] .handle.selected {
+  border-color: #4d90fe;
+}
+:root[data-skin="google"] .thumb.current {
+  border-color: #4d90fe;
+}
+:root[data-skin="google"] .keyframes li.current span {
+  color: #15c;
+}
+:root[data-skin="google"] .stats dd {
+  font-size: 20px;
+}
+:root[data-skin="google"] .sparkline {
+  background: #f5f5f5;
+}

@@ -1,0 +1,521 @@
+/*
+ * apple skin: Apple Human Interface Guidelines look (macOS / iOS on the web).
+ * System grays, SF type, systemBlue accent, translucent header, source-list sidebar, raised segmented thumbs.
+ * Blues/reds/greens/oranges used for text are the HIG "accessible" variants so text meets WCAG AA.
+ */
+
+:root[data-skin="apple"] {
+  color-scheme: light;
+
+  /* Skin-private roles. */
+  --apple-blue: #007aff;
+  --apple-fill: #e8e8ed; /* gray button / chip fill */
+  --apple-fill-track: rgb(118 118 128 / 0.12); /* segmented track, search field */
+  --apple-thumb: #ffffff; /* segmented selected thumb */
+  --apple-thumb-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 3px 1px rgb(0 0 0 / 0.04), 0 0 0 0.5px rgb(0 0 0 / 0.04);
+  --apple-selection: rgb(0 122 255 / 0.14); /* source-list selected row */
+  --apple-inset-bg: #f5f5f7; /* grouped content inside a white panel */
+  --apple-hairline: 0 0 0 0.5px rgb(0 0 0 / 0.06);
+
+  /* ---- color roles ---- */
+  --ui-color-bg: #f5f5f7;
+  --ui-color-surface: #ffffff;
+  --ui-color-surface-raised: #ffffff;
+  --ui-color-surface-sunken: #e8e8ed;
+  --ui-color-text: #1d1d1f;
+  --ui-color-text-muted: #6e6e73;
+  --ui-color-primary: #0071e3;
+  --ui-color-primary-hover: #0077ed;
+  --ui-color-on-primary: #ffffff;
+  --ui-color-tonal: rgb(0 122 255 / 0.12);
+  --ui-color-on-tonal: #0066cc;
+  --ui-color-danger: #d70015;
+  --ui-color-on-danger: #ffffff;
+  --ui-color-danger-container: rgb(255 59 48 / 0.1);
+  --ui-color-on-danger-container: #a3100f;
+  --ui-color-success: #248a3d;
+  --ui-color-warning: #c93400;
+  --ui-color-info: #5856d6;
+  --ui-color-info-container: rgb(88 86 214 / 0.08);
+  --ui-color-border: #d2d2d7;
+  --ui-color-border-strong: #86868b;
+  --ui-color-separator: rgb(60 60 67 / 0.29);
+  --ui-color-focus-ring: rgb(0 122 255 / 0.5);
+  --ui-color-link: #0066cc;
+  --ui-color-overlay: rgb(0 0 0 / 0.4);
+  --ui-state-hover: rgb(0 0 0 / 0.04);
+  --ui-state-press: rgb(0 0 0 / 0.08);
+  --ui-color-header-bg: rgb(255 255 255 / 0.72);
+  --ui-header-backdrop: saturate(180%) blur(20px);
+  --ui-color-sidebar-bg: transparent;
+  --ui-color-input-bg: #ffffff;
+  --ui-color-media-bg: #e8e8ed;
+  --ui-color-checker-a: #ffffff;
+  --ui-color-checker-b: #ececf0;
+
+  /* ---- typography ---- */
+  --ui-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --ui-font-family-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  --ui-font-size-xs: 12px;
+  --ui-font-size-sm: 13px;
+  --ui-font-size-md: 15px;
+  --ui-font-size-lg: 19px;
+  --ui-font-size-xl: 28px;
+  --ui-font-size-2xl: 30px;
+  --ui-line-height: 1.47;
+  --ui-font-weight-heading: 700;
+  --ui-font-weight-button: 400;
+  --ui-font-weight-brand: 600;
+  --ui-letter-spacing-heading: -0.022em;
+  --ui-label-transform: none;
+  --ui-label-tracking: 0;
+  --ui-label-size: 12px;
+
+  /* ---- shape ---- */
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 8px;
+  --ui-radius-lg: 12px;
+  --ui-radius-xl: 16px;
+  --ui-radius-control: 8px;
+  --ui-radius-field: 8px;
+  --ui-radius-card: 12px;
+  --ui-radius-media: 12px;
+  --ui-radius-chip: var(--ui-radius-pill);
+
+  /* ---- elevation ---- */
+  --ui-shadow-1: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
+  --ui-shadow-2: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 10px 30px rgb(0 0 0 / 0.14);
+  --ui-shadow-3: 0 0 0 0.5px rgb(0 0 0 / 0.1), 0 22px 70px rgb(0 0 0 / 0.22);
+  --ui-shadow-header: none;
+
+  /* ---- controls ---- */
+  --ui-control-height-sm: 28px;
+  --ui-control-height-md: 34px;
+  --ui-control-padding-x: 14px;
+  --ui-slider-track-height: 4px;
+  --ui-slider-track-color: rgb(120 120 128 / 0.2);
+  --ui-slider-thumb-size: 21px;
+  --ui-slider-thumb-color: #ffffff;
+  --ui-slider-thumb-border: 0.5px solid rgb(0 0 0 / 0.04);
+  --ui-slider-thumb-shadow: 0 3px 8px rgb(0 0 0 / 0.15), 0 3px 1px rgb(0 0 0 / 0.06);
+  --ui-progress-height: 4px;
+  --ui-focus-ring-width: 3px;
+  --ui-focus-ring-offset: 1px;
+  --ui-icon-size: 1.1em;
+  --ui-icon-stroke: 1.6;
+  --ui-nav-icon-display: inline-flex;
+
+  /* ---- layout ---- */
+  --ui-sidebar-width: 220px;
+  --ui-header-height: 52px;
+  --ui-grid-min: 240px;
+  --ui-grid-gap: 28px 22px;
+
+  /* ---- motion ---- */
+  --ui-duration-fast: 150ms;
+  --ui-duration-normal: 250ms;
+  --ui-duration-slow: 400ms;
+  --ui-easing-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ui-easing-emphasized: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="apple"] {
+    color-scheme: dark;
+
+    --apple-blue: #0a84ff;
+    --apple-fill: rgb(118 118 128 / 0.24);
+    --apple-fill-track: rgb(118 118 128 / 0.24);
+    --apple-thumb: #636366;
+    --apple-thumb-shadow: 0 3px 8px rgb(0 0 0 / 0.3), 0 3px 1px rgb(0 0 0 / 0.1);
+    --apple-selection: rgb(10 132 255 / 0.24);
+    --apple-inset-bg: #2c2c2e;
+    --apple-hairline: 0 0 0 0.5px rgb(255 255 255 / 0.08);
+
+    --ui-color-bg: #000000;
+    --ui-color-surface: #1c1c1e;
+    --ui-color-surface-raised: #2c2c2e;
+    --ui-color-surface-sunken: #000000;
+    --ui-color-text: #f5f5f7;
+    --ui-color-text-muted: #98989d;
+    --ui-color-primary: #0071e3;
+    --ui-color-primary-hover: #0a7bf0;
+    --ui-color-on-primary: #ffffff;
+    --ui-color-tonal: rgb(10 132 255 / 0.22);
+    --ui-color-on-tonal: #64b5ff;
+    --ui-color-danger: #ff453a;
+    --ui-color-on-danger: #ffffff;
+    --ui-color-danger-container: rgb(255 69 58 / 0.16);
+    --ui-color-on-danger-container: #ffa39e;
+    --ui-color-success: #30d158;
+    --ui-color-warning: #ff9f0a;
+    --ui-color-info: #7d7aff;
+    --ui-color-info-container: rgb(94 92 230 / 0.16);
+    --ui-color-border: #38383a;
+    --ui-color-border-strong: #636366;
+    --ui-color-separator: rgb(84 84 88 / 0.6);
+    --ui-color-focus-ring: rgb(10 132 255 / 0.6);
+    --ui-color-link: #2997ff;
+    --ui-color-overlay: rgb(0 0 0 / 0.6);
+    --ui-state-hover: rgb(255 255 255 / 0.06);
+    --ui-state-press: rgb(255 255 255 / 0.1);
+    --ui-color-header-bg: rgb(22 22 23 / 0.72);
+    --ui-color-input-bg: #1c1c1e;
+    --ui-color-media-bg: #1c1c1e;
+    --ui-color-checker-a: #1c1c1e;
+    --ui-color-checker-b: #242426;
+
+    --ui-shadow-1: 0 0 0 0.5px rgb(255 255 255 / 0.06);
+    --ui-shadow-2: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 10px 30px rgb(0 0 0 / 0.6);
+    --ui-shadow-3: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 22px 70px rgb(0 0 0 / 0.7);
+
+    --ui-slider-track-color: rgb(120 120 128 / 0.36);
+    --ui-slider-thumb-border: none;
+    --ui-slider-thumb-shadow: 0 3px 8px rgb(0 0 0 / 0.35), 0 3px 1px rgb(0 0 0 / 0.12);
+  }
+}
+
+/* ---- shell ------------------------------------------------------------------- */
+
+:root[data-skin="apple"] body {
+  font-feature-settings: "kern";
+  text-rendering: optimizeLegibility;
+}
+
+:root[data-skin="apple"] .ui-header {
+  padding-block: var(--ui-space-2);
+}
+
+:root[data-skin="apple"] .ui-wordmark {
+  font-size: 21px;
+  letter-spacing: -0.03em;
+}
+
+:root[data-skin="apple"] .ui-page-title {
+  line-height: 1.14;
+}
+:root[data-skin="apple"] .ui-page-header--section .ui-page-title {
+  font-weight: var(--ui-font-weight-semibold);
+  letter-spacing: -0.016em;
+}
+:root[data-skin="apple"] .ui-panel-title {
+  font-size: 17px;
+  font-weight: var(--ui-font-weight-semibold);
+  letter-spacing: -0.012em;
+}
+
+/* Sidebar: macOS source list. */
+:root[data-skin="apple"] .ui-sidebar {
+  gap: var(--ui-space-5);
+}
+:root[data-skin="apple"] .ui-sidebar-heading {
+  margin: 0 0 var(--ui-space-1) 10px;
+  font-weight: var(--ui-font-weight-semibold);
+}
+:root[data-skin="apple"] .ui-nav-list {
+  gap: 1px;
+}
+:root[data-skin="apple"] .ui-nav-item,
+:root[data-skin="apple"] .ui-segmented--vertical .ui-segmented-option {
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  color: var(--ui-color-text);
+  gap: 8px;
+}
+:root[data-skin="apple"] .ui-nav-item-icon {
+  color: var(--apple-blue);
+}
+:root[data-skin="apple"] .ui-nav-item.is-active,
+:root[data-skin="apple"] .ui-nav-item[aria-current="page"],
+:root[data-skin="apple"] .ui-segmented--vertical .ui-segmented-option[aria-pressed="true"] {
+  background-color: var(--apple-selection);
+  box-shadow: none;
+  color: var(--ui-color-text);
+  font-weight: var(--ui-font-weight-medium);
+}
+
+/* ---- buttons ----------------------------------------------------------------- */
+
+:root[data-skin="apple"] .ui-button {
+  border-color: transparent;
+  background-color: var(--apple-fill);
+  letter-spacing: -0.01em;
+}
+:root[data-skin="apple"] .ui-button:hover:not(:disabled, .is-disabled) {
+  border-color: transparent;
+}
+:root[data-skin="apple"] .ui-button--primary {
+  background-color: var(--ui-color-primary);
+  color: var(--ui-color-on-primary);
+  font-weight: var(--ui-font-weight-medium);
+}
+:root[data-skin="apple"] .ui-button--primary:hover:not(:disabled, .is-disabled) {
+  background-color: var(--ui-color-primary-hover);
+}
+:root[data-skin="apple"] .ui-button--quiet {
+  background-color: transparent;
+  color: var(--ui-color-link);
+}
+:root[data-skin="apple"] .ui-button--danger {
+  background-color: var(--apple-fill);
+  color: var(--ui-color-danger);
+}
+:root[data-skin="apple"] .ui-button[aria-pressed="true"] {
+  background-color: var(--ui-color-tonal);
+  border-color: transparent;
+  color: var(--ui-color-on-tonal);
+}
+/* Votes keep their warning/info meaning over the pressed style above. */
+:root[data-skin="apple"] .vote-up[aria-pressed="true"] {
+  color: var(--ui-color-warning);
+  background-color: color-mix(in srgb, var(--ui-color-warning) 14%, transparent);
+}
+:root[data-skin="apple"] .vote-down[aria-pressed="true"] {
+  color: var(--ui-color-info);
+  background-color: color-mix(in srgb, var(--ui-color-info) 14%, transparent);
+}
+
+/* ---- segmented control: gray track, raised white thumb ------------------------ */
+
+:root[data-skin="apple"] .ui-segmented:not(.ui-segmented--vertical) {
+  gap: 0;
+  padding: 2px;
+  border: none;
+  border-radius: 9px;
+  background-color: var(--apple-fill-track);
+  overflow: visible;
+}
+:root[data-skin="apple"] .ui-segmented:not(.ui-segmented--vertical) .ui-segmented-option {
+  min-height: calc(var(--ui-control-height-md) - 4px);
+  padding: 0 12px;
+  border-radius: 7px;
+  color: var(--ui-color-text);
+  font-weight: var(--ui-font-weight-medium);
+}
+:root[data-skin="apple"] .ui-segmented--sm:not(.ui-segmented--vertical) .ui-segmented-option {
+  min-height: calc(var(--ui-control-height-sm) - 4px);
+  padding: 0 10px;
+}
+:root[data-skin="apple"] .ui-segmented:not(.ui-segmented--vertical) .ui-segmented-option:hover:not(:disabled) {
+  background-color: var(--ui-state-hover);
+}
+:root[data-skin="apple"] .ui-segmented:not(.ui-segmented--vertical) .ui-segmented-option[aria-pressed="true"] {
+  background-color: var(--apple-thumb);
+  box-shadow: var(--apple-thumb-shadow);
+  font-weight: var(--ui-font-weight-semibold);
+}
+:root[data-skin="apple"] .ui-segmented--vertical {
+  gap: 1px;
+}
+
+/* ---- fields ------------------------------------------------------------------ */
+
+:root[data-skin="apple"] .ui-field-label {
+  font-size: var(--ui-font-size-sm);
+  font-weight: var(--ui-font-weight-medium);
+  color: var(--ui-color-text-muted);
+}
+:root[data-skin="apple"] .ui-input,
+:root[data-skin="apple"] .ui-select-control {
+  padding-inline: 10px;
+}
+:root[data-skin="apple"] .ui-input:hover:not(:disabled, :focus),
+:root[data-skin="apple"] .ui-select-control:hover:not(:disabled, :focus) {
+  border-color: var(--ui-color-border);
+}
+:root[data-skin="apple"] .ui-input:focus,
+:root[data-skin="apple"] .ui-select-control:focus {
+  outline-offset: 0;
+  border-color: var(--apple-blue);
+}
+:root[data-skin="apple"] .ui-select-control {
+  padding-right: 30px;
+}
+/* Pop-up button: up/down chevrons. */
+:root[data-skin="apple"] .ui-select::after {
+  right: 10px;
+  width: 0.55rem;
+  height: 0.85rem;
+  margin-top: -0.425rem;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 13'%3E%3Cpath d='M1 4.5 4 1.5l3 3M1 8.5l3 3 3-3' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Header search: one rounded gray field with the magnifier leading it. */
+:root[data-skin="apple"] .tag-search--header .tag-search-field {
+  flex-direction: row-reverse;
+  border-radius: 10px;
+  background-color: var(--apple-fill-track);
+}
+:root[data-skin="apple"] .tag-search--header .tag-search-field:focus-within {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+}
+:root[data-skin="apple"] .tag-search--header .tag-search-field .ui-input {
+  padding-left: 2px;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  background-color: transparent;
+}
+:root[data-skin="apple"] .tag-search--header .tag-search-field .ui-input:focus {
+  outline: none;
+}
+:root[data-skin="apple"] .tag-search-submit {
+  min-width: 34px;
+  padding: 0 4px 0 10px;
+  border-radius: 10px 0 0 10px;
+  background-color: transparent;
+  color: var(--ui-color-text-muted);
+  font-weight: var(--ui-font-weight-regular);
+}
+:root[data-skin="apple"] .tag-search-submit:hover:not(:disabled, .is-disabled) {
+  background-color: transparent;
+  color: var(--apple-blue);
+}
+:root[data-skin="apple"] .tag-search--header .tag-suggestions {
+  margin-top: 6px;
+  padding: 6px;
+  border: none;
+  border-radius: 12px;
+  box-shadow: var(--ui-shadow-2);
+}
+
+/* macOS slider knob sits slightly proud of the thin track. */
+:root[data-skin="apple"] .ui-slider {
+  height: 24px;
+}
+
+:root[data-skin="apple"] .ui-color {
+  border-radius: var(--ui-radius-md);
+}
+
+/* ---- cards, chips, badges ------------------------------------------------------ */
+
+:root[data-skin="apple"] .ui-card:not(.ui-card--borderless) {
+  border: none;
+  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
+}
+:root[data-skin="apple"] .ui-card--borderless {
+  margin: -8px;
+  padding: 8px;
+  border-radius: 16px;
+}
+:root[data-skin="apple"] .ui-card--borderless .ui-card-body {
+  padding-top: 10px;
+}
+:root[data-skin="apple"] .ui-card-title {
+  letter-spacing: -0.01em;
+}
+
+:root[data-skin="apple"] .ui-chip {
+  padding: 1px 9px;
+  border-color: transparent;
+  background-color: var(--apple-fill);
+  color: var(--ui-color-text);
+  font-size: var(--ui-font-size-xs);
+}
+:root[data-skin="apple"] .ui-chip--suggest {
+  border-color: var(--ui-color-border);
+  background-color: transparent;
+  color: var(--ui-color-link);
+}
+:root[data-skin="apple"] .ui-chip--removable {
+  padding-right: 3px;
+}
+
+:root[data-skin="apple"] .ui-badge {
+  border-color: transparent;
+  background-color: var(--apple-fill);
+  font-weight: var(--ui-font-weight-semibold);
+}
+:root[data-skin="apple"] :is(.ui-badge--primary, .ui-badge--info, .ui-badge--success, .ui-badge--warning, .ui-badge--danger) {
+  border-color: transparent;
+  background-color: color-mix(in srgb, currentColor 14%, transparent);
+}
+:root[data-skin="apple"] .ui-badge--primary {
+  color: var(--ui-color-link);
+}
+
+/* ---- feedback ------------------------------------------------------------------ */
+
+:root[data-skin="apple"] .ui-progress {
+  background-color: var(--ui-slider-track-color);
+}
+:root[data-skin="apple"] .ui-progress::-webkit-progress-bar {
+  background-color: var(--ui-slider-track-color);
+}
+:root[data-skin="apple"] .ui-progress::-webkit-progress-value {
+  background-color: var(--apple-blue);
+}
+:root[data-skin="apple"] .ui-progress::-moz-progress-bar {
+  background-color: var(--apple-blue);
+}
+
+:root[data-skin="apple"] .ui-alert {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+:root[data-skin="apple"] .ui-alert--info {
+  background-color: var(--apple-fill-track);
+}
+
+:root[data-skin="apple"] .ui-spinner-icon {
+  border-width: 2.5px;
+  border-color: var(--ui-color-border);
+  border-top-color: var(--ui-color-text-muted);
+  border-right-color: var(--ui-color-border);
+}
+
+:root[data-skin="apple"] .ui-empty {
+  border: none;
+  background-color: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
+}
+
+/* ---- panels: white grouped insets ---------------------------------------------- */
+
+:root[data-skin="apple"] .ui-panel {
+  border: none;
+  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
+}
+:root[data-skin="apple"] .ui-panel--inset {
+  border: none;
+  border-radius: 10px;
+  background-color: var(--apple-inset-bg);
+  box-shadow: none;
+}
+
+/* ---- app surfaces ---------------------------------------------------------------- */
+
+:root[data-skin="apple"] .stage {
+  border: none;
+  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
+}
+:root[data-skin="apple"] .timeline,
+:root[data-skin="apple"] .stats div {
+  border: none;
+  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
+}
+:root[data-skin="apple"] .thumb.current {
+  border-color: var(--apple-blue);
+}
+:root[data-skin="apple"] .handle.selected {
+  border-color: var(--apple-blue);
+}
+:root[data-skin="apple"] .variation {
+  border: none;
+  border-radius: var(--ui-radius-md);
+}
+/* Layer rows read like a source list; destructive icons stay red. */
+:root[data-skin="apple"] .layer-name {
+  color: var(--ui-color-text);
+}
+:root[data-skin="apple"] .layer-name[aria-pressed="true"] {
+  background-color: var(--apple-selection);
+  color: var(--ui-color-text);
+  font-weight: var(--ui-font-weight-medium);
+}
+:root[data-skin="apple"] .danger-icon {
+  color: var(--ui-color-danger);
+}

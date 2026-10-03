@@ -1,7 +1,6 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
-  HeadObjectCommand,
   NoSuchKey,
   NotFound,
   PutObjectCommand,
@@ -69,15 +68,5 @@ export class S3StorageProvider implements StorageProvider {
 
   async delete(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: this.key(key) }));
-  }
-
-  async exists(key: string): Promise<boolean> {
-    try {
-      await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: this.key(key) }));
-      return true;
-    } catch (err) {
-      if (err instanceof NotFound || err instanceof NoSuchKey) return false;
-      throw err;
-    }
   }
 }

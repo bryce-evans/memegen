@@ -124,3 +124,11 @@ test("content supports byte ranges", async () => {
   const bad = await app.request(asset.contentPath, { headers: { range: `bytes=${asset.sizeBytes}-` } });
   assert.equal(bad.status, 416);
 });
+
+test("content is 404 when the row exists but its bytes are gone", async () => {
+  const asset = (await (await upload(png(10, 10), "gone.png")).json()) as Asset;
+  const [row] = await sql<{ storage_key: string }[]>`select storage_key from assets where id = ${asset.id}`;
+  await rm(join(dir, row!.storage_key));
+  assert.equal((await app.request(asset.contentPath)).status, 404);
+  assert.equal((await app.request(`/assets/${crypto.randomUUID()}/content`)).status, 404);
+});

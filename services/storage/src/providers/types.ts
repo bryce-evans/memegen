@@ -16,7 +16,6 @@ export interface StorageProvider {
   put(key: string, data: Uint8Array, mime: string): Promise<void>;
   get(key: string, range?: ByteRange): Promise<StoredObject>;
   delete(key: string): Promise<void>;
-  exists(key: string): Promise<boolean>;
 }
 
 export class ObjectNotFoundError extends Error {

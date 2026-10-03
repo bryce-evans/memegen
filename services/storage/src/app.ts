@@ -1,16 +1,21 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { ASSET_KINDS } from "@memegen/shared";
-import { HttpError, installErrorHandler, isInternal, parse, type AuthProvider } from "@memegen/server-kit";
+import { ASSET_KINDS, pageQuerySchema } from "@memegen/shared";
+import {
+  findAssetRow,
+  HttpError,
+  idParam,
+  installErrorHandler,
+  isInternal,
+  parse,
+  toAsset,
+  type AssetRow,
+  type AuthProvider,
+} from "@memegen/server-kit";
 import type { AssetStore } from "./assets.ts";
 import type { ByteRange } from "./providers/types.ts";
 
-const listQuery = z.object({
-  kind: z.enum(ASSET_KINDS).optional(),
-  offset: z.coerce.number().int().min(0).default(0),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-});
-const idParam = z.object({ id: z.uuid() });
+const listQuery = pageQuerySchema(50, 200).extend({ kind: z.enum(ASSET_KINDS).optional() });
 
 /** Multipart overhead allowance on top of the file cap for the early Content-Length check. */
 const MULTIPART_SLACK = 64 * 1024;
@@ -64,47 +69,50 @@ export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono {
     return c.json(await store.list(q.kind, q.offset, q.limit));
   });
 
+  const loadRow = async (id: string): Promise<AssetRow> => {
+    const row = await findAssetRow(store.sql, id);
+    if (!row) throw new HttpError(404, "asset not found");
+    return row;
+  };
+
   app.get("/assets/:id", async (c) => {
     const { id } = parse(idParam, c.req.param());
-    const asset = await store.get(id);
-    if (!asset) throw new HttpError(404, "asset not found");
-    return c.json(asset);
+    return c.json(toAsset(await loadRow(id)));
   });
 
   app.get("/assets/:id/content", async (c) => {
     const { id } = parse(idParam, c.req.param());
-    const asset = await store.get(id);
-    if (!asset) throw new HttpError(404, "asset not found");
-    const range = parseRange(c.req.header("range"), asset.sizeBytes);
+    const row = await loadRow(id);
+    const size = Number(row.size_bytes);
+    const range = parseRange(c.req.header("range"), size);
     if (range === "invalid") {
-      return c.body(null, 416, { "content-range": `bytes */${asset.sizeBytes}` });
+      return c.body(null, 416, { "content-range": `bytes */${size}` });
     }
-    const opened = await store.open(id, range ?? undefined);
-    if (!opened) throw new HttpError(404, "asset not found");
+    const object = await store.open(row, range ?? undefined);
+    if (!object) throw new HttpError(404, "asset content not found");
     const headers: Record<string, string> = {
-      "content-type": asset.mime,
+      "content-type": row.mime,
       "accept-ranges": "bytes",
       "cache-control": "public, max-age=31536000, immutable",
-      "content-disposition": `inline; filename="${encodeURIComponent(asset.filename)}"`,
+      "content-disposition": `inline; filename="${encodeURIComponent(row.filename)}"`,
     };
     if (range) {
-      headers["content-range"] = `bytes ${range.start}-${range.end}/${asset.sizeBytes}`;
+      headers["content-range"] = `bytes ${range.start}-${range.end}/${size}`;
       headers["content-length"] = String(range.end - range.start + 1);
-      return c.body(opened.object.body, 206, headers);
+      return c.body(object.body, 206, headers);
     }
-    headers["content-length"] = String(asset.sizeBytes);
-    return c.body(opened.object.body, 200, headers);
+    headers["content-length"] = String(size);
+    return c.body(object.body, 200, headers);
   });
 
   app.delete("/assets/:id", async (c) => {
     const { id } = parse(idParam, c.req.param());
-    const asset = await store.get(id);
-    if (!asset) throw new HttpError(404, "asset not found");
+    const row = await loadRow(id);
     if (!isInternal(c)) {
       const user = await auth.resolve(c);
-      if (!user || user.id !== asset.ownerId) throw new HttpError(403, "only the owner can delete this asset");
+      if (!user || user.id !== row.owner_id) throw new HttpError(403, "only the owner can delete this asset");
     }
-    await store.delete(id);
+    await store.delete(row);
     return c.body(null, 204);
   });
 

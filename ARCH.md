@@ -57,10 +57,11 @@ flowchart LR
 - The editor shows every decoded frame on a timeline; "set keyframe" stores the current frame's timestamp, which is how per-frame placement works.
 
 ### Storage (component 1)
-- `StorageProvider` interface (`put/get/getRange/delete/exists`) with a registry keyed by name. Built-ins: `local` (filesystem) and `s3` (AWS SDK v3, works with any S3-compatible endpoint). New providers register a factory; no other code changes.
+- `StorageProvider` interface (`put/get(range?)/delete`) with a factory table keyed by name (`providers/registry.ts`). Built-ins: `local` (filesystem) and `s3` (AWS SDK v3, works with any S3-compatible endpoint). A new provider is one entry in that table; no other code changes.
 - Each asset row records its `provider` + `storage_key`, so several providers can coexist and the default (`STORAGE_PROVIDER`) can change without migrating old files.
-- Asset kinds: `image | gif | video | font`. Content type is sniffed from magic bytes, not trusted from the client.
-- Content is served with HTTP Range support (video scrubbing).
+- Asset kinds: `image | gif | video | font`. Content type is sniffed from magic bytes, not trusted from the client. `SUPPORTED_TYPES` in `packages/shared` is the one list of accepted mime/extension pairs; the web `accept` strings, mime→extension lookup and the 415 message are built from it.
+- Content is served with HTTP Range support (video scrubbing). A row whose bytes are missing from its provider answers 404, not 500.
+- The `assets` row type and its `Asset` mapping (`AssetRow`, `toAsset`, `findAssetRow`) live in `packages/server-kit`, so the API reads asset rows without importing the storage service.
 
 ### Upload caps
 Enforced server-side on every upload (client pre-checks with the same `limitViolations` from `packages/shared`). Defaults, env-overridable:

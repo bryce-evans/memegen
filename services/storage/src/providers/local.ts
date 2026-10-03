@@ -41,13 +41,4 @@ export class LocalStorageProvider implements StorageProvider {
   async delete(key: string): Promise<void> {
     await rm(this.path(key), { force: true });
   }
-
-  async exists(key: string): Promise<boolean> {
-    try {
-      await stat(this.path(key));
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }

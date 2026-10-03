@@ -1,13 +1,11 @@
+import { gifFrameDelayMs } from "@memegen/shared";
+
 export interface GifInfo {
   width: number;
   height: number;
   frameCount: number;
   durationMs: number;
 }
-
-/** Browsers clamp tiny GIF delays (0-1 cs) to 100 ms; mirror that for duration. */
-const MIN_DELAY_CS = 2;
-const DEFAULT_DELAY_CS = 10;
 
 /** Walks GIF blocks to count frames and sum delays without decoding pixels. */
 export function readGifInfo(b: Uint8Array): GifInfo {
@@ -32,7 +30,7 @@ export function readGifInfo(b: Uint8Array): GifInfo {
   };
 
   let frameCount = 0;
-  let durationCs = 0;
+  let durationMs = 0;
   let pendingDelay: number | null = null;
   while (p < b.length) {
     const block = b[p++]!;
@@ -51,13 +49,13 @@ export function readGifInfo(b: Uint8Array): GifInfo {
       p += 1; // LZW minimum code size
       skipSubBlocks();
       frameCount++;
-      const delay = pendingDelay ?? DEFAULT_DELAY_CS;
-      durationCs += delay < MIN_DELAY_CS ? DEFAULT_DELAY_CS : delay;
+      // Delays are in centiseconds; a frame without a graphic control extension plays like a 0 delay.
+      durationMs += gifFrameDelayMs((pendingDelay ?? 0) * 10);
       pendingDelay = null;
     } else {
       fail(`unknown block 0x${block.toString(16)} at ${p - 1}`);
     }
   }
   if (frameCount === 0) fail("no frames");
-  return { width, height, frameCount, durationMs: durationCs * 10 };
+  return { width, height, frameCount, durationMs };
 }

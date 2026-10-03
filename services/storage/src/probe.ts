@@ -1,37 +1,33 @@
 import { imageSize } from "image-size";
 import { ALL_FORMATS, BufferSource, Input } from "mediabunny";
-import type { AssetKind } from "@memegen/shared";
+import type { AssetKind, MediaFacts } from "@memegen/shared";
 import { readGifInfo } from "./gif.ts";
 
-export interface MediaInfo {
-  width: number | null;
-  height: number | null;
+export interface MediaInfo extends MediaFacts {
   durationMs: number | null;
-  frameCount: number | null;
   fps: number | null;
 }
 
-const NONE: MediaInfo = { width: null, height: null, durationMs: null, frameCount: null, fps: null };
-
 export class ProbeError extends Error {}
 
-/** Extract dimensions/timing without decoding frames. Throws ProbeError for unreadable media. */
-export async function probe(kind: AssetKind, data: Uint8Array): Promise<MediaInfo> {
+/**
+ * Extract dimensions/timing without decoding frames; null for fonts, which have neither.
+ * Throws ProbeError for unreadable media.
+ */
+export async function probe(kind: AssetKind, data: Uint8Array): Promise<MediaInfo | null> {
   try {
     switch (kind) {
       case "font":
-        return NONE;
+        return null;
       case "image": {
         const { width, height } = imageSize(data);
-        return { ...NONE, width, height, frameCount: 1 };
+        return { kind, width, height, frameCount: 1, durationMs: null, fps: null };
       }
       case "gif": {
         const info = readGifInfo(data);
         return {
-          width: info.width,
-          height: info.height,
-          durationMs: info.durationMs,
-          frameCount: info.frameCount,
+          kind,
+          ...info,
           fps: info.durationMs > 0 ? Math.round((info.frameCount / info.durationMs) * 1000 * 100) / 100 : null,
         };
       }
@@ -51,6 +47,7 @@ async function probeVideo(data: Uint8Array): Promise<MediaInfo> {
   const stats = await track.computePacketStats();
   const duration = await input.computeDuration();
   return {
+    kind: "video",
     width: track.displayWidth,
     height: track.displayHeight,
     durationMs: Math.round(duration * 1000),

@@ -51,8 +51,6 @@ export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (
     <section id="comments" className="comments" data-testid="comments" aria-busy={list.loading}>
       <PageHeader level={2} title={`Discussion (${meme.commentCount})`} />
       {!open && <Text tone="muted">Posting this meme publicly opens the discussion.</Text>}
-      {open && !user && <SignInPrompt action="join the discussion" />}
-      {canPost && <CommentForm memeId={meme.id} parentId={null} onPosted={added} />}
       {list.error !== null && <ErrorView error={list.error} />}
       {!list.loading && list.items.length === 0 && list.error === null && open && (
         <Text tone="muted">No comments yet. Start the discussion!</Text>
@@ -70,6 +68,8 @@ export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (
           <Button onClick={list.loadMore}>More comments</Button>
         </div>
       )}
+      {open && !user && <SignInPrompt action="join the discussion" />}
+      {canPost && <CommentForm memeId={meme.id} parentId={null} onPosted={added} />}
     </section>
   );
 }

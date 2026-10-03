@@ -293,6 +293,9 @@
 .comment-form .ui-textarea {
   width: 100%;
 }
+.comments > .comment-form {
+  margin-top: var(--ui-space-5);
+}
 
 /* ---- leaderboard ---------------------------------------------------------- */
 

@@ -4,7 +4,8 @@ import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
 import { newTextLayer } from "./defaults.ts";
 import { DEFAULT_LIMITS, limitViolations } from "./limits.ts";
 import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
-import { textLayerSchema } from "./schema.ts";
+import { sessionSchema, textLayerSchema } from "./schema.ts";
+import { badgesFor } from "./badges.ts";
 
 const kf = (t: number, x: number, opacity = 1) => ({ t, x, y: 0.5, opacity });
 
@@ -89,4 +90,20 @@ test("textLayerSchema sorts keyframes and rejects inverted windows", () => {
   const layer = newTextLayer({ keyframes: [kf(2, 0), kf(1, 0)] });
   assert.deepEqual(textLayerSchema.parse(layer).keyframes.map((k) => k.t), [1, 2]);
   assert.equal(textLayerSchema.safeParse({ ...layer, start: 3, end: 1 }).success, false);
+});
+
+test("badges: only the highest reached tier per stat shows, at exact thresholds", () => {
+  const ids = (memeCount: number, highScore: number, hScore: number) =>
+    badgesFor({ memeCount, highScore, hScore }).map((b) => b.id);
+  assert.deepEqual(ids(2, 9, 1), []);
+  assert.deepEqual(ids(3, 10, 2), ["memeCount-bronze", "highScore-bronze", "hScore-bronze"]);
+  assert.deepEqual(ids(9, 24, 4), ["memeCount-bronze", "highScore-bronze", "hScore-bronze"]);
+  assert.deepEqual(ids(10, 25, 5), ["memeCount-silver", "highScore-silver", "hScore-silver"]);
+  assert.deepEqual(ids(50, 100, 20), ["memeCount-platinum", "highScore-platinum", "hScore-platinum"]);
+  assert.deepEqual(ids(1000, 249, 30), ["memeCount-diamond", "highScore-platinum", "hScore-diamond"]);
+});
+
+test("sessionSchema rejects the reserved system username in any case", () => {
+  assert.equal(sessionSchema.safeParse({ username: "MemeGen" }).success, false);
+  assert.equal(sessionSchema.safeParse({ username: "memegen2" }).success, true);
 });

@@ -6,9 +6,10 @@ Design and decisions live in [ARCH.md](ARCH.md).
 
 | Part | Where | URL in dev |
 |---|---|---|
-| Gallery (browse, vote, profiles) | `apps/web` | http://localhost:5173/ |
-| Editor | `apps/web` | http://localhost:5173/create |
-| Templates (+ hot templates, usage charts) | `apps/web` | http://localhost:5173/templates |
+| Gallery: Popular, Recent, voting, comments | `apps/web` | http://localhost:5173/ (Popular), http://localhost:5173/recent |
+| Leaderboard | `apps/web` | http://localhost:5173/leaderboard |
+| Profiles (stats, badges; your liked/disliked memes) | `apps/web` | http://localhost:5173/u/mock-alice |
+| Editor + template browser (find/add templates, hot templates, usage charts) | `apps/web` | http://localhost:5173/create |
 | Tag pages (templates + memes for a tag) | `apps/web` | http://localhost:5173/t/oldschool |
 | API (memes, templates, votes, users) | `services/api` | http://localhost:4000 |
 | Storage (asset upload/serve) | `services/storage` | http://localhost:4001 |
@@ -35,12 +36,13 @@ git clone --depth 1 https://github.com/jacebrowning/memegen demo/jacebrowning-me
 
 Then open:
 
-- **Gallery**: http://localhost:5173/. Sort by Best or New over today, week, month, year, or all time.
-- **Editor**: http://localhost:5173/create. Upload media, or choose a template at http://localhost:5173/templates and click "Use".
-- **Tags**: search tags in the side column, or open `/t/<tag>`. Templates are tagged `oldschool`/`movie` or with team tags (e.g. `google-memes`), and memes inherit their template's tags.
+- **Popular / Recent**: http://localhost:5173/ ranks by score over today, week, month, year, or all time; http://localhost:5173/recent lists the newest posts. Open a meme to vote and join its discussion (comments with replies).
+- **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎); your own profile also lists the memes you liked and disliked ("Your favorites" = liked).
+- **Create**: http://localhost:5173/create. Upload media, find a template (the list loads more as you scroll), or add a new template. Templates show who added them; built-in ones are added by the reserved `memegen` account.
+- **Tags**: search tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
 - **Skins**: switch between Default, Apple, Material, Google, and Spectrum in the header, or add `?skin=<id>` to a URL.
 
-Sign in with any username in the header. There are no passwords yet: the dev login only sets a user id header, which is not secure (see ARCH.md, "Auth").
+Sign in with any username except the reserved `memegen` in the header. There are no passwords yet: the dev login only sets a user id header, which is not secure (see ARCH.md, "Auth").
 
 ## run.sh and configs
 
@@ -129,11 +131,12 @@ cd ../..
 
 The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) against `memegen_e2e` and `.data/e2e-storage`, so it doesn't touch a running dev stack. It reseeds that database with the mock dataset on every run. Every spec runs once per UI skin (Playwright projects `default`, `apple`, `material`, `google`, `spectrum`). It drives branded **Google Chrome** (`channel: "chrome"`), because MP4 export needs Chrome's H.264/AAC WebCodecs. Set `E2E_CHANNEL=chromium` to use Playwright's Chromium; the video spec will then fail. The specs cover:
 
-- the core workflow: pick a template, add top and bottom text, download, save to profile, post, find it in the gallery
-- gallery sorting (popular, newest, hottest this month) and voting (up +1; down removes the upvote and moves the negative downvote count, e.g. −2 → −3), checked against the mock dataset
-- profile stats (meme count, high score, h-score) reached from a gallery card
+- the core workflow: pick a template on Create, add top and bottom text, download, save to profile, post, find it under Recent
+- Popular (by period) and Recent feeds, voting (up +1; down removes the upvote and moves the negative downvote count, e.g. −2 → −3), checked against the mock dataset
+- sidebar order, leaderboard, profile stats and badges, the owner-only liked/disliked views
+- comments and replies on a meme
 - still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, and exported frame counts/audio checked with `ffprobe`
-- templates and variations, tags and tag search, hot templates
+- templates and variations, base and added tags, tag creation in the editor, tag search, hot templates, auto-loading template list
 - upload caps and custom fonts
 - skin selection: `?skin=`, the header switcher, persistence across reloads
 

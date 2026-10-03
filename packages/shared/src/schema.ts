@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GALLERY_SORTS, PERIODS, TAG_KINDS, TEXT_STYLES } from "./types.ts";
+import { GALLERY_SORTS, LEADERBOARD_SORTS, PERIODS, RESERVED_USERNAMES, TAG_KINDS, TEXT_STYLES, VOTE_DIRECTIONS } from "./types.ts";
 
 /** "Google Memes!" → "google-memes". Empty string when nothing usable remains. */
 export function tagSlug(name: string): string {
@@ -111,7 +111,8 @@ export const sessionSchema = z.object({
     .trim()
     .min(2)
     .max(32)
-    .regex(/^[a-zA-Z0-9_-]+$/, "letters, digits, _ and - only"),
+    .regex(/^[a-zA-Z0-9_-]+$/, "letters, digits, _ and - only")
+    .refine((name) => !RESERVED_USERNAMES.includes(name.toLowerCase()), "that username is reserved"),
 });
 
 export const galleryQuerySchema = z.object({
@@ -143,4 +144,22 @@ export const tagsQuerySchema = z.object({
   q: z.string().trim().max(60).default(""),
   kind: z.enum(TAG_KINDS).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
+});
+
+export const leaderboardQuerySchema = z.object({
+  by: z.enum(LEADERBOARD_SORTS).default("hScore"),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+/** The signed-in user's own liked (`up`) or disliked (`down`) memes, most recently voted first. */
+export const myVotesQuerySchema = z.object({
+  direction: z.enum(VOTE_DIRECTIONS),
+  limit: z.coerce.number().int().min(1).max(100).default(24),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+export const createCommentSchema = z.object({
+  body: z.string().trim().min(1).max(2000),
+  /** Reply to this top-level comment on the same meme. */
+  parentId: z.uuid().nullable().optional(),
 });

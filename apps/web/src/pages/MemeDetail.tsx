@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
 import { Button, Icon, Inline, LinkButton, Spinner, Text } from "@memegen/ui";
 import { contentUrl, deleteMeme, getMeme, postMeme, updateMeme } from "../api.ts";
 import { useAuth } from "../auth.tsx";
+import { Comments } from "../components/comments.tsx";
 import { ErrorView, MediaView } from "../components/common.tsx";
 import { MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
 import { TagChips, TagEditor } from "../components/tags.tsx";
@@ -13,6 +14,7 @@ export function MemeDetail() {
   const { id = "" } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const [meme, setMeme] = useState<Meme | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [actionError, setActionError] = useState<unknown>(null);
@@ -30,6 +32,12 @@ export function MemeDetail() {
       cancelled = true;
     };
   }, [id, user?.id]);
+
+  // Router navigations don't scroll to fragments; jump to `#comments` once the page has rendered.
+  const loaded = meme !== null;
+  useEffect(() => {
+    if (loaded && hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [loaded, hash]);
 
   async function act(fn: () => Promise<Meme | void>) {
     setBusy(true);
@@ -133,6 +141,9 @@ export function MemeDetail() {
         )}
         {actionError !== null && <ErrorView error={actionError} />}
       </aside>
+      <div className="detail-comments">
+        <Comments meme={meme} onCountChange={(delta) => setMeme((m) => m && { ...m, commentCount: m.commentCount + delta })} />
+      </div>
     </section>
   );
 }

@@ -77,7 +77,9 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 ### Templates
 - `templates` with a nullable `parent_id`: exactly one level of hierarchy (template → variations). A DB trigger rejects a variation whose parent is itself a variation, and rejects giving a parent to a template that already has variations.
 - Templates carry `default_layers` (text box presets) that seed the editor.
+- Every template has an author (`owner_id not null`, shown as "added by"). Built-in templates belong to the reserved `memegen` account: a trigger fills a null owner with `memegen_user_id()` (created lazily, so seeds and `on delete set null` keep working), and `sessionSchema` refuses `memegen` as a login name, so nobody can act as it or edit its templates.
 - `scripts/seed.ts --from <jacebrowning/memegen clone>` imports its fonts and ~200 templates. `default.*` becomes the parent; other images in the folder become variations.
+- The template browser lives on `/create` (find a template or add one); there is no separate templates page. Its grid loads the next page when an IntersectionObserver sentinel nears the viewport; the sentinel re-arms after each page, so short pages keep loading.
 
 ### Template usage ("hot" templates)
 - Core tables: `users`, `memes` (one row per meme, with its own vote tallies), `templates` (+ variations), `votes`, `assets`.
@@ -87,9 +89,11 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 
 ### Tags
 - `tags(slug unique, name, kind topic|team, description)` + join tables `template_tags`, `meme_tags`. Built-in topics: `oldschool` (all seeded jacebrowning templates), `movie` (screenshots). `team` tags mark an org's own memes (e.g. `google-memes`) when deployed internally.
-- Names normalize to slugs (`"Google Memes!"` → `google-memes`, `tagSlug` in shared). Tagging with an unknown slug creates a `topic` tag; `POST /api/tags` creates one explicitly (e.g. with `kind: team`).
+- Names normalize to slugs (`"Google Memes!"` → `google-memes`, `tagSlug` in shared). Tagging with an unknown slug creates a `topic` tag; `POST /api/tags` creates one explicitly (e.g. with `kind: team`). In the UI new tags are made while authoring a meme (editor save panel), not from the main page.
 - Inheritance (SQL views): `template_tag_matches` rolls variation tags up to the parent; `meme_tag_matches` matches a meme by its own tags **or** its template's/parent's tags. Tagging a template `movie` surfaces every meme made from it. `Template.tags`/`Meme.tags` show only directly placed tags.
-- Retagging: meme owner; template owner; ownerless (seeded) templates can be tagged by any signed-in user (community curation).
+- Template tags are base or added (`template_tags.base`, `added_by`). Base tags come with the template (author's tags at creation, seed tags) and are never removed through the API. Any signed-in user can add tags (`POST /api/templates/:id/tags`); additions never touch base tags. `Template.baseTags ⊆ Template.tags`.
+- Trade-off: there is no removal path for added tags yet (no moderation); a mistaken tag stays until removed in SQL.
+- Meme tags: the meme owner sets them.
 
 ### Memes, posting, visibility
 - A meme stores the source asset, the client-rendered output asset, and the `layers` used, so it can be re-edited.
@@ -97,13 +101,25 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - Gallery and public profiles list memes that are posted **and** public. Private memes are visible only to their owner and can't be voted on.
 
 ### Votes, ranking, stats
-- `votes(user_id, meme_id, value ±1)`, one per user per meme. A trigger keeps `memes.upvotes/downvotes` up to date; `score` is a generated column.
-- Gallery `best` = posted public memes with `posted_at` inside the period (day/week/month/year/all), ordered by score, then recency. `new` = recency.
+- `votes(user_id, meme_id, value ±1, created_at)`, one per user per meme. A trigger keeps `memes.upvotes/downvotes` up to date; `score` is a generated column.
+- Votes double as per-user like/dislike history (no separate store): `GET /api/me/votes?direction=up|down` lists the viewer's liked/disliked memes, most recently voted first (`votes_user_time` index; changing a vote refreshes `created_at`, clearing it deletes the row). Only the owner sees it (profile tabs); "Your favorites" in the sidebar is the liked tab.
+- Gallery: Popular (`/`, `best`) = posted public memes with `posted_at` inside the period (day/week/month/year/all), ordered by score, then recency. Recent (`/recent`, `new`) = all-time recency. Tag pages keep both sorts.
 - User stats are computed over posted memes:
   - `memeCount`
   - `highScore`: max score
   - `hScore`: largest h such that h memes have score ≥ h
   - `negativeHScore` (internal only): largest h such that h memes have score ≤ −h. Exposed only at `/internal/users/:username/stats` on the API port, behind `X-Internal-Token`; the web proxy does not forward `/internal`.
+- One SQL definition of the stats serves profiles and the leaderboard (`/api/leaderboard?by=hScore|highScore|memeCount`, users with ≥ 1 posted meme).
+
+### Badges
+- Config in `packages/shared/src/badges.ts`: each badge has an emoji `icon`, a label, and `show(stats)`. Profiles render `badgesFor(stats)`; adding a badge is one config entry, no API change.
+- Tiers bronze 🥉 / silver 🥈 / gold 🥇 / platinum 🏆 / diamond 💎 for memes posted (3/10/25/50/100), high score (10/25/50/100/250), and h-score (2/5/10/20/30). A tier shows while the stat is in [its threshold, the next tier's), so each stat shows only its highest tier.
+- Computed client-side from public stats, so badges can never leak internal stats.
+
+### Comments
+- `comments(meme_id, parent_id, author_id, body, deleted_at)`: top-level comments plus one level of replies (a trigger requires a reply's parent to be a top-level comment on the same meme), like Google Memegen's per-meme discussion.
+- Only posted public memes take comments (same rule as votes); reading follows meme visibility.
+- Deleting a comment that has replies blanks it (`deleted_at`, returned as `deleted: true`, empty body) so the thread keeps its shape; otherwise the row goes, and a blanked parent left without replies goes with it. `Meme.commentCount` counts non-deleted comments.
 
 ### Auth (placeholder)
 - No passwords yet. `POST /api/session {username}` finds or creates the user; the client sends `X-User-Id` on requests.
@@ -163,15 +179,17 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 ### api (`:4000`, web proxy `/api`)
 | method | path | notes |
 |---|---|---|
-| POST | `/api/session` | `{username}` → `{user}` (find or create) |
+| POST | `/api/session` | `{username}` → `{user}` (find or create); reserved names (`memegen`) → 400 |
 | GET | `/api/me` | `{user, stats}`; 401 without user |
+| GET | `/api/me/votes?direction=up\|down&offset=&limit=` | `Page<Meme>` the viewer liked/disliked, most recent vote first; 401 without user |
+| GET | `/api/leaderboard?by=hScore\|highScore\|memeCount&limit=` | `LeaderboardEntry[]` `{rank, user, stats}` |
 | GET | `/api/users/:username` | `{user, stats}` (public stats) |
 | GET | `/api/users/:username/memes` | `Page<Meme>`; the owner also sees drafts/private |
-| GET | `/api/templates?q=&tag=&offset=&limit=` | `Page<Template>` (top-level, variations nested) |
+| GET | `/api/templates?q=&tag=&offset=&limit=` | `Page<Template>` (top-level, variations nested; `owner` always set, `baseTags ⊆ tags`) |
 | GET | `/api/templates/hot?period=&limit=` | `HotTemplate[]` — most-used top-level templates in the period |
 | GET | `/api/templates/:id/usage?period=` | `TemplateUsage` — zero-filled series (day→hourly, week/month→daily, year/all→monthly) |
 | GET | `/api/templates/:id` | `Template` (+ variations, `useCount`) |
-| POST | `/api/templates` | `{name, assetId, parentId?, defaultLayers?, isPublic?, tags?}` |
+| POST | `/api/templates` | `{name, assetId, parentId?, defaultLayers?, isPublic?, tags?}`; `tags` become base tags |
 | PATCH/DELETE | `/api/templates/:id` | owner only |
 | POST | `/api/memes` | `{title, templateId XOR sourceAssetId, outputAssetId, layers, visibility, post, tags?}` |
 | GET | `/api/memes/:id` | `Meme` (private → owner only) |
@@ -179,9 +197,12 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | POST | `/api/memes/:id/post` | sets `posted_at` |
 | DELETE | `/api/memes/:id` | owner only |
 | PUT | `/api/memes/:id/vote` | `{value: -1|0|1}` → `Meme` |
+| GET | `/api/memes/:id/comments?offset=&limit=` | `Page<Comment>`: top-level oldest first, replies nested |
+| POST | `/api/memes/:id/comments` | `{body, parentId?}` → 201 `Comment`; posted public memes only |
+| DELETE | `/api/comments/:id` | author only; blanked if it has replies, else removed |
 | GET | `/api/gallery?period=&sort=&tag=&offset=&limit=` | `Page<Meme>` |
 | GET | `/api/tags?q=&kind=&limit=` | `Tag[]` with `templateCount`/`memeCount`, most used first |
 | GET | `/api/tags/:slug` | `Tag` |
 | POST | `/api/tags` | `{name, kind?, description?}` → 201 `Tag`; 409 if slug exists |
-| PUT | `/api/templates/:id/tags` | `{tags: string[]}` replace (owner, or anyone for ownerless templates) |
+| POST | `/api/templates/:id/tags` | `{tags: string[]}` adds non-base tags (any signed-in user) → `Template` |
 | GET | `/internal/users/:username/stats` | `InternalUserStats`, `X-Internal-Token` |

@@ -82,11 +82,45 @@ export interface InternalUserStats extends UserStats {
   negativeHScore: number;
 }
 
+/** Reserved account that authors built-in (seeded) templates; nobody can sign in as it. */
+export const SYSTEM_USERNAME = "memegen";
+export const RESERVED_USERNAMES: readonly string[] = [SYSTEM_USERNAME];
+
+export const LEADERBOARD_SORTS = ["hScore", "highScore", "memeCount"] as const;
+export type LeaderboardSort = (typeof LEADERBOARD_SORTS)[number];
+
+export interface LeaderboardEntry {
+  /** 1-based position in the requested ordering. */
+  rank: number;
+  user: Pick<User, "id" | "username">;
+  stats: UserStats;
+}
+
+/** `up` = liked, `down` = disliked. */
+export const VOTE_DIRECTIONS = ["up", "down"] as const;
+export type VoteDirection = (typeof VOTE_DIRECTIONS)[number];
+
+export interface Comment {
+  id: string;
+  memeId: string;
+  /** Top-level comments are null; replies point at a top-level comment (one level of threading). */
+  parentId: string | null;
+  author: Pick<User, "id" | "username">;
+  /** Empty when `deleted`. */
+  body: string;
+  /** Deleted comments that still have replies stay as placeholders so the thread keeps its shape. */
+  deleted: boolean;
+  createdAt: string;
+  /** Only populated on top-level comments, oldest first. */
+  replies: Comment[];
+}
+
 export interface Template {
   id: string;
   name: string;
   parentId: string | null;
-  owner: Pick<User, "id" | "username"> | null;
+  /** Who added it ("added by"); built-in templates belong to the reserved `memegen` account. */
+  owner: Pick<User, "id" | "username">;
   asset: Asset;
   defaultLayers: TextLayer[];
   isPublic: boolean;
@@ -95,8 +129,10 @@ export interface Template {
   variations: Template[];
   /** All-time memes created from this template (top-level: including its variations). */
   useCount: number;
-  /** Tag slugs placed directly on this template. */
+  /** Tag slugs placed directly on this template: its base tags plus tags users added. */
   tags: string[];
+  /** Tags set by the template's author when it was added; always kept, others can only add more. */
+  baseTags: string[];
 }
 
 export const TAG_KINDS = ["topic", "team"] as const;
@@ -158,6 +194,8 @@ export interface Meme {
   myVote: number;
   /** Tag slugs placed directly on this meme (its template's tags also match tag searches). */
   tags: string[];
+  /** Non-deleted comments, replies included. */
+  commentCount: number;
 }
 
 export const PERIODS = ["day", "week", "month", "year", "all"] as const;

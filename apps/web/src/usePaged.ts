@@ -18,11 +18,14 @@ export function usePaged<T>(key: string, load: (offset: number) => Promise<Page<
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [reloads, setReloads] = useState(0);
+  // The key whose first page has settled. Until it matches `key`, the list is stale: right after a key change
+  // React commits once with the old items before the reset effect runs, and that must not read as loaded.
+  const [settledKey, setSettledKey] = useState<string | null>(null);
   const generation = useRef(0);
   const loadRef = useRef(load);
   loadRef.current = load;
 
-  const fetchPage = useCallback(async (offset: number, gen: number) => {
+  const fetchPage = useCallback(async (offset: number, gen: number, forKey: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -33,7 +36,10 @@ export function usePaged<T>(key: string, load: (offset: number) => Promise<Page<
     } catch (err) {
       if (gen === generation.current) setError(err);
     } finally {
-      if (gen === generation.current) setLoading(false);
+      if (gen === generation.current) {
+        setLoading(false);
+        setSettledKey(forKey);
+      }
     }
   }, []);
 
@@ -41,17 +47,18 @@ export function usePaged<T>(key: string, load: (offset: number) => Promise<Page<
     const gen = ++generation.current;
     setItemsState([]);
     setNextOffset(null);
-    void fetchPage(0, gen);
+    void fetchPage(0, gen, key);
   }, [key, reloads, fetchPage]);
 
+  const current = settledKey === key;
   return {
-    items,
+    items: current ? items : [],
     setItems: setItemsState,
-    loading,
+    loading: loading || !current,
     error,
-    hasMore: nextOffset !== null,
+    hasMore: current && nextOffset !== null,
     loadMore: () => {
-      if (nextOffset !== null && !loading) void fetchPage(nextOffset, generation.current);
+      if (current && nextOffset !== null && !loading) void fetchPage(nextOffset, generation.current, key);
     },
     reload: () => setReloads((n) => n + 1),
   };

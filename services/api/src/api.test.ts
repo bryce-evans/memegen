@@ -7,7 +7,9 @@ import { crc32, deflateSync } from "node:zlib";
 import {
   DEFAULT_LIMITS,
   newTextLayer,
+  type Comment,
   type HotTemplate,
+  type LeaderboardEntry,
   type Meme,
   type Page,
   type Template,
@@ -101,6 +103,17 @@ test("session is find-or-create by case-insensitive username", async () => {
   assert.equal(b.username, "Alice");
 });
 
+test("the reserved memegen account can't sign in and authors templates inserted without an owner", async () => {
+  assert.equal((await call("POST", "/api/session", null, { username: "MemeGen" })).status, 400);
+  const alice = await signIn("alice");
+  const asset = await store.upload({ data: png(), filename: "t.png", ownerId: alice.id });
+  const [row] = await sql<{ id: string }[]>`
+    insert into templates (name, asset_id, owner_id) values ('Builtin', ${asset.id}, null) returning id`;
+  const builtin = await call<Template>("GET", `/api/templates/${row!.id}`, null);
+  assert.equal(builtin.body.owner.username, "memegen");
+  assert.equal((await call("PATCH", `/api/templates/${row!.id}`, alice, { name: "Mine" })).status, 403);
+});
+
 test("stats: h-score and secret negative h-score over posted memes only", async () => {
   const alice = await signIn("alice");
   for (const score of [3, 3, 1, -2, -2, -2, 0]) await setScore((await makeMeme(alice)).id, score);
@@ -121,6 +134,33 @@ test("h-score boundary: h memes with score exactly h", async () => {
   for (const score of [3, 3, 3, 2]) await setScore((await makeMeme(bob)).id, score);
   const res = await call<{ stats: { hScore: number } }>("GET", "/api/users/bob", null);
   assert.equal(res.body.stats.hScore, 3);
+});
+
+test("leaderboard: posters only, ordered by the chosen stat with tie-breaks, public stats only", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const carol = await signIn("carol");
+  const dave = await signIn("dave");
+  for (const score of [3, 3, 1, -1]) await setScore((await makeMeme(alice)).id, score);
+  await setScore((await makeMeme(bob)).id, 10);
+  for (const score of [2, 2, 0, 0, -3]) await setScore((await makeMeme(carol)).id, score);
+  await setScore((await makeMeme(dave, { post: false })).id, 50); // drafts only: not on the board
+
+  const board = async (by: string) => (await call<LeaderboardEntry[]>("GET", `/api/leaderboard?by=${by}`, null)).body;
+  // hScore: alice and carol tie at 2; alice's higher high score breaks it.
+  const byH = await board("hScore");
+  assert.deepEqual(
+    byH.map((e) => [e.rank, e.user.username, e.stats]),
+    [
+      [1, "alice", { memeCount: 4, highScore: 3, hScore: 2 }],
+      [2, "carol", { memeCount: 5, highScore: 2, hScore: 2 }],
+      [3, "bob", { memeCount: 1, highScore: 10, hScore: 1 }],
+    ],
+  );
+  assert.equal(byH.some((e) => "negativeHScore" in e.stats), false);
+  assert.deepEqual((await board("highScore")).map((e) => e.user.username), ["bob", "alice", "carol"]);
+  assert.deepEqual((await board("memeCount")).map((e) => e.user.username), ["carol", "alice", "bob"]);
+  assert.deepEqual((await board("hScore&limit=1")).map((e) => e.user.username), ["alice"]);
 });
 
 test("templates allow exactly one level of variations", async () => {
@@ -184,6 +224,29 @@ test("votes: one per user, switchable, removable; drafts can't be voted on", asy
 
   const draft = await makeMeme(alice, { post: false });
   assert.equal((await call("PUT", `/api/memes/${draft.id}/vote`, bob, { value: 1 })).status, 400);
+});
+
+test("my votes: liked and disliked memes, most recent vote first, only memes still visible", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const older = await makeMeme(alice);
+  const newer = await makeMeme(alice);
+  const hidden = await makeMeme(alice);
+  const disliked = await makeMeme(alice);
+  const own = await makeMeme(bob);
+  const vote = (memeId: string, value: number) => call("PUT", `/api/memes/${memeId}/vote`, bob, { value });
+  for (const m of [older, newer, hidden, own]) await vote(m.id, 1);
+  await vote(disliked.id, -1);
+  for (const [memeId, hours] of [[older.id, 3], [own.id, 2], [newer.id, 1]] as const) {
+    await sql`update votes set created_at = now() - ${hours + " hours"}::interval where meme_id = ${memeId}`;
+  }
+  await call("PATCH", `/api/memes/${hidden.id}`, alice, { visibility: "private" });
+
+  const mine = async (direction: string) =>
+    (await call<Page<Meme>>("GET", `/api/me/votes?direction=${direction}`, bob)).body.items;
+  assert.deepEqual((await mine("up")).map((m) => m.id), [newer.id, own.id, older.id]);
+  assert.deepEqual((await mine("down")).map((m) => [m.id, m.myVote]), [[disliked.id, -1]]);
+  assert.equal((await call("GET", "/api/me/votes?direction=up", null)).status, 401);
 });
 
 test("gallery: period windows by post time, best sorts by score", async () => {
@@ -298,10 +361,60 @@ test("tags: normalized, inherited from templates (and variations), filter templa
   const teamTags = await call<Tag[]>("GET", "/api/tags?kind=team", null);
   assert.deepEqual(teamTags.body.map((t) => t.slug), ["google-memes"]);
 
-  // Retagging: owner yes, others no; ownerless (seeded) templates are community-tagged.
-  assert.equal((await call("PUT", `/api/templates/${plain.id}/tags`, bob, { tags: ["x"] })).status, 403);
-  await sql`update templates set owner_id = null where id = ${plain.id}`;
-  const retagged = await call<Template>("PUT", `/api/templates/${plain.id}/tags`, bob, { tags: ["oldschool"] });
-  assert.deepEqual(retagged.body.tags, ["oldschool"]);
-  assert.equal((await call("PUT", `/api/templates/${plain.id}/tags`, bob, { tags: ["!!!"] })).status, 400);
+  // Creation tags are base tags; anyone signed in adds more on top, and base tags stay base.
+  assert.deepEqual([variation.baseTags, plain.baseTags], [["brand-new", "movie"], []]);
+  const added = await call<Template>("POST", `/api/templates/${variation.id}/tags`, bob, { tags: ["Oldschool", "movie"] });
+  assert.equal(added.status, 200);
+  assert.deepEqual(added.body.tags, ["brand-new", "movie", "oldschool"]);
+  assert.deepEqual(added.body.baseTags, ["brand-new", "movie"]);
+  const again = (await call<Template>("GET", `/api/templates/${variation.id}`, null)).body;
+  assert.deepEqual([again.tags, again.baseTags], [added.body.tags, added.body.baseTags]);
+  assert.equal((await call("POST", `/api/templates/${plain.id}/tags`, bob, { tags: ["!!!"] })).status, 400);
+  assert.equal((await call("POST", `/api/templates/${plain.id}/tags`, null, { tags: ["x"] })).status, 401);
+});
+
+test("comments: one level of replies on posted public memes, author-only delete with placeholders", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const meme = await makeMeme(alice);
+  const post = (u: User | null, body: Record<string, unknown>, memeId = meme.id) =>
+    call<Comment>("POST", `/api/memes/${memeId}/comments`, u, body);
+
+  const top = await post(bob, { body: "  first!  " });
+  assert.equal(top.status, 201);
+  assert.deepEqual(
+    [top.body.body, top.body.parentId, top.body.author.username, top.body.deleted],
+    ["first!", null, "bob", false],
+  );
+  const reply = await post(alice, { body: "thanks", parentId: top.body.id });
+  assert.deepEqual([reply.status, reply.body.parentId], [201, top.body.id]);
+  assert.equal((await post(bob, { body: "nested", parentId: reply.body.id })).status, 400);
+  const elsewhere = (await post(bob, { body: "elsewhere" }, (await makeMeme(alice)).id)).body;
+  assert.equal((await post(bob, { body: "cross-meme", parentId: elsewhere.id })).status, 400);
+  assert.equal((await post(bob, { body: "early" }, (await makeMeme(alice, { post: false })).id)).status, 400);
+  assert.equal((await post(null, { body: "anon" })).status, 401);
+  const second = (await post(alice, { body: "second" })).body;
+
+  const list = async () => (await call<Page<Comment>>("GET", `/api/memes/${meme.id}/comments`, null)).body.items;
+  const commentCount = async () => (await call<Meme>("GET", `/api/memes/${meme.id}`, null)).body.commentCount;
+  assert.deepEqual(
+    (await list()).map((c) => [c.body, c.replies.map((r) => r.body)]),
+    [["first!", ["thanks"]], ["second", []]],
+  );
+  assert.equal(await commentCount(), 3);
+
+  assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, alice)).status, 403);
+  // It has a reply, so it stays as a placeholder.
+  assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, bob)).status, 204);
+  const [placeholder] = await list();
+  assert.deepEqual(
+    [placeholder!.id, placeholder!.deleted, placeholder!.body, placeholder!.replies.map((r) => r.id)],
+    [top.body.id, true, "", [reply.body.id]],
+  );
+  assert.equal(await commentCount(), 2);
+  // Its last reply goes, and the placeholder goes with it.
+  assert.equal((await call("DELETE", `/api/comments/${reply.body.id}`, alice)).status, 204);
+  assert.deepEqual((await list()).map((c) => c.id), [second.id]);
+  assert.equal(await commentCount(), 1);
+  assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, bob)).status, 404);
 });

@@ -5,9 +5,9 @@ import { Badge, Button, EmptyState, Icon, MediaGrid, PageHeader, Spinner, Text }
 import { getTag, listTemplates } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
+import { TemplateCard } from "../components/templates.tsx";
 import { usePaged } from "../usePaged.ts";
 import { GalleryFeed } from "./Gallery.tsx";
-import { TemplateCard } from "./Templates.tsx";
 
 export function TagPage() {
   const { slug = "" } = useParams();
@@ -73,7 +73,7 @@ export function TagPage() {
       </div>
 
       <div data-testid="tag-memes">
-        <GalleryFeed defaultPeriod="all" tag={slug} title="Memes" />
+        <GalleryFeed kind="tag" tag={slug} title="Memes" />
       </div>
     </section>
   );

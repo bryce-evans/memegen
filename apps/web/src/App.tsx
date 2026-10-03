@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import {
   AppShell,
   Button,
@@ -20,10 +20,10 @@ import { AuthProvider, useAuth } from "./auth.tsx";
 import { LoginForm } from "./components/common.tsx";
 import { TagSearch, TagSidebar } from "./components/tags.tsx";
 import { Editor } from "./pages/Editor.tsx";
-import { Gallery, GalleryFilters } from "./pages/Gallery.tsx";
+import { GalleryFilters, Popular, Recent, feedKindFor, hasFeedControls } from "./pages/Gallery.tsx";
+import { Leaderboard } from "./pages/Leaderboard.tsx";
 import { MemeDetail } from "./pages/MemeDetail.tsx";
 import { Profile } from "./pages/Profile.tsx";
-import { Templates } from "./pages/Templates.tsx";
 import { TagPage } from "./pages/TagPage.tsx";
 
 function SiteHeader() {
@@ -61,8 +61,12 @@ function SiteHeader() {
 function SideColumn() {
   const { user } = useAuth();
   const { pathname } = useLocation();
+  const [params] = useSearchParams();
   const { layout } = useSkin();
-  const feedPeriod = pathname === "/" ? "week" : pathname.startsWith("/t/") ? "all" : null;
+  const feedKind = feedKindFor(pathname);
+  // Profile and favorites share a path, so mark them by hand instead of letting NavLink match both.
+  const onOwnProfile = user !== null && pathname === `/u/${user.username}`;
+  const favoritesActive = onOwnProfile && params.get("tab") === "liked";
   return (
     <Sidebar>
       {layout.sidebarAction && (
@@ -72,23 +76,45 @@ function SideColumn() {
       )}
       <SidebarSection as="nav" aria-label="Pages" heading="Browse">
         <NavList>
-          <NavItem as={NavLink} to="/" end icon={<Icon name="grid" />} data-testid="nav-gallery">
-            Gallery
-          </NavItem>
-          <NavItem as={NavLink} to="/templates" icon={<Icon name="image" />} data-testid="nav-templates">
-            Templates
-          </NavItem>
           <NavItem as={NavLink} to="/create" icon={<Icon name="plus" />} data-testid="nav-create">
             Create
           </NavItem>
+          <NavItem as={NavLink} to="/recent" icon={<Icon name="clock" />} data-testid="nav-recent">
+            Recent
+          </NavItem>
+          <NavItem as={NavLink} to="/" end icon={<Icon name="flame" />} data-testid="nav-popular">
+            Popular
+          </NavItem>
+          <NavItem as={NavLink} to="/leaderboard" icon={<Icon name="chart" />} data-testid="nav-leaderboard">
+            Leaderboard
+          </NavItem>
           {user && (
-            <NavItem as={NavLink} to={`/u/${user.username}`} icon={<Icon name="user" />} data-testid="nav-profile">
-              My profile
-            </NavItem>
+            <>
+              <NavItem
+                as={Link}
+                to={`/u/${user.username}`}
+                active={onOwnProfile && !favoritesActive}
+                icon={<Icon name="user" />}
+                data-testid="nav-profile"
+              >
+                Profile
+              </NavItem>
+              <NavItem
+                as={Link}
+                to={`/u/${user.username}?tab=liked`}
+                active={favoritesActive}
+                icon={<Icon name="star" />}
+                data-testid="nav-favorites"
+              >
+                Your favorites
+              </NavItem>
+            </>
           )}
         </NavList>
       </SidebarSection>
-      {layout.filters === "sidebar" && feedPeriod && <GalleryFilters defaultPeriod={feedPeriod} placement="sidebar" />}
+      {layout.filters === "sidebar" && feedKind && hasFeedControls(feedKind) && (
+        <GalleryFilters kind={feedKind} placement="sidebar" />
+      )}
       {layout.search === "sidebar" && <TagSearch placement="sidebar" />}
       <TagSidebar />
     </Sidebar>
@@ -102,10 +128,11 @@ export default function App() {
         <BrowserRouter>
           <AppShell header={<SiteHeader />} sidebar={<SideColumn />}>
             <Routes>
-              <Route path="/" element={<Gallery />} />
+              <Route path="/" element={<Popular />} />
+              <Route path="/recent" element={<Recent />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/m/:id" element={<MemeDetail />} />
               <Route path="/u/:username" element={<Profile />} />
-              <Route path="/templates" element={<Templates />} />
               <Route path="/create" element={<Editor />} />
               <Route path="/t/:slug" element={<TagPage />} />
               <Route path="*" element={<EmptyState icon={<Icon name="search" />} title="Page not found." />} />

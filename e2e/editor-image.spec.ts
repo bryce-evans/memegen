@@ -1,8 +1,8 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, dragLayer, memeIdFromUrl, setFilters, signIn, stagePixels, uploadMedia } from "./helpers.ts";
+import { apiGet, apiUser, download, dragLayer, memeIdFromUrl, openFeed, signIn, stagePixels, uploadMedia } from "./helpers.ts";
 
-test("still image: upload, edit and drag text, tag, save draft, post, show in gallery", async ({ page, request }) => {
+test("still image: upload, edit and drag text, tag, save draft, post, show in Recent", async ({ page, request }) => {
   await page.goto("/");
   await signIn(page, scoped("imgfan"));
   await page.getByTestId("nav-create").click();
@@ -42,8 +42,7 @@ test("still image: upload, edit and drag text, tag, save draft, post, show in ga
   await page.getByTestId("post-meme").click();
   await expect(page.getByTestId("meme-status")).toContainText("posted");
 
-  await page.getByTestId("nav-gallery").click();
-  await setFilters(page, { period: "day", sort: "new" });
+  await openFeed(page, { feed: "recent" });
   const card = page.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
   await expect(card).toBeVisible();
   await expect(card.getByTestId("tag-chip")).toHaveAttribute("data-tag", "movie");

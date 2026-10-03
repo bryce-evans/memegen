@@ -22,13 +22,13 @@ import {
   Text,
   TextField,
 } from "@memegen/ui";
-import { createTemplate, getHotTemplates, getLimits, getTemplateUsage, listTemplates, setTemplateTags, uploadAsset } from "../api.ts";
+import { addTemplateTags, createTemplate, getHotTemplates, getLimits, getTemplateUsage, listTemplates, uploadAsset } from "../api.ts";
 import { useAuth } from "../auth.tsx";
-import { ErrorView, MediaView, SignInPrompt } from "../components/common.tsx";
-import { TagChips, TagEditor } from "../components/tags.tsx";
 import { MEDIA_ACCEPT, precheckMedia } from "../media.ts";
+import { PERIOD_LABELS } from "../pages/Gallery.tsx";
 import { usePaged } from "../usePaged.ts";
-import { PERIOD_LABELS } from "./Gallery.tsx";
+import { ErrorView, LoadMoreSentinel, MediaView, SignInPrompt } from "./common.tsx";
+import { TagChips, TagEditor } from "./tags.tsx";
 
 /** Pre-check against upload caps, upload the file, then register it as a template (or variation). */
 async function uploadTemplate(file: File, name: string, parentId: string | null): Promise<Template> {
@@ -38,10 +38,10 @@ async function uploadTemplate(file: File, name: string, parentId: string | null)
   return createTemplate({ name, assetId: asset.id, parentId });
 }
 
-export function Templates() {
+/** Hot templates, a debounced name search and the matching templates, loading more as the list end scrolls into view. */
+export function TemplateBrowser({ search, onSearchChange }: { search: string; onSearchChange: (search: string) => void }) {
   const { user } = useAuth();
-  const [search, setSearch] = useState("");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(search.trim());
   const list = usePaged<Template>(`${q}:${user?.id ?? ""}`, (offset) => listTemplates(q, offset));
 
   useEffect(() => {
@@ -50,8 +50,7 @@ export function Templates() {
   }, [search]);
 
   return (
-    <section>
-      <PageHeader title="Templates" />
+    <>
       <HotTemplates />
       <PageHeader
         level={2}
@@ -62,31 +61,24 @@ export function Templates() {
             className="template-search"
             placeholder="Search templates…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             aria-label="Search templates"
             data-testid="template-search"
           />
         }
       />
-      <NewTemplateForm onDone={list.reload} />
       {list.error !== null && <ErrorView error={list.error} />}
       {!list.loading && list.items.length === 0 && list.error === null && (
         <EmptyState icon={<Icon name="search" />} title="No templates found." />
       )}
-      <MediaGrid>
+      <MediaGrid data-testid="template-grid" aria-busy={list.loading}>
         {list.items.map((t) => (
           <TemplateCard key={t.id} template={t} onChanged={list.reload} />
         ))}
       </MediaGrid>
       {list.loading && <Spinner label="Loading…" />}
-      {list.hasMore && !list.loading && (
-        <div className="load-more">
-          <Button data-testid="load-more" onClick={list.loadMore}>
-            Load more
-          </Button>
-        </div>
-      )}
-    </section>
+      <LoadMoreSentinel hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} />
+    </>
   );
 }
 
@@ -225,9 +217,8 @@ export function TemplateCard({ template, onChanged }: { template: Template; onCh
   const [showUsage, setShowUsage] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [tags, setTags] = useState(template.tags);
-  // Owners retag their templates; seeded (ownerless) ones are community-tagged.
-  const canTag = user !== null && (template.owner === null || template.owner.id === user.id);
+  // Base tags come from the author and always stay; any signed-in user can add more.
+  const [tagged, setTagged] = useState({ tags: template.tags, baseTags: template.baseTags });
 
   async function addVariation(file: File) {
     setBusy(true);
@@ -292,14 +283,30 @@ export function TemplateCard({ template, onChanged }: { template: Template; onCh
         {template.name}
       </CardTitle>
       <CardMeta>
-        {template.owner ? <Link to={`/u/${template.owner.username}`}>@{template.owner.username}</Link> : <span>built-in</span>}
+        <span data-testid="template-author">
+          added by <Link to={`/u/${template.owner.username}`}>@{template.owner.username}</Link>
+        </span>
         <span aria-hidden> · </span>
-        <span data-testid="template-use-count">used {template.useCount}×</span>
+        <span
+          data-testid="template-use-count"
+          aria-label={`used ${template.useCount} ${template.useCount === 1 ? "time" : "times"}`}
+          title={`used ${template.useCount} ${template.useCount === 1 ? "time" : "times"}`}
+        >
+          {template.useCount}🔥
+        </span>
         {!template.isPublic && <Badge tone="info">Private</Badge>}
       </CardMeta>
-      <TagChips slugs={tags} />
-      {canTag && (
-        <TagEditor tags={tags} testId="template-tags-edit" onSave={async (next) => setTags((await setTemplateTags(template.id, next)).tags)} />
+      <TagChips slugs={tagged.tags} base={tagged.baseTags} />
+      {user && (
+        <TagEditor
+          tags={[]}
+          label="Add tags"
+          testId="template-tags-add"
+          onSave={async (added) => {
+            const next = await addTemplateTags(template.id, added);
+            setTagged({ tags: next.tags, baseTags: next.baseTags });
+          }}
+        />
       )}
       {showUsage && <UsageChart templateId={template.id} />}
       {template.variations.length > 0 && (
@@ -323,14 +330,14 @@ export function TemplateCard({ template, onChanged }: { template: Template; onCh
   );
 }
 
-function NewTemplateForm({ onDone }: { onDone: () => void }) {
+export function NewTemplateForm({ onCreated }: { onCreated: (template: Template) => void }) {
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  if (!user) return <SignInPrompt action="upload templates" />;
+  if (!user) return <SignInPrompt action="add templates" />;
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -339,11 +346,11 @@ function NewTemplateForm({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await uploadTemplate(file, name.trim(), null);
+      const template = await uploadTemplate(file, name.trim(), null);
       setName("");
       setFile(null);
       form.reset();
-      onDone();
+      onCreated(template);
     } catch (err) {
       setError(err);
     } finally {

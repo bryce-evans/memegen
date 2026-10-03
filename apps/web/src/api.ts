@@ -1,7 +1,10 @@
 import type {
   Asset,
+  Comment,
   GallerySort,
   HotTemplate,
+  LeaderboardEntry,
+  LeaderboardSort,
   Meme,
   Page,
   Period,
@@ -14,6 +17,7 @@ import type {
   User,
   UserStats,
   Visibility,
+  VoteDirection,
 } from "@memegen/shared";
 
 const USER_KEY = "memegen.user";
@@ -158,8 +162,9 @@ export interface CreateTemplateInput {
 export const createTemplate = (input: CreateTemplateInput) =>
   request<Template>("/api/templates", { method: "POST", json: input });
 
-export const setTemplateTags = (id: string, tags: string[]) =>
-  request<Template>(`/api/templates/${id}/tags`, { method: "PUT", json: { tags } });
+/** Adds (never removes) tags; the author's base tags always stay. */
+export const addTemplateTags = (id: string, tags: string[]) =>
+  request<Template>(`/api/templates/${id}/tags`, { method: "POST", json: { tags } });
 
 export const listTags = (q = "", kind?: TagKind, limit = 100) => request<Tag[]>(`/api/tags${qs({ q, kind, limit })}`);
 
@@ -199,3 +204,18 @@ export const voteMeme = (id: string, value: -1 | 0 | 1) =>
 
 export const getGallery = (period: Period, sort: GallerySort, offset = 0, limit = 24, tag?: string) =>
   request<Page<Meme>>(`/api/gallery${qs({ period, sort, offset, limit, tag })}`);
+
+export const getLeaderboard = (by: LeaderboardSort, limit = 50) =>
+  request<LeaderboardEntry[]>(`/api/leaderboard${qs({ by, limit })}`);
+
+/** The signed-in user's liked (`up`) or disliked (`down`) memes, most recently voted first. */
+export const getMyVotes = (direction: VoteDirection, offset = 0, limit = 24) =>
+  request<Page<Meme>>(`/api/me/votes${qs({ direction, offset, limit })}`);
+
+export const listComments = (memeId: string, offset = 0, limit = 50) =>
+  request<Page<Comment>>(`/api/memes/${memeId}/comments${qs({ offset, limit })}`);
+
+export const createComment = (memeId: string, body: string, parentId: string | null = null) =>
+  request<Comment>(`/api/memes/${memeId}/comments`, { method: "POST", json: { body, parentId } });
+
+export const deleteComment = (id: string) => request<void>(`/api/comments/${id}`, { method: "DELETE" });

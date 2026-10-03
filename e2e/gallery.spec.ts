@@ -1,27 +1,28 @@
 import type { Meme, Page as Paged } from "@memegen/shared";
 import { MOCK_EXPECT } from "../scripts/mock/data.ts";
-import { apiGet, expectInOrder, loadAll, mockTitles, setFilters, signIn } from "./helpers.ts";
+import { apiGet, expectInOrder, loadAll, mockTitles, openFeed, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
-test("gallery: sort by popular and by date, hottest in the last month; hidden memes stay hidden", async ({ page }) => {
-  await page.goto("/");
+test("gallery: popular all time and this month, recent newest first; hidden memes stay hidden", async ({ page }) => {
+  await page.goto("/recent");
 
   // Popular (best) over all time.
-  await setFilters(page, { period: "all", sort: "best" });
+  await openFeed(page, { feed: "popular", period: "all" });
   await expect.poll(async () => (await mockTitles(page))[0]).toBe(MOCK_EXPECT.bestAllTime[0]);
   await loadAll(page);
   const popular = await mockTitles(page);
   expectInOrder(popular, MOCK_EXPECT.bestAllTime);
   for (const hidden of MOCK_EXPECT.hidden) expect(popular).not.toContain(hidden);
 
-  // By date (newest first).
-  await setFilters(page, { sort: "new" });
-  await expect.poll(async () => (await mockTitles(page))[0]).toBe(MOCK_EXPECT.newest[0]);
+  // Recent: newest first, all time. Other specs post newer (non-mock) memes, so the mock ones may sit past page one.
+  await openFeed(page, { feed: "recent" });
   await loadAll(page);
-  expectInOrder(await mockTitles(page), MOCK_EXPECT.newest);
+  const recent = await mockTitles(page);
+  expect(recent[0]).toBe(MOCK_EXPECT.newest[0]);
+  expectInOrder(recent, MOCK_EXPECT.newest);
 
-  // Hottest in the last month.
-  await setFilters(page, { period: "month", sort: "best" });
+  // Popular in the last month.
+  await openFeed(page, { feed: "popular", period: "month" });
   await expect.poll(async () => (await mockTitles(page))[0]).toBe(MOCK_EXPECT.bestMonth[0]);
   await loadAll(page);
   const month = await mockTitles(page);
@@ -32,7 +33,7 @@ test("gallery: sort by popular and by date, hottest in the last month; hidden me
 test("votes: upvote adds one; downvote then removes it and adds a downvote (-2 â†’ -3)", async ({ page, request }) => {
   await page.goto("/");
   await signIn(page, scoped("voter"));
-  await setFilters(page, { period: "all", sort: "new" });
+  await openFeed(page, { feed: "recent" });
   await loadAll(page);
   const card = page.getByTestId("meme-card").filter({ hasText: MOCK_EXPECT.controversial.title });
   await expect(card).toHaveCount(1);
@@ -58,7 +59,7 @@ test("votes: upvote adds one; downvote then removes it and adds a downvote (-2 â
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`);
   expect([meme.upvotes, -meme.downvotes]).toEqual([up0, down0 - 1]);
   await page.reload();
-  await setFilters(page, { period: "all", sort: "new" });
+  await openFeed(page, { feed: "recent" });
   await loadAll(page);
   const again = page.getByTestId("meme-card").filter({ hasText: MOCK_EXPECT.controversial.title });
   await expect(again.getByTestId("downvote-count")).toHaveText(String(down0 - 1));

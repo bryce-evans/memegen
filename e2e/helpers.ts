@@ -125,19 +125,18 @@ export async function loadAll(page: Page): Promise<void> {
   }
 }
 
-/** Pick gallery period/sort and wait until the URL reflects both and the feed has reloaded. */
-export async function setFilters(page: Page, filters: { period?: string; sort?: string }): Promise<void> {
-  if (filters.sort) await page.getByTestId(`sort-${filters.sort}`).click();
-  if (filters.period) await page.getByTestId(`period-${filters.period}`).click();
-  await expect
-    .poll(() => {
-      const params = new URL(page.url()).searchParams;
-      return (
-        (!filters.period || params.get("period") === filters.period) && (!filters.sort || params.get("sort") === filters.sort)
-      );
-    })
-    .toBe(true);
-  await expect(page.getByTestId("meme-feed")).toHaveAttribute("aria-busy", "false");
+/**
+ * Open the Recent or Popular feed from the side nav (Popular optionally for a period) and wait until the feed
+ * on screen is that query and has loaded. Navigations render in a transition, so the URL alone can run ahead.
+ */
+export async function openFeed(page: Page, opts: { feed: "recent" | "popular"; period?: string }): Promise<void> {
+  await page.getByTestId(`nav-${opts.feed}`).click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe(opts.feed === "recent" ? "/recent" : "/");
+  if (opts.period) await page.getByTestId(`period-${opts.period}`).click();
+  const feed = page.getByTestId("meme-feed");
+  await expect(feed).toHaveAttribute("data-feed", opts.feed);
+  if (opts.period) await expect(feed).toHaveAttribute("data-period", opts.period);
+  await expect(feed).toHaveAttribute("aria-busy", "false");
 }
 
 /** Mock-dataset meme titles in on-screen order (cards created by other specs are skipped). */

@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { TAG_KINDS, tagSlug, type Tag, type TagKind } from "@memegen/shared";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { tagSlug, type Tag } from "@memegen/shared";
 import {
   Badge,
   Button,
@@ -11,21 +11,30 @@ import {
   Inline,
   NavItem,
   NavList,
-  SelectField,
   SidebarSection,
   Text,
   TextField,
 } from "@memegen/ui";
-import { createTag, listTags } from "../api.ts";
+import { listTags } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "./common.tsx";
 
-export function TagChips({ slugs }: { slugs: readonly string[] }) {
+/** Tag links; slugs in `base` (a template's author-set tags) are marked `data-base="true"`. */
+export function TagChips({ slugs, base = [] }: { slugs: readonly string[]; base?: readonly string[] }) {
   if (slugs.length === 0) return null;
   return (
     <ChipGroup>
       {slugs.map((slug) => (
-        <Chip key={slug} as={Link} to={`/t/${slug}`} data-testid="tag-chip" data-tag={slug}>
+        <Chip
+          key={slug}
+          as={Link}
+          to={`/t/${slug}`}
+          className={base.includes(slug) ? "tag-chip-base" : undefined}
+          title={base.includes(slug) ? "Set by the template's author" : undefined}
+          data-testid="tag-chip"
+          data-tag={slug}
+          data-base={base.includes(slug) ? "true" : undefined}
+        >
           #{slug}
         </Chip>
       ))}
@@ -96,6 +105,7 @@ export function TagInput(props: {
           {value.map((slug) => (
             <Chip
               key={slug}
+              data-testid="tag-input-chip"
               data-tag={slug}
               removeLabel={`Remove ${slug}`}
               removeDisabled={disabled}
@@ -146,8 +156,12 @@ export function TagInput(props: {
   );
 }
 
-/** "Edit tags" toggle → chip input + Save; `onSave` returns once the server accepted the tags. */
-export function TagEditor({ tags, onSave, testId }: { tags: string[]; onSave: (tags: string[]) => Promise<void>; testId: string }) {
+/**
+ * Toggle button → chip input + Save; `onSave` returns once the server accepted the tags. The draft starts from
+ * `tags` (pass `[]` to collect additions only).
+ */
+export function TagEditor(props: { tags: string[]; onSave: (tags: string[]) => Promise<void>; testId: string; label?: string }) {
+  const { tags, onSave, testId, label = "Edit tags" } = props;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(tags);
   const [busy, setBusy] = useState(false);
@@ -166,7 +180,7 @@ export function TagEditor({ tags, onSave, testId }: { tags: string[]; onSave: (t
           setEditing(true);
         }}
       >
-        Edit tags
+        {label}
       </Button>
     );
   }
@@ -261,13 +275,12 @@ export function TagSearch({ placement }: { placement: "sidebar" | "header" }) {
   return placement === "sidebar" ? <SidebarSection heading="Tags">{form}</SidebarSection> : form;
 }
 
-/** Side-column popular/team tag lists and the "new tag" form. */
+/** Side-column popular/team tag lists; refetched on navigation so tags created in the editor show up. */
 export function TagSidebar() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [popular, setPopular] = useState<Tag[]>([]);
   const [teams, setTeams] = useState<Tag[]>([]);
-  const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -282,20 +295,12 @@ export function TagSidebar() {
     return () => {
       cancelled = true;
     };
-  }, [reloads, user?.id]);
+  }, [user?.id, pathname]);
 
   return (
     <>
       {popular.length > 0 && <TagList title="Popular tags" tags={popular} />}
       {teams.length > 0 && <TagList title="Teams" tags={teams} />}
-      {user && (
-        <NewTagForm
-          onCreated={(tag) => {
-            setReloads((n) => n + 1);
-            navigate(`/t/${tag.slug}`);
-          }}
-        />
-      )}
     </>
   );
 }
@@ -318,65 +323,6 @@ function TagList({ title, tags }: { title: string; tags: Tag[] }) {
           </NavItem>
         ))}
       </NavList>
-    </SidebarSection>
-  );
-}
-
-function NewTagForm({ onCreated }: { onCreated: (tag: Tag) => void }) {
-  const [name, setName] = useState("");
-  const [kind, setKind] = useState<TagKind>("team");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const tag = await createTag({ name: name.trim(), kind });
-      setName("");
-      onCreated(tag);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <SidebarSection heading="New tag">
-      <form className="new-tag" onSubmit={submit}>
-        <TextField
-          size="sm"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Tag name"
-          aria-label="Tag name"
-          maxLength={60}
-          data-testid="new-tag-name"
-        />
-        <Inline wrap={false}>
-          <SelectField
-            size="sm"
-            className="new-tag-kind"
-            value={kind}
-            onChange={(e) => setKind(e.target.value as TagKind)}
-            data-testid="new-tag-kind"
-            aria-label="Tag kind"
-          >
-            {TAG_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </SelectField>
-          <Button size="sm" type="submit" disabled={busy || !name.trim()} data-testid="new-tag-submit">
-            Create
-          </Button>
-        </Inline>
-        {error !== null && <ErrorView error={error} />}
-      </form>
     </SidebarSection>
   );
 }

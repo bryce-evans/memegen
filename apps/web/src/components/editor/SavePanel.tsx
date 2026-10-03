@@ -1,9 +1,19 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ensureLayerFonts, exportMeme, ExportAbortedError, type DecodedMedia } from "@memegen/render";
-import { limitViolations, type Meme, type Template, type TextLayer, type UploadLimits, type Visibility } from "@memegen/shared";
+import {
+  TAG_KINDS,
+  limitViolations,
+  tagSlug,
+  type Meme,
+  type TagKind,
+  type Template,
+  type TextLayer,
+  type UploadLimits,
+  type Visibility,
+} from "@memegen/shared";
 import { Alert, Button, Field, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
-import { ApiError, createMeme, createTemplate, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
+import { ApiError, createMeme, createTag, createTemplate, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { useAuth } from "../../auth.tsx";
 import { downloadBlob, fileSlug } from "../../media.ts";
 import { ErrorView, SignInPrompt } from "../common.tsx";
@@ -145,6 +155,7 @@ export function SavePanel(props: SavePanelProps) {
           <Field as="div" label="Tags">
             <TagInput value={tags} onChange={setTags} suggestions={suggestedTags} testId="meme-tags" disabled={busy} />
           </Field>
+          <NewTagForm disabled={busy} onCreated={(slug) => setTags((ts) => (ts.includes(slug) ? ts : [...ts, slug]))} />
         </>
       )}
       <Inline className="save-actions">
@@ -207,5 +218,73 @@ export function SavePanel(props: SavePanelProps) {
         </Panel>
       )}
     </Panel>
+  );
+}
+
+/** Create a tag (e.g. a team) and put it on the meme being saved; an existing tag of that name is just added. */
+function NewTagForm({ disabled, onCreated }: { disabled: boolean; onCreated: (slug: string) => void }) {
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState<TagKind>("team");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    setError(null);
+    try {
+      let slug: string;
+      try {
+        slug = (await createTag({ name: trimmed, kind })).slug;
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 409)) throw err;
+        slug = tagSlug(trimmed);
+      }
+      setName("");
+      onCreated(slug);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Field as="div" label="New tag">
+      <form className="new-tag" onSubmit={submit}>
+        <TextField
+          size="sm"
+          className="new-tag-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Tag name"
+          aria-label="Tag name"
+          maxLength={60}
+          disabled={disabled}
+          data-testid="new-tag-name"
+        />
+        <SelectField
+          size="sm"
+          className="new-tag-kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as TagKind)}
+          disabled={disabled}
+          data-testid="new-tag-kind"
+          aria-label="Tag kind"
+        >
+          {TAG_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </SelectField>
+        <Button size="sm" type="submit" disabled={disabled || busy || !name.trim()} data-testid="new-tag-submit">
+          Create tag
+        </Button>
+      </form>
+      {error !== null && <ErrorView error={error} />}
+    </Field>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { decodeMedia, loadFont, type DecodedMedia } from "@memegen/render";
 import {
   layerStateAt,
@@ -10,7 +10,7 @@ import {
   type TextLayer,
   type UploadLimits,
 } from "@memegen/shared";
-import { Alert, EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, Spinner } from "@memegen/ui";
+import { Alert, EmptyState, FileButton, Icon, Inline, PageHeader, Panel, SegmentedControl, Spinner } from "@memegen/ui";
 import { fetchAssetBlob, fontUrl, getLimits, getMeme, getTemplate, listFonts, uploadAsset } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
@@ -18,6 +18,7 @@ import { LayerPanel } from "../components/editor/LayerPanel.tsx";
 import { SavePanel } from "../components/editor/SavePanel.tsx";
 import { Stage } from "../components/editor/Stage.tsx";
 import { Timeline } from "../components/editor/Timeline.tsx";
+import { NewTemplateForm, TemplateBrowser } from "../components/templates.tsx";
 import { MEDIA_ACCEPT, precheckMedia } from "../media.ts";
 
 /** Where the media came from; decides how the meme is saved. */
@@ -43,6 +44,8 @@ function defaultLayers(fontAssetId: string | null): TextLayer[] {
   ];
 }
 
+type StartMode = "search" | "new";
+
 /** Remount the editor whenever the query string changes (new template/meme/upload). */
 export function Editor() {
   const location = useLocation();
@@ -59,6 +62,8 @@ function EditorLoader() {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const mediaRef = useRef<DecodedMedia | null>(null);
+  const [mode, setMode] = useState<StartMode>("search");
+  const [templateSearch, setTemplateSearch] = useState("");
 
   const replaceMedia = useCallback((next: Session) => {
     mediaRef.current?.dispose();
@@ -139,7 +144,7 @@ function EditorLoader() {
         <Panel className="dropzone">
           <EmptyState
             icon={<Icon name="upload" />}
-            title="Upload an image, GIF, MP4 or MOV — or pick one from the templates."
+            title="Upload an image, GIF, MP4 or MOV — or start from a template below."
             description={
               limits && (
                 <>
@@ -165,9 +170,6 @@ function EditorLoader() {
                 >
                   Choose media
                 </FileButton>
-                <LinkButton as={Link} to="/templates" icon={<Icon name="image" />}>
-                  Browse templates
-                </LinkButton>
               </Inline>
             }
           />
@@ -175,6 +177,29 @@ function EditorLoader() {
       )}
       {(busy || (fonts === null && error === null)) && <Spinner label="Loading…" />}
       {error !== null && <ErrorView error={error} testId="editor-error" />}
+      {!memeId && !templateId && (
+        <div className="template-start">
+          <SegmentedControl
+            aria-label="Templates"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "search", label: "Find a template", testId: "create-mode-search" },
+              { value: "new", label: "Add a template", testId: "create-mode-new" },
+            ]}
+          />
+          {mode === "search" ? (
+            <TemplateBrowser search={templateSearch} onSearchChange={setTemplateSearch} />
+          ) : (
+            <NewTemplateForm
+              onCreated={(template) => {
+                setTemplateSearch(template.name);
+                setMode("search");
+              }}
+            />
+          )}
+        </div>
+      )}
     </section>
   );
 }

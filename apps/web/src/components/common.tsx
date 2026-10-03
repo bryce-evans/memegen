@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Asset } from "@memegen/shared";
 import { Alert, Button, TextField } from "@memegen/ui";
 import { ApiError, contentUrl } from "../api.ts";
@@ -84,4 +84,28 @@ export function MediaView({ asset, alt, testId }: { asset: Asset; alt: string; t
     return <video data-testid={testId} src={contentUrl(asset)} muted loop autoPlay playsInline aria-label={alt} />;
   }
   return <img data-testid={testId} src={contentUrl(asset)} alt={alt} loading="lazy" />;
+}
+
+/**
+ * Invisible marker at the end of an auto-loading list: calls `onLoadMore` while it is in (or near) the viewport.
+ * The observer is rebuilt after every page, and a fresh observer reports the current intersection right away,
+ * so a short page that leaves the marker on screen keeps loading until it scrolls away or the list ends.
+ */
+export function LoadMoreSentinel({ hasMore, loading, onLoadMore }: { hasMore: boolean; loading: boolean; onLoadMore: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const loadRef = useRef(onLoadMore);
+  loadRef.current = onLoadMore;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !hasMore || loading) return;
+    const observer = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && loadRef.current(), {
+      rootMargin: "0px 0px 200px 0px",
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loading]);
+
+  if (!hasMore) return null;
+  return <div ref={ref} className="load-more-sentinel" data-testid="load-more-sentinel" aria-hidden />;
 }

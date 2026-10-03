@@ -107,7 +107,18 @@ export function MemeCard({ meme, onChange }: { meme: Meme; onChange: (meme: Meme
         <MemeBadges meme={meme} />
       </CardMeta>
       <TagChips slugs={meme.tags} />
-      <VoteButtons meme={meme} onChange={onChange} />
+      <div className="meme-card-actions">
+        <VoteButtons meme={meme} onChange={onChange} />
+        <Link
+          to={`/m/${meme.id}#comments`}
+          className="comment-count"
+          aria-label={`${meme.commentCount} ${meme.commentCount === 1 ? "comment" : "comments"}`}
+          title="Discussion"
+          data-testid="meme-comment-count"
+        >
+          <span aria-hidden>💬</span> {meme.commentCount}
+        </Link>
+      </div>
     </Card>
   );
 }

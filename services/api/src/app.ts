@@ -1,11 +1,14 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import {
+  createCommentSchema,
   createMemeSchema,
   createTagSchema,
   createTemplateSchema,
   galleryQuerySchema,
   hotTemplatesQuerySchema,
+  leaderboardQuerySchema,
+  myVotesQuerySchema,
   sessionSchema,
   setTagsSchema,
   tagSlug,
@@ -33,23 +36,30 @@ import {
 } from "@memegen/server-kit";
 import { findAssetRow } from "@memegen/storage";
 import {
+  addTemplateTags,
+  commentSelect,
   memeSelect,
-  replaceTags,
+  replaceMemeTags,
   tagSelect,
   templateSelect,
+  toComment,
   toMeme,
   toTag,
   toTemplate,
+  type CommentRow,
   type MemeRow,
   type TagRow,
   type TemplateRow,
 } from "./rows.ts";
-import { publicStats, userStats } from "./stats.ts";
+import { leaderboard, publicStats, userStats } from "./stats.ts";
 
 const idParam = z.object({ id: z.uuid() });
 const pageQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
   limit: z.coerce.number().int().min(1).max(100).default(24),
+});
+const commentsQuery = pageQuery.extend({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 const templateQuery = pageQuery.extend({
   q: z.string().trim().max(100).default(""),
@@ -176,6 +186,23 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
     return c.json(await userStats(sql, user.id));
   });
 
+  app.get("/api/leaderboard", async (c) => {
+    const { by, limit } = parse(leaderboardQuerySchema, c.req.query());
+    return c.json(await leaderboard(sql, by, limit));
+  });
+
+  /** The signed-in user's liked (`up`) or disliked (`down`) memes that they can still see, most recent vote first. */
+  app.get("/api/me/votes", async (c) => {
+    const user = requireUser(c);
+    const { direction, offset, limit } = parse(myVotesQuerySchema, c.req.query());
+    const rows = await sql<MemeRow[]>`${memeSelect(sql, user.id)}
+      where v.value = ${direction === "up" ? 1 : -1}
+        and ((m.visibility = 'public' and m.posted_at is not null) or m.owner_id = ${user.id})
+      order by v.created_at desc, m.id
+      offset ${offset} limit ${limit + 1}`;
+    return c.json(page(rows.map(toMeme), offset, limit));
+  });
+
   // ---- templates -------------------------------------------------------------
 
   app.get("/api/templates", async (c) => {
@@ -276,14 +303,14 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
         default_layers: sql.json(body.defaultLayers as never),
         is_public: body.isPublic,
       })} returning id`;
-    if (body.tags.length) await replaceTags(sql, { table: "template_tags", id: row!.id }, body.tags, user.id);
+    await addTemplateTags(sql, row!.id, body.tags, user.id, true);
     return c.json(await loadTemplate(row!.id, user), 201);
   });
 
   const ownTemplate = async (c: Context<Env>) => {
     const user = requireUser(c);
     const { id } = parse(idParam, c.req.param());
-    const [row] = await sql<{ owner_id: string | null }[]>`select owner_id from templates where id = ${id}`;
+    const [row] = await sql<{ owner_id: string }[]>`select owner_id from templates where id = ${id}`;
     if (!row) throw new HttpError(404, "template not found");
     if (row.owner_id !== user.id) throw new HttpError(403, "only the owner can change this template");
     return { user, id };
@@ -306,16 +333,14 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
     return c.body(null, 204);
   });
 
-  /** Owner can retag; seeded/ownerless templates are community-tagged by any signed-in user. */
-  app.put("/api/templates/:id/tags", async (c) => {
+  /** Any signed-in user who can see the template adds (non-base) tags; nobody removes base tags. */
+  app.post("/api/templates/:id/tags", async (c) => {
     const user = requireUser(c);
     const { id } = parse(idParam, c.req.param());
     const { tags } = await parseJson(c, setTagsSchema);
-    const [row] = await sql<{ owner_id: string | null }[]>`
-      select owner_id from templates where id = ${id} and (is_public or owner_id = ${user.id})`;
+    const [row] = await sql`select 1 from templates where id = ${id} and (is_public or owner_id = ${user.id})`;
     if (!row) throw new HttpError(404, "template not found");
-    if (row.owner_id && row.owner_id !== user.id) throw new HttpError(403, "only the owner can retag this template");
-    await replaceTags(sql, { table: "template_tags", id }, tags, user.id);
+    await addTemplateTags(sql, id, tags, user.id, false);
     return c.json(await loadTemplate(id, user));
   });
 
@@ -380,7 +405,7 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
         visibility: body.visibility,
         posted_at: body.post ? new Date() : null,
       })} returning id`;
-    if (body.tags.length) await replaceTags(sql, { table: "meme_tags", id: row!.id }, body.tags, user.id);
+    if (body.tags.length) await replaceMemeTags(sql, row!.id, body.tags, user.id);
     return c.json(toMeme(await loadMeme(row!.id, user)), 201);
   });
 
@@ -412,7 +437,7 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
     if (Object.keys(changes).length) {
       await sql`update memes set ${sql(changes)}, updated_at = now() where id = ${id}`;
     }
-    if (body.tags) await replaceTags(sql, { table: "meme_tags", id }, body.tags, user.id);
+    if (body.tags) await replaceMemeTags(sql, id, body.tags, user.id);
     return c.json(toMeme(await loadMeme(id, user)));
   });
 
@@ -445,6 +470,76 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
         where votes.value <> excluded.value`;
     }
     return c.json(toMeme(await loadMeme(id, user)));
+  });
+
+  // ---- comments --------------------------------------------------------------
+
+  app.get("/api/memes/:id/comments", async (c) => {
+    const { id } = parse(idParam, c.req.param());
+    const { offset, limit } = parse(commentsQuery, c.req.query());
+    await loadMeme(id, c.get("user"));
+    const top = await sql<CommentRow[]>`${commentSelect(sql)}
+      where c.meme_id = ${id} and c.parent_id is null
+      order by c.created_at, c.id
+      offset ${offset} limit ${limit + 1}`;
+    const { items: shown, nextOffset } = page(top, offset, limit);
+    const replies = shown.length
+      ? await sql<CommentRow[]>`${commentSelect(sql)}
+          where c.parent_id in ${sql(shown.map((r) => r.id))}
+          order by c.created_at, c.id`
+      : [];
+    const byParent = Map.groupBy(replies, (r) => r.parent_id!);
+    const items = shown.map((r) => toComment(r, (byParent.get(r.id) ?? []).map((reply) => toComment(reply))));
+    return c.json({ items, nextOffset });
+  });
+
+  app.post("/api/memes/:id/comments", async (c) => {
+    const user = requireUser(c);
+    const { id } = parse(idParam, c.req.param());
+    const { body, parentId } = await parseJson(c, createCommentSchema);
+    const meme = await loadMeme(id, user);
+    if (meme.visibility !== "public" || !meme.posted_at) {
+      throw new HttpError(400, "only posted public memes can be commented on");
+    }
+    if (parentId) {
+      const [parent] = await sql`
+        select 1 from comments where id = ${parentId} and meme_id = ${id} and parent_id is null`;
+      if (!parent) throw new HttpError(400, "replies must answer a top-level comment on this meme");
+    }
+    const [row] = await sql<{ id: string }[]>`
+      insert into comments ${sql({ meme_id: id, parent_id: parentId ?? null, author_id: user.id, body })}
+      returning id`;
+    const [comment] = await sql<CommentRow[]>`${commentSelect(sql)} where c.id = ${row!.id}`;
+    return c.json(toComment(comment!), 201);
+  });
+
+  /**
+   * Author only. A comment with replies becomes a placeholder (soft delete); otherwise it is removed,
+   * along with its soft-deleted parent once that has no replies left.
+   */
+  app.delete("/api/comments/:id", async (c) => {
+    const user = requireUser(c);
+    const { id } = parse(idParam, c.req.param());
+    await sql.begin(async (tx) => {
+      const [row] = await tx<{ author_id: string; parent_id: string | null }[]>`
+        select author_id, parent_id from comments where id = ${id} for update`;
+      if (!row) throw new HttpError(404, "comment not found");
+      if (row.author_id !== user.id) throw new HttpError(403, "only the author can delete this comment");
+      // Lock the parent so concurrent reply deletions agree on whether it still has replies.
+      if (row.parent_id) await tx`select 1 from comments where id = ${row.parent_id} for update`;
+      const [hasReplies] = await tx`select 1 from comments where parent_id = ${id} limit 1`;
+      if (hasReplies) {
+        await tx`update comments set deleted_at = coalesce(deleted_at, now()) where id = ${id}`;
+        return;
+      }
+      await tx`delete from comments where id = ${id}`;
+      if (row.parent_id) {
+        await tx`
+          delete from comments p where p.id = ${row.parent_id} and p.deleted_at is not null
+            and not exists (select 1 from comments r where r.parent_id = p.id)`;
+      }
+    });
+    return c.body(null, 204);
   });
 
   // ---- gallery ---------------------------------------------------------------

@@ -103,6 +103,8 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - A meme stores its template, the source asset (the template's media at creation), the client-rendered output asset, and the `layers` used, so it can be re-edited.
 - Saved = row exists (`posted_at` null). Posted = `posted_at` set. `visibility` is `public` (default) or `private`.
 - Gallery and public profiles list memes that are posted **and** public. Private memes are visible only to their owner and can't be voted on.
+- Meme grids show media at native aspect, never cropped: every image is one row tall (0.8 × `--ui-grid-min`), and a meme spans `round(aspect × 0.8)` columns, 1 to 3, clamped to the columns the grid has (computed from its width and tokens, not its rendered tracks, which a spanning card inflates). `grid-auto-flow: dense` backfills gaps, so a later narrow meme can sit beside an earlier wide one. Masonry skins ignore spans.
+- Grid cards shrink to their image; title, author, tags, votes, star and comment count sit on a scrim (`--ui-color-scrim` / `--ui-color-on-scrim`, dark in every skin) that fades in from the bottom and slides up on hover or keyboard focus. Devices without hover (`@media (hover: none)`) always show it. The overlay stays in the DOM (opacity, not `display`), so it remains reachable by keyboard and automation.
 
 ### Votes, ranking, stats
 - `votes(user_id, meme_id, value ±1, created_at)`, one per user per meme. A trigger keeps `memes.upvotes/downvotes` up to date; `score` is a generated column.

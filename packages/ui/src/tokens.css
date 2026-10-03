@@ -32,6 +32,9 @@
   --ui-color-focus-ring: #ffcc33;
   --ui-color-link: #ffcc33;
   --ui-color-overlay: rgb(0 0 0 / 0.6);
+  /* Scrim for text laid over photos/media (always dark, in every skin) and the text on it. */
+  --ui-color-scrim: rgb(0 0 0 / 0.78);
+  --ui-color-on-scrim: #ffffff;
   /* Hover/press state layers, painted over any fill. */
   --ui-state-hover: rgb(255 255 255 / 0.04);
   --ui-state-press: rgb(255 255 255 / 0.08);

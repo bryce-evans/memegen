@@ -194,6 +194,67 @@
   white-space: nowrap;
 }
 
+/* Meme grids: native aspect, never cropped. Every image is one row tall (0.8 × the column minimum, matching
+   ROW_PER_COLUMN in memes.tsx); wide memes span up to 3 columns via an inline grid-column. The card shrinks to its
+   image so the hover overlay covers exactly the meme. */
+.meme-grid {
+  --meme-row-height: calc(var(--ui-grid-min) * 0.8);
+  grid-auto-flow: row dense;
+}
+.meme-grid .meme-card.ui-card.ui-card--borderless {
+  position: relative;
+  justify-self: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--ui-radius-media);
+}
+.meme-grid .ui-card-media {
+  border-radius: 0;
+  background: var(--ui-color-media-bg);
+}
+.meme-grid .ui-card-media img,
+.meme-grid .ui-card-media video {
+  width: auto;
+  height: var(--meme-row-height);
+  max-width: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+
+/* Title, author, tags, votes and actions sit on a scrim that fades in from the bottom and slides up on hover
+   (or keyboard focus); touch screens without hover always show it. */
+.meme-grid .meme-card.ui-card.ui-card--borderless .ui-card-body {
+  --ui-color-text: var(--ui-color-on-scrim);
+  --ui-color-text-muted: color-mix(in srgb, var(--ui-color-on-scrim) 78%, transparent);
+  --ui-color-link: var(--ui-color-on-scrim);
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: var(--ui-space-8) var(--ui-space-3) var(--ui-space-3);
+  background: linear-gradient(to top, var(--ui-color-scrim) 0%, var(--ui-color-scrim) 40%, transparent 100%);
+  color: var(--ui-color-on-scrim);
+  opacity: 0;
+  transform: translateY(40%);
+  transition:
+    opacity var(--ui-duration-normal) var(--ui-easing-standard),
+    transform var(--ui-duration-slow) var(--ui-easing-standard);
+}
+.meme-grid .meme-card.ui-card.ui-card--borderless:is(:hover, :focus-within) .ui-card-body {
+  opacity: 1;
+  transform: none;
+}
+@media (hover: none) {
+  .meme-grid .meme-card.ui-card.ui-card--borderless .ui-card-body {
+    opacity: 1;
+    transform: none;
+  }
+}
+.meme-grid .meme-card.ui-card .ui-card-body :is(.ui-card-title, .ui-card-meta, .ui-card-meta a) {
+  color: inherit;
+}
+
 /* ---- comments ------------------------------------------------------------- */
 
 .comment-list,

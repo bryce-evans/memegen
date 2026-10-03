@@ -41,7 +41,7 @@ after(async () => {
 });
 
 beforeEach(async () => {
-  await sql`truncate users, assets, templates, memes, votes cascade`;
+  await sql`truncate users, assets cascade`;
 });
 
 let pngCounter = 0;
@@ -79,23 +79,33 @@ async function signIn(username: string): Promise<User> {
   return (await call<{ user: User }>("POST", "/api/session", null, { username })).body.user;
 }
 
-/** A public template from a fresh image, owned by `owner`. */
-async function makeTemplate(owner: User, name = "Base"): Promise<Template> {
-  const asset = await store.upload({ data: png(), filename: "t.png", ownerId: owner.id });
-  const res = await call<Template>("POST", "/api/templates", owner, { name, assetId: asset.id });
+/** A fresh image uploaded by `owner`; returns its asset id. */
+async function upload(owner: User, filename = "t.png"): Promise<string> {
+  return (await store.upload({ data: png(), filename, ownerId: owner.id })).id;
+}
+
+/** A template (public unless `isPublic: false`) from a fresh image, owned by `owner`. */
+async function makeTemplate(
+  owner: User,
+  { name = "Base", ...rest }: { name?: string; parentId?: string; isPublic?: boolean; tags?: string[] } = {},
+): Promise<Template> {
+  const res = await call<Template>("POST", "/api/templates", owner, { name, assetId: await upload(owner), ...rest });
   assert.equal(res.status, 201, JSON.stringify(res.body));
   return res.body;
 }
 
-async function makeMeme(owner: User, opts: { post?: boolean; visibility?: "public" | "private" } = {}): Promise<Meme> {
-  const template = await makeTemplate(owner);
-  const output = await store.upload({ data: png(), filename: "o.png", ownerId: owner.id });
+/** A meme by `owner` (posted and public by default), from `templateId` or else a new template of theirs. */
+async function makeMeme(
+  owner: User,
+  opts: { templateId?: string; post?: boolean; visibility?: "public" | "private"; tags?: string[] } = {},
+): Promise<Meme> {
   const res = await call<Meme>("POST", "/api/memes", owner, {
-    templateId: template.id,
-    outputAssetId: output.id,
+    templateId: opts.templateId ?? (await makeTemplate(owner)).id,
+    outputAssetId: await upload(owner, "o.png"),
     layers: [newTextLayer()],
     visibility: opts.visibility ?? "public",
     post: opts.post ?? true,
+    tags: opts.tags,
   });
   assert.equal(res.status, 201, JSON.stringify(res.body));
   return res.body;
@@ -115,9 +125,8 @@ test("session is find-or-create by case-insensitive username", async () => {
 test("the reserved memegen account can't sign in and authors templates inserted without an owner", async () => {
   assert.equal((await call("POST", "/api/session", null, { username: "MemeGen" })).status, 400);
   const alice = await signIn("alice");
-  const asset = await store.upload({ data: png(), filename: "t.png", ownerId: alice.id });
   const [row] = await sql<{ id: string }[]>`
-    insert into templates (name, asset_id, owner_id) values ('Builtin', ${asset.id}, null) returning id`;
+    insert into templates (name, asset_id, owner_id) values ('Builtin', ${await upload(alice)}, null) returning id`;
   const builtin = await call<Template>("GET", `/api/templates/${row!.id}`, null);
   assert.equal(builtin.body.owner.username, "memegen");
   assert.equal((await call("PATCH", `/api/templates/${row!.id}`, alice, { name: "Mine" })).status, 403);
@@ -147,10 +156,9 @@ test("h-score boundary: h memes with score exactly h", async () => {
 
 test("profiles count the public templates a user added, variations included", async () => {
   const alice = await signIn("alice");
-  const asset = async () => (await store.upload({ data: png(), filename: "t.png", ownerId: alice.id })).id;
-  const base = (await call<Template>("POST", "/api/templates", alice, { name: "Base", assetId: await asset() })).body;
-  await call("POST", "/api/templates", alice, { name: "Tweak", assetId: await asset(), parentId: base.id });
-  await call("POST", "/api/templates", alice, { name: "Hidden", assetId: await asset(), isPublic: false });
+  const base = await makeTemplate(alice);
+  await makeTemplate(alice, { name: "Tweak", parentId: base.id });
+  await makeTemplate(alice, { name: "Hidden", isPublic: false });
   await signIn("bob");
 
   const count = async (path: string, viewer: User | null) =>
@@ -189,19 +197,12 @@ test("leaderboard: posters only, ordered by the chosen stat with tie-breaks, pub
 
 test("templates allow exactly one level of variations", async () => {
   const alice = await signIn("alice");
-  const asset = async () => (await store.upload({ data: png(), filename: "t.png", ownerId: alice.id })).id;
-  const parent = await call<Template>("POST", "/api/templates", alice, { name: "Base", assetId: await asset() });
-  assert.equal(parent.status, 201);
-  const variation = await call<Template>("POST", "/api/templates", alice, {
-    name: "Tweak",
-    assetId: await asset(),
-    parentId: parent.body.id,
-  });
-  assert.equal(variation.status, 201);
-  const nested = await call<{ error: string }>("POST", "/api/templates", alice, {
+  const parent = await makeTemplate(alice);
+  const variation = await makeTemplate(alice, { name: "Tweak", parentId: parent.id });
+  const nested = await call("POST", "/api/templates", alice, {
     name: "Nested",
-    assetId: await asset(),
-    parentId: variation.body.id,
+    assetId: await upload(alice),
+    parentId: variation.id,
   });
   assert.equal(nested.status, 400);
 
@@ -209,8 +210,8 @@ test("templates allow exactly one level of variations", async () => {
   assert.deepEqual(list.body.items.map((t) => [t.name, t.variations.map((v) => v.name)]), [["Base", ["Tweak"]]]);
 
   // The DB trigger also guards direct writes: a parent with variations can't become a variation.
-  const other = await call<Template>("POST", "/api/templates", alice, { name: "Other", assetId: await asset() });
-  await assert.rejects(sql`update templates set parent_id = ${other.body.id} where id = ${parent.body.id}`, /has variations/);
+  const other = await makeTemplate(alice, { name: "Other" });
+  await assert.rejects(sql`update templates set parent_id = ${other.id} where id = ${parent.id}`, /has variations/);
 });
 
 test("private memes and drafts are hidden from others but visible to the owner", async () => {
@@ -325,41 +326,32 @@ test("memes need an existing template and an output uploaded by the author", asy
   const alice = await signIn("alice");
   const eve = await signIn("eve");
   const template = await makeTemplate(alice);
-  const aliceOutput = await store.upload({ data: png(), filename: "o.png", ownerId: alice.id });
-  const eveOutput = await store.upload({ data: png(), filename: "o.png", ownerId: eve.id });
+  const aliceOutput = await upload(alice, "o.png");
+  const eveOutput = await upload(eve, "o.png");
   const create = (body: Record<string, unknown>) => call("POST", "/api/memes", eve, { layers: [], ...body });
-  assert.equal((await create({ templateId: template.id, outputAssetId: aliceOutput.id })).status, 403);
-  assert.equal((await create({ outputAssetId: eveOutput.id })).status, 400); // no template
-  assert.equal((await create({ sourceAssetId: eveOutput.id, outputAssetId: eveOutput.id })).status, 400);
-  assert.equal((await create({ templateId: crypto.randomUUID(), outputAssetId: eveOutput.id })).status, 404);
-  const made = await create({ templateId: template.id, outputAssetId: eveOutput.id });
+  assert.equal((await create({ templateId: template.id, outputAssetId: aliceOutput })).status, 403);
+  assert.equal((await create({ outputAssetId: eveOutput })).status, 400); // no template
+  assert.equal((await create({ sourceAssetId: eveOutput, outputAssetId: eveOutput })).status, 400);
+  assert.equal((await create({ templateId: crypto.randomUUID(), outputAssetId: eveOutput })).status, 404);
+  const made = await create({ templateId: template.id, outputAssetId: eveOutput });
   assert.equal(made.status, 201);
 
   // A template in use can't be deleted (nor can its parent, which would take the variation with it).
   assert.equal((await call("DELETE", `/api/templates/${template.id}`, alice)).status, 409);
-  const unused = await makeTemplate(alice, "Unused");
+  const unused = await makeTemplate(alice, { name: "Unused" });
   assert.equal((await call("DELETE", `/api/templates/${unused.id}`, alice)).status, 204);
 });
 
 test("template usage: variations roll up to the parent, history survives deletion, windows apply", async () => {
   const alice = await signIn("alice");
-  const asset = async () => (await store.upload({ data: png(), filename: "t.png", ownerId: alice.id })).id;
-  const base = (await call<Template>("POST", "/api/templates", alice, { name: "Base", assetId: await asset() })).body;
-  const tweak = (
-    await call<Template>("POST", "/api/templates", alice, { name: "Tweak", assetId: await asset(), parentId: base.id })
-  ).body;
-  const cold = (await call<Template>("POST", "/api/templates", alice, { name: "Cold", assetId: await asset() })).body;
+  const base = await makeTemplate(alice);
+  const tweak = await makeTemplate(alice, { name: "Tweak", parentId: base.id });
+  const cold = await makeTemplate(alice, { name: "Cold" });
 
-  const useTemplate = async (templateId: string, post: boolean) => {
-    const output = await store.upload({ data: png(), filename: "o.png", ownerId: alice.id });
-    return (
-      await call<Meme>("POST", "/api/memes", alice, { templateId, outputAssetId: output.id, layers: [], post })
-    ).body;
-  };
-  await useTemplate(base.id, true);
-  const fromVariation = await useTemplate(tweak.id, false);
-  await useTemplate(tweak.id, false);
-  const old = await useTemplate(cold.id, true);
+  await makeMeme(alice, { templateId: base.id });
+  const fromVariation = await makeMeme(alice, { templateId: tweak.id, post: false });
+  await makeMeme(alice, { templateId: tweak.id, post: false });
+  const old = await makeMeme(alice, { templateId: cold.id });
   await sql`update template_uses set created_at = now() - interval '20 days' where meme_id = ${old.id}`;
 
   // Posting later records a 'posted' use; deleting the meme keeps its history.
@@ -384,30 +376,18 @@ test("template usage: variations roll up to the parent, history survives deletio
 test("tags: normalized, inherited from templates (and variations), filter templates and gallery", async () => {
   const alice = await signIn("alice");
   const bob = await signIn("bob");
-  const asset = async () => (await store.upload({ data: png(), filename: "t.png", ownerId: alice.id })).id;
   const team = await call<Tag>("POST", "/api/tags", alice, { name: "Google Memes!", kind: "team" });
   assert.deepEqual([team.status, team.body.slug, team.body.kind], [201, "google-memes", "team"]);
   assert.equal((await call("POST", "/api/tags", alice, { name: "google memes" })).status, 409);
 
-  const base = (await call<Template>("POST", "/api/templates", alice, { name: "Base", assetId: await asset() })).body;
-  const variation = (
-    await call<Template>("POST", "/api/templates", alice, {
-      name: "Scene",
-      assetId: await asset(),
-      parentId: base.id,
-      tags: ["Movie", "movie", "Brand New"],
-    })
-  ).body;
+  const base = await makeTemplate(alice);
+  const variation = await makeTemplate(alice, { name: "Scene", parentId: base.id, tags: ["Movie", "movie", "Brand New"] });
   assert.deepEqual(variation.tags, ["brand-new", "movie"]);
-  const plain = (await call<Template>("POST", "/api/templates", alice, { name: "Plain", assetId: await asset() })).body;
+  const plain = await makeTemplate(alice, { name: "Plain" });
 
-  const make = async (body: Record<string, unknown>) => {
-    const output = await store.upload({ data: png(), filename: "o.png", ownerId: alice.id });
-    return (await call<Meme>("POST", "/api/memes", alice, { outputAssetId: output.id, layers: [], post: true, ...body })).body;
-  };
-  const fromScene = await make({ templateId: variation.id });
-  const teamMeme = await make({ templateId: plain.id, tags: ["google-memes"] });
-  await make({ templateId: variation.id, visibility: "private" });
+  const fromScene = await makeMeme(alice, { templateId: variation.id });
+  const teamMeme = await makeMeme(alice, { templateId: plain.id, tags: ["google-memes"] });
+  await makeMeme(alice, { templateId: variation.id, visibility: "private" });
   assert.deepEqual(fromScene.tags, []);
   assert.deepEqual(teamMeme.tags, ["google-memes"]);
 

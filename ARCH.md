@@ -9,7 +9,7 @@ apps/web            React + Vite SPA: editor, templates, gallery, profiles      
 packages/ui         Skinnable React components + design tokens (default/apple/matte/google/studio/spectrum)
 packages/render     Browser render engine: decode → composite → encode (TS)   (component 2)
 packages/shared     Types, zod schemas, upload limits, animation + text layout (used everywhere)
-packages/server-kit Node server plumbing: config, Postgres, migrations, auth, http helpers
+packages/server-kit Node server plumbing: config, Postgres, migrations, auth (+ users rows), http helpers (idParam, page), asset rows
 services/storage    Asset service: pluggable providers (local, s3), probing, caps (component 1)
 services/api        Gallery/templates/memes/votes/users/stats                    (component 4)
 db/migrations       Plain SQL migrations, applied in filename order
@@ -87,7 +87,7 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 ### Template usage ("hot" templates)
 - Core tables: `users`, `memes` (one row per meme, with its own vote tallies), `templates` (+ variations), `votes`, `assets`.
 - `template_uses` is an append-only event log: a `created` row when a meme is made from a template, a `posted` row when it is posted. Each row stores the exact template and its `root_template_id` (the parent for variations), so a variation's usage also counts toward its parent.
-- Written by a trigger on `memes`, so every write path records usage. `meme_id` is `on delete set null`: history survives meme deletion and still feeds "hot over time".
+- Written by a trigger on `memes`, so every write path records usage. `meme_id` is `on delete set null`: history survives meme deletion and still feeds "hot over time". Migration 007 backfilled the uses of memes 006 reassigned with a plain UPDATE (which the trigger doesn't see).
 - Hot ranking = `created` uses inside the period (tie-break: posts). `Template.useCount` is the all-time count; `/usage` gives a time series for charts.
 
 ### Tags
@@ -102,9 +102,16 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - Every meme is made from a template (`memes.template_id not null`, FK `on delete restrict`; `POST /api/memes` takes `templateId` only). There is no one-off upload: new media becomes a template first. Migration 006 gave earlier one-off memes a private template built from their own source image, owned by their author.
 - A meme stores its template, the source asset (the template's media at creation), the client-rendered output asset, and the `layers` used, so it can be re-edited.
 - Saved = row exists (`posted_at` null). Posted = `posted_at` set. `visibility` is `public` (default) or `private`.
-- Gallery and public profiles list memes that are posted **and** public. Private memes are visible only to their owner and can't be voted on.
+- Gallery and public profiles list memes that are posted **and** public ("listed"). Private memes are visible only to their owner and can't be voted on. A meme opened by id is readable when public (drafts included) or owned by the viewer.
+- These rules live once in `services/api/src/rows.ts` as SQL fragments (`memeListed`, `memeVisibleTo`, `memeOpenTo`, `templateVisibleTo`) plus `requireListed` for loaded rows (votes, favorites, comments).
 - Meme grids show media at native aspect, never cropped: every image is one row tall (0.8 × `--ui-grid-min`), and a meme spans `round(aspect × 0.8)` columns, 1 to 3, clamped to the columns the grid has (computed from its width and tokens, not its rendered tracks, which a spanning card inflates). `grid-auto-flow: dense` backfills gaps, so a later narrow meme can sit beside an earlier wide one. Masonry skins ignore spans.
 - Grid cards shrink to their image; title, author, tags, votes, star and comment count sit on a scrim (`--ui-color-scrim` / `--ui-color-on-scrim`, dark in every skin) that fades in from the bottom and slides up on hover or keyboard focus. Devices without hover (`@media (hover: none)`) always show it. The overlay stays in the DOM (opacity, not `display`), so it remains reachable by keyboard and automation.
+
+### API code layout (`services/api`)
+- `app.ts` only wires auth middleware, the error handler, and `routes/{users,templates,tags,memes,comments,gallery}.ts`, each exporting `register(app, sql)`.
+- `access.ts` holds the loaders/guards routes share (`requireUser`, `loadMeme`, `loadTemplate`, `ownMeme`, `ownTemplate`, `requireMediaAsset`, ...), each a plain `(sql, …)` function.
+- `rows.ts` holds row types, base selects (`memeSelect` exposes aliases `m`, `u`, `v`; callers may append joins), `toX` mappers, and `withVariations`/`nest`, which load children for a whole page in one query (template lists, hot templates, comment replies).
+- Query/body schemas come from `@memegen/shared`; `idParam`, `page()`, `UserRow`/`toUser`, and `AssetRow`/`toAsset`/`findAssetRow` from `@memegen/server-kit`, so the API never imports the storage service.
 
 ### Votes, ranking, stats
 - `votes(user_id, meme_id, value ±1, created_at)`, one per user per meme. A trigger keeps `memes.upvotes/downvotes` up to date; `score` is a generated column.

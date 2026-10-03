@@ -1,6 +1,15 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
+import type { Page } from "@memegen/shared";
 import { config } from "./config.ts";
+
+/** Route params `{ id }` for `/:id` paths. */
+export const idParam = z.object({ id: z.uuid() });
+
+/** One page from rows fetched with `limit + 1`: the extra row only signals that another page exists. */
+export function page<T>(rows: T[], offset: number, limit: number): Page<T> {
+  return { items: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null };
+}
 
 export class HttpError extends Error {
   readonly status: number;

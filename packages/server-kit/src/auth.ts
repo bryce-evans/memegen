@@ -12,6 +12,17 @@ export interface AuthProvider {
   resolve(c: Context): Promise<User | null>;
 }
 
+/** A `users` row as selected by `select id, username, created_at`. */
+export interface UserRow {
+  id: string;
+  username: string;
+  created_at: Date;
+}
+
+export function toUser(r: UserRow): User {
+  return { id: r.id, username: r.username, createdAt: r.created_at.toISOString() };
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** DEV ONLY: trusts the `X-User-Id` header. No authentication whatsoever. */
@@ -26,9 +37,8 @@ export class HeaderAuthProvider implements AuthProvider {
     const id = c.req.header("x-user-id");
     if (!id) return null;
     if (!UUID_RE.test(id)) throw new HttpError(401, "invalid X-User-Id");
-    const [row] = await this.sql<{ id: string; username: string; created_at: Date }[]>`
-      select id, username, created_at from users where id = ${id}`;
+    const [row] = await this.sql<UserRow[]>`select id, username, created_at from users where id = ${id}`;
     if (!row) throw new HttpError(401, "unknown user");
-    return { id: row.id, username: row.username, createdAt: row.created_at.toISOString() };
+    return toUser(row);
   }
 }

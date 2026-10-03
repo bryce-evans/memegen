@@ -1,6 +1,6 @@
-import type { ComponentPropsWithRef, ElementType, ReactNode } from "react";
-import { cx, type LoosePolymorphicProps, type PolymorphicProps } from "../cx.ts";
-import { skinnable } from "../skin.tsx";
+import type { ComponentPropsWithRef, ReactNode } from "react";
+import { cx, type LoosePolymorphicProps } from "../cx.ts";
+import { skinnable, skinnablePolymorphic } from "../skin.tsx";
 
 export interface AppShellProps extends ComponentPropsWithRef<"div"> {
   header?: ReactNode;
@@ -105,9 +105,7 @@ function NavItemBase({ as: As = "a", active, icon, trailing, className, children
   );
 }
 
-export const NavItem = skinnable("NavItem", NavItemBase) as <C extends ElementType = "a">(
-  props: PolymorphicProps<C, NavItemOwnProps>,
-) => ReactNode;
+export const NavItem = skinnablePolymorphic<"a", NavItemOwnProps>("NavItem", NavItemBase);
 
 export interface PageHeaderProps extends Omit<ComponentPropsWithRef<"div">, "title"> {
   title: ReactNode;

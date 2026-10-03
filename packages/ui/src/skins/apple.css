@@ -43,8 +43,8 @@
   --ui-color-focus-ring: rgb(0 122 255 / 0.5);
   --ui-color-link: #0066cc;
   --ui-color-overlay: rgb(0 0 0 / 0.4);
-  --ui-state-hover: rgb(0 0 0 / 0.04);
-  --ui-state-press: rgb(0 0 0 / 0.08);
+  --ui-color-state-hover: rgb(0 0 0 / 0.04);
+  --ui-color-state-press: rgb(0 0 0 / 0.08);
   --ui-color-header-bg: rgb(255 255 255 / 0.72);
   --ui-header-backdrop: saturate(180%) blur(20px);
   --ui-color-sidebar-bg: transparent;
@@ -68,9 +68,9 @@
   --ui-font-weight-button: 400;
   --ui-font-weight-brand: 600;
   --ui-letter-spacing-heading: -0.022em;
-  --ui-label-transform: none;
-  --ui-label-tracking: 0;
-  --ui-label-size: 12px;
+  --ui-text-transform-label: none;
+  --ui-letter-spacing-label: 0;
+  --ui-font-size-label: 12px;
 
   /* ---- shape ---- */
   --ui-radius-sm: 6px;
@@ -94,9 +94,9 @@
   --ui-control-height-md: 34px;
   --ui-control-padding-x: 14px;
   --ui-slider-track-height: 4px;
-  --ui-slider-track-color: rgb(120 120 128 / 0.2);
+  --ui-color-slider-track: rgb(120 120 128 / 0.2);
   --ui-slider-thumb-size: 21px;
-  --ui-slider-thumb-color: #ffffff;
+  --ui-color-slider-thumb: #ffffff;
   --ui-slider-thumb-border: 0.5px solid rgb(0 0 0 / 0.04);
   --ui-slider-thumb-shadow: 0 3px 8px rgb(0 0 0 / 0.15), 0 3px 1px rgb(0 0 0 / 0.06);
   --ui-progress-height: 4px;
@@ -183,42 +183,28 @@
 /* ---- buttons ----------------------------------------------------------------- */
 
 :root[data-skin="apple"] .ui-button {
-  border-color: transparent;
-  background-color: var(--apple-fill);
+  --ui-button-bg: var(--apple-fill);
+  --ui-button-border: transparent;
+  --ui-button-hover-border: transparent;
   letter-spacing: -0.01em;
 }
-:root[data-skin="apple"] .ui-button:hover:not(:disabled, .is-disabled) {
-  border-color: transparent;
-}
 :root[data-skin="apple"] .ui-button--primary {
-  background-color: var(--ui-color-primary);
-  color: var(--ui-color-on-primary);
+  --ui-button-bg: var(--ui-color-primary);
+  --ui-button-hover-bg: var(--ui-color-primary-hover);
   font-weight: var(--ui-font-weight-medium);
 }
-:root[data-skin="apple"] .ui-button--primary:hover:not(:disabled, .is-disabled) {
-  background-color: var(--ui-color-primary-hover);
-}
 :root[data-skin="apple"] .ui-button--quiet {
-  background-color: transparent;
-  color: var(--ui-color-link);
-}
-:root[data-skin="apple"] .ui-button--danger {
-  background-color: var(--apple-fill);
-  color: var(--ui-color-danger);
+  --ui-button-bg: transparent;
+  --ui-button-fg: var(--ui-color-link);
 }
 :root[data-skin="apple"] .ui-button[aria-pressed="true"] {
-  background-color: var(--ui-color-tonal);
-  border-color: transparent;
-  color: var(--ui-color-on-tonal);
+  --ui-button-bg: var(--ui-color-tonal);
+  --ui-button-fg: var(--ui-color-on-tonal);
 }
-/* Votes keep their warning/info meaning over the pressed style above. */
-:root[data-skin="apple"] .vote-up[aria-pressed="true"] {
-  color: var(--ui-color-warning);
-  background-color: color-mix(in srgb, var(--ui-color-warning) 14%, transparent);
-}
-:root[data-skin="apple"] .vote-down[aria-pressed="true"] {
-  color: var(--ui-color-info);
-  background-color: color-mix(in srgb, var(--ui-color-info) 14%, transparent);
+/* Toned toggles (upvote, favorite) keep their color over the pressed style above. */
+:root[data-skin="apple"] .ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] {
+  --ui-button-bg: color-mix(in srgb, var(--ui-button-tone) 14%, transparent);
+  --ui-button-fg: var(--ui-button-tone);
 }
 
 /* ---- segmented control: gray track, raised white thumb ------------------------ */
@@ -243,7 +229,7 @@
   padding: 0 10px;
 }
 :root[data-skin="apple"] .ui-segmented:not(.ui-segmented--vertical) .ui-segmented-option:hover:not(:disabled) {
-  background-color: var(--ui-state-hover);
+  background-color: var(--ui-color-state-hover);
 }
 :root[data-skin="apple"] .ui-segmented:not(.ui-segmented--vertical) .ui-segmented-option[aria-pressed="true"] {
   background-color: var(--apple-thumb);
@@ -284,44 +270,6 @@
   height: 0.85rem;
   margin-top: -0.425rem;
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 13'%3E%3Cpath d='M1 4.5 4 1.5l3 3M1 8.5l3 3 3-3' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-/* Header search: one rounded gray field with the magnifier leading it. */
-:root[data-skin="apple"] .tag-search .tag-search-field {
-  flex-direction: row-reverse;
-  border-radius: 10px;
-  background-color: var(--apple-fill-track);
-}
-:root[data-skin="apple"] .tag-search .tag-search-field:focus-within {
-  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
-}
-:root[data-skin="apple"] .tag-search .tag-search-field .ui-input {
-  padding-left: 2px;
-  border: none;
-  border-radius: 0 10px 10px 0;
-  background-color: transparent;
-}
-:root[data-skin="apple"] .tag-search .tag-search-field .ui-input:focus {
-  outline: none;
-}
-:root[data-skin="apple"] .tag-search-submit {
-  min-width: 34px;
-  padding: 0 4px 0 10px;
-  border-radius: 10px 0 0 10px;
-  background-color: transparent;
-  color: var(--ui-color-text-muted);
-  font-weight: var(--ui-font-weight-regular);
-}
-:root[data-skin="apple"] .tag-search-submit:hover:not(:disabled, .is-disabled) {
-  background-color: transparent;
-  color: var(--apple-blue);
-}
-:root[data-skin="apple"] .tag-search .tag-suggestions {
-  margin-top: 6px;
-  padding: 6px;
-  border: none;
-  border-radius: 12px;
-  box-shadow: var(--ui-shadow-2);
 }
 
 /* macOS slider knob sits slightly proud of the thin track. */
@@ -383,10 +331,10 @@
 /* ---- feedback ------------------------------------------------------------------ */
 
 :root[data-skin="apple"] .ui-progress {
-  background-color: var(--ui-slider-track-color);
+  background-color: var(--ui-color-slider-track);
 }
 :root[data-skin="apple"] .ui-progress::-webkit-progress-bar {
-  background-color: var(--ui-slider-track-color);
+  background-color: var(--ui-color-slider-track);
 }
 :root[data-skin="apple"] .ui-progress::-webkit-progress-value {
   background-color: var(--apple-blue);
@@ -428,38 +376,4 @@
   border-radius: 10px;
   background-color: var(--apple-inset-bg);
   box-shadow: none;
-}
-
-/* ---- app surfaces ---------------------------------------------------------------- */
-
-:root[data-skin="apple"] .stage {
-  border: none;
-  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
-}
-:root[data-skin="apple"] .timeline,
-:root[data-skin="apple"] .stats div {
-  border: none;
-  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
-}
-:root[data-skin="apple"] .thumb.current {
-  border-color: var(--apple-blue);
-}
-:root[data-skin="apple"] .handle.selected {
-  border-color: var(--apple-blue);
-}
-:root[data-skin="apple"] .variation {
-  border: none;
-  border-radius: var(--ui-radius-md);
-}
-/* Layer rows read like a source list; destructive icons stay red. */
-:root[data-skin="apple"] .layer-name {
-  color: var(--ui-color-text);
-}
-:root[data-skin="apple"] .layer-name[aria-pressed="true"] {
-  background-color: var(--apple-selection);
-  color: var(--ui-color-text);
-  font-weight: var(--ui-font-weight-medium);
-}
-:root[data-skin="apple"] .danger-icon {
-  color: var(--ui-color-danger);
 }

@@ -1,0 +1,121 @@
+/* App-specific tweaks for the google skin: app classes only, scoped like packages/ui/src/skins/google.css. */
+
+@media (max-width: 760px) {
+  :root[data-skin="google"] .ui-sidebar .sidebar-action {
+    margin-left: 0;
+  }
+}
+
+/* ---- top bar ------------------------------------------------------------------ */
+
+/* Header search: light field + solid blue search button. */
+:root[data-skin="google"] .tag-search .tag-search-field .ui-input {
+  min-height: 29px;
+}
+:root[data-skin="google"] .tag-search .tag-search-submit {
+  min-width: 40px;
+  min-height: 29px;
+  margin-left: -1px;
+  border-radius: 0 2px 2px 0;
+}
+:root[data-skin="google"] .tag-search .tag-search-submit .ui-icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.5;
+}
+:root[data-skin="google"] .tag-search .tag-suggestions {
+  margin-top: -1px;
+  padding: var(--ui-space-2) 0;
+  border-color: #ccc;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+}
+:root[data-skin="google"] .tag-search .tag-suggestions .ui-nav-item {
+  padding: 4px 10px;
+}
+:root[data-skin="google"] .tag-search .tag-suggestions .ui-nav-item:hover {
+  background: #eee;
+}
+
+/* ---- left rail -------------------------------------------------------------- */
+
+:root[data-skin="google"] .tag-item.team,
+:root[data-skin="google"] .tag-item.team .ui-nav-item-trailing {
+  color: var(--ui-color-success);
+}
+
+/* ---- page headers --------------------------------------------------------- */
+
+:root[data-skin="google"] .detail-title {
+  color: #dd4b39;
+  font-size: 20px;
+  font-weight: 400;
+}
+:root[data-skin="google"] .tag-name {
+  color: var(--ui-color-text-muted);
+}
+
+/* ---- jfk-buttons ------------------------------------------------------------ */
+
+/* jfk red (also the "CREATE" button) */
+:root[data-skin="google"] .sidebar-action {
+  --g-top: #dd4b39;
+  --g-bot: #d14836;
+  --g-border: #c53727;
+  --g-text: #fff;
+  --g-hover-top: #dd4b39;
+  --g-hover-bot: #c53727;
+  --g-hover-border: #b0281a;
+  --g-hover-text: #fff;
+  --g-press-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+}
+:root[data-skin="google"] .sidebar-action {
+  min-width: 72px;
+  min-height: 29px;
+  padding: 0 16px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  text-shadow: none;
+  letter-spacing: 0;
+}
+/* Votes: compact gray mini jfk-buttons; pressed state keeps the vote colors. */
+:root[data-skin="google"] .votes {
+  gap: 4px;
+}
+:root[data-skin="google"] .vote {
+  min-height: 21px;
+  min-width: 0;
+  padding: 0 6px;
+  border-radius: 2px;
+  font-size: 11px;
+  line-height: 19px;
+}
+:root[data-skin="google"] .vote .ui-icon {
+  width: 11px;
+  height: 11px;
+}
+:root[data-skin="google"] .score {
+  font-size: 11px;
+  color: var(--ui-color-text-muted);
+}
+
+/* ---- app surfaces ------------------------------------------------------------ */
+
+:root[data-skin="google"] .stage,
+:root[data-skin="google"] .stats div {
+  border-color: #e5e5e5;
+}
+:root[data-skin="google"] .transport {
+  background: #f5f5f5;
+  border-bottom-color: #e5e5e5;
+}
+:root[data-skin="google"] .keyframes li.current span {
+  color: #15c;
+}
+:root[data-skin="google"] .stats dd {
+  font-size: 20px;
+}
+:root[data-skin="google"] .sparkline {
+  background: #f5f5f5;
+}

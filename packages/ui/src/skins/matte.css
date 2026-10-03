@@ -58,13 +58,11 @@
   --ui-color-info-container: #d1e4ff;
   --ui-color-border: var(--md-outline-variant);
   --ui-color-border-strong: var(--md-outline);
-  --ui-color-separator: var(--md-outline-variant);
   --ui-color-focus-ring: var(--md-secondary);
-  --ui-color-link: var(--md-primary);
   --ui-color-overlay: rgb(0 0 0 / 0.32);
   /* M3 state layers: 8% hover / 12% press of the element's own content color. */
-  --ui-state-hover: color-mix(in srgb, currentColor 8%, transparent);
-  --ui-state-press: color-mix(in srgb, currentColor 12%, transparent);
+  --ui-color-state-hover: color-mix(in srgb, currentColor 8%, transparent);
+  --ui-color-state-press: color-mix(in srgb, currentColor 12%, transparent);
   --ui-color-header-bg: var(--md-surface);
   --ui-header-backdrop: none;
   --ui-color-sidebar-bg: transparent;
@@ -91,9 +89,9 @@
   --ui-font-weight-button: 500;
   --ui-font-weight-brand: 400;
   --ui-letter-spacing-heading: 0;
-  --ui-label-transform: none;
-  --ui-label-tracking: 0.00714em;
-  --ui-label-size: 14px; /* title-small */
+  --ui-text-transform-label: none;
+  --ui-letter-spacing-label: 0.00714em;
+  --ui-font-size-label: 14px; /* title-small */
 
   /* ---- shape ---- */
   --ui-radius-sm: 8px;
@@ -129,9 +127,8 @@
   --ui-control-height-md: 40px;
   --ui-control-padding-x: 24px;
   --ui-slider-track-height: 4px;
-  --ui-slider-track-color: var(--md-secondary-container);
+  --ui-color-slider-track: var(--md-secondary-container);
   --ui-slider-thumb-size: 20px;
-  --ui-slider-thumb-color: var(--md-primary);
   --ui-slider-thumb-border: none;
   --ui-slider-thumb-shadow: var(--md-elevation-1);
   --ui-progress-height: 4px;
@@ -232,63 +229,11 @@
   border-radius: var(--ui-radius-pill);
 }
 :root[data-skin="matte"] .ui-header-brand a:hover {
-  background-color: var(--ui-state-hover);
+  background-color: var(--ui-color-state-hover);
   text-decoration: none;
 }
 :root[data-skin="matte"] .ui-header-center {
   max-width: 45rem;
-}
-
-/* M3 search bar: full pill on surface-container-high, no outline, trailing filled icon button. */
-:root[data-skin="matte"] .tag-search .tag-search-field {
-  align-items: center;
-  gap: var(--ui-space-2);
-  min-height: 48px;
-  padding: 0 var(--ui-space-2) 0 var(--ui-space-2);
-  border-radius: var(--ui-radius-pill);
-  background-color: var(--md-surface-container-high);
-  transition: background-color var(--ui-duration-fast) var(--ui-easing-standard);
-}
-:root[data-skin="matte"] .tag-search .tag-search-field:hover {
-  background-image: linear-gradient(
-    color-mix(in srgb, var(--md-on-surface) 8%, transparent),
-    color-mix(in srgb, var(--md-on-surface) 8%, transparent)
-  );
-}
-:root[data-skin="matte"] .tag-search .tag-search-field:has(.ui-input:focus-visible) {
-  outline: 2px solid var(--md-primary);
-  outline-offset: 0;
-}
-:root[data-skin="matte"] .tag-search .tag-search-field .ui-input {
-  min-height: 40px;
-  padding: 0 var(--ui-space-4);
-  border: none;
-  border-radius: var(--ui-radius-pill);
-  background: transparent;
-  font-size: 16px; /* body-large */
-}
-:root[data-skin="matte"] .tag-search .tag-search-field .ui-input:focus {
-  outline: none;
-  box-shadow: none;
-}
-:root[data-skin="matte"] .tag-search .tag-search-submit {
-  width: 40px;
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0;
-  border-radius: 50%;
-}
-:root[data-skin="matte"] .tag-search .tag-search-submit .ui-icon {
-  width: 22px;
-  height: 22px;
-}
-:root[data-skin="matte"] .tag-search .tag-suggestions {
-  margin-top: var(--ui-space-2);
-  padding: var(--ui-space-4);
-  border: none;
-  border-radius: var(--ui-radius-lg);
-  background: var(--md-surface-container-high);
-  box-shadow: var(--md-elevation-2);
 }
 
 /* ---- shell & navigation drawer -------------------------------------------- */
@@ -344,7 +289,7 @@
   color: var(--md-on-surface);
 }
 :root[data-skin="matte"] .ui-nav-item:active {
-  background-image: linear-gradient(var(--ui-state-press), var(--ui-state-press));
+  background-image: linear-gradient(var(--ui-color-state-press), var(--ui-color-state-press));
 }
 :root[data-skin="matte"] :is(.ui-nav-item.is-active, .ui-nav-item[aria-current="page"]) {
   background-color: var(--md-secondary-container);
@@ -353,7 +298,7 @@
   font-weight: 600;
 }
 :root[data-skin="matte"] :is(.ui-nav-item.is-active, .ui-nav-item[aria-current="page"]):hover {
-  background-image: linear-gradient(var(--ui-state-hover), var(--ui-state-hover));
+  background-image: linear-gradient(var(--ui-color-state-hover), var(--ui-color-state-hover));
 }
 :root[data-skin="matte"] .ui-nav-item-icon .ui-icon {
   width: 24px;
@@ -363,29 +308,6 @@
   font-size: 14px;
   font-weight: 500;
   color: inherit;
-}
-
-/* Extended FAB at the top of the drawer. */
-:root[data-skin="matte"] .ui-button.sidebar-action {
-  gap: var(--ui-space-4);
-  min-height: 56px;
-  margin: 0 0 var(--ui-space-4) var(--ui-space-2);
-  padding: 0 var(--ui-space-6) 0 var(--ui-space-5);
-  border: none;
-  border-radius: var(--ui-radius-lg);
-  background-color: var(--md-primary-container);
-  color: var(--md-on-primary-container);
-  box-shadow: var(--md-elevation-3);
-}
-:root[data-skin="matte"] .ui-button.sidebar-action:hover:not(:disabled, .is-disabled) {
-  background-color: var(--md-primary-container);
-  box-shadow:
-    0 2px 3px rgb(var(--md-shadow-rgb) / 0.3),
-    0 6px 10px 4px rgb(var(--md-shadow-rgb) / 0.15);
-}
-:root[data-skin="matte"] .ui-button.sidebar-action .ui-icon {
-  width: 24px;
-  height: 24px;
 }
 
 /* ---- page headers ----------------------------------------------------------- */
@@ -407,17 +329,14 @@
   font-size: 22px; /* title-large */
   line-height: 28px;
 }
-:root[data-skin="matte"] .detail-title {
-  font-weight: 400;
-  line-height: 36px;
-}
 
 /* ---- buttons ---------------------------------------------------------------- */
 
 :root[data-skin="matte"] .ui-button {
+  --ui-button-border: transparent;
+  --ui-button-hover-border: transparent;
   gap: var(--ui-space-3);
   padding: 0 var(--ui-space-7);
-  border-color: transparent;
   font-size: 14px; /* label-large */
   font-weight: 500;
   letter-spacing: 0.00714em;
@@ -431,9 +350,6 @@
 }
 :root[data-skin="matte"] .ui-button--sm:has(> .ui-button-icon) {
   padding-left: var(--ui-space-4);
-}
-:root[data-skin="matte"] .ui-button:hover:not(:disabled, .is-disabled) {
-  border-color: transparent;
 }
 
 /* Filled */
@@ -500,59 +416,25 @@
 :root[data-skin="matte"] .ui-icon-button.ui-button--quiet:is(:disabled, .is-disabled) {
   color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
 }
-:root[data-skin="matte"] .ui-icon-button.danger-icon:not(:disabled) {
-  color: var(--md-error);
-}
 
 /* Selected toggle buttons. */
 :root[data-skin="matte"] .ui-button[aria-pressed="true"] {
   background-color: var(--md-secondary-container);
-  border-color: transparent;
   color: var(--md-on-secondary-container);
 }
 :root[data-skin="matte"] .ui-button--secondary[aria-pressed="true"] {
   background-color: var(--md-secondary);
   color: var(--md-on-secondary);
 }
-
-/* Editor layer list: list items with a selected indicator. */
-:root[data-skin="matte"] .ui-button.layer-name {
-  color: var(--md-on-surface);
-  font-weight: 500;
-}
-:root[data-skin="matte"] .ui-button.layer-name[aria-pressed="true"] {
-  color: var(--md-on-secondary-container);
-}
-
-/* Votes: outlined pills; the pressed vote keeps the app's warning/info semantics. */
-:root[data-skin="matte"] .ui-button.vote {
-  padding: 0 var(--ui-space-4);
-  border-color: var(--md-outline-variant);
-  background-color: transparent;
-  color: var(--md-on-surface-variant);
-  font-variant-numeric: tabular-nums;
-}
-:root[data-skin="matte"] .ui-button.vote:hover:not(:disabled) {
-  border-color: var(--md-outline-variant);
-}
-:root[data-skin="matte"] .ui-button.vote:disabled {
-  opacity: 0.6;
-  color: var(--md-on-surface-variant);
-  background-color: transparent;
-}
-:root[data-skin="matte"] .ui-button.vote-up[aria-pressed="true"] {
+:root[data-skin="matte"] .ui-button.ui-button--tone-warning[aria-pressed="true"] {
   color: var(--ui-color-warning);
   border-color: var(--ui-color-warning);
   background-color: color-mix(in srgb, var(--ui-color-warning) 14%, transparent);
 }
-:root[data-skin="matte"] .ui-button.vote-down[aria-pressed="true"] {
+:root[data-skin="matte"] .ui-button.ui-button--tone-info[aria-pressed="true"] {
   color: var(--ui-color-info);
   border-color: var(--ui-color-info);
   background-color: color-mix(in srgb, var(--ui-color-info) 14%, transparent);
-}
-:root[data-skin="matte"] .score {
-  margin-left: var(--ui-space-2);
-  font-weight: 500;
 }
 
 /* ---- segmented buttons ------------------------------------------------------- */
@@ -577,14 +459,14 @@
   color: var(--md-on-surface);
 }
 :root[data-skin="matte"] .ui-segmented-option:active:not(:disabled) {
-  background-image: linear-gradient(var(--ui-state-press), var(--ui-state-press));
+  background-image: linear-gradient(var(--ui-color-state-press), var(--ui-color-state-press));
 }
 :root[data-skin="matte"] .ui-segmented-option[aria-pressed="true"] {
   background-color: var(--md-secondary-container);
   color: var(--md-on-secondary-container);
 }
 :root[data-skin="matte"] .ui-segmented-option[aria-pressed="true"]:hover {
-  background-image: linear-gradient(var(--ui-state-hover), var(--ui-state-hover));
+  background-image: linear-gradient(var(--ui-color-state-hover), var(--ui-color-state-hover));
 }
 :root[data-skin="matte"] .ui-segmented:not(.ui-segmented--vertical) .ui-segmented-option[aria-pressed="true"]::before {
   content: "";
@@ -803,7 +685,7 @@
   color: var(--md-on-surface-variant);
 }
 :root[data-skin="matte"] :is(a, button).ui-chip:active:not(:disabled) {
-  background-image: linear-gradient(var(--ui-state-press), var(--ui-state-press));
+  background-image: linear-gradient(var(--ui-color-state-press), var(--ui-color-state-press));
 }
 :root[data-skin="matte"] .ui-chip--suggest {
   border-style: solid;
@@ -876,7 +758,7 @@
   background: var(--md-surface-container-high);
   color: var(--md-on-surface);
 }
-:root[data-skin="matte"] .ui-alert--error {
+:root[data-skin="matte"] .ui-alert--danger {
   background: var(--md-error-container);
   color: var(--md-on-error-container);
 }
@@ -900,7 +782,6 @@
 /* ---- panels --------------------------------------------------------------------- */
 
 :root[data-skin="matte"] .ui-panel {
-  padding: var(--ui-space-5) var(--ui-space-5);
   border: none;
   border-radius: var(--ui-radius-lg);
   background: var(--md-surface-container);
@@ -918,60 +799,6 @@
 }
 :root[data-skin="matte"] .ui-panel--inset .ui-panel-title {
   font-size: 14px;
-}
-
-/* ---- app surfaces --------------------------------------------------------------- */
-
-:root[data-skin="matte"] .stage {
-  border: none;
-  border-radius: var(--ui-radius-lg);
-}
-:root[data-skin="matte"] .timeline {
-  border: none;
-  border-radius: var(--ui-radius-lg);
-  background: var(--md-surface-container);
-}
-:root[data-skin="matte"] .transport {
-  padding: var(--ui-space-3) var(--ui-space-5);
-  border-bottom-color: var(--md-outline-variant);
-}
-:root[data-skin="matte"] .strip {
-  gap: var(--ui-space-2);
-  padding: var(--ui-space-3);
-}
-:root[data-skin="matte"] .thumb {
-  border-radius: var(--ui-radius-sm);
-}
-:root[data-skin="matte"] .thumb.current {
-  border-color: var(--md-primary);
-}
-:root[data-skin="matte"] .layer-list {
-  gap: var(--ui-space-1);
-}
-:root[data-skin="matte"] .layer-editor {
-  border-top-color: var(--md-outline-variant);
-}
-:root[data-skin="matte"] .stats div {
-  border: none;
-  border-radius: var(--ui-radius-md);
-  background: var(--md-surface-container);
-}
-:root[data-skin="matte"] .stats dt {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--md-on-surface-variant);
-}
-:root[data-skin="matte"] .stats dd {
-  font-size: 28px;
-  font-weight: 400;
-  line-height: 36px;
-}
-:root[data-skin="matte"] .hot-name {
-  font-weight: 500;
-}
-:root[data-skin="matte"] .variation {
-  border-color: var(--md-outline-variant);
-  border-radius: var(--ui-radius-sm);
 }
 
 /* ---- narrow: drawer collapses into rows of pills ------------------------------- */
@@ -1003,8 +830,5 @@
   :root[data-skin="matte"] :is(.ui-nav-item, .ui-segmented--vertical .ui-segmented-option) {
     min-height: 36px;
     padding: 0 var(--ui-space-5) 0 var(--ui-space-4);
-  }
-  :root[data-skin="matte"] .ui-button.sidebar-action {
-    margin: 0 0 var(--ui-space-2);
   }
 }

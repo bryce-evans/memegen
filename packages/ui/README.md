@@ -33,9 +33,9 @@ import { SkinProvider, SkinSwitcher } from "@memegen/ui";
 
 ## How skins work
 
-1. **Tokens.** `src/tokens.css` defines every design decision as a custom property on `:root` (the default skin): color roles (`--ui-color-bg`, `-surface`, `-surface-raised`, `-text`, `-text-muted`, `-primary`, `-on-primary`, `-tonal`, `-danger`, `-success`, `-warning`, `-info`, `-border`, `-separator`, `-focus-ring`, `-link`, `-overlay`, `-media-bg`…), state layers (`--ui-state-hover/press`), typography, shape (`--ui-radius-*`), spacing (`--ui-space-1…8`), elevation (`--ui-shadow-*`), control sizes, motion, and layout (`--ui-sidebar-width`, `--ui-grid-min`…).
+1. **Tokens.** `src/tokens.css` defines every design decision as a custom property on `:root` (the default skin): color roles (`--ui-color-bg`, `-surface`, `-surface-raised`, `-text`, `-text-muted`, `-primary`, `-on-primary`, `-tonal`, `-danger`, `-success`, `-warning`, `-info`, `-border`, `-separator`, `-focus-ring`, `-link`, `-overlay`, `-media-bg`…), state layers (`--ui-color-state-hover/press`), typography, shape (`--ui-radius-*`), spacing (`--ui-space-1…8`), elevation (`--ui-shadow-*`), control sizes, motion, and layout (`--ui-sidebar-width`, `--ui-grid-min`…).
 2. **Components** (`src/components.css`) read only tokens.
-3. **Skins** (`src/skins/<id>.css`) override tokens under `:root[data-skin="<id>"]`, plus component tweaks scoped the same way where tokens are not enough (Apple's raised segmented thumb, Google's gradient jfk-buttons, Spectrum's masonry gallery…).
+3. **Skins** (`src/skins/<id>.css`) override tokens under `:root[data-skin="<id>"]`, plus component tweaks scoped the same way where tokens are not enough (Apple's raised segmented thumb, Google's gradient jfk-buttons, Studio's masonry gallery…). Skins here style only `.ui-*` classes; an app's own markup gets its per-skin tweaks in the app (memegen: `apps/web/src/skins/<id>.css`). Buttons are skinned through variables: `.ui-button` and its hover read `--ui-button-bg`, `-fg`, `-border`, `-hover-bg`, `-hover-border`, and variants/states (`--primary`, `--quiet`, `--danger`, `[aria-pressed]`, toned pressed) in `components.css` and in skins only reassign them (Google keeps its own `--g-*` gradient set).
 4. **Layout hints** (`Skin.layout`) let a skin move app controls without duplicating them: `filters: "sidebar" | "header"` (sort/period beside the page title). The app reads them via `useSkin().layout`.
 5. **Component overrides** (`Skin.components`) replace any component for one skin (below).
 
@@ -54,7 +54,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `NavList`, `NavItem` | vertical nav; item (`as`, default `a`) | `active`, `icon`, `trailing` (NavLink's `aria-current="page"` also marks active) |
 | `PageHeader` | `h1`/`h2` + controls row | `title`, `level`, `actions`, `titleProps` |
 | `Stack`, `Inline` | flex column / row | `gap`, `align`, `justify`, `wrap` |
-| `Button` | `<button type=button>` | `variant` (`primary`/`secondary`/`quiet`/`danger`), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `icon` |
+| `Button` | `<button type=button>` | `variant` (`primary`/`secondary`/`quiet`/`danger`), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin), `icon` |
 | `IconButton` | icon-only `<button>` | `label` (aria-label + tooltip) |
 | `LinkButton` | button-looking link (`as`, default `a`) | `variant`, `size`, `icon` |
 | `FileButton` | `<label>` styled as a button around a hidden native `<input type=file>` | all input props (incl. `data-testid`) go to the input; `variant`, `size`, `icon` |
@@ -68,9 +68,9 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `Chip`, `ChipGroup` | tag chip (`as`, default `span`) | `variant` (`default`/`suggest`), `onRemove`, `removeLabel` |
 | `Badge` | status pill | `tone` (`neutral`/`primary`/`info`/`success`/`warning`/`danger`) |
 | `ProgressBar` | native `<progress>` | `value` (0..1, `null` = indeterminate) |
-| `Alert` | `role=alert` (error) / `status` (info) box | `tone` |
+| `Alert` | `role=alert` (danger) / `status` (info) box | `tone` (`danger`/`info`) |
 | `Spinner`, `EmptyState` | loading row; empty placeholder | `label`; `title`, `description`, `action`, `icon` |
-| `Panel` | titled surface (`section`) | `heading`, `headingActions`, `variant` (`default`/`inset`) |
+| `Panel` | titled surface (`section`) | `heading`, `headingActions`, `variant` (`default`/`inset`/`flush`: the surface only, no padding or margin) |
 | `Dialog` | modal native `<dialog>` (`showModal`: inert page, focus kept inside, Escape closes) | `open`, `onClose` (Escape, close button, backdrop), `heading`, `closeLabel` |
 | `Text` | `p`/`span`/`div` | `tone`, `size`, `numeric` |
 | `Icon` | stroke SVG (`--ui-icon-stroke`) | `name`, `label` |
@@ -114,7 +114,7 @@ declare module "@memegen/ui" {
     brand: true;
   }
 }
-registerSkin({ id: "brand", label: "Brand", layout: { search: "header" } });
+registerSkin({ id: "brand", label: "Brand", layout: { filters: "header" } });
 ```
 
 Then add `skins/brand.css` with `:root[data-skin="brand"] { --ui-color-primary: …; }` (and component tweaks) and import it after `components.css`. Registered skins appear in `SkinSwitcher` automatically.

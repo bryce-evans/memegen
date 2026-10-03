@@ -1,0 +1,71 @@
+/* App-specific tweaks for the apple skin: app classes only, scoped like packages/ui/src/skins/apple.css. */
+
+/* ---- fields ------------------------------------------------------------------ */
+
+/* Header search: one rounded gray field with the magnifier leading it. */
+:root[data-skin="apple"] .tag-search .tag-search-field {
+  flex-direction: row-reverse;
+  border-radius: 10px;
+  background-color: var(--apple-fill-track);
+}
+:root[data-skin="apple"] .tag-search .tag-search-field:focus-within {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+}
+:root[data-skin="apple"] .tag-search .tag-search-field .ui-input {
+  padding-left: 2px;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  background-color: transparent;
+}
+:root[data-skin="apple"] .tag-search .tag-search-field .ui-input:focus {
+  outline: none;
+}
+:root[data-skin="apple"] .tag-search-submit {
+  min-width: 34px;
+  padding: 0 4px 0 10px;
+  border-radius: 10px 0 0 10px;
+  background-color: transparent;
+  color: var(--ui-color-text-muted);
+  font-weight: var(--ui-font-weight-regular);
+}
+:root[data-skin="apple"] .tag-search-submit:hover:not(:disabled, .is-disabled) {
+  background-color: transparent;
+  color: var(--apple-blue);
+}
+:root[data-skin="apple"] .tag-search .tag-suggestions {
+  margin-top: 6px;
+  padding: 6px;
+  border: none;
+  border-radius: 12px;
+  box-shadow: var(--ui-shadow-2);
+}
+
+/* ---- app surfaces ---------------------------------------------------------------- */
+
+:root[data-skin="apple"] .stage,
+:root[data-skin="apple"] .stats div {
+  border: none;
+  box-shadow: var(--ui-shadow-1), var(--apple-hairline);
+}
+:root[data-skin="apple"] .thumb.current {
+  border-color: var(--apple-blue);
+}
+:root[data-skin="apple"] .handle.selected {
+  border-color: var(--apple-blue);
+}
+:root[data-skin="apple"] .variation {
+  border: none;
+  border-radius: var(--ui-radius-md);
+}
+/* Layer rows read like a source list; destructive icons stay red. */
+:root[data-skin="apple"] .layer-name {
+  color: var(--ui-color-text);
+}
+:root[data-skin="apple"] .layer-name[aria-pressed="true"] {
+  background-color: var(--apple-selection);
+  color: var(--ui-color-text);
+  font-weight: var(--ui-font-weight-medium);
+}
+:root[data-skin="apple"] .danger-icon {
+  color: var(--ui-color-danger);
+}

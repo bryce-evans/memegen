@@ -1,0 +1,175 @@
+/* App-specific tweaks for the matte skin: app classes only, scoped like packages/ui/src/skins/matte.css. */
+
+/* ---- top app bar ------------------------------------------------------------ */
+
+/* M3 search bar: full pill on surface-container-high, no outline, trailing filled icon button. */
+:root[data-skin="matte"] .tag-search .tag-search-field {
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: 48px;
+  padding: 0 var(--ui-space-2) 0 var(--ui-space-2);
+  border-radius: var(--ui-radius-pill);
+  background-color: var(--md-surface-container-high);
+  transition: background-color var(--ui-duration-fast) var(--ui-easing-standard);
+}
+:root[data-skin="matte"] .tag-search .tag-search-field:hover {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--md-on-surface) 8%, transparent),
+    color-mix(in srgb, var(--md-on-surface) 8%, transparent)
+  );
+}
+:root[data-skin="matte"] .tag-search .tag-search-field:has(.ui-input:focus-visible) {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 0;
+}
+:root[data-skin="matte"] .tag-search .tag-search-field .ui-input {
+  min-height: 40px;
+  padding: 0 var(--ui-space-4);
+  border: none;
+  border-radius: var(--ui-radius-pill);
+  background: transparent;
+  font-size: 16px; /* body-large */
+}
+:root[data-skin="matte"] .tag-search .tag-search-field .ui-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+:root[data-skin="matte"] .tag-search .tag-search-submit {
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+:root[data-skin="matte"] .tag-search .tag-search-submit .ui-icon {
+  width: 22px;
+  height: 22px;
+}
+:root[data-skin="matte"] .tag-search .tag-suggestions {
+  margin-top: var(--ui-space-2);
+  padding: var(--ui-space-4);
+  border: none;
+  border-radius: var(--ui-radius-lg);
+  background: var(--md-surface-container-high);
+  box-shadow: var(--md-elevation-2);
+}
+
+/* ---- shell & navigation drawer -------------------------------------------- */
+
+/* Extended FAB at the top of the drawer. */
+:root[data-skin="matte"] .ui-button.sidebar-action {
+  gap: var(--ui-space-4);
+  min-height: 56px;
+  margin: 0 0 var(--ui-space-4) var(--ui-space-2);
+  padding: 0 var(--ui-space-6) 0 var(--ui-space-5);
+  border: none;
+  border-radius: var(--ui-radius-lg);
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  box-shadow: var(--md-elevation-3);
+}
+:root[data-skin="matte"] .ui-button.sidebar-action:hover:not(:disabled, .is-disabled) {
+  background-color: var(--md-primary-container);
+  box-shadow:
+    0 2px 3px rgb(var(--md-shadow-rgb) / 0.3),
+    0 6px 10px 4px rgb(var(--md-shadow-rgb) / 0.15);
+}
+:root[data-skin="matte"] .ui-button.sidebar-action .ui-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---- page headers ----------------------------------------------------------- */
+
+:root[data-skin="matte"] .detail-title {
+  font-weight: 400;
+  line-height: 36px;
+}
+
+/* ---- buttons ---------------------------------------------------------------- */
+
+:root[data-skin="matte"] .ui-icon-button.danger-icon:not(:disabled) {
+  color: var(--md-error);
+}
+/* Editor layer list: list items with a selected indicator. */
+:root[data-skin="matte"] .ui-button.layer-name {
+  color: var(--md-on-surface);
+  font-weight: 500;
+}
+:root[data-skin="matte"] .ui-button.layer-name[aria-pressed="true"] {
+  color: var(--md-on-secondary-container);
+}
+/* Votes: outlined pills; the pressed vote keeps the app's warning/info semantics. */
+:root[data-skin="matte"] .ui-button.vote {
+  padding: 0 var(--ui-space-4);
+  border-color: var(--md-outline-variant);
+  background-color: transparent;
+  color: var(--md-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+:root[data-skin="matte"] .ui-button.vote:hover:not(:disabled) {
+  border-color: var(--md-outline-variant);
+}
+:root[data-skin="matte"] .ui-button.vote:disabled {
+  opacity: 0.6;
+  color: var(--md-on-surface-variant);
+  background-color: transparent;
+}
+:root[data-skin="matte"] .score {
+  margin-left: var(--ui-space-2);
+  font-weight: 500;
+}
+
+/* ---- app surfaces --------------------------------------------------------------- */
+
+:root[data-skin="matte"] .stage {
+  border: none;
+  border-radius: var(--ui-radius-lg);
+}
+:root[data-skin="matte"] .transport {
+  padding: var(--ui-space-3) var(--ui-space-5);
+  border-bottom-color: var(--md-outline-variant);
+}
+:root[data-skin="matte"] .strip {
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3);
+}
+:root[data-skin="matte"] .thumb {
+  border-radius: var(--ui-radius-sm);
+}
+:root[data-skin="matte"] .thumb.current {
+  border-color: var(--md-primary);
+}
+:root[data-skin="matte"] .layer-list {
+  gap: var(--ui-space-1);
+}
+:root[data-skin="matte"] .layer-editor {
+  border-top-color: var(--md-outline-variant);
+}
+:root[data-skin="matte"] .stats div {
+  border: none;
+  border-radius: var(--ui-radius-md);
+  background: var(--md-surface-container);
+}
+:root[data-skin="matte"] .stats dt {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-on-surface-variant);
+}
+:root[data-skin="matte"] .stats dd {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 36px;
+}
+:root[data-skin="matte"] .hot-name {
+  font-weight: 500;
+}
+:root[data-skin="matte"] .variation {
+  border-color: var(--md-outline-variant);
+  border-radius: var(--ui-radius-sm);
+}
+@media (max-width: 760px) {
+  :root[data-skin="matte"] .ui-button.sidebar-action {
+    margin: 0 0 var(--ui-space-2);
+  }
+}

@@ -1,6 +1,6 @@
-import type { ComponentPropsWithRef, ElementType, ReactNode } from "react";
-import { cx, type ControlSize, type LoosePolymorphicProps, type PolymorphicProps } from "../cx.ts";
-import { skinnable } from "../skin.tsx";
+import type { ComponentPropsWithRef, ReactNode } from "react";
+import { cx, type ControlSize, type LoosePolymorphicProps } from "../cx.ts";
+import { skinnable, skinnablePolymorphic } from "../skin.tsx";
 
 export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
 
@@ -25,11 +25,18 @@ const iconSlot = (icon: ReactNode) =>
 export interface ButtonProps extends ComponentPropsWithRef<"button">, ButtonLook {
   /** Toggle state; renders `aria-pressed`. */
   pressed?: boolean;
+  /** Color of the pressed state (e.g. an upvote or a favorite), kept by every skin over its generic pressed look. */
+  tone?: "warning" | "info";
 }
 
-function ButtonBase({ variant, size, icon, pressed, className, type = "button", children, ...rest }: ButtonProps) {
+function ButtonBase({ variant, size, icon, pressed, tone, className, type = "button", children, ...rest }: ButtonProps) {
   return (
-    <button type={type} className={buttonClass({ variant, size }, className)} {...rest} aria-pressed={pressed ?? rest["aria-pressed"]}>
+    <button
+      type={type}
+      className={buttonClass({ variant, size }, tone && `ui-button--tone-${tone}`, className)}
+      {...rest}
+      aria-pressed={pressed ?? rest["aria-pressed"]}
+    >
       {iconSlot(icon)}
       {children}
     </button>
@@ -62,9 +69,7 @@ function LinkButtonBase({ as: As = "a", variant, size, icon, className, children
   );
 }
 
-export const LinkButton = skinnable("LinkButton", LinkButtonBase) as <C extends ElementType = "a">(
-  props: PolymorphicProps<C, LinkButtonOwnProps>,
-) => ReactNode;
+export const LinkButton = skinnablePolymorphic<"a", LinkButtonOwnProps>("LinkButton", LinkButtonBase);
 
 export interface FileButtonProps extends Omit<ComponentPropsWithRef<"input">, "type" | "size" | "children">, ButtonLook {
   /** Button text. */

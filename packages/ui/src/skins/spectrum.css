@@ -43,8 +43,8 @@
   --ui-color-focus-ring: var(--spectrum-focus-indicator-color);
   --ui-color-link: var(--spectrum-accent-content-color-default);
   --ui-color-overlay: rgb(0 0 0 / var(--spectrum-overlay-opacity));
-  --ui-state-hover: rgb(255 255 255 / 0.06);
-  --ui-state-press: rgb(255 255 255 / 0.1);
+  --ui-color-state-hover: rgb(255 255 255 / 0.06);
+  --ui-color-state-press: rgb(255 255 255 / 0.1);
   --ui-color-header-bg: var(--spectrum-background-layer-1-color);
   --ui-header-backdrop: none;
   --ui-color-sidebar-bg: transparent;
@@ -72,9 +72,9 @@
   --ui-font-weight-button: var(--spectrum-bold-font-weight);
   --ui-font-weight-brand: var(--spectrum-extra-bold-font-weight);
   --ui-letter-spacing-heading: 0;
-  --ui-label-transform: none;
-  --ui-label-tracking: 0;
-  --ui-label-size: var(--spectrum-font-size-75);
+  --ui-text-transform-label: none;
+  --ui-letter-spacing-label: 0;
+  --ui-font-size-label: var(--spectrum-font-size-75);
 
   /* ---- shape ---- */
   --ui-radius-sm: var(--spectrum-corner-radius-75);
@@ -106,9 +106,8 @@
   --ui-control-height-md: var(--spectrum-component-height-100);
   --ui-control-padding-x: 14px;
   --ui-slider-track-height: 2px;
-  --ui-slider-track-color: var(--spectrum-gray-300);
   --ui-slider-thumb-size: 16px;
-  --ui-slider-thumb-color: var(--spectrum-gray-75);
+  --ui-color-slider-thumb: var(--spectrum-gray-75);
   --ui-slider-thumb-border: 2px solid var(--spectrum-gray-800);
   --ui-slider-thumb-shadow: none;
   --ui-focus-ring-width: 2px;
@@ -174,54 +173,41 @@
 
 /* ---- buttons: Spectrum 2 pills -------------------------------------------------------------------------- */
 
+/* Fills are read here, at skin specificity, so app tweaks keep losing to them exactly as before the variables. */
 :root[data-skin="spectrum"] .ui-button {
+  --ui-button-bg: var(--spectrum-gray-200);
+  --ui-button-fg: var(--spectrum-gray-900);
+  --ui-button-hover-bg: var(--spectrum-gray-300);
   border: none;
-  background-color: var(--spectrum-gray-200);
-  color: var(--spectrum-gray-900);
+  background-color: var(--ui-button-bg);
+  color: var(--ui-button-fg);
 }
 :root[data-skin="spectrum"] .ui-button:hover:not(:disabled, .is-disabled) {
-  background-color: var(--spectrum-gray-300);
+  background-color: var(--ui-button-hover-bg);
 }
 /* Spectrum 2 "primary" is the neutral, inverted fill (Firefly's white "Generate"). */
 :root[data-skin="spectrum"] .ui-button--primary {
-  background-color: var(--spectrum-neutral-background-color-default);
-  color: var(--spectrum-gray-50);
-}
-:root[data-skin="spectrum"] .ui-button--primary:hover:not(:disabled, .is-disabled) {
-  background-color: var(--spectrum-neutral-background-color-hover);
-}
-/* The one accent-blue action, like Firefly's "+ New" atop the nav rail. */
-:root[data-skin="spectrum"] .sidebar-action {
-  background-color: var(--spectrum-accent-background-color-default);
-  color: var(--spectrum-white);
-}
-:root[data-skin="spectrum"] .sidebar-action:hover {
-  background-color: var(--spectrum-accent-background-color-hover);
+  --ui-button-bg: var(--spectrum-neutral-background-color-default);
+  --ui-button-fg: var(--spectrum-gray-50);
+  --ui-button-hover-bg: var(--spectrum-neutral-background-color-hover);
 }
 :root[data-skin="spectrum"] .ui-button--quiet {
-  background-color: transparent;
-  color: var(--spectrum-gray-800);
-}
-:root[data-skin="spectrum"] .ui-button--quiet:hover:not(:disabled, .is-disabled) {
-  background-color: var(--spectrum-gray-200);
+  --ui-button-bg: transparent;
+  --ui-button-fg: var(--spectrum-gray-800);
+  --ui-button-hover-bg: var(--spectrum-gray-200);
 }
 :root[data-skin="spectrum"] .ui-button--danger {
-  background-color: var(--spectrum-negative-visual-color);
-  color: var(--spectrum-white);
+  --ui-button-bg: var(--spectrum-negative-visual-color);
+  --ui-button-fg: var(--spectrum-white);
 }
 :root[data-skin="spectrum"] .ui-button[aria-pressed="true"] {
-  background-color: var(--spectrum-gray-800);
-  color: var(--spectrum-gray-50);
+  --ui-button-bg: var(--spectrum-gray-800);
+  --ui-button-fg: var(--spectrum-gray-50);
 }
-/* Votes and the favorite star keep their meaning over the pressed style above. */
-:root[data-skin="spectrum"] .vote-up[aria-pressed="true"],
-:root[data-skin="spectrum"] .favorite[aria-pressed="true"] {
-  background-color: color-mix(in srgb, var(--ui-color-warning) 22%, transparent);
-  color: var(--ui-color-warning);
-}
-:root[data-skin="spectrum"] .vote-down[aria-pressed="true"] {
-  background-color: color-mix(in srgb, var(--ui-color-info) 22%, transparent);
-  color: var(--ui-color-info);
+/* Toned toggles (upvote, favorite) keep their color over the pressed style above. */
+:root[data-skin="spectrum"] .ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] {
+  --ui-button-bg: color-mix(in srgb, var(--ui-button-tone) 22%, transparent);
+  --ui-button-fg: var(--ui-button-tone);
 }
 :root[data-skin="spectrum"] .ui-icon-button {
   border: none;
@@ -266,17 +252,6 @@
 :root[data-skin="spectrum"] .ui-field-label {
   color: var(--spectrum-neutral-subdued-content-color-default);
   font-weight: var(--spectrum-regular-font-weight);
-}
-/* Header search reads like Firefly's prompt field: one rounded, slightly lifted surface. */
-:root[data-skin="spectrum"] .tag-search .tag-search-field .ui-input {
-  border-radius: var(--spectrum-corner-radius-800);
-  background-color: var(--spectrum-gray-100);
-}
-:root[data-skin="spectrum"] .tag-search .tag-suggestions {
-  border: none;
-  border-radius: var(--spectrum-corner-radius-800);
-  background-color: var(--spectrum-gray-100);
-  box-shadow: var(--ui-shadow-2);
 }
 
 /* ---- tags, badges ---------------------------------------------------------------------------------------- */
@@ -333,27 +308,4 @@
 :root[data-skin="spectrum"] .ui-alert {
   border: none;
   border-radius: var(--spectrum-corner-radius-100);
-}
-
-/* ---- app surfaces ------------------------------------------------------------------------------------------ */
-
-:root[data-skin="spectrum"] .hot-card img,
-:root[data-skin="spectrum"] .hot-card video,
-:root[data-skin="spectrum"] .variation {
-  border-radius: var(--spectrum-corner-radius-800);
-}
-:root[data-skin="spectrum"] .stage,
-:root[data-skin="spectrum"] .timeline,
-:root[data-skin="spectrum"] .stats div {
-  border: none;
-  border-radius: var(--spectrum-corner-radius-800);
-  background-color: var(--spectrum-gray-100);
-}
-:root[data-skin="spectrum"] .thumb.current,
-:root[data-skin="spectrum"] .handle.selected {
-  border-color: var(--spectrum-gray-900);
-}
-:root[data-skin="spectrum"] .layer-name[aria-pressed="true"] {
-  background-color: var(--spectrum-gray-300);
-  color: var(--spectrum-gray-900);
 }

@@ -8,13 +8,14 @@ import {
   useState,
   useSyncExternalStore,
   type ComponentType,
+  type ElementType,
   type ReactNode,
 } from "react";
+import type { LoosePolymorphicProps, Polymorphic } from "./cx.ts";
 import type { ComponentOverrides } from "./overrides.ts";
+import type { BuiltinSkinId } from "./skin-ids.ts";
 
-/** Built-in skins, in switcher order. */
-export const SKIN_IDS = ["default", "apple", "matte", "google", "studio", "spectrum"] as const;
-export type BuiltinSkinId = (typeof SKIN_IDS)[number];
+export { SKIN_IDS, type BuiltinSkinId } from "./skin-ids.ts";
 
 /**
  * Augment to add skin ids beyond the built-ins:
@@ -180,4 +181,15 @@ export function skinnable<K extends keyof ComponentOverrides>(name: K, base: Com
   }
   Skinned.displayName = name;
   return Skinned as unknown as ComponentOverrides[K];
+}
+
+/**
+ * `skinnable` for a component with an `as` prop: typed at call sites by what `as` accepts, rendering `D` by default.
+ * `Own` is the component's own props (the override receives `LoosePolymorphicProps<Own>`).
+ */
+export function skinnablePolymorphic<D extends ElementType, Own>(
+  name: keyof ComponentOverrides,
+  base: ComponentType<LoosePolymorphicProps<Own>>,
+): Polymorphic<D, Own> {
+  return skinnable(name, base as ComponentOverrides[typeof name]) as unknown as Polymorphic<D, Own>;
 }

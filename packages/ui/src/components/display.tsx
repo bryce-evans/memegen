@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, type ComponentPropsWithRef, type ElementType, type HTMLAttributes, type ReactNode, type Ref } from "react";
-import { cx, type LoosePolymorphicProps, type PolymorphicProps } from "../cx.ts";
-import { skinnable } from "../skin.tsx";
+import { useEffect, useId, useRef, type ComponentPropsWithRef, type ReactNode } from "react";
+import { cx, type LoosePolymorphicProps } from "../cx.ts";
+import { skinnable, skinnablePolymorphic } from "../skin.tsx";
+import { Icon } from "./Icon.tsx";
 
 export interface CardProps extends ComponentPropsWithRef<"article"> {
   /** Media slot (image/video, usually wrapped in a link); fills the card width. */
@@ -33,9 +34,7 @@ function CardTitleBase({ as: As = "h3", className, ...rest }: CardTitleProps) {
   return <As className={cx("ui-card-title", className)} {...rest} />;
 }
 
-export const CardTitle = skinnable("CardTitle", CardTitleBase) as <C extends ElementType = "h3">(
-  props: PolymorphicProps<C, CardTitleOwnProps>,
-) => ReactNode;
+export const CardTitle = skinnablePolymorphic<"h3", CardTitleOwnProps>("CardTitle", CardTitleBase);
 
 export interface CardMetaProps extends ComponentPropsWithRef<"div"> {}
 
@@ -75,16 +74,14 @@ function ChipBase({ as: As = "span", variant = "default", onRemove, removeLabel 
       {children}
       {onRemove && (
         <button type="button" className="ui-chip-remove" aria-label={removeLabel} disabled={removeDisabled} onClick={onRemove}>
-          <svg viewBox="0 0 16 16" aria-hidden focusable="false">
-            <path d="m4.5 4.5 7 7m0-7-7 7" />
-          </svg>
+          <Icon name="close" />
         </button>
       )}
     </As>
   );
 }
 
-export const Chip = skinnable("Chip", ChipBase) as <C extends ElementType = "span">(props: PolymorphicProps<C, ChipOwnProps>) => ReactNode;
+export const Chip = skinnablePolymorphic<"span", ChipOwnProps>("Chip", ChipBase);
 
 export interface ChipGroupProps extends ComponentPropsWithRef<"div"> {}
 
@@ -118,12 +115,12 @@ function ProgressBarBase({ value, className, ...rest }: ProgressBarProps) {
 export const ProgressBar = skinnable("ProgressBar", ProgressBarBase);
 
 export interface AlertProps extends ComponentPropsWithRef<"div"> {
-  tone?: "error" | "info";
+  tone?: Extract<Tone, "danger" | "info">;
 }
 
-/** Inline message box. Errors are announced (`role="alert"`). */
+/** Inline message box. Danger messages are announced (`role="alert"`). */
 function AlertBase({ tone = "info", className, ...rest }: AlertProps) {
-  return <div role={tone === "error" ? "alert" : "status"} className={cx("ui-alert", `ui-alert--${tone}`, className)} {...rest} />;
+  return <div role={tone === "danger" ? "alert" : "status"} className={cx("ui-alert", `ui-alert--${tone}`, className)} {...rest} />;
 }
 
 export const Alert = skinnable("Alert", AlertBase);
@@ -173,15 +170,18 @@ export interface PanelProps extends ComponentPropsWithRef<"section"> {
   heading?: ReactNode;
   /** Controls at the right of the heading. */
   headingActions?: ReactNode;
-  /** `inset`: a nested, lighter group inside another panel. */
-  variant?: "default" | "inset";
+  /**
+   * `inset`: a nested, lighter group inside another panel. `flush`: the panel surface with no padding or margin,
+   * for boxes that lay out their own content (an editor stage, a timeline strip).
+   */
+  variant?: "default" | "inset" | "flush";
 }
 
 /** Surface for tool areas (editor panels, forms). Labelled by its heading when there is one. */
 function PanelBase({ heading, headingActions, variant = "default", className, children, ...rest }: PanelProps) {
   const H = variant === "inset" ? "h4" : "h3";
   return (
-    <section className={cx("ui-panel", variant === "inset" && "ui-panel--inset", className)} {...rest}>
+    <section className={cx("ui-panel", variant !== "default" && `ui-panel--${variant}`, className)} {...rest}>
       {(heading != null || headingActions != null) && (
         <div className="ui-panel-head">
           {heading != null && <H className="ui-panel-title">{heading}</H>}
@@ -244,7 +244,7 @@ function DialogBase({ open, onClose, heading, closeLabel = "Close", className, c
             </h2>
           )}
           <button type="button" className="ui-dialog-close" aria-label={closeLabel} onClick={() => onCloseRef.current()}>
-            ×
+            <Icon name="close" />
           </button>
         </div>
         {open && children}
@@ -255,20 +255,20 @@ function DialogBase({ open, onClose, heading, closeLabel = "Close", className, c
 
 export const Dialog = skinnable("Dialog", DialogBase);
 
-export interface TextProps extends HTMLAttributes<HTMLElement> {
+export interface TextProps extends ComponentPropsWithRef<"p"> {
   as?: "p" | "span" | "div";
   tone?: "default" | "muted" | "danger";
   size?: "sm" | "md";
   /** Tabular numerals. */
   numeric?: boolean;
-  ref?: Ref<HTMLElement>;
 }
 
-function TextBase({ as: As = "p", tone = "default", size = "md", numeric, className, ...rest }: TextProps) {
+function TextBase({ as = "p", tone = "default", size = "md", numeric, className, ...rest }: TextProps) {
+  const As = as as "p";
   return (
     <As
       className={cx("ui-text", tone !== "default" && `ui-text--${tone}`, size === "sm" && "ui-text--sm", numeric && "ui-text--numeric", className)}
-      {...(rest as HTMLAttributes<HTMLDivElement>)}
+      {...rest}
     />
   );
 }

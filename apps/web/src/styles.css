@@ -143,19 +143,10 @@
   gap: var(--ui-space-2);
   margin-top: var(--ui-space-2);
 }
-.vote {
+.vote,
+.favorite {
   border-radius: var(--ui-radius-pill);
   font-variant-numeric: tabular-nums;
-}
-.vote-up[aria-pressed="true"] {
-  color: var(--ui-color-warning);
-  border-color: var(--ui-color-warning);
-  background-color: color-mix(in srgb, var(--ui-color-warning) 14%, transparent);
-}
-.vote-down[aria-pressed="true"] {
-  color: var(--ui-color-info);
-  border-color: var(--ui-color-info);
-  background-color: color-mix(in srgb, var(--ui-color-info) 14%, transparent);
 }
 .score {
   margin-left: var(--ui-space-1);
@@ -163,14 +154,6 @@
 .votes .ui-alert {
   flex-basis: 100%;
   margin: var(--ui-space-2) 0 0;
-}
-.favorite {
-  border-radius: var(--ui-radius-pill);
-}
-.favorite[aria-pressed="true"] {
-  color: var(--ui-color-warning);
-  border-color: var(--ui-color-warning);
-  background-color: color-mix(in srgb, var(--ui-color-warning) 14%, transparent);
 }
 .meme-card-actions,
 .detail-votes {
@@ -405,7 +388,7 @@
   display: block;
   margin-top: var(--ui-space-2);
   color: var(--ui-color-primary);
-  background: var(--ui-state-hover);
+  background: var(--ui-color-state-hover);
   border-radius: var(--ui-radius-sm);
 }
 .variations {
@@ -536,9 +519,7 @@
   max-height: calc(100vh - var(--ui-header-height) - 2 * var(--ui-space-5));
   overflow-y: auto;
 }
-.dropzone .ui-empty {
-  margin: 0;
-}
+/* Media on the transparency checkerboard (not a Panel: skins paint panel surfaces opaque). */
 .stage {
   display: flex;
   flex-direction: column;
@@ -577,10 +558,6 @@
 
 .timeline {
   margin-top: var(--ui-space-4);
-  border: var(--ui-border-width) solid var(--ui-color-border);
-  border-radius: var(--ui-radius-card);
-  background: var(--ui-color-surface);
-  box-shadow: var(--ui-shadow-1);
   overflow: hidden;
 }
 .transport {

@@ -14,4 +14,7 @@ export type LoosePolymorphicProps<Own> = Own & { as?: ElementType; className?: s
   [prop: string]: unknown;
 };
 
+/** Call signature of a polymorphic component that renders `D` unless given `as`. */
+export type Polymorphic<D extends ElementType, Own> = <C extends ElementType = D>(props: PolymorphicProps<C, Own>) => ReactNode;
+
 export type ControlSize = "sm" | "md";

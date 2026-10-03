@@ -29,12 +29,10 @@
   --ui-color-info-container: #f0f3ff;
   --ui-color-border: #e1e1e1;
   --ui-color-border-strong: #b1b1b1;
-  --ui-color-separator: #e1e1e1;
-  --ui-color-focus-ring: #3b63fb;
   --ui-color-link: #274dea;
   --ui-color-overlay: rgb(0 0 0 / 0.4);
-  --ui-state-hover: rgb(0 0 0 / 0.05);
-  --ui-state-press: rgb(0 0 0 / 0.1);
+  --ui-color-state-hover: rgb(0 0 0 / 0.05);
+  --ui-color-state-press: rgb(0 0 0 / 0.1);
   --ui-color-header-bg: #ffffff;
   --ui-header-backdrop: none;
   --ui-color-sidebar-bg: transparent;
@@ -76,9 +74,9 @@
   --ui-font-weight-button: 700;
   --ui-font-weight-brand: 900;
   --ui-letter-spacing-heading: -0.02em;
-  --ui-label-transform: none;
-  --ui-label-tracking: 0;
-  --ui-label-size: 12px;
+  --ui-text-transform-label: none;
+  --ui-letter-spacing-label: 0;
+  --ui-font-size-label: 12px;
 
   /* ---- shape ---- */
   --ui-radius-sm: 6px;
@@ -114,9 +112,9 @@
   --ui-control-height-md: 36px;
   --ui-control-padding-x: 16px;
   --ui-slider-track-height: 4px;
-  --ui-slider-track-color: #d5d5d5;
+  --ui-color-slider-track: #d5d5d5;
   --ui-slider-thumb-size: 18px;
-  --ui-slider-thumb-color: #ffffff;
+  --ui-color-slider-thumb: #ffffff;
   --ui-slider-thumb-border: 2px solid #222222;
   --ui-slider-thumb-shadow: none;
   --ui-progress-height: 6px;
@@ -165,12 +163,10 @@
     --ui-color-info-container: rgb(93 137 255 / 0.14);
     --ui-color-border: #3a3a3a;
     --ui-color-border-strong: #6d6d6d;
-    --ui-color-separator: #3a3a3a;
-    --ui-color-focus-ring: #5d89ff;
     --ui-color-link: #7a9fff;
     --ui-color-overlay: rgb(0 0 0 / 0.6);
-    --ui-state-hover: rgb(255 255 255 / 0.06);
-    --ui-state-press: rgb(255 255 255 / 0.12);
+    --ui-color-state-hover: rgb(255 255 255 / 0.06);
+    --ui-color-state-press: rgb(255 255 255 / 0.12);
     --ui-color-header-bg: #2c2c2c;
     --ui-color-input-bg: #232323;
     --ui-color-media-bg: #232323;
@@ -194,8 +190,8 @@
     --ui-shadow-2: 0 1px 4px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.4);
     --ui-shadow-3: 0 4px 12px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.5);
 
-    --ui-slider-track-color: #4f4f4f;
-    --ui-slider-thumb-color: #1b1b1b;
+    --ui-color-slider-track: #4f4f4f;
+    --ui-color-slider-thumb: #1b1b1b;
     --ui-slider-thumb-border: 2px solid #ebebeb;
   }
 }
@@ -270,67 +266,39 @@
 /* ---- buttons: pills, gray secondary, near-black CTA ------------------------ */
 
 :root[data-skin="studio"] .ui-button {
-  border-color: transparent;
-}
-:root[data-skin="studio"] .ui-button:hover:not(:disabled, .is-disabled) {
-  border-color: transparent;
+  --ui-button-border: transparent;
+  --ui-button-hover-border: transparent;
 }
 :root[data-skin="studio"] .ui-button--sm {
   padding: 0 12px;
 }
 :root[data-skin="studio"] .ui-button--primary {
-  background-color: var(--sp-cta);
-  color: var(--sp-on-cta);
+  --ui-button-bg: var(--sp-cta);
+  --ui-button-fg: var(--sp-on-cta);
+  --ui-button-hover-bg: var(--sp-cta-hover);
 }
 :root[data-skin="studio"] .ui-button--primary:hover:not(:disabled, .is-disabled) {
-  background-color: var(--sp-cta-hover);
   box-shadow: var(--sp-cta-glow);
 }
-:root[data-skin="studio"] .ui-button--quiet {
-  background-color: transparent;
-}
 :root[data-skin="studio"] .ui-button--danger {
-  background-color: var(--sp-negative);
-  color: #ffffff;
-}
-:root[data-skin="studio"] .ui-button--danger:hover:not(:disabled, .is-disabled) {
-  background-color: var(--sp-negative-hover);
+  --ui-button-bg: var(--sp-negative);
+  --ui-button-fg: #ffffff;
+  --ui-button-hover-bg: var(--sp-negative-hover);
 }
 :root[data-skin="studio"] .ui-button[aria-pressed="true"] {
-  background-color: var(--ui-color-tonal);
-  color: var(--ui-color-on-tonal);
+  --ui-button-bg: var(--ui-color-tonal);
+  --ui-button-fg: var(--ui-color-on-tonal);
+}
+:root[data-skin="studio"] .ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] {
+  --ui-button-bg: color-mix(in srgb, var(--ui-button-tone) 12%, var(--ui-color-surface));
+  --ui-button-fg: var(--ui-button-tone);
+  --ui-button-border: color-mix(in srgb, var(--ui-button-tone) 45%, transparent);
 }
 :root[data-skin="studio"] .ui-icon-button {
   padding: 0;
 }
 :root[data-skin="studio"] .ui-icon-button.ui-button--sm {
   padding: 0;
-}
-
-/* Votes keep their warning/info tint over the pressed style above. */
-:root[data-skin="studio"] .vote {
-  font-weight: var(--ui-font-weight-bold);
-}
-:root[data-skin="studio"] .vote-up[aria-pressed="true"] {
-  color: var(--ui-color-warning);
-  border-color: color-mix(in srgb, var(--ui-color-warning) 45%, transparent);
-  background-color: color-mix(in srgb, var(--ui-color-warning) 12%, var(--ui-color-surface));
-}
-:root[data-skin="studio"] .vote-down[aria-pressed="true"] {
-  color: var(--ui-color-info);
-  border-color: color-mix(in srgb, var(--ui-color-info) 45%, transparent);
-  background-color: color-mix(in srgb, var(--ui-color-info) 12%, var(--ui-color-surface));
-}
-
-/* Editor layer list: a selectable list, not toggle pills. */
-:root[data-skin="studio"] .layer-name {
-  border-radius: var(--ui-radius-md);
-  font-weight: var(--ui-font-weight-regular);
-}
-:root[data-skin="studio"] .layer-name[aria-pressed="true"] {
-  background-color: var(--sp-nav-selected);
-  color: var(--ui-color-text);
-  font-weight: var(--ui-font-weight-bold);
 }
 
 /* ---- segmented: gray track, raised selected chip ---------------------------- */
@@ -353,7 +321,7 @@
   padding: 0 12px;
 }
 :root[data-skin="studio"] .ui-segmented-option:hover:not(:disabled) {
-  background-color: var(--ui-state-hover);
+  background-color: var(--ui-color-state-hover);
 }
 :root[data-skin="studio"] .ui-segmented-option[aria-pressed="true"],
 :root[data-skin="studio"] .ui-segmented-option[aria-pressed="true"]:hover:not(:disabled) {
@@ -416,42 +384,6 @@
 }
 :root[data-skin="studio"] .ui-color::-moz-color-swatch {
   border-radius: 4px;
-}
-
-/* Header search: one gray pill with a round CTA inside. */
-:root[data-skin="studio"] .tag-search .tag-search-field {
-  align-items: center;
-  padding: 2px;
-  border: 2px solid transparent;
-  border-radius: var(--ui-radius-pill);
-  background: var(--ui-color-surface-sunken);
-  transition: border-color var(--ui-duration-fast) var(--ui-easing-standard);
-}
-:root[data-skin="studio"] .tag-search .tag-search-field:hover {
-  background: var(--ui-color-surface-raised);
-}
-:root[data-skin="studio"] .tag-search .tag-search-field:focus-within {
-  border-color: var(--ui-color-focus-ring);
-  background: var(--ui-color-input-bg);
-}
-:root[data-skin="studio"] .tag-search .tag-search-field .ui-input {
-  min-height: 32px;
-  padding: 0 14px;
-  border: none;
-  border-radius: var(--ui-radius-pill);
-  background: transparent;
-}
-:root[data-skin="studio"] .tag-search .tag-search-submit {
-  min-width: 32px;
-  min-height: 32px;
-  border-radius: var(--ui-radius-pill);
-}
-:root[data-skin="studio"] .tag-search .tag-suggestions {
-  margin-top: 6px;
-  padding: var(--ui-space-3);
-  border-color: transparent;
-  border-radius: var(--ui-radius-lg);
-  box-shadow: var(--ui-shadow-3);
 }
 
 /* ---- sliders / progress ----------------------------------------------------- */
@@ -552,53 +484,11 @@
   font-weight: var(--ui-font-weight-bold);
 }
 
-:root[data-skin="studio"] .ui-panel {
-  border-color: var(--ui-color-border);
-  box-shadow: var(--ui-shadow-1);
-}
 :root[data-skin="studio"] .ui-panel--inset {
   border-color: transparent;
   border-radius: var(--ui-radius-lg);
   background: var(--ui-color-surface-sunken);
   box-shadow: none;
-}
-
-/* ---- app surfaces ----------------------------------------------------------- */
-
-:root[data-skin="studio"] .stage {
-  border-color: transparent;
-}
-:root[data-skin="studio"] .timeline,
-:root[data-skin="studio"] .stats div {
-  border-color: var(--ui-color-border);
-}
-:root[data-skin="studio"] .thumb {
-  border-radius: var(--ui-radius-md);
-}
-:root[data-skin="studio"] .thumb canvas {
-  border-radius: 6px;
-}
-:root[data-skin="studio"] .hot-row {
-  gap: var(--ui-space-5);
-}
-:root[data-skin="studio"] .hot-card img,
-:root[data-skin="studio"] .hot-card video {
-  transition:
-    transform var(--ui-duration-normal) var(--ui-easing-standard),
-    box-shadow var(--ui-duration-normal) var(--ui-easing-standard);
-}
-:root[data-skin="studio"] .hot-card:hover img,
-:root[data-skin="studio"] .hot-card:hover video {
-  transform: translateY(-2px);
-  box-shadow: var(--ui-shadow-2);
-}
-:root[data-skin="studio"] .variation {
-  border: none;
-  border-radius: var(--ui-radius-md);
-}
-:root[data-skin="studio"] .tag-page.team .tag-head {
-  border-left: none;
-  border-radius: var(--ui-radius-lg);
 }
 
 /* ---- narrow ----------------------------------------------------------------- */

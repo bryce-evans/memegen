@@ -32,27 +32,27 @@ function FieldBase({ as = "label", label, description, error, className, childre
 
 export const Field = skinnable("Field", FieldBase);
 
+type ControlAria = { id: string; "aria-describedby"?: string; "aria-invalid"?: true };
+type LabelledProps = FieldLabelling & { id?: string; className?: string; "aria-describedby"?: string };
+/** The control's own props: the field's props minus labelling, plus its id/ARIA wiring. */
+type ControlProps<P> = Omit<P, keyof LabelledProps> & ControlAria;
+
 /**
- * Wraps a single control in label/description/error when any is given (`className` then goes to the wrapper);
- * otherwise renders the bare control (`className` on the control).
+ * Takes a field's props, splits off label/description/error, and renders the control with its id and ARIA wiring.
+ * With any labelling it wraps the control (`className` goes to the wrapper); otherwise the control gets `className`.
  */
-function Labelled({
-  id,
-  labelling,
-  className,
+function Labelled<P extends LabelledProps>({
+  props,
   render,
 }: {
-  id: string | undefined;
-  labelling: FieldLabelling & { "aria-describedby"?: string };
-  className: string | undefined;
-  render: (aria: { id: string; className: string | undefined; "aria-describedby"?: string; "aria-invalid"?: true }) => ReactNode;
+  props: P;
+  render: (control: ControlProps<P>, className: string | undefined) => ReactNode;
 }) {
+  const { label, description, error, className, id, ...rest } = props;
   const autoId = useId();
   const controlId = id ?? autoId;
-  const { label, description, error } = labelling;
-  if (label == null && description == null && error == null) {
-    return render({ id: controlId, className, "aria-describedby": labelling["aria-describedby"] });
-  }
+  const control = { ...rest, id: controlId } as ControlProps<P>;
+  if (label == null && description == null && error == null) return render(control, className);
   const descriptionId = description != null ? `${controlId}-description` : undefined;
   const errorId = error != null ? `${controlId}-error` : undefined;
   return (
@@ -62,12 +62,14 @@ function Labelled({
           {label}
         </label>
       )}
-      {render({
-        id: controlId,
-        className: undefined,
-        "aria-describedby": cx(labelling["aria-describedby"], descriptionId, errorId),
-        "aria-invalid": error != null ? true : undefined,
-      })}
+      {render(
+        {
+          ...control,
+          "aria-describedby": cx(props["aria-describedby"], descriptionId, errorId),
+          "aria-invalid": error != null ? true : undefined,
+        },
+        undefined,
+      )}
       {description != null && (
         <span id={descriptionId} className="ui-field-description">
           {description}
@@ -86,15 +88,11 @@ export interface TextFieldProps extends Omit<ComponentPropsWithRef<"input">, "si
   size?: ControlSize;
 }
 
-function TextFieldBase({ label, description, error, size = "md", className, id, ...input }: TextFieldProps) {
+function TextFieldBase({ size = "md", ...props }: TextFieldProps) {
   return (
     <Labelled
-      id={id}
-      labelling={{ label, description, error, "aria-describedby": input["aria-describedby"] }}
-      className={className}
-      render={({ className: controlClass, ...aria }) => (
-        <input {...input} {...aria} className={cx("ui-input", size === "sm" && "ui-input--sm", controlClass)} />
-      )}
+      props={props}
+      render={(input, className) => <input {...input} className={cx("ui-input", size === "sm" && "ui-input--sm", className)} />}
     />
   );
 }
@@ -103,17 +101,8 @@ export const TextField = skinnable("TextField", TextFieldBase);
 
 export interface TextAreaProps extends ComponentPropsWithRef<"textarea">, FieldLabelling {}
 
-function TextAreaBase({ label, description, error, className, id, ...textarea }: TextAreaProps) {
-  return (
-    <Labelled
-      id={id}
-      labelling={{ label, description, error, "aria-describedby": textarea["aria-describedby"] }}
-      className={className}
-      render={({ className: controlClass, ...aria }) => (
-        <textarea {...textarea} {...aria} className={cx("ui-input", "ui-textarea", controlClass)} />
-      )}
-    />
-  );
+function TextAreaBase(props: TextAreaProps) {
+  return <Labelled props={props} render={(textarea, className) => <textarea {...textarea} className={cx("ui-input", "ui-textarea", className)} />} />;
 }
 
 export const TextArea = skinnable("TextArea", TextAreaBase);
@@ -123,15 +112,13 @@ export interface SelectFieldProps extends Omit<ComponentPropsWithRef<"select">, 
 }
 
 /** Native `<select>` (so platform pickers and automation work) with a skinned frame and chevron. */
-function SelectFieldBase({ label, description, error, size = "md", className, id, ...select }: SelectFieldProps) {
+function SelectFieldBase({ size = "md", ...props }: SelectFieldProps) {
   return (
     <Labelled
-      id={id}
-      labelling={{ label, description, error, "aria-describedby": select["aria-describedby"] }}
-      className={className}
-      render={({ className: controlClass, ...aria }) => (
-        <span className={cx("ui-select", size === "sm" && "ui-select--sm", controlClass)}>
-          <select {...select} {...aria} className="ui-select-control" />
+      props={props}
+      render={(select, className) => (
+        <span className={cx("ui-select", size === "sm" && "ui-select--sm", className)}>
+          <select {...select} className="ui-select-control" />
         </span>
       )}
     />
@@ -143,24 +130,16 @@ export const SelectField = skinnable("SelectField", SelectFieldBase);
 export interface SliderProps extends Omit<ComponentPropsWithRef<"input">, "type">, FieldLabelling {}
 
 /** Native range input; exposes the filled fraction as `--ui-slider-fill` for the track. */
-function SliderBase({ label, description, error, className, id, style, ...input }: SliderProps) {
-  const min = Number(input.min ?? 0);
-  const max = Number(input.max ?? 100);
-  const value = Number(input.value ?? input.defaultValue ?? (min + max) / 2);
+function SliderBase({ style, ...props }: SliderProps) {
+  const min = Number(props.min ?? 0);
+  const max = Number(props.max ?? 100);
+  const value = Number(props.value ?? props.defaultValue ?? (min + max) / 2);
   const fill = max > min ? Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100)) : 0;
   return (
     <Labelled
-      id={id}
-      labelling={{ label, description, error, "aria-describedby": input["aria-describedby"] }}
-      className={className}
-      render={({ className: controlClass, ...aria }) => (
-        <input
-          {...input}
-          {...aria}
-          type="range"
-          className={cx("ui-slider", controlClass)}
-          style={{ ...style, ["--ui-slider-fill" as string]: `${fill}%` }}
-        />
+      props={props}
+      render={(input, className) => (
+        <input {...input} type="range" className={cx("ui-slider", className)} style={{ ...style, ["--ui-slider-fill" as string]: `${fill}%` }} />
       )}
     />
   );
@@ -171,17 +150,8 @@ export const Slider = skinnable("Slider", SliderBase);
 export interface ColorFieldProps extends Omit<ComponentPropsWithRef<"input">, "type">, FieldLabelling {}
 
 /** Native color input. */
-function ColorFieldBase({ label, description, error, className, id, ...input }: ColorFieldProps) {
-  return (
-    <Labelled
-      id={id}
-      labelling={{ label, description, error, "aria-describedby": input["aria-describedby"] }}
-      className={className}
-      render={({ className: controlClass, ...aria }) => (
-        <input {...input} {...aria} type="color" className={cx("ui-color", controlClass)} />
-      )}
-    />
-  );
+function ColorFieldBase(props: ColorFieldProps) {
+  return <Labelled props={props} render={(input, className) => <input {...input} type="color" className={cx("ui-color", className)} />} />;
 }
 
 export const ColorField = skinnable("ColorField", ColorFieldBase);

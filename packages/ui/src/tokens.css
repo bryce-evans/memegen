@@ -17,7 +17,7 @@
   --ui-color-on-primary: #1a1400;
   /* Tonal (selected/secondary-emphasis) fill and its text. */
   --ui-color-tonal: #2a2f3a;
-  --ui-color-on-tonal: #e7e9ee;
+  --ui-color-on-tonal: var(--ui-color-text);
   --ui-color-danger: #ff5c5c;
   --ui-color-on-danger: #1a0000;
   --ui-color-danger-container: rgb(255 92 92 / 0.1);
@@ -28,20 +28,21 @@
   --ui-color-info-container: rgb(122 140 255 / 0.1);
   --ui-color-border: #2c313c;
   --ui-color-border-strong: #8b93a3;
-  --ui-color-separator: #2c313c;
-  --ui-color-focus-ring: #ffcc33;
-  --ui-color-link: #ffcc33;
+  /* Derived roles follow their source, so a skin that only sets primary/border gets matching links and rings. */
+  --ui-color-separator: var(--ui-color-border);
+  --ui-color-focus-ring: var(--ui-color-primary);
+  --ui-color-link: var(--ui-color-primary);
   --ui-color-overlay: rgb(0 0 0 / 0.6);
   /* Scrim for text laid over photos/media (always dark, in every skin) and the text on it. */
   --ui-color-scrim: rgb(0 0 0 / 0.78);
   --ui-color-on-scrim: #ffffff;
   /* Hover/press state layers, painted over any fill. */
-  --ui-state-hover: rgb(255 255 255 / 0.04);
-  --ui-state-press: rgb(255 255 255 / 0.08);
+  --ui-color-state-hover: rgb(255 255 255 / 0.04);
+  --ui-color-state-press: rgb(255 255 255 / 0.08);
   --ui-color-header-bg: rgb(15 17 21 / 0.92);
   --ui-header-backdrop: blur(8px);
   --ui-color-sidebar-bg: transparent;
-  --ui-color-input-bg: #0f1115;
+  --ui-color-input-bg: var(--ui-color-bg);
   /* Letterbox behind media (images/videos/canvas). */
   --ui-color-media-bg: #000;
   /* Two tones of the transparency checkerboard behind the editor stage. */
@@ -67,9 +68,9 @@
   --ui-font-weight-brand: 800;
   --ui-letter-spacing-heading: -0.01em;
   /* Small uppercase section labels in the sidebar. */
-  --ui-label-transform: uppercase;
-  --ui-label-tracking: 0.08em;
-  --ui-label-size: 0.72rem;
+  --ui-text-transform-label: uppercase;
+  --ui-letter-spacing-label: 0.08em;
+  --ui-font-size-label: 0.72rem;
 
   /* ---- shape ---- */
   --ui-radius-sm: 6px;
@@ -83,6 +84,7 @@
   --ui-radius-media: var(--ui-radius-lg);
   --ui-radius-chip: var(--ui-radius-pill);
   --ui-border-width: 1px;
+  --ui-panel-padding: var(--ui-space-5);
 
   /* ---- spacing ---- */
   --ui-space-1: 0.125rem;
@@ -105,9 +107,9 @@
   --ui-control-height-md: 2.4rem;
   --ui-control-padding-x: 0.8rem;
   --ui-slider-track-height: 4px;
-  --ui-slider-track-color: #2c313c;
+  --ui-color-slider-track: var(--ui-color-border);
   --ui-slider-thumb-size: 14px;
-  --ui-slider-thumb-color: #ffcc33;
+  --ui-color-slider-thumb: var(--ui-color-primary);
   --ui-slider-thumb-border: none;
   --ui-slider-thumb-shadow: none;
   --ui-progress-height: 6px;

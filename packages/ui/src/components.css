@@ -163,10 +163,10 @@ textarea {
 .ui-sidebar-heading {
   margin: 0 0 var(--ui-space-2) 0.7rem;
   font-family: var(--ui-font-family);
-  font-size: var(--ui-label-size);
+  font-size: var(--ui-font-size-label);
   font-weight: var(--ui-font-weight-semibold);
-  text-transform: var(--ui-label-transform);
-  letter-spacing: var(--ui-label-tracking);
+  text-transform: var(--ui-text-transform-label);
+  letter-spacing: var(--ui-letter-spacing-label);
   color: var(--ui-color-text-muted);
 }
 
@@ -175,19 +175,31 @@ textarea {
   flex-direction: column;
   gap: var(--ui-space-1);
 }
+/* List rows: sidebar nav items and vertical segmented options share one look. */
+.ui-nav-item,
+.ui-segmented--vertical .ui-segmented-option {
+  justify-content: flex-start;
+  min-height: 2.1rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--ui-radius-md);
+  text-align: left;
+}
+.ui-nav-item.is-active,
+.ui-nav-item[aria-current="page"],
+.ui-segmented--vertical .ui-segmented-option[aria-pressed="true"] {
+  color: var(--ui-color-text);
+  box-shadow: inset 3px 0 0 var(--ui-color-primary);
+  font-weight: var(--ui-font-weight-semibold);
+}
 .ui-nav-item {
   display: flex;
   align-items: center;
   gap: var(--ui-space-3);
   width: 100%;
-  min-height: 2.1rem;
-  padding: 0.4rem 0.7rem;
   border: none;
-  border-radius: var(--ui-radius-md);
   background: transparent;
   color: var(--ui-color-text-muted);
   font: inherit;
-  text-align: left;
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -196,15 +208,12 @@ textarea {
 }
 .ui-nav-item:hover {
   color: var(--ui-color-text);
-  background-color: var(--ui-state-hover);
+  background-color: var(--ui-color-state-hover);
   text-decoration: none;
 }
 .ui-nav-item.is-active,
 .ui-nav-item[aria-current="page"] {
-  color: var(--ui-color-text);
   background-color: var(--ui-color-surface-raised);
-  box-shadow: inset 3px 0 0 var(--ui-color-primary);
-  font-weight: var(--ui-font-weight-semibold);
 }
 .ui-nav-item-icon {
   display: var(--ui-nav-icon-display);
@@ -305,7 +314,13 @@ textarea {
 
 /* ---- buttons -------------------------------------------------------------- */
 
+/* Colors are variables read by the base rule and its hover; variants and states (here and in skins) only reassign them. */
 .ui-button {
+  --ui-button-bg: var(--ui-color-surface-raised);
+  --ui-button-fg: var(--ui-color-text);
+  --ui-button-border: var(--ui-color-border);
+  --ui-button-hover-bg: var(--ui-button-bg);
+  --ui-button-hover-border: var(--ui-color-border-strong);
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -313,10 +328,10 @@ textarea {
   gap: 0.35rem;
   min-height: var(--ui-control-height-md);
   padding: 0 var(--ui-control-padding-x);
-  border: var(--ui-border-width) solid var(--ui-color-border);
+  border: var(--ui-border-width) solid var(--ui-button-border);
   border-radius: var(--ui-radius-control);
-  background-color: var(--ui-color-surface-raised);
-  color: var(--ui-color-text);
+  background-color: var(--ui-button-bg);
+  color: var(--ui-button-fg);
   font: inherit;
   font-weight: var(--ui-font-weight-button);
   line-height: 1.2;
@@ -332,12 +347,13 @@ textarea {
 }
 /* State layers paint over whatever fill the variant has. */
 .ui-button:hover:not(:disabled, .is-disabled) {
-  background-image: linear-gradient(var(--ui-state-hover), var(--ui-state-hover));
-  border-color: var(--ui-color-border-strong);
+  background-color: var(--ui-button-hover-bg);
+  background-image: linear-gradient(var(--ui-color-state-hover), var(--ui-color-state-hover));
+  border-color: var(--ui-button-hover-border);
   text-decoration: none;
 }
 .ui-button:active:not(:disabled, .is-disabled) {
-  background-image: linear-gradient(var(--ui-state-press), var(--ui-state-press));
+  background-image: linear-gradient(var(--ui-color-state-press), var(--ui-color-state-press));
 }
 .ui-button:disabled,
 .ui-button.is-disabled {
@@ -353,29 +369,39 @@ textarea {
   font-size: var(--ui-font-size-sm);
 }
 .ui-button--primary {
-  background-color: var(--ui-color-primary);
-  border-color: var(--ui-color-primary);
-  color: var(--ui-color-on-primary);
+  --ui-button-bg: var(--ui-color-primary);
+  --ui-button-fg: var(--ui-color-on-primary);
+  --ui-button-border: var(--ui-color-primary);
+  --ui-button-hover-bg: var(--ui-color-primary-hover);
+  --ui-button-hover-border: var(--ui-color-primary-hover);
   font-weight: var(--ui-font-weight-semibold);
 }
-.ui-button--primary:hover:not(:disabled, .is-disabled) {
-  background-color: var(--ui-color-primary-hover);
-  border-color: var(--ui-color-primary-hover);
-}
 .ui-button--quiet {
-  background-color: transparent;
-  border-color: transparent;
-}
-.ui-button--quiet:hover:not(:disabled, .is-disabled) {
-  border-color: transparent;
+  --ui-button-bg: transparent;
+  --ui-button-border: transparent;
+  --ui-button-hover-border: transparent;
 }
 .ui-button--danger {
-  color: var(--ui-color-danger);
+  --ui-button-fg: var(--ui-color-danger);
 }
 .ui-button[aria-pressed="true"] {
-  background-color: var(--ui-color-tonal);
-  border-color: var(--ui-color-primary);
-  color: var(--ui-color-on-tonal);
+  --ui-button-bg: var(--ui-color-tonal);
+  --ui-button-fg: var(--ui-color-on-tonal);
+  --ui-button-border: var(--ui-color-primary);
+}
+/* A toned toggle (upvote, favorite) keeps its color when pressed, hovered or not; skins restyle these, never drop the tone. */
+.ui-button--tone-warning {
+  --ui-button-tone: var(--ui-color-warning);
+}
+.ui-button--tone-info {
+  --ui-button-tone: var(--ui-color-info);
+}
+.ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] {
+  --ui-button-bg: color-mix(in srgb, var(--ui-button-tone) 14%, transparent);
+  --ui-button-fg: var(--ui-button-tone);
+  --ui-button-border: var(--ui-button-tone);
+  --ui-button-hover-bg: var(--ui-button-bg);
+  --ui-button-hover-border: var(--ui-button-tone);
 }
 .ui-button-icon {
   display: inline-flex;
@@ -418,7 +444,7 @@ textarea {
 }
 .ui-segmented-option:hover:not(:disabled) {
   color: var(--ui-color-text);
-  background-color: var(--ui-state-hover);
+  background-color: var(--ui-color-state-hover);
 }
 .ui-segmented-option[aria-pressed="true"] {
   color: var(--ui-color-text);
@@ -441,17 +467,7 @@ textarea {
   border: none;
   overflow: visible;
 }
-.ui-segmented--vertical .ui-segmented-option {
-  justify-content: flex-start;
-  min-height: 2.1rem;
-  padding: 0.4rem 0.7rem;
-  border-radius: var(--ui-radius-md);
-  text-align: left;
-}
-.ui-segmented--vertical .ui-segmented-option[aria-pressed="true"] {
-  box-shadow: inset 3px 0 0 var(--ui-color-primary);
-  font-weight: var(--ui-font-weight-semibold);
-}
+/* Row look shared with `.ui-nav-item` (above). */
 
 /* ---- fields --------------------------------------------------------------- */
 
@@ -566,7 +582,7 @@ input[type="search"].ui-input::-webkit-search-cancel-button {
   background: linear-gradient(
     to right,
     var(--ui-color-primary) var(--ui-slider-fill, 50%),
-    var(--ui-slider-track-color) var(--ui-slider-fill, 50%)
+    var(--ui-color-slider-track) var(--ui-slider-fill, 50%)
   );
 }
 .ui-slider::-webkit-slider-thumb {
@@ -576,13 +592,13 @@ input[type="search"].ui-input::-webkit-search-cancel-button {
   margin-top: calc((var(--ui-slider-track-height) - var(--ui-slider-thumb-size)) / 2);
   border: var(--ui-slider-thumb-border);
   border-radius: 50%;
-  background: var(--ui-slider-thumb-color);
+  background: var(--ui-color-slider-thumb);
   box-shadow: var(--ui-slider-thumb-shadow);
 }
 .ui-slider::-moz-range-track {
   height: var(--ui-slider-track-height);
   border-radius: var(--ui-radius-pill);
-  background: var(--ui-slider-track-color);
+  background: var(--ui-color-slider-track);
 }
 .ui-slider::-moz-range-progress {
   height: var(--ui-slider-track-height);
@@ -594,7 +610,7 @@ input[type="search"].ui-input::-webkit-search-cancel-button {
   height: var(--ui-slider-thumb-size);
   border: var(--ui-slider-thumb-border);
   border-radius: 50%;
-  background: var(--ui-slider-thumb-color);
+  background: var(--ui-color-slider-thumb);
   box-shadow: var(--ui-slider-thumb-shadow);
 }
 
@@ -670,7 +686,7 @@ input[type="search"].ui-input::-webkit-search-cancel-button {
   transition: background-color var(--ui-duration-fast) var(--ui-easing-standard);
 }
 .ui-card--borderless:hover {
-  background-color: var(--ui-state-hover);
+  background-color: var(--ui-color-state-hover);
 }
 .ui-card--borderless .ui-card-media {
   border-radius: var(--ui-radius-media);
@@ -747,7 +763,7 @@ button.ui-chip {
 }
 :is(a, button).ui-chip:hover:not(:disabled) {
   color: var(--ui-color-text);
-  background-image: linear-gradient(var(--ui-state-hover), var(--ui-state-hover));
+  background-image: linear-gradient(var(--ui-color-state-hover), var(--ui-color-state-hover));
   text-decoration: none;
 }
 .ui-chip--suggest {
@@ -772,15 +788,11 @@ button.ui-chip {
   cursor: pointer;
 }
 .ui-chip-remove:hover:not(:disabled) {
-  background: var(--ui-state-press);
+  background: var(--ui-color-state-press);
 }
-.ui-chip-remove svg {
+.ui-chip-remove .ui-icon {
   width: 0.8rem;
   height: 0.8rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
 }
 
 .ui-badge {
@@ -868,7 +880,7 @@ button.ui-chip {
   border: var(--ui-border-width) solid var(--ui-color-border);
   border-radius: var(--ui-radius-md);
 }
-.ui-alert--error {
+.ui-alert--danger {
   border-color: var(--ui-color-danger);
   background: var(--ui-color-danger-container);
   color: var(--ui-color-on-danger-container);
@@ -936,7 +948,7 @@ button.ui-chip {
 
 .ui-panel {
   margin-bottom: var(--ui-space-5);
-  padding: var(--ui-space-5);
+  padding: var(--ui-panel-padding);
   border: var(--ui-border-width) solid var(--ui-color-border);
   border-radius: var(--ui-radius-card);
   background: var(--ui-color-surface);
@@ -960,6 +972,11 @@ button.ui-chip {
   border-radius: var(--ui-radius-md);
   background: transparent;
   box-shadow: none;
+}
+/* A panel surface around content that lays itself out (editor stage, timeline). */
+.ui-panel--flush {
+  margin: 0;
+  padding: 0;
 }
 
 .ui-dialog {
@@ -990,6 +1007,9 @@ button.ui-chip {
   font-size: var(--ui-font-size-lg);
 }
 .ui-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: var(--ui-control-height-sm);
   height: var(--ui-control-height-sm);
   margin-left: auto;
@@ -997,12 +1017,10 @@ button.ui-chip {
   border-radius: var(--ui-radius-control);
   background: transparent;
   color: var(--ui-color-text-muted);
-  font-size: var(--ui-font-size-lg);
-  line-height: 1;
   cursor: pointer;
 }
 .ui-dialog-close:hover {
-  background: var(--ui-state-hover);
+  background: var(--ui-color-state-hover);
   color: var(--ui-color-text);
 }
 .ui-panel--inset .ui-panel-title {

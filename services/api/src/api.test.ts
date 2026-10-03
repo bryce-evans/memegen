@@ -79,11 +79,19 @@ async function signIn(username: string): Promise<User> {
   return (await call<{ user: User }>("POST", "/api/session", null, { username })).body.user;
 }
 
+/** A public template from a fresh image, owned by `owner`. */
+async function makeTemplate(owner: User, name = "Base"): Promise<Template> {
+  const asset = await store.upload({ data: png(), filename: "t.png", ownerId: owner.id });
+  const res = await call<Template>("POST", "/api/templates", owner, { name, assetId: asset.id });
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+  return res.body;
+}
+
 async function makeMeme(owner: User, opts: { post?: boolean; visibility?: "public" | "private" } = {}): Promise<Meme> {
-  const source = await store.upload({ data: png(), filename: "s.png", ownerId: owner.id });
+  const template = await makeTemplate(owner);
   const output = await store.upload({ data: png(), filename: "o.png", ownerId: owner.id });
   const res = await call<Meme>("POST", "/api/memes", owner, {
-    sourceAssetId: source.id,
+    templateId: template.id,
     outputAssetId: output.id,
     layers: [newTextLayer()],
     visibility: opts.visibility ?? "public",
@@ -313,17 +321,24 @@ test("gallery: period windows by post time, best sorts by score", async () => {
   assert.deepEqual(await ids("period=week&sort=new"), [recentHigh.id, recentLow.id, lastWeek.id]);
 });
 
-test("memes require the rendered output to be uploaded by the author", async () => {
+test("memes need an existing template and an output uploaded by the author", async () => {
   const alice = await signIn("alice");
   const eve = await signIn("eve");
-  const source = await store.upload({ data: png(), filename: "s.png", ownerId: alice.id });
+  const template = await makeTemplate(alice);
   const aliceOutput = await store.upload({ data: png(), filename: "o.png", ownerId: alice.id });
-  const res = await call("POST", "/api/memes", eve, {
-    sourceAssetId: source.id,
-    outputAssetId: aliceOutput.id,
-    layers: [],
-  });
-  assert.equal(res.status, 403);
+  const eveOutput = await store.upload({ data: png(), filename: "o.png", ownerId: eve.id });
+  const create = (body: Record<string, unknown>) => call("POST", "/api/memes", eve, { layers: [], ...body });
+  assert.equal((await create({ templateId: template.id, outputAssetId: aliceOutput.id })).status, 403);
+  assert.equal((await create({ outputAssetId: eveOutput.id })).status, 400); // no template
+  assert.equal((await create({ sourceAssetId: eveOutput.id, outputAssetId: eveOutput.id })).status, 400);
+  assert.equal((await create({ templateId: crypto.randomUUID(), outputAssetId: eveOutput.id })).status, 404);
+  const made = await create({ templateId: template.id, outputAssetId: eveOutput.id });
+  assert.equal(made.status, 201);
+
+  // A template in use can't be deleted (nor can its parent, which would take the variation with it).
+  assert.equal((await call("DELETE", `/api/templates/${template.id}`, alice)).status, 409);
+  const unused = await makeTemplate(alice, "Unused");
+  assert.equal((await call("DELETE", `/api/templates/${unused.id}`, alice)).status, 204);
 });
 
 test("template usage: variations roll up to the parent, history survives deletion, windows apply", async () => {

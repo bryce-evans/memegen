@@ -1,4 +1,4 @@
-import type { ComponentPropsWithRef, ElementType, HTMLAttributes, ReactNode, Ref } from "react";
+import { useEffect, useId, useRef, type ComponentPropsWithRef, type ElementType, type HTMLAttributes, type ReactNode, type Ref } from "react";
 import { cx, type LoosePolymorphicProps, type PolymorphicProps } from "../cx.ts";
 import { skinnable } from "../skin.tsx";
 
@@ -194,6 +194,66 @@ function PanelBase({ heading, headingActions, variant = "default", className, ch
 }
 
 export const Panel = skinnable("Panel", PanelBase);
+
+export interface DialogProps extends Omit<ComponentPropsWithRef<"dialog">, "open" | "ref"> {
+  open: boolean;
+  /** Escape, the close button, or a backdrop click. */
+  onClose: () => void;
+  heading?: ReactNode;
+  /** Accessible name for the close button. */
+  closeLabel?: string;
+}
+
+/**
+ * Modal over the page: a native `<dialog>` opened with `showModal()`, so the page behind is inert, focus stays
+ * inside, and Escape closes it. Labelled by its heading.
+ */
+function DialogBase({ open, onClose, heading, closeLabel = "Close", className, children, ...rest }: DialogProps) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (open && !el.open) el.showModal();
+    if (!open && el.open) el.close();
+  }, [open]);
+
+  return (
+    <dialog
+      ref={ref}
+      className={cx("ui-dialog", className)}
+      aria-labelledby={heading != null ? titleId : undefined}
+      onCancel={(e) => {
+        e.preventDefault();
+        onCloseRef.current();
+      }}
+      onClick={(e) => {
+        // Clicks on the dialog element itself (not its content) land on the backdrop.
+        if (e.target === e.currentTarget) onCloseRef.current();
+      }}
+      {...rest}
+    >
+      <div className="ui-dialog-body">
+        <div className="ui-dialog-head">
+          {heading != null && (
+            <h2 id={titleId} className="ui-dialog-title">
+              {heading}
+            </h2>
+          )}
+          <button type="button" className="ui-dialog-close" aria-label={closeLabel} onClick={() => onCloseRef.current()}>
+            ×
+          </button>
+        </div>
+        {open && children}
+      </div>
+    </dialog>
+  );
+}
+
+export const Dialog = skinnable("Dialog", DialogBase);
 
 export interface TextProps extends HTMLAttributes<HTMLElement> {
   as?: "p" | "span" | "div";

@@ -8,6 +8,7 @@ import type {
   CardTitleProps,
   ChipGroupProps,
   ChipProps,
+  DialogProps,
   EmptyStateProps,
   MediaGridProps,
   PanelProps,
@@ -46,6 +47,7 @@ export interface ComponentOverrides {
   Chip: ComponentType<ChipProps>;
   ChipGroup: ComponentType<ChipGroupProps>;
   ColorField: ComponentType<ColorFieldProps>;
+  Dialog: ComponentType<DialogProps>;
   EmptyState: ComponentType<EmptyStateProps>;
   Field: ComponentType<FieldProps>;
   FileButton: ComponentType<FileButtonProps>;

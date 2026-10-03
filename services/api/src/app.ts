@@ -349,6 +349,10 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
 
   app.delete("/api/templates/:id", async (c) => {
     const { id } = await ownTemplate(c);
+    // Memes keep their template (`on delete restrict`); deleting a parent would also take its variations.
+    const [used] = await sql`select 1 from memes m join templates t on t.id = m.template_id
+      where t.id = ${id} or t.parent_id = ${id} limit 1`;
+    if (used) throw new HttpError(409, "template is used by memes and can't be deleted");
     await sql`delete from templates where id = ${id}`;
     return c.body(null, 204);
   });
@@ -405,20 +409,14 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
   app.post("/api/memes", async (c) => {
     const user = requireUser(c);
     const body = await parseJson(c, createMemeSchema);
-    let sourceAssetId: string;
-    if (body.templateId) {
-      const template = await loadTemplate(body.templateId, user);
-      sourceAssetId = template.asset.id;
-    } else {
-      sourceAssetId = (await requireMediaAsset(body.sourceAssetId!, "sourceAssetId")).id;
-    }
+    const template = await loadTemplate(body.templateId, user);
     const output = await requireMediaAsset(body.outputAssetId, "outputAssetId");
     if (output.owner_id !== user.id) throw new HttpError(403, "outputAssetId must be uploaded by you");
     const [row] = await sql<{ id: string }[]>`
       insert into memes ${sql({
         owner_id: user.id,
-        template_id: body.templateId ?? null,
-        source_asset_id: sourceAssetId,
+        template_id: template.id,
+        source_asset_id: template.asset.id,
         output_asset_id: output.id,
         title: body.title,
         layers: sql.json(body.layers as never),

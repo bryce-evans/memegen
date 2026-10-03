@@ -961,6 +961,50 @@ button.ui-chip {
   background: transparent;
   box-shadow: none;
 }
+
+.ui-dialog {
+  width: min(44rem, calc(100vw - 2 * var(--ui-space-5)));
+  max-height: calc(100vh - 2 * var(--ui-space-5));
+  padding: 0;
+  border: var(--ui-border-width) solid var(--ui-color-border);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
+  box-shadow: var(--ui-shadow-3);
+}
+.ui-dialog::backdrop {
+  background: var(--ui-color-overlay);
+}
+.ui-dialog-body {
+  padding: var(--ui-space-5);
+}
+.ui-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  margin: 0 0 var(--ui-space-4);
+}
+.ui-dialog-title {
+  margin: 0;
+  font-size: var(--ui-font-size-lg);
+}
+.ui-dialog-close {
+  width: var(--ui-control-height-sm);
+  height: var(--ui-control-height-sm);
+  margin-left: auto;
+  border: none;
+  border-radius: var(--ui-radius-control);
+  background: transparent;
+  color: var(--ui-color-text-muted);
+  font-size: var(--ui-font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+.ui-dialog-close:hover {
+  background: var(--ui-state-hover);
+  color: var(--ui-color-text);
+}
 .ui-panel--inset .ui-panel-title {
   font-size: var(--ui-font-size-md);
 }

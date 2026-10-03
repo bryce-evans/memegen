@@ -38,7 +38,7 @@ Then open:
 
 - **Popular / Recent**: http://localhost:5173/ ranks by score over today, week, month, year, or all time; http://localhost:5173/recent lists the newest posts. Open a meme to vote and join its discussion (comments with replies).
 - **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎) and how many templates the user contributed. Star (☆) other people's memes to save them; your own profile has Favorites and Recent activity (everything you liked or disliked, newest first) next to your memes.
-- **Create**: http://localhost:5173/create. Upload media, find a template (the list loads more as you scroll), or add a new template. Templates show who added them; built-in ones are added by the reserved `memegen` account.
+- **Create**: http://localhost:5173/create. Every meme starts from a template: find one (the list loads more as you scroll), or add your own media as a new template: upload it, place its default text boxes in the Template Editor, name and tag it, and confirm. Opening a template shows its tags, usage, and variations under the image. Templates show who added them; built-in ones are added by the reserved `memegen` account.
 - **Tags**: search tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
 - **Skins**: switch between Default, Apple, Matte, Google, Studio, and Spectrum in the header, or add `?skin=<id>` to a URL. The browser tab icon follows the skin.
 

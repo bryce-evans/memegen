@@ -64,19 +64,17 @@ export const layersSchema = z.array(textLayerSchema).max(50);
 
 export const visibilitySchema = z.enum(["public", "private"]);
 
-export const createMemeSchema = z
-  .object({
-    title: z.string().trim().max(200).default(""),
-    templateId: z.uuid().nullable().optional(),
-    sourceAssetId: z.uuid().nullable().optional(),
-    /** Client-rendered result, already uploaded to storage. */
-    outputAssetId: z.uuid(),
-    layers: layersSchema,
-    visibility: visibilitySchema.default("public"),
-    post: z.boolean().default(false),
-    tags: tagListSchema.default([]),
-  })
-  .refine((m) => Boolean(m.templateId) !== Boolean(m.sourceAssetId), "provide exactly one of templateId or sourceAssetId");
+/** Every meme is made from an existing template. */
+export const createMemeSchema = z.object({
+  title: z.string().trim().max(200).default(""),
+  templateId: z.uuid(),
+  /** Client-rendered result, already uploaded to storage. */
+  outputAssetId: z.uuid(),
+  layers: layersSchema,
+  visibility: visibilitySchema.default("public"),
+  post: z.boolean().default(false),
+  tags: tagListSchema.default([]),
+});
 
 export const updateMemeSchema = z
   .object({

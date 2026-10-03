@@ -1,22 +1,23 @@
 import { expect, scoped, test } from "./test.ts";
 import { readFileSync } from "node:fs";
-import { fixture, signIn, stagePixels, uploadMedia } from "./helpers.ts";
+import { editFixture, fixture, signIn, stagePixels } from "./helpers.ts";
 
 test("upload caps are enforced before upload, with the reason shown", async ({ page }) => {
   await page.goto("/");
   await signIn(page, scoped("rulebreaker"));
   await page.getByTestId("nav-create").click();
-  await uploadMedia(page, "too-wide.gif");
-  await expect(page.getByTestId("editor-error")).toContainText("1100x60");
-  await expect(page.getByTestId("editor-error")).toContainText("1024");
-  await expect(page.getByTestId("stage-canvas")).toHaveCount(0);
+  const input = page.getByTestId("new-template-file");
+  await expect(input).toBeEnabled(); // waits for /storage/limits
+  await input.setInputFiles(fixture("too-wide.gif"));
+  await expect(page.getByTestId("new-template-error")).toContainText("1100x60");
+  await expect(page.getByTestId("new-template-error")).toContainText("1024");
+  await expect(page).toHaveURL(/\/create$/); // never reached the Template Editor
 });
 
-test("custom font upload becomes selectable and changes the render", async ({ page }) => {
+test("custom font upload becomes selectable and changes the render", async ({ page, request }) => {
   await page.goto("/");
   await signIn(page, scoped("typographer"));
-  await page.getByTestId("nav-create").click();
-  await uploadMedia(page, "still.png");
+  await editFixture(page, request, scoped("typographer"), "still.png");
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await page.getByTestId("layer-item").first().click();
 

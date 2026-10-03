@@ -1,6 +1,6 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, dragLayer, fixture, memeIdFromUrl, probeStreams, signIn, stagePixels, uploadMedia } from "./helpers.ts";
+import { apiGet, apiUser, download, dragLayer, editFixture, fixture, memeIdFromUrl, probeStreams, signIn, stagePixels } from "./helpers.ts";
 
 test("gif: every frame on the timeline, keyframed animation, start window, GIF export keeps frames", async ({
   page,
@@ -8,8 +8,7 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
 }) => {
   await page.goto("/");
   await signIn(page, scoped("gifmaker"));
-  await page.getByTestId("nav-create").click();
-  await uploadMedia(page, "anim.gif");
+  await editFixture(page, request, scoped("gifmaker"), "anim.gif");
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
 
   const timeline = page.getByTestId("timeline");

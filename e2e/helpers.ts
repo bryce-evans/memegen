@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
-import type { Asset, Meme, User } from "@memegen/shared";
+import type { Asset, Meme, Template, User } from "@memegen/shared";
 
 export const fixture = (name: string) => join(import.meta.dirname, "fixtures", name);
 
@@ -28,22 +28,25 @@ export async function apiUpload(request: APIRequestContext, user: User, file: st
   return (await res.json()) as Asset;
 }
 
-/** A posted meme created purely through the API (fixture used as both source and output). */
+/** A public template added by `user` from a fixture, through the API. */
+export async function apiTemplate(request: APIRequestContext, user: User, file: string, name = file): Promise<Template> {
+  const asset = await apiUpload(request, user, file);
+  const res = await request.post("/api/templates", { headers: { "x-user-id": user.id }, data: { name, assetId: asset.id } });
+  expect(res.status(), await res.text()).toBe(201);
+  return (await res.json()) as Template;
+}
+
+/** A posted meme created purely through the API (fixture as the output; a fresh template unless one is given). */
 export async function apiMeme(
   request: APIRequestContext,
   user: User,
   body: { title: string; visibility?: "public" | "private"; post?: boolean; tags?: string[]; templateId?: string },
 ): Promise<Meme> {
+  const templateId = body.templateId ?? (await apiTemplate(request, user, "still.png", body.title)).id;
   const output = await apiUpload(request, user, "still.png");
   const res = await request.post("/api/memes", {
     headers: { "x-user-id": user.id },
-    data: {
-      layers: [],
-      post: true,
-      ...(body.templateId ? {} : { sourceAssetId: output.id }),
-      outputAssetId: output.id,
-      ...body,
-    },
+    data: { layers: [], post: true, ...body, templateId, outputAssetId: output.id },
   });
   expect(res.status(), await res.text()).toBe(201);
   return (await res.json()) as Meme;
@@ -105,11 +108,11 @@ export async function download(request: APIRequestContext, asset: Asset): Promis
   return res.body();
 }
 
-/** Pick editor source media once the input is enabled (it waits for /storage/limits). */
-export async function uploadMedia(page: Page, file: string): Promise<void> {
-  const input = page.getByTestId("media-upload");
-  await expect(input).toBeEnabled();
-  await input.setInputFiles(fixture(file));
+/** Open a fixture in the editor: add it as a template (through the API) for the signed-in `username`, then Use it. */
+export async function editFixture(page: Page, request: APIRequestContext, username: string, file: string): Promise<Template> {
+  const template = await apiTemplate(request, await apiUser(request, username), file, `${username} ${file}`);
+  await page.goto(`/create?template=${template.id}`);
+  return template;
 }
 
 /** Wait for the feed to finish loading, then click "Load more" until the list is complete. */

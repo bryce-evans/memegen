@@ -1,6 +1,6 @@
 # memegen — architecture
 
-Online meme generator: upload media, overlay (optionally animated) text, publish to a voted gallery.
+Online meme generator: pick a template (or add one), overlay (optionally animated) text, publish to a voted gallery.
 
 ## Components
 
@@ -79,7 +79,9 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - Templates carry `default_layers` (text box presets) that seed the editor.
 - Every template has an author (`owner_id not null`, shown as "added by"). Built-in templates belong to the reserved `memegen` account: a trigger fills a null owner with `memegen_user_id()` (created lazily, so seeds and `on delete set null` keep working), and `sessionSchema` refuses `memegen` as a login name, so nobody can act as it or edit its templates.
 - `scripts/seed.ts --from <jacebrowning/memegen clone>` imports its fonts and ~200 templates. `default.*` becomes the parent; other images in the folder become variations.
-- The template browser lives on `/create` (find a template or add one); there is no separate templates page. Its grid loads the next page when an IntersectionObserver sentinel nears the viewport; the sentinel re-arms after each page, so short pages keep loading.
+- The template browser lives on `/create`; there is no separate templates page. The start view puts hot templates beside the "New template" card (the only way to bring in new media), with all templates and their search below. The template grid loads the next page when an IntersectionObserver sentinel nears the viewport; the sentinel re-arms after each page, so short pages keep loading. The grid's `data-query` names the search it shows, since the search is debounced.
+- Adding a template: the file is pre-checked and uploaded, then the main editor opens as the "Template Editor" (`/create?newTemplate=<assetId>`) with TOP TEXT / BOTTOM TEXT boxes placed. The user edits boxes like any meme, names and tags it, and Save template asks "Add new template?" (`Dialog` in `@memegen/ui`, a native `<dialog>`) before `POST /api/templates` with the placed boxes as `defaultLayers` and the tags as base tags; the new template then opens in the editor. Abandoning the editor leaves the uploaded asset unused.
+- Template cards (all templates, tag pages) show only the image, name, author, use count (`n🔥`), and Use. Opening a template in the editor shows its details under the stage: tags (base tags marked; any signed-in user can add more), the usage chart, and its variations. Variations are created through the API (`POST /api/templates` with `parentId`); the UI has no upload for them.
 
 ### Template usage ("hot" templates)
 - Core tables: `users`, `memes` (one row per meme, with its own vote tallies), `templates` (+ variations), `votes`, `assets`.
@@ -96,7 +98,8 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - Meme tags: the meme owner sets them.
 
 ### Memes, posting, visibility
-- A meme stores the source asset, the client-rendered output asset, and the `layers` used, so it can be re-edited.
+- Every meme is made from a template (`memes.template_id not null`, FK `on delete restrict`; `POST /api/memes` takes `templateId` only). There is no one-off upload: new media becomes a template first. Migration 006 gave earlier one-off memes a private template built from their own source image, owned by their author.
+- A meme stores its template, the source asset (the template's media at creation), the client-rendered output asset, and the `layers` used, so it can be re-edited.
 - Saved = row exists (`posted_at` null). Posted = `posted_at` set. `visibility` is `public` (default) or `private`.
 - Gallery and public profiles list memes that are posted **and** public. Private memes are visible only to their owner and can't be voted on.
 
@@ -195,8 +198,8 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | GET | `/api/templates/:id/usage?period=` | `TemplateUsage` — zero-filled series (day→hourly, week/month→daily, year/all→monthly) |
 | GET | `/api/templates/:id` | `Template` (+ variations, `useCount`) |
 | POST | `/api/templates` | `{name, assetId, parentId?, defaultLayers?, isPublic?, tags?}`; `tags` become base tags |
-| PATCH/DELETE | `/api/templates/:id` | owner only |
-| POST | `/api/memes` | `{title, templateId XOR sourceAssetId, outputAssetId, layers, visibility, post, tags?}` |
+| PATCH/DELETE | `/api/templates/:id` | owner only; DELETE → 409 while memes use it (or one of its variations) |
+| POST | `/api/memes` | `{title, templateId, outputAssetId, layers, visibility, post, tags?}`; every meme is made from a template |
 | GET | `/api/memes/:id` | `Meme` (private → owner only) |
 | PATCH | `/api/memes/:id` | `{title?, visibility?, tags?, layers+outputAssetId?}` owner only |
 | POST | `/api/memes/:id/post` | sets `posted_at` |

@@ -107,6 +107,8 @@ export const getLimits = () => request<UploadLimits>("/storage/limits");
 
 export const listFonts = () => request<Page<Asset>>(`/storage/assets${qs({ kind: "font", limit: 200 })}`);
 
+export const getAsset = (id: string) => request<Asset>(`/storage/assets/${encodeURIComponent(id)}`);
+
 export function uploadAsset(file: Blob, filename: string, name?: string, signal?: AbortSignal): Promise<Asset> {
   const form = new FormData();
   form.append("file", file, filename);
@@ -167,14 +169,16 @@ export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURICompo
 export const createTag = (input: { name: string; kind?: TagKind; description?: string }) =>
   request<Tag>("/api/tags", { method: "POST", json: input });
 
-export type CreateMemeInput = {
+export interface CreateMemeInput {
   title: string;
+  /** Every meme is made from an existing template. */
+  templateId: string;
   outputAssetId: string;
   layers: TextLayer[];
   visibility: Visibility;
   post: boolean;
   tags?: string[];
-} & ({ templateId: string; sourceAssetId?: never } | { sourceAssetId: string; templateId?: never });
+}
 
 export const createMeme = (input: CreateMemeInput) => request<Meme>("/api/memes", { method: "POST", json: input });
 

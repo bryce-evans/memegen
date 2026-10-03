@@ -183,7 +183,8 @@ export interface Meme {
   id: string;
   title: string;
   owner: Pick<User, "id" | "username">;
-  templateId: string | null;
+  /** Every meme is made from a template. */
+  templateId: string;
   sourceAsset: Asset;
   outputAsset: Asset;
   layers: TextLayer[];

@@ -7,7 +7,7 @@ export interface MemeRow {
   title: string;
   owner_id: string;
   owner_username: string;
-  template_id: string | null;
+  template_id: string;
   source_asset: AssetRow;
   output_asset: AssetRow;
   layers: TextLayer[];

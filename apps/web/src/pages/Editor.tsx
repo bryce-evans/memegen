@@ -7,25 +7,27 @@ import {
   upsertKeyframe,
   type Asset,
   type Meme,
+  type Template,
   type TextLayer,
   type UploadLimits,
 } from "@memegen/shared";
-import { Alert, EmptyState, FileButton, Icon, Inline, PageHeader, Panel, SegmentedControl, Spinner } from "@memegen/ui";
-import { fetchAssetBlob, fontUrl, getLimits, getMeme, getTemplate, listFonts, uploadAsset } from "../api.ts";
+import { Alert, PageHeader, Spinner } from "@memegen/ui";
+import { fetchAssetBlob, fontUrl, getAsset, getLimits, getMeme, getTemplate, listFonts } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { LayerPanel } from "../components/editor/LayerPanel.tsx";
 import { SavePanel } from "../components/editor/SavePanel.tsx";
+import { TemplateSavePanel } from "../components/editor/TemplateSavePanel.tsx";
 import { Stage } from "../components/editor/Stage.tsx";
 import { Timeline } from "../components/editor/Timeline.tsx";
-import { NewTemplateForm, TemplateBrowser } from "../components/templates.tsx";
-import { MEDIA_ACCEPT, precheckMedia } from "../media.ts";
+import { HotTemplates, NewTemplateForm, TemplateBrowser, TemplateDetails } from "../components/templates.tsx";
 
 /** Where the media came from; decides how the meme is saved. */
 type Source =
-  | { kind: "template"; templateId: string; asset: Asset; name: string; tags: string[] }
-  | { kind: "meme"; meme: Meme }
-  | { kind: "upload"; file: File };
+  | { kind: "template"; template: Template }
+  /** Uploaded media becoming a new template ("Template Editor"); its text boxes become the defaults. */
+  | { kind: "new-template"; asset: Asset }
+  | { kind: "meme"; meme: Meme };
 
 interface Session {
   source: Source;
@@ -44,8 +46,6 @@ function defaultLayers(fontAssetId: string | null): TextLayer[] {
   ];
 }
 
-type StartMode = "search" | "new";
-
 /** Remount the editor whenever the query string changes (new template/meme/upload). */
 export function Editor() {
   const location = useLocation();
@@ -56,13 +56,13 @@ function EditorLoader() {
   const [params] = useSearchParams();
   const templateId = params.get("template");
   const memeId = params.get("meme");
+  const newTemplateAssetId = params.get("newTemplate");
   const [fonts, setFonts] = useState<Asset[] | null>(null);
   const [limits, setLimits] = useState<UploadLimits | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const mediaRef = useRef<DecodedMedia | null>(null);
-  const [mode, setMode] = useState<StartMode>("search");
   const [templateSearch, setTemplateSearch] = useState("");
 
   const replaceMedia = useCallback((next: Session) => {
@@ -93,11 +93,15 @@ function EditorLoader() {
         layers = meme.layers;
       } else if (templateId) {
         const template = await getTemplate(templateId);
-        source = { kind: "template", templateId: template.id, asset: template.asset, name: template.name, tags: template.tags };
+        source = { kind: "template", template };
         asset = template.asset;
         layers = template.defaultLayers.length
           ? template.defaultLayers.map((l) => ({ ...structuredClone(l), id: crypto.randomUUID() }))
           : defaultLayers(fontId);
+      } else if (newTemplateAssetId) {
+        asset = await getAsset(newTemplateAssetId);
+        source = { kind: "new-template", asset };
+        layers = defaultLayers(fontId);
       } else {
         return;
       }
@@ -117,89 +121,27 @@ function EditorLoader() {
     return () => {
       cancelled = true;
     };
-  }, [memeId, templateId, replaceMedia]);
-
-  async function pickFile(file: File) {
-    if (!limits || !fonts) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const media = await precheckMedia(file, limits);
-      replaceMedia({ source: { kind: "upload", file }, media, layers: defaultLayers(defaultFontId(fonts)) });
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, [memeId, templateId, newTemplateAssetId, replaceMedia]);
 
   if (session && fonts && limits) {
     return <Workspace session={session} fonts={fonts} limits={limits} onFontsChange={setFonts} />;
   }
 
+  const starting = !memeId && !templateId && !newTemplateAssetId;
   return (
     <section className="editor-start">
-      <PageHeader title={memeId ? "Edit meme" : templateId ? "Loading template" : "Create a meme"} />
-      {!memeId && !templateId && (
-        <Panel className="dropzone">
-          <EmptyState
-            icon={<Icon name="upload" />}
-            title="Upload an image, GIF, MP4 or MOV — or start from a template below."
-            description={
-              limits && (
-                <>
-                  Max {(limits.maxBytes / 1024 / 1024).toFixed(0)} MB · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
-                  {limits.gif.maxDimension}px / {limits.gif.maxFrames} frames · videos ≤ {limits.video.maxDimension}px /{" "}
-                  {limits.video.maxFrames} frames
-                </>
-              )
-            }
-            action={
-              <Inline justify="center">
-                <FileButton
-                  variant="primary"
-                  icon={<Icon name="upload" />}
-                  data-testid="media-upload"
-                  accept={MEDIA_ACCEPT}
-                  disabled={busy || !limits}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (file) void pickFile(file);
-                  }}
-                >
-                  Choose media
-                </FileButton>
-              </Inline>
-            }
-          />
-        </Panel>
+      <PageHeader title={memeId ? "Edit meme" : newTemplateAssetId ? "Template Editor" : templateId ? "Loading template" : "Create a meme"} />
+      {starting && (
+        <div className="create-top">
+          <HotTemplates />
+          <div className="create-upload">
+            <NewTemplateForm limits={limits} />
+          </div>
+        </div>
       )}
       {(busy || (fonts === null && error === null)) && <Spinner label="Loading…" />}
       {error !== null && <ErrorView error={error} testId="editor-error" />}
-      {!memeId && !templateId && (
-        <div className="template-start">
-          <SegmentedControl
-            aria-label="Templates"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: "search", label: "Find a template", testId: "create-mode-search" },
-              { value: "new", label: "Add a template", testId: "create-mode-new" },
-            ]}
-          />
-          {mode === "search" ? (
-            <TemplateBrowser search={templateSearch} onSearchChange={setTemplateSearch} />
-          ) : (
-            <NewTemplateForm
-              onCreated={(template) => {
-                setTemplateSearch(template.name);
-                setMode("search");
-              }}
-            />
-          )}
-        </div>
-      )}
+      {starting && <TemplateBrowser search={templateSearch} onSearchChange={setTemplateSearch} />}
     </section>
   );
 }
@@ -220,7 +162,6 @@ function Workspace({ session, fonts, limits, onFontsChange }: WorkspaceProps) {
   const [playing, setPlaying] = useState(false);
   const [fontsVersion, setFontsVersion] = useState(0);
   const [fontError, setFontError] = useState<string | null>(null);
-  const uploadedSource = useRef<Promise<Asset> | null>(null);
   const animated = media.kind !== "image";
   const t = media.times[frame] ?? 0;
   const selectedLayer = layers.find((l) => l.id === selectedId) ?? null;
@@ -282,24 +223,10 @@ function Workspace({ session, fonts, limits, onFontsChange }: WorkspaceProps) {
     setFrame(f);
   }, []);
 
-  const getSourceAssetId = useCallback(
-    async (signal?: AbortSignal) => {
-      if (source.kind === "template") return source.asset.id;
-      if (source.kind === "meme") return source.meme.sourceAsset.id;
-      // Upload the local file once, on first save; retry after failures.
-      uploadedSource.current ??= uploadAsset(source.file, source.file.name, undefined, signal);
-      try {
-        return (await uploadedSource.current).id;
-      } catch (err) {
-        uploadedSource.current = null;
-        throw err;
-      }
-    },
-    [source],
-  );
-
   return (
-    <section className="editor">
+    <>
+      {source.kind === "new-template" && <PageHeader title="Template Editor" titleProps={{ "data-testid": "editor-title" }} />}
+      <section className="editor">
       <div className="editor-main">
         <Stage
           media={media}
@@ -325,6 +252,7 @@ function Workspace({ session, fonts, limits, onFontsChange }: WorkspaceProps) {
             onTogglePlay={() => setPlaying((p) => !p)}
           />
         )}
+        {source.kind === "template" && <TemplateDetails template={source.template} />}
       </div>
       <div className="editor-side">
         <LayerPanel
@@ -365,18 +293,21 @@ function Workspace({ session, fonts, limits, onFontsChange }: WorkspaceProps) {
             if (selectedId) updateLayer(selectedId, { fontAssetId: font.id });
           }}
         />
-        <SavePanel
-          media={media}
-          layers={layers}
-          limits={limits}
-          canSave={isOwnMeme}
-          editingMeme={source.kind === "meme" ? source.meme : null}
-          templateId={source.kind === "template" ? source.templateId : null}
-          defaultTitle={source.kind === "template" ? source.name : ""}
-          suggestedTags={source.kind === "template" ? source.tags : []}
-          getSourceAssetId={getSourceAssetId}
-        />
+        {source.kind === "new-template" ? (
+          <TemplateSavePanel asset={source.asset} layers={layers} />
+        ) : (
+          <SavePanel
+            media={media}
+            layers={layers}
+            limits={limits}
+            canSave={isOwnMeme}
+            target={source.kind === "meme" ? { editing: source.meme } : { templateId: source.template.id }}
+            defaultTitle={source.kind === "template" ? source.template.name : ""}
+            suggestedTags={source.kind === "template" ? source.template.tags : []}
+          />
+        )}
       </div>
-    </section>
+      </section>
+    </>
   );
 }

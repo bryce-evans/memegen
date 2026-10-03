@@ -265,15 +265,25 @@
 
 /* ---- templates ------------------------------------------------------------ */
 
+/* Create start view: hot templates beside the upload column, then all templates. */
+.create-top {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+  gap: var(--ui-space-7);
+  align-items: start;
+}
+.create-top .hot {
+  margin-bottom: 0;
+}
+.create-upload {
+  min-width: 0;
+}
 .template-start {
   margin-top: var(--ui-space-7);
 }
-.template-start > .ui-segmented {
-  margin-bottom: var(--ui-space-5);
-}
 .template-search {
-  flex: 1 1 16rem;
   max-width: 28rem;
+  margin-bottom: var(--ui-space-5);
 }
 .hot {
   margin-bottom: var(--ui-space-7);
@@ -314,6 +324,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.template-details {
+  margin-top: var(--ui-space-5);
+}
+.template-details-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  margin-top: var(--ui-space-3);
+}
 .usage {
   margin-top: var(--ui-space-3);
 }
@@ -349,20 +369,8 @@
 .upload-form {
   margin-top: var(--ui-space-3);
 }
-.upload-form .ui-field {
-  margin-bottom: 0;
-}
-.upload-name {
-  flex: 1 1 12rem;
-}
-.upload-file {
-  flex: 1 1 14rem;
-}
-.file-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.upload-form > .ui-text {
+  margin: 0 0 var(--ui-space-3);
 }
 
 /* ---- detail / profile ----------------------------------------------------- */
@@ -463,9 +471,6 @@
   top: calc(var(--ui-header-height) + var(--ui-space-5));
   max-height: calc(100vh - var(--ui-header-height) - 2 * var(--ui-space-5));
   overflow-y: auto;
-}
-.editor-start .dropzone {
-  max-width: 640px;
 }
 .dropzone .ui-empty {
   margin: 0;
@@ -659,7 +664,8 @@
 
 @media (max-width: 960px) {
   .editor,
-  .detail {
+  .detail,
+  .create-top {
     grid-template-columns: minmax(0, 1fr);
   }
   .editor-side {

@@ -1,13 +1,11 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, dragLayer, memeIdFromUrl, openFeed, signIn, stagePixels, uploadMedia } from "./helpers.ts";
+import { apiGet, apiUser, download, dragLayer, editFixture, memeIdFromUrl, openFeed, signIn, stagePixels } from "./helpers.ts";
 
-test("still image: upload, edit and drag text, tag, save draft, post, show in Recent", async ({ page, request }) => {
+test("still image: edit and drag text on a template, tag, save draft, post, show in Recent", async ({ page, request }) => {
   await page.goto("/");
   await signIn(page, scoped("imgfan"));
-  await page.getByTestId("nav-create").click();
-
-  await uploadMedia(page, "still.png");
+  await editFixture(page, request, scoped("imgfan"), "still.png");
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("timeline")).toHaveCount(0); // stills have no timeline
 

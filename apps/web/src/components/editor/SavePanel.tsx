@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ensureLayerFonts, exportMeme, ExportAbortedError, type DecodedMedia } from "@memegen/render";
 import {
   TAG_KINDS,
@@ -7,13 +7,12 @@ import {
   tagSlug,
   type Meme,
   type TagKind,
-  type Template,
   type TextLayer,
   type UploadLimits,
   type Visibility,
 } from "@memegen/shared";
 import { Alert, Button, Field, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
-import { ApiError, createMeme, createTag, createTemplate, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
+import { ApiError, createMeme, createTag, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { useAuth } from "../../auth.tsx";
 import { downloadBlob, fileSlug } from "../../media.ts";
 import { ErrorView, SignInPrompt } from "../common.tsx";
@@ -25,14 +24,11 @@ export interface SavePanelProps {
   limits: UploadLimits;
   /** False when re-editing someone else's meme: only Download is offered. */
   canSave: boolean;
-  /** Set when re-editing an existing meme (PATCH instead of create). */
-  editingMeme: Meme | null;
-  templateId: string | null;
+  /** Re-editing an existing meme (PATCH), or creating a new one from a template. */
+  target: { editing: Meme } | { templateId: string };
   defaultTitle: string;
   /** Offered as one-click tags (e.g. the template's); never applied automatically. */
   suggestedTags: string[];
-  /** Source asset id, uploading the local file first if needed. */
-  getSourceAssetId: (signal?: AbortSignal) => Promise<string>;
 }
 
 interface Progress {
@@ -42,7 +38,8 @@ interface Progress {
 }
 
 export function SavePanel(props: SavePanelProps) {
-  const { media, layers, limits, canSave, editingMeme, templateId, defaultTitle, suggestedTags, getSourceAssetId } = props;
+  const { media, layers, limits, canSave, target, defaultTitle, suggestedTags } = props;
+  const editingMeme = "editing" in target ? target.editing : null;
   const { user } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState(editingMeme?.title ?? defaultTitle);
@@ -51,8 +48,6 @@ export function SavePanel(props: SavePanelProps) {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [templateName, setTemplateName] = useState(defaultTitle);
-  const [savedTemplate, setSavedTemplate] = useState<Template | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const busy = progress !== null;
   const saving = user !== null && canSave;
@@ -62,7 +57,6 @@ export function SavePanel(props: SavePanelProps) {
     abortRef.current = ac;
     setError(null);
     setNotice(null);
-    setSavedTemplate(null);
     try {
       await task(ac.signal);
     } catch (err) {
@@ -108,23 +102,13 @@ export function SavePanel(props: SavePanelProps) {
       setProgress({ step: "Saving", value: null });
       const common = { title: title.trim(), visibility, layers, outputAssetId: output.id, tags };
       let meme: Meme;
-      if (editingMeme) {
-        meme = await updateMeme(editingMeme.id, common);
+      if ("editing" in target) {
+        meme = await updateMeme(target.editing.id, common);
         if (post && meme.postedAt === null) meme = await postMeme(meme.id);
-      } else if (templateId) {
-        meme = await createMeme({ ...common, templateId, post });
       } else {
-        meme = await createMeme({ ...common, sourceAssetId: await getSourceAssetId(signal), post });
+        meme = await createMeme({ ...common, templateId: target.templateId, post });
       }
       navigate(`/m/${meme.id}`);
-    });
-
-  const saveTemplate = () =>
-    run(async (signal) => {
-      setProgress({ step: "Saving template", value: null });
-      const assetId = await getSourceAssetId(signal);
-      const name = templateName.trim() || title.trim() || "Untitled template";
-      setSavedTemplate(await createTemplate({ name, assetId, defaultLayers: layers, tags }));
     });
 
   const alreadyPosted = editingMeme !== null && editingMeme.postedAt !== null;
@@ -196,27 +180,6 @@ export function SavePanel(props: SavePanelProps) {
 
       {!user && <SignInPrompt action="save or post memes" />}
       {user && !canSave && <Alert tone="info">Only the owner can save changes to this meme.</Alert>}
-
-      {saving && (
-        <Panel variant="inset" heading="Save as template" className="save-template">
-          <TextField
-            label="Template name"
-            value={templateName}
-            maxLength={120}
-            placeholder={title.trim() || "Untitled template"}
-            onChange={(e) => setTemplateName(e.target.value)}
-            disabled={busy}
-          />
-          <Button disabled={busy} onClick={saveTemplate} data-testid="save-as-template">
-            Save as template
-          </Button>
-          {savedTemplate && (
-            <Text>
-              Saved template “{savedTemplate.name}”. <Link to={`/create?template=${savedTemplate.id}`}>Open it</Link>
-            </Text>
-          )}
-        </Panel>
-      )}
     </Panel>
   );
 }

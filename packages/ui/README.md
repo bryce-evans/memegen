@@ -71,6 +71,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `Alert` | `role=alert` (error) / `status` (info) box | `tone` |
 | `Spinner`, `EmptyState` | loading row; empty placeholder | `label`; `title`, `description`, `action`, `icon` |
 | `Panel` | titled surface (`section`) | `heading`, `headingActions`, `variant` (`default`/`inset`) |
+| `Dialog` | modal native `<dialog>` (`showModal`: inert page, focus kept inside, Escape closes) | `open`, `onClose` (Escape, close button, backdrop), `heading`, `closeLabel` |
 | `Text` | `p`/`span`/`div` | `tone`, `size`, `numeric` |
 | `Icon` | stroke SVG (`--ui-icon-stroke`) | `name`, `label` |
 | `SkinSwitcher` | native `<select>` of registered skins | select props |

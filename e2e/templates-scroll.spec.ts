@@ -16,8 +16,11 @@ test("templates: the create page loads more matches as the end of the list scrol
   }
 
   await page.goto("/create");
-  await expect(page.getByTestId("create-mode-search")).toHaveAttribute("aria-pressed", "true");
   await page.getByTestId("template-search").fill(prefix);
+  // The search is debounced; wait until the grid shows it, or the unfiltered list could satisfy the count.
+  const grid = page.getByTestId("template-grid");
+  await expect(grid).toHaveAttribute("data-query", prefix);
+  await expect(grid).toHaveAttribute("aria-busy", "false");
   const matches = page.getByTestId("template-card").filter({ hasText: prefix });
   await expect(matches.first()).toBeVisible();
 

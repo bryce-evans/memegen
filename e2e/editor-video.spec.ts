@@ -1,12 +1,11 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, apiUser, download, fixture, memeIdFromUrl, probeStreams, signIn, uploadMedia } from "./helpers.ts";
+import { apiGet, apiUser, download, editFixture, fixture, memeIdFromUrl, probeStreams, signIn } from "./helpers.ts";
 
 test("video: frame-accurate timeline, MP4 export keeps every frame and the audio track", async ({ page, request }) => {
   await page.goto("/");
   await signIn(page, scoped("director"));
-  await page.getByTestId("nav-create").click();
-  await uploadMedia(page, "clip.mp4");
+  await editFixture(page, request, scoped("director"), "clip.mp4");
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("timeline")).toHaveAttribute("data-complete", "true");
   await expect(page.getByTestId("timeline-frame")).toHaveCount(30);

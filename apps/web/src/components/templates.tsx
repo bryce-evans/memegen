@@ -1,14 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
-import { PERIODS, type HotTemplate, type Period, type Template, type TemplateUsage } from "@memegen/shared";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { PERIODS, type HotTemplate, type Period, type Template, type TemplateUsage, type UploadLimits } from "@memegen/shared";
 import {
   Badge,
-  Button,
   Card,
   CardMeta,
   CardTitle,
   EmptyState,
-  Field,
   FileButton,
   Icon,
   Inline,
@@ -22,7 +20,7 @@ import {
   Text,
   TextField,
 } from "@memegen/ui";
-import { addTemplateTags, createTemplate, getHotTemplates, getLimits, getTemplateUsage, listTemplates, uploadAsset } from "../api.ts";
+import { addTemplateTags, getHotTemplates, getTemplateUsage, listTemplates, uploadAsset } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { MEDIA_ACCEPT, precheckMedia } from "../media.ts";
 import { PERIOD_LABELS } from "../pages/Gallery.tsx";
@@ -30,15 +28,7 @@ import { usePaged } from "../usePaged.ts";
 import { ErrorView, LoadMoreSentinel, MediaView, SignInPrompt } from "./common.tsx";
 import { TagChips, TagEditor } from "./tags.tsx";
 
-/** Pre-check against upload caps, upload the file, then register it as a template (or variation). */
-async function uploadTemplate(file: File, name: string, parentId: string | null): Promise<Template> {
-  const media = await precheckMedia(file, await getLimits());
-  media.dispose();
-  const asset = await uploadAsset(file, file.name, name);
-  return createTemplate({ name, assetId: asset.id, parentId });
-}
-
-/** Hot templates, a debounced name search and the matching templates, loading more as the list end scrolls into view. */
+/** All templates: a debounced name search under the heading, loading more as the list end scrolls into view. */
 export function TemplateBrowser({ search, onSearchChange }: { search: string; onSearchChange: (search: string) => void }) {
   const { user } = useAuth();
   const [q, setQ] = useState(search.trim());
@@ -50,39 +40,33 @@ export function TemplateBrowser({ search, onSearchChange }: { search: string; on
   }, [search]);
 
   return (
-    <>
-      <HotTemplates />
-      <PageHeader
-        level={2}
-        title="All templates"
-        actions={
-          <TextField
-            type="search"
-            className="template-search"
-            placeholder="Search templates…"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            aria-label="Search templates"
-            data-testid="template-search"
-          />
-        }
+    <section className="template-start">
+      <PageHeader level={2} title="All templates" />
+      <TextField
+        type="search"
+        className="template-search"
+        placeholder="Search templates…"
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        aria-label="Search templates"
+        data-testid="template-search"
       />
       {list.error !== null && <ErrorView error={list.error} />}
       {!list.loading && list.items.length === 0 && list.error === null && (
         <EmptyState icon={<Icon name="search" />} title="No templates found." />
       )}
-      <MediaGrid data-testid="template-grid" aria-busy={list.loading}>
+      <MediaGrid data-testid="template-grid" data-query={q} aria-busy={list.loading}>
         {list.items.map((t) => (
-          <TemplateCard key={t.id} template={t} onChanged={list.reload} />
+          <TemplateCard key={t.id} template={t} />
         ))}
       </MediaGrid>
       {list.loading && <Spinner label="Loading…" />}
       <LoadMoreSentinel hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} />
-    </>
+    </section>
   );
 }
 
-function HotTemplates() {
+export function HotTemplates() {
   const { user } = useAuth();
   const [period, setPeriod] = useState<Period>("week");
   const [items, setItems] = useState<HotTemplate[] | null>(null);
@@ -212,28 +196,8 @@ function UsageChart({ templateId }: { templateId: string }) {
   );
 }
 
-export function TemplateCard({ template, onChanged }: { template: Template; onChanged: () => void }) {
-  const { user } = useAuth();
-  const [showUsage, setShowUsage] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  // Base tags come from the author and always stay; any signed-in user can add more.
-  const [tagged, setTagged] = useState({ tags: template.tags, baseTags: template.baseTags });
-
-  async function addVariation(file: File) {
-    setBusy(true);
-    setError(null);
-    try {
-      const name = `${template.name} (${file.name.replace(/\.[^.]+$/, "")})`.slice(0, 120);
-      await uploadTemplate(file, name, template.id);
-      onChanged();
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  }
-
+/** Gallery tile: the template, who added it, how often it's used, and Use. Details live in the editor. */
+export function TemplateCard({ template }: { template: Template }) {
   return (
     <Card
       borderless
@@ -246,153 +210,134 @@ export function TemplateCard({ template, onChanged }: { template: Template; onCh
         </Link>
       }
       actions={
-        <>
-          <LinkButton as={Link} size="sm" variant="primary" to={`/create?template=${template.id}`} data-testid="use-template">
-            Use
-          </LinkButton>
-          {template.parentId === null && user && (
-            <FileButton
-              size="sm"
-              icon={<Icon name="upload" />}
-              accept={MEDIA_ACCEPT}
-              disabled={busy}
-              data-testid="add-variation"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) void addVariation(file);
-              }}
-            >
-              {busy ? "Uploading…" : "Add variation"}
-            </FileButton>
-          )}
-          <Button
-            size="sm"
-            variant="quiet"
-            icon={<Icon name="chart" />}
-            onClick={() => setShowUsage((s) => !s)}
-            pressed={showUsage}
-            data-testid="usage-toggle"
-          >
-            Usage
-          </Button>
-        </>
+        <LinkButton as={Link} size="sm" variant="primary" to={`/create?template=${template.id}`} data-testid="use-template">
+          Use
+        </LinkButton>
       }
     >
-      <CardTitle as="button" type="button" onClick={() => setShowUsage((s) => !s)} title="Show usage">
+      <CardTitle as={Link} to={`/create?template=${template.id}`}>
         {template.name}
       </CardTitle>
-      <CardMeta>
-        <span data-testid="template-author">
-          added by <Link to={`/u/${template.owner.username}`}>@{template.owner.username}</Link>
-        </span>
-        <span aria-hidden> · </span>
-        <span
-          data-testid="template-use-count"
-          aria-label={`used ${template.useCount} ${template.useCount === 1 ? "time" : "times"}`}
-          title={`used ${template.useCount} ${template.useCount === 1 ? "time" : "times"}`}
-        >
-          {template.useCount}🔥
-        </span>
-        {!template.isPublic && <Badge tone="info">Private</Badge>}
-      </CardMeta>
-      <TagChips slugs={tagged.tags} base={tagged.baseTags} />
-      {user && (
-        <TagEditor
-          tags={[]}
-          label="Add tags"
-          testId="template-tags-add"
-          onSave={async (added) => {
-            const next = await addTemplateTags(template.id, added);
-            setTagged({ tags: next.tags, baseTags: next.baseTags });
-          }}
-        />
-      )}
-      {showUsage && <UsageChart templateId={template.id} />}
-      {template.variations.length > 0 && (
-        <div className="variations" aria-label="Variations">
-          {template.variations.map((v) => (
-            <Link
-              key={v.id}
-              to={`/create?template=${v.id}`}
-              className="variation"
-              title={`Use “${v.name}”`}
-              data-testid="variation-item"
-              data-template-id={v.id}
-            >
-              <MediaView asset={v.asset} alt={v.name} />
-            </Link>
-          ))}
-        </div>
-      )}
-      {error !== null && <ErrorView error={error} />}
+      <TemplateMeta template={template} />
     </Card>
   );
 }
 
-export function NewTemplateForm({ onCreated }: { onCreated: (template: Template) => void }) {
+function TemplateMeta({ template }: { template: Template }) {
+  const used = `used ${template.useCount} ${template.useCount === 1 ? "time" : "times"}`;
+  return (
+    <CardMeta>
+      <span data-testid="template-author">
+        added by <Link to={`/u/${template.owner.username}`}>@{template.owner.username}</Link>
+      </span>
+      <span aria-hidden> · </span>
+      <span data-testid="template-use-count" aria-label={used} title={used}>
+        {template.useCount}🔥
+      </span>
+      {!template.isPublic && <Badge tone="info">Private</Badge>}
+    </CardMeta>
+  );
+}
+
+/** Under the editor stage when a template is open: its tags (anyone signed in can add), usage, and variations. */
+export function TemplateDetails({ template }: { template: Template }) {
   const { user } = useAuth();
-  const [name, setName] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  // Base tags come from the author and always stay; added tags sit beside them.
+  const [tagged, setTagged] = useState({ tags: template.tags, baseTags: template.baseTags });
+
+  return (
+    <Panel heading={template.name} className="template-details" data-testid="template-details">
+      <TemplateMeta template={template} />
+      <div className="template-details-tags">
+        <TagChips slugs={tagged.tags} base={tagged.baseTags} />
+        {user && (
+          <TagEditor
+            tags={[]}
+            label="Add tags"
+            testId="template-tags-add"
+            onSave={async (added) => {
+              const next = await addTemplateTags(template.id, added);
+              setTagged({ tags: next.tags, baseTags: next.baseTags });
+            }}
+          />
+        )}
+      </div>
+      <Panel variant="inset" heading="Usage">
+        <UsageChart templateId={template.id} />
+      </Panel>
+      {template.variations.length > 0 && (
+        <Panel variant="inset" heading="Variations">
+          <div className="variations">
+            {template.variations.map((v) => (
+              <Link
+                key={v.id}
+                to={`/create?template=${v.id}`}
+                className="variation"
+                title={`Use “${v.name}”`}
+                data-testid="variation-item"
+                data-template-id={v.id}
+              >
+                <MediaView asset={v.asset} alt={v.name} />
+              </Link>
+            ))}
+          </div>
+        </Panel>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Adding a template — the only way to bring in new media, since every meme is made from a template: pick a file
+ * (pre-checked against `limits`, then uploaded) and place its text boxes in the Template Editor.
+ */
+export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   if (!user) return <SignInPrompt action="add templates" />;
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    if (!file || !name.trim()) return;
+  async function upload(file: File, caps: UploadLimits) {
     setBusy(true);
     setError(null);
     try {
-      const template = await uploadTemplate(file, name.trim(), null);
-      setName("");
-      setFile(null);
-      form.reset();
-      onCreated(template);
+      const media = await precheckMedia(file, caps);
+      media.dispose();
+      const asset = await uploadAsset(file, file.name);
+      navigate(`/create?newTemplate=${asset.id}`);
     } catch (err) {
       setError(err);
-    } finally {
       setBusy(false);
     }
   }
 
   return (
     <Panel heading="New template" className="upload-form">
-      <form onSubmit={submit}>
-        <Inline align="end" gap="md">
-          <TextField
-            label="Name"
-            className="upload-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={120}
-            data-testid="new-template-name"
-          />
-          <Field as="div" label="Image, GIF or video" className="upload-file">
-            <Inline wrap={false}>
-              <FileButton
-                icon={<Icon name="upload" />}
-                accept={MEDIA_ACCEPT}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                required
-                data-testid="new-template-file"
-              >
-                Choose file
-              </FileButton>
-              <Text as="span" size="sm" tone="muted" className="file-name">
-                {file?.name ?? "No file chosen"}
-              </Text>
-            </Inline>
-          </Field>
-          <Button type="submit" variant="primary" className="upload-submit" disabled={busy || !file || !name.trim()} data-testid="new-template-submit">
-            {busy ? "Uploading…" : "Upload"}
-          </Button>
-        </Inline>
-      </form>
-      {error !== null && <ErrorView error={error} />}
+      <Text tone="muted">Upload an image, GIF, MP4 or MOV, then place its default text in the Template Editor.</Text>
+      {limits && (
+        <Text size="sm" tone="muted">
+          Max {(limits.maxBytes / 1024 / 1024).toFixed(0)} MB · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
+          {limits.gif.maxDimension}px / {limits.gif.maxFrames} frames · videos ≤ {limits.video.maxDimension}px /{" "}
+          {limits.video.maxFrames} frames
+        </Text>
+      )}
+      <FileButton
+        variant="primary"
+        icon={<Icon name="upload" />}
+        accept={MEDIA_ACCEPT}
+        disabled={busy || !limits}
+        data-testid="new-template-file"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file && limits) void upload(file, limits);
+        }}
+      >
+        {busy ? "Uploading…" : "Choose file"}
+      </FileButton>
+      {error !== null && <ErrorView error={error} testId="new-template-error" />}
     </Panel>
   );
 }

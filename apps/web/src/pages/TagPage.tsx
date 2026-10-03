@@ -61,7 +61,7 @@ export function TagPage() {
         )}
         <MediaGrid>
           {templates.items.map((t) => (
-            <TemplateCard key={t.id} template={t} onChanged={templates.reload} />
+            <TemplateCard key={t.id} template={t} />
           ))}
         </MediaGrid>
         {templates.loading && <Spinner label="Loading…" />}

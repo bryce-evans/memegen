@@ -102,7 +102,8 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 
 ### Votes, ranking, stats
 - `votes(user_id, meme_id, value ±1, created_at)`, one per user per meme. A trigger keeps `memes.upvotes/downvotes` up to date; `score` is a generated column.
-- Votes double as per-user like/dislike history (no separate store): `GET /api/me/votes?direction=up|down` lists the viewer's liked/disliked memes, most recently voted first (`votes_user_time` index; changing a vote refreshes `created_at`, clearing it deletes the row). Only the owner sees it (profile tabs); "Your favorites" in the sidebar is the liked tab.
+- Votes double as per-user activity (no separate store): `GET /api/me/activity` lists every meme the viewer voted on, likes and dislikes together (`myVote` says which), newest vote first (`votes_user_time` index; changing a vote refreshes `created_at`, clearing it deletes the row). Only the owner sees it: the profile's "Recent activity" tab.
+- Favorites are separate from votes: `favorites(user_id, meme_id, created_at)`; the ☆/★ button stars other users' posted public memes (`Meme.favorited` is per viewer). `GET /api/me/favorites` backs the owner-only profile "Favorites" tab, most recently starred first. Profile tabs: Memes, Favorites, Recent activity.
 - Gallery: Popular (`/`, `best`) = posted public memes with `posted_at` inside the period (day/week/month/year/all), ordered by score, then recency. Recent (`/recent`, `new`) = all-time recency. Tag pages keep both sorts.
 - User stats are computed over posted memes:
   - `memeCount`
@@ -183,10 +184,11 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | method | path | notes |
 |---|---|---|
 | POST | `/api/session` | `{username}` → `{user}` (find or create); reserved names (`memegen`) → 400 |
-| GET | `/api/me` | `{user, stats}`; 401 without user |
-| GET | `/api/me/votes?direction=up\|down&offset=&limit=` | `Page<Meme>` the viewer liked/disliked, most recent vote first; 401 without user |
+| GET | `/api/me` | `UserProfile` `{user, stats, templateCount}`; 401 without user |
+| GET | `/api/me/activity?offset=&limit=` | `Page<Meme>` the viewer voted on (either way), newest vote first; 401 without user |
+| GET | `/api/me/favorites?offset=&limit=` | `Page<Meme>` the viewer starred, newest first; 401 without user |
 | GET | `/api/leaderboard?by=hScore\|highScore\|memeCount&limit=` | `LeaderboardEntry[]` `{rank, user, stats}` |
-| GET | `/api/users/:username` | `{user, stats}` (public stats) |
+| GET | `/api/users/:username` | `UserProfile` (public stats; `templateCount` = public templates the user added, variations included) |
 | GET | `/api/users/:username/memes` | `Page<Meme>`; the owner also sees drafts/private |
 | GET | `/api/templates?q=&tag=&offset=&limit=` | `Page<Template>` (top-level, variations nested; `owner` always set, `baseTags ⊆ tags`) |
 | GET | `/api/templates/hot?period=&limit=` | `HotTemplate[]` — most-used top-level templates in the period |
@@ -200,6 +202,7 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | POST | `/api/memes/:id/post` | sets `posted_at` |
 | DELETE | `/api/memes/:id` | owner only |
 | PUT | `/api/memes/:id/vote` | `{value: -1|0|1}` → `Meme` |
+| PUT | `/api/memes/:id/favorite` | `{favorite: boolean}` → `Meme`; posted public memes only; idempotent |
 | GET | `/api/memes/:id/comments?offset=&limit=` | `Page<Comment>`: top-level oldest first, replies nested |
 | POST | `/api/memes/:id/comments` | `{body, parentId?}` → 201 `Comment`; posted public memes only |
 | DELETE | `/api/comments/:id` | author only; blanked if it has replies, else removed |

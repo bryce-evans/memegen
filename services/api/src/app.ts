@@ -7,8 +7,8 @@ import {
   createTemplateSchema,
   galleryQuerySchema,
   hotTemplatesQuerySchema,
+  favoriteSchema,
   leaderboardQuerySchema,
-  myVotesQuerySchema,
   sessionSchema,
   setTagsSchema,
   tagSlug,
@@ -24,6 +24,7 @@ import {
   type Template,
   type TemplateUsage,
   type User,
+  type UserProfile,
 } from "@memegen/shared";
 import {
   HttpError,
@@ -157,14 +158,21 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
     return c.json({ user });
   });
 
+  /** Public stats plus how many public templates (variations included) the user added. */
+  const profile = async (user: User): Promise<UserProfile> => {
+    const [stats, [count]] = await Promise.all([
+      userStats(sql, user.id),
+      sql<{ n: number }[]>`select count(*)::int as n from templates where owner_id = ${user.id} and is_public`,
+    ]);
+    return { user, stats: publicStats(stats), templateCount: count!.n };
+  };
+
   app.get("/api/me", async (c) => {
-    const user = requireUser(c);
-    return c.json({ user, stats: publicStats(await userStats(sql, user.id)) });
+    return c.json(await profile(requireUser(c)));
   });
 
   app.get("/api/users/:username", async (c) => {
-    const user = await findUserByName(c.req.param("username"));
-    return c.json({ user, stats: publicStats(await userStats(sql, user.id)) });
+    return c.json(await profile(await findUserByName(c.req.param("username"))));
   });
 
   app.get("/api/users/:username/memes", async (c) => {
@@ -191,14 +199,26 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
     return c.json(await leaderboard(sql, by, limit));
   });
 
-  /** The signed-in user's liked (`up`) or disliked (`down`) memes that they can still see, most recent vote first. */
-  app.get("/api/me/votes", async (c) => {
+  /** Recent activity: every meme the signed-in user voted on (`myVote` says which way) that they can still see, newest vote first. */
+  app.get("/api/me/activity", async (c) => {
     const user = requireUser(c);
-    const { direction, offset, limit } = parse(myVotesQuerySchema, c.req.query());
+    const { offset, limit } = parse(pageQuery, c.req.query());
     const rows = await sql<MemeRow[]>`${memeSelect(sql, user.id)}
-      where v.value = ${direction === "up" ? 1 : -1}
+      where v.user_id is not null
         and ((m.visibility = 'public' and m.posted_at is not null) or m.owner_id = ${user.id})
       order by v.created_at desc, m.id
+      offset ${offset} limit ${limit + 1}`;
+    return c.json(page(rows.map(toMeme), offset, limit));
+  });
+
+  /** The signed-in user's starred memes that they can still see, most recently starred first. */
+  app.get("/api/me/favorites", async (c) => {
+    const user = requireUser(c);
+    const { offset, limit } = parse(pageQuery, c.req.query());
+    const rows = await sql<MemeRow[]>`${memeSelect(sql, user.id)}
+      join favorites f on f.meme_id = m.id and f.user_id = ${user.id}
+      where (m.visibility = 'public' and m.posted_at is not null) or m.owner_id = ${user.id}
+      order by f.created_at desc, m.id
       offset ${offset} limit ${limit + 1}`;
     return c.json(page(rows.map(toMeme), offset, limit));
   });
@@ -468,6 +488,23 @@ export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
         insert into votes (user_id, meme_id, value) values (${user.id}, ${id}, ${value})
         on conflict (user_id, meme_id) do update set value = excluded.value, created_at = now()
         where votes.value <> excluded.value`;
+    }
+    return c.json(toMeme(await loadMeme(id, user)));
+  });
+
+  /** Star (save to Favorites) or unstar; like votes, only posted public memes. Idempotent. */
+  app.put("/api/memes/:id/favorite", async (c) => {
+    const user = requireUser(c);
+    const { id } = parse(idParam, c.req.param());
+    const { favorite } = await parseJson(c, favoriteSchema);
+    const meme = await loadMeme(id, user);
+    if (meme.visibility !== "public" || !meme.posted_at) {
+      throw new HttpError(400, "only posted public memes can be favorited");
+    }
+    if (favorite) {
+      await sql`insert into favorites (user_id, meme_id) values (${user.id}, ${id}) on conflict do nothing`;
+    } else {
+      await sql`delete from favorites where user_id = ${user.id} and meme_id = ${id}`;
     }
     return c.json(toMeme(await loadMeme(id, user)));
   });

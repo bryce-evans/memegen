@@ -82,6 +82,14 @@ export interface InternalUserStats extends UserStats {
   negativeHScore: number;
 }
 
+/** `/api/me` and `/api/users/:username`. */
+export interface UserProfile {
+  user: User;
+  stats: UserStats;
+  /** Public templates (including variations) this user added. */
+  templateCount: number;
+}
+
 /** Reserved account that authors built-in (seeded) templates; nobody can sign in as it. */
 export const SYSTEM_USERNAME = "memegen";
 export const RESERVED_USERNAMES: readonly string[] = [SYSTEM_USERNAME];
@@ -95,10 +103,6 @@ export interface LeaderboardEntry {
   user: Pick<User, "id" | "username">;
   stats: UserStats;
 }
-
-/** `up` = liked, `down` = disliked. */
-export const VOTE_DIRECTIONS = ["up", "down"] as const;
-export type VoteDirection = (typeof VOTE_DIRECTIONS)[number];
 
 export interface Comment {
   id: string;
@@ -192,6 +196,8 @@ export interface Meme {
   score: number;
   /** Viewer's vote: -1, 0, 1. */
   myVote: number;
+  /** The viewer starred it (saved to their Favorites). */
+  favorited: boolean;
   /** Tag slugs placed directly on this meme (its template's tags also match tag searches). */
   tags: string[];
   /** Non-deleted comments, replies included. */

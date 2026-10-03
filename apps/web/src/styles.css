@@ -164,15 +164,30 @@
   flex-basis: 100%;
   margin: var(--ui-space-2) 0 0;
 }
-.meme-card-actions {
+.favorite {
+  border-radius: var(--ui-radius-pill);
+}
+.favorite[aria-pressed="true"] {
+  color: var(--ui-color-warning);
+  border-color: var(--ui-color-warning);
+  background-color: color-mix(in srgb, var(--ui-color-warning) 14%, transparent);
+}
+.meme-card-actions,
+.detail-votes {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ui-space-2) var(--ui-space-4);
   margin-top: var(--ui-space-2);
 }
-.meme-card-actions .votes {
+.meme-card-actions .votes,
+.detail-votes .votes {
   margin-top: 0;
+}
+.meme-card-actions > .ui-alert,
+.detail-votes > .ui-alert {
+  flex-basis: 100%;
+  margin: 0;
 }
 .comment-count {
   font-variant-numeric: tabular-nums;

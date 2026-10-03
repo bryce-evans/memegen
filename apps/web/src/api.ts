@@ -15,9 +15,8 @@ import type {
   TextLayer,
   UploadLimits,
   User,
-  UserStats,
+  UserProfile,
   Visibility,
-  VoteDirection,
 } from "@memegen/shared";
 
 const USER_KEY = "memegen.user";
@@ -124,11 +123,6 @@ export async function fetchAssetBlob(asset: Asset, signal?: AbortSignal): Promis
 
 // ---- api ------------------------------------------------------------------
 
-export interface UserProfile {
-  user: User;
-  stats: UserStats;
-}
-
 export const createSession = (username: string) =>
   request<{ user: User }>("/api/session", { method: "POST", json: { username } });
 
@@ -208,9 +202,14 @@ export const getGallery = (period: Period, sort: GallerySort, offset = 0, limit 
 export const getLeaderboard = (by: LeaderboardSort, limit = 50) =>
   request<LeaderboardEntry[]>(`/api/leaderboard${qs({ by, limit })}`);
 
-/** The signed-in user's liked (`up`) or disliked (`down`) memes, most recently voted first. */
-export const getMyVotes = (direction: VoteDirection, offset = 0, limit = 24) =>
-  request<Page<Meme>>(`/api/me/votes${qs({ direction, offset, limit })}`);
+/** Recent activity: memes the signed-in user voted on (either way), newest vote first. */
+export const getMyActivity = (offset = 0, limit = 24) => request<Page<Meme>>(`/api/me/activity${qs({ offset, limit })}`);
+
+/** Memes the signed-in user starred, most recently starred first. */
+export const getMyFavorites = (offset = 0, limit = 24) => request<Page<Meme>>(`/api/me/favorites${qs({ offset, limit })}`);
+
+export const favoriteMeme = (id: string, favorite: boolean) =>
+  request<Meme>(`/api/memes/${id}/favorite`, { method: "PUT", json: { favorite } });
 
 export const listComments = (memeId: string, offset = 0, limit = 50) =>
   request<Page<Comment>>(`/api/memes/${memeId}/comments${qs({ offset, limit })}`);

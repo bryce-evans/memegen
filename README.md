@@ -8,7 +8,7 @@ Design and decisions live in [ARCH.md](ARCH.md).
 |---|---|---|
 | Gallery: Popular, Recent, voting, comments | `apps/web` | http://localhost:5173/ (Popular), http://localhost:5173/recent |
 | Leaderboard | `apps/web` | http://localhost:5173/leaderboard |
-| Profiles (stats, badges; your liked/disliked memes) | `apps/web` | http://localhost:5173/u/mock-alice |
+| Profiles (stats, badges, templates contributed; your favorites and recent activity) | `apps/web` | http://localhost:5173/u/mock-alice |
 | Editor + template browser (find/add templates, hot templates, usage charts) | `apps/web` | http://localhost:5173/create |
 | Tag pages (templates + memes for a tag) | `apps/web` | http://localhost:5173/t/oldschool |
 | API (memes, templates, votes, users) | `services/api` | http://localhost:4000 |
@@ -37,7 +37,7 @@ git clone --depth 1 https://github.com/jacebrowning/memegen demo/jacebrowning-me
 Then open:
 
 - **Popular / Recent**: http://localhost:5173/ ranks by score over today, week, month, year, or all time; http://localhost:5173/recent lists the newest posts. Open a meme to vote and join its discussion (comments with replies).
-- **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎); your own profile also lists the memes you liked and disliked ("Your favorites" = liked).
+- **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎) and how many templates the user contributed. Star (☆) other people's memes to save them; your own profile has Favorites and Recent activity (everything you liked or disliked, newest first) next to your memes.
 - **Create**: http://localhost:5173/create. Upload media, find a template (the list loads more as you scroll), or add a new template. Templates show who added them; built-in ones are added by the reserved `memegen` account.
 - **Tags**: search tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
 - **Skins**: switch between Default, Apple, Matte, Google, Studio, and Spectrum in the header, or add `?skin=<id>` to a URL. The browser tab icon follows the skin.
@@ -133,7 +133,7 @@ The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) agai
 
 - the core workflow: pick a template on Create, add top and bottom text, download, save to profile, post, find it under Recent
 - Popular (by period) and Recent feeds, voting (up +1; down removes the upvote and moves the negative downvote count, e.g. −2 → −3), checked against the mock dataset
-- sidebar order, leaderboard, profile stats and badges, the owner-only liked/disliked views
+- sidebar order, leaderboard, profile stats, badges and templates contributed, the owner-only Favorites and Recent activity tabs
 - comments and replies on a meme
 - still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, and exported frame counts/audio checked with `ffprobe`
 - templates and variations, base and added tags, tag creation in the editor, tag search, hot templates, auto-loading template list

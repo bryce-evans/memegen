@@ -16,6 +16,7 @@ import {
   type Tag,
   type TemplateUsage,
   type User,
+  type UserProfile,
 } from "@memegen/shared";
 import { config, HeaderAuthProvider, type Sql } from "@memegen/server-kit";
 import { freshTestDb } from "@memegen/server-kit/testing";
@@ -136,6 +137,21 @@ test("h-score boundary: h memes with score exactly h", async () => {
   assert.equal(res.body.stats.hScore, 3);
 });
 
+test("profiles count the public templates a user added, variations included", async () => {
+  const alice = await signIn("alice");
+  const asset = async () => (await store.upload({ data: png(), filename: "t.png", ownerId: alice.id })).id;
+  const base = (await call<Template>("POST", "/api/templates", alice, { name: "Base", assetId: await asset() })).body;
+  await call("POST", "/api/templates", alice, { name: "Tweak", assetId: await asset(), parentId: base.id });
+  await call("POST", "/api/templates", alice, { name: "Hidden", assetId: await asset(), isPublic: false });
+  await signIn("bob");
+
+  const count = async (path: string, viewer: User | null) =>
+    (await call<UserProfile>("GET", path, viewer)).body.templateCount;
+  assert.equal(await count("/api/users/alice", null), 2);
+  assert.equal(await count("/api/me", alice), 2);
+  assert.equal(await count("/api/users/bob", null), 0);
+});
+
 test("leaderboard: posters only, ordered by the chosen stat with tie-breaks, public stats only", async () => {
   const alice = await signIn("alice");
   const bob = await signIn("bob");
@@ -226,7 +242,7 @@ test("votes: one per user, switchable, removable; drafts can't be voted on", asy
   assert.equal((await call("PUT", `/api/memes/${draft.id}/vote`, bob, { value: 1 })).status, 400);
 });
 
-test("my votes: liked and disliked memes, most recent vote first, only memes still visible", async () => {
+test("recent activity: liked and disliked memes together, newest vote first, only memes still visible", async () => {
   const alice = await signIn("alice");
   const bob = await signIn("bob");
   const older = await makeMeme(alice);
@@ -234,19 +250,51 @@ test("my votes: liked and disliked memes, most recent vote first, only memes sti
   const hidden = await makeMeme(alice);
   const disliked = await makeMeme(alice);
   const own = await makeMeme(bob);
+  await makeMeme(alice); // never voted on: not activity
   const vote = (memeId: string, value: number) => call("PUT", `/api/memes/${memeId}/vote`, bob, { value });
   for (const m of [older, newer, hidden, own]) await vote(m.id, 1);
   await vote(disliked.id, -1);
-  for (const [memeId, hours] of [[older.id, 3], [own.id, 2], [newer.id, 1]] as const) {
+  for (const [memeId, hours] of [[older.id, 4], [disliked.id, 3], [own.id, 2], [newer.id, 1]] as const) {
     await sql`update votes set created_at = now() - ${hours + " hours"}::interval where meme_id = ${memeId}`;
   }
   await call("PATCH", `/api/memes/${hidden.id}`, alice, { visibility: "private" });
 
-  const mine = async (direction: string) =>
-    (await call<Page<Meme>>("GET", `/api/me/votes?direction=${direction}`, bob)).body.items;
-  assert.deepEqual((await mine("up")).map((m) => m.id), [newer.id, own.id, older.id]);
-  assert.deepEqual((await mine("down")).map((m) => [m.id, m.myVote]), [[disliked.id, -1]]);
-  assert.equal((await call("GET", "/api/me/votes?direction=up", null)).status, 401);
+  const activity = (await call<Page<Meme>>("GET", "/api/me/activity", bob)).body.items;
+  assert.deepEqual(
+    activity.map((m) => [m.id, m.myVote]),
+    [
+      [newer.id, 1],
+      [own.id, 1],
+      [disliked.id, -1],
+      [older.id, 1],
+    ],
+  );
+  assert.equal((await call("GET", "/api/me/activity", null)).status, 401);
+});
+
+test("favorites: star and unstar posted public memes; newest first; separate from votes", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const first = await makeMeme(alice);
+  const second = await makeMeme(alice);
+  const draft = await makeMeme(alice, { post: false });
+  const star = (memeId: string, favorite: boolean) => call<Meme>("PUT", `/api/memes/${memeId}/favorite`, bob, { favorite });
+
+  const starred = await star(first.id, true);
+  assert.deepEqual([starred.status, starred.body.favorited, starred.body.myVote], [200, true, 0]);
+  assert.equal((await star(first.id, true)).status, 200); // idempotent
+  await star(second.id, true);
+  await sql`update favorites set created_at = now() - interval '1 hour' where meme_id = ${first.id}`;
+  assert.equal((await call("PUT", `/api/memes/${draft.id}/favorite`, alice, { favorite: true })).status, 400);
+
+  const favorites = async () => (await call<Page<Meme>>("GET", "/api/me/favorites", bob)).body.items.map((m) => m.id);
+  assert.deepEqual(await favorites(), [second.id, first.id]);
+  assert.equal((await call<Meme>("GET", `/api/memes/${first.id}`, alice)).body.favorited, false); // per viewer
+
+  await star(second.id, false);
+  assert.deepEqual(await favorites(), [first.id]);
+  assert.equal((await call("GET", "/api/me/favorites", null)).status, 401);
+  assert.equal((await call("PUT", `/api/memes/${first.id}/favorite`, null, { favorite: true })).status, 401);
 });
 
 test("gallery: period windows by post time, best sorts by score", async () => {

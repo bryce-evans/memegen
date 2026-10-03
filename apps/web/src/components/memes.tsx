@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
 import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, MediaGrid, Text } from "@memegen/ui";
-import { voteMeme } from "../api.ts";
+import { favoriteMeme, voteMeme } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { timeAgo } from "../time.ts";
 import { ErrorView, MediaView } from "./common.tsx";
@@ -66,6 +66,49 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
   );
 }
 
+/** ☆/★ toggle that saves someone else's posted public meme to your Favorites; hidden on your own and unposted memes. */
+export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (user?.id === meme.owner.id || meme.postedAt === null || meme.visibility !== "public") return null;
+
+  async function toggle() {
+    if (!user) {
+      setError(new Error("Sign in (top right) to save favorites."));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      onChange(await favoriteMeme(meme.id, !meme.favorited));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const label = meme.favorited ? "Remove from favorites" : "Add to favorites";
+  return (
+    <>
+      <Button
+        size="sm"
+        className="favorite"
+        onClick={toggle}
+        disabled={busy}
+        pressed={meme.favorited}
+        aria-label={label}
+        title={label}
+        data-testid="favorite"
+      >
+        <span aria-hidden>{meme.favorited ? "★" : "☆"}</span>
+      </Button>
+      {error !== null && <ErrorView error={error} />}
+    </>
+  );
+}
+
 export function MemeBadges({ meme }: { meme: Meme }) {
   return (
     <>
@@ -109,6 +152,7 @@ export function MemeCard({ meme, onChange }: { meme: Meme; onChange: (meme: Meme
       <TagChips slugs={meme.tags} />
       <div className="meme-card-actions">
         <VoteButtons meme={meme} onChange={onChange} />
+        <FavoriteButton meme={meme} onChange={onChange} />
         <Link
           to={`/m/${meme.id}#comments`}
           className="comment-count"

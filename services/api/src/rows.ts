@@ -19,6 +19,7 @@ export interface MemeRow {
   downvotes: number;
   score: number;
   my_vote: number;
+  favorited: boolean;
   tags: string[];
   comment_count: number;
 }
@@ -30,6 +31,7 @@ export function memeSelect(sql: Sql, viewerId: string | null) {
       row_to_json(sa.*) as source_asset, row_to_json(oa.*) as output_asset,
       m.layers, m.visibility, m.posted_at, m.created_at, m.updated_at,
       m.upvotes, m.downvotes, m.score, coalesce(v.value, 0)::int as my_vote,
+      exists (select 1 from favorites f where f.meme_id = m.id and f.user_id = ${viewerId}) as favorited,
       array(select g.slug from meme_tags mt join tags g on g.id = mt.tag_id
         where mt.meme_id = m.id order by g.slug) as tags,
       (select count(*)::int from comments c where c.meme_id = m.id and c.deleted_at is null) as comment_count
@@ -57,6 +59,7 @@ export function toMeme(r: MemeRow): Meme {
     downvotes: r.downvotes,
     score: r.score,
     myVote: r.my_vote,
+    favorited: r.favorited,
     tags: r.tags,
     commentCount: r.comment_count,
   };

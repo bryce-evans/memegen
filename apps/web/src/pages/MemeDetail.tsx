@@ -6,7 +6,7 @@ import { contentUrl, deleteMeme, getMeme, postMeme, updateMeme } from "../api.ts
 import { useAuth } from "../auth.tsx";
 import { Comments } from "../components/comments.tsx";
 import { ErrorView, MediaView } from "../components/common.tsx";
-import { MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
+import { FavoriteButton, MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
 import { TagChips, TagEditor } from "../components/tags.tsx";
 import { assetExtension, fileSlug } from "../media.ts";
 
@@ -78,7 +78,10 @@ export function MemeDetail() {
           {" · "}
           {meme.visibility}
         </Text>
-        <VoteButtons meme={meme} onChange={setMeme} />
+        <div className="detail-votes">
+          <VoteButtons meme={meme} onChange={setMeme} />
+          <FavoriteButton meme={meme} onChange={setMeme} />
+        </div>
         <div className="detail-tags">
           <TagChips slugs={meme.tags} />
           {isOwner && (

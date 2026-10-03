@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GALLERY_SORTS, LEADERBOARD_SORTS, PERIODS, RESERVED_USERNAMES, TAG_KINDS, TEXT_STYLES, VOTE_DIRECTIONS } from "./types.ts";
+import { GALLERY_SORTS, LEADERBOARD_SORTS, PERIODS, RESERVED_USERNAMES, TAG_KINDS, TEXT_STYLES } from "./types.ts";
 
 /** "Google Memes!" → "google-memes". Empty string when nothing usable remains. */
 export function tagSlug(name: string): string {
@@ -105,6 +105,8 @@ export const updateTemplateSchema = z.object({
 
 export const voteSchema = z.object({ value: z.union([z.literal(-1), z.literal(0), z.literal(1)]) });
 
+export const favoriteSchema = z.object({ favorite: z.boolean() });
+
 export const sessionSchema = z.object({
   username: z
     .string()
@@ -149,13 +151,6 @@ export const tagsQuerySchema = z.object({
 export const leaderboardQuerySchema = z.object({
   by: z.enum(LEADERBOARD_SORTS).default("hScore"),
   limit: z.coerce.number().int().min(1).max(100).default(50),
-});
-
-/** The signed-in user's own liked (`up`) or disliked (`down`) memes, most recently voted first. */
-export const myVotesQuerySchema = z.object({
-  direction: z.enum(VOTE_DIRECTIONS),
-  limit: z.coerce.number().int().min(1).max(100).default(24),
-  offset: z.coerce.number().int().min(0).default(0),
 });
 
 export const createCommentSchema = z.object({

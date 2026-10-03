@@ -70,7 +70,9 @@ export interface TextLayout {
   fontPx: number;
   strokePx: number;
   lineHeightPx: number;
-  /** Unrotated box including stroke padding. */
+  /** Inset of the text from each box edge, so the stroke is not clipped. */
+  pad: number;
+  /** Unrotated box including `pad` on every side. */
   width: number;
   height: number;
   font: string;
@@ -109,6 +111,7 @@ function measure(ctx: TextContext, layer: TextLayer, text: string, fontPx: numbe
     fontPx,
     strokePx,
     lineHeightPx,
+    pad,
     width: Math.ceil(textW) + pad * 2,
     height: Math.ceil(lines.length * lineHeightPx) + pad * 2,
     font,
@@ -151,7 +154,7 @@ export function drawText(ctx: TextContext, layer: TextLayer, layout: TextLayout,
   ctx.textBaseline = "middle";
   ctx.textAlign = layer.align;
   ctx.lineJoin = "round";
-  const pad = Math.ceil(layout.strokePx) + 1;
+  const { pad } = layout;
   const half = layout.width / 2;
   const x = layer.align === "left" ? -half + pad : layer.align === "right" ? half - pad : 0;
   const top = -layout.height / 2 + pad;

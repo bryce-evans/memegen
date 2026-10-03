@@ -1,3 +1,6 @@
+import type { z } from "zod";
+import type { keyframeSchema, textLayerSchema } from "./schema.ts";
+
 export const ASSET_KINDS = ["image", "gif", "video", "font"] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];
 export type MediaKind = Exclude<AssetKind, "font">;
@@ -23,48 +26,20 @@ export interface Asset {
   contentPath: string;
 }
 
-export interface Keyframe {
-  /** Seconds from the start of the media. */
-  t: number;
-  /** Anchor (box center) as a fraction of media width/height. */
-  x: number;
-  y: number;
-  /** 0..1 */
-  opacity: number;
+/** Storage service route serving an asset's bytes (`Asset.contentPath`); the web app reaches it under `/storage`. */
+export function assetContentPath(id: string): string {
+  return `/assets/${id}/content`;
 }
 
-export type TextAlign = "left" | "center" | "right";
+export type Keyframe = z.output<typeof keyframeSchema>;
+
+export const TEXT_ALIGNS = ["left", "center", "right"] as const;
+export type TextAlign = (typeof TEXT_ALIGNS)[number];
 export const TEXT_STYLES = ["upper", "lower", "none", "mock"] as const;
 export type TextStyle = (typeof TEXT_STYLES)[number];
 
-export interface TextLayer {
-  id: string;
-  text: string;
-  /** Font asset; null uses the fallback family. */
-  fontAssetId: string | null;
-  /** Max font size as a fraction of media height; text shrinks to fit the box. */
-  fontSize: number;
-  color: string;
-  strokeColor: string;
-  /** Stroke width as a fraction of the font size. */
-  strokeWidth: number;
-  align: TextAlign;
-  /** Text box size as fractions of media width/height; wraps at width, shrinks to fit. */
-  maxWidth: number;
-  maxHeight: number;
-  textStyle: TextStyle;
-  /** Clockwise rotation in degrees around the box center. */
-  angle: number;
-  /** Static anchor/opacity, used when `keyframes` is empty. */
-  x: number;
-  y: number;
-  opacity: number;
-  /** Visibility window in seconds; null = unbounded. */
-  start: number | null;
-  end: number | null;
-  /** Sorted by `t`; when non-empty, overrides x/y/opacity with linear interpolation. */
-  keyframes: Keyframe[];
-}
+/** Field docs live on `textLayerSchema`, the single definition. */
+export type TextLayer = z.output<typeof textLayerSchema>;
 
 export interface User {
   id: string;
@@ -177,7 +152,8 @@ export interface TemplateUsage {
   points: UsagePoint[];
 }
 
-export type Visibility = "public" | "private";
+export const VISIBILITIES = ["public", "private"] as const;
+export type Visibility = (typeof VISIBILITIES)[number];
 
 export interface Meme {
   id: string;

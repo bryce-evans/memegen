@@ -1,6 +1,6 @@
 import { decompressFrames, parseGIF } from "gifuct-js";
 import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input, type InputVideoTrack } from "mediabunny";
-import type { MediaKind } from "@memegen/shared";
+import { gifFrameDelayMs, type MediaKind } from "@memegen/shared";
 import { context2d, createCanvas, yieldToEventLoop } from "./canvas.ts";
 
 /**
@@ -70,11 +70,6 @@ async function decodeImage(source: Blob): Promise<DecodedMedia> {
   };
 }
 
-/** Browsers render 0-10 ms GIF delays as 100 ms; match that (and the storage service's duration math). */
-function gifDelayMs(delay: number): number {
-  return delay < 20 ? 100 : delay;
-}
-
 async function decodeGif(source: Blob): Promise<DecodedMedia> {
   const parsed = parseGIF(await source.arrayBuffer());
   const raw = decompressFrames(parsed, true);
@@ -111,7 +106,7 @@ async function decodeGif(source: Blob): Promise<DecodedMedia> {
     ctx.drawImage(patchCanvas, dims.left, dims.top);
 
     frames.push(await createImageBitmap(canvas));
-    const duration = gifDelayMs(f.delay) / 1000;
+    const duration = gifFrameDelayMs(f.delay) / 1000;
     times.push(t);
     durations.push(duration);
     t += duration;

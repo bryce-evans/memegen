@@ -6,6 +6,7 @@ import { DEFAULT_LIMITS, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize
 import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { sessionSchema, textLayerSchema } from "./schema.ts";
 import { badgesFor } from "./badges.ts";
+import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
 
 const kf = (t: number, x: number, opacity = 1) => ({ t, x, y: 0.5, opacity });
 
@@ -116,4 +117,21 @@ test("stillExportSize upscales small stills to the minimum edge, keeps larger on
   const tight = { ...DEFAULT_LIMITS, image: { maxDimension: 800 } };
   assert.deepEqual(stillExportSize(400, 200, tight), { width: 800, height: 400 });
   assert.deepEqual(stillExportSize(800, 600, tight), { width: 800, height: 600 });
+});
+
+test("gifFrameDelayMs plays delays under 20 ms as 100 ms and keeps the rest", () => {
+  assert.equal(gifFrameDelayMs(0), 100);
+  assert.equal(gifFrameDelayMs(19), 100);
+  assert.equal(gifFrameDelayMs(20), 20);
+  assert.equal(gifFrameDelayMs(70), 70);
+});
+
+test("every supported type maps back to its extension and is in exactly one accept list", () => {
+  for (const { kind, mime, ext } of SUPPORTED_TYPES) {
+    assert.equal(extensionForMime(mime), ext);
+    const [own, other] = kind === "font" ? [FONT_ACCEPT, MEDIA_ACCEPT] : [MEDIA_ACCEPT, FONT_ACCEPT];
+    assert.ok(own.split(",").includes(mime) && own.split(",").includes(ext), `${mime} accepted`);
+    assert.ok(!other.split(",").includes(mime), `${mime} only in its own list`);
+  }
+  assert.equal(extensionForMime("application/pdf"), undefined);
 });

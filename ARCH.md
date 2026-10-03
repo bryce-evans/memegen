@@ -38,14 +38,14 @@ flowchart LR
 - Requirement: do as much processing as possible client-side in TS. The server stores, validates, and indexes; it never decodes or encodes frames.
 - `packages/render` decodes sources to frames, draws text layers on canvas, and encodes output:
   - image → canvas → PNG/JPEG
-  - GIF → `gifuct-js` decode (with disposal compositing) → `gifenc` encode, original per-frame delays preserved
+  - GIF → `gifuct-js` decode (with disposal compositing) → `gifenc` encode, original per-frame delays preserved. Delays under 20 ms play as 100 ms like in browsers; render and storage's duration math share `gifFrameDelayMs` from `packages/shared`.
   - MP4/MOV → `mediabunny` (WebCodecs) demux/decode, per-frame canvas composite, H.264 MP4 encode; audio is passed through
-- The editor preview and the exporter call the same `layoutText`/`drawText` (`packages/shared/src/text.ts`), so preview == output.
+- The editor preview and the exporter call the same `layoutText`/`drawText` (`packages/shared/src/text.ts`), so preview == output. `composeFrame` lays each layer out once and returns its `LayerBox`es (one per visible layer, even transparent/empty ones), which the editor uses for hit-testing.
 - Resolution: text is rasterized at the size it is shown or saved, never at the source's pixel size and then stretched (templates are often 250–700 px). The editor canvas's backing store is its CSS size × `devicePixelRatio`; still exports render at least `STILL_EXPORT_MIN_EDGE` (1200 px) on the long edge, capped by the image upload cap (`stillExportSize`), with the source image upscaled at high smoothing quality. Layout is in fractions, so every size draws the same composition; only the min-font clamp (`MIN_FONT_PX`) can differ for overflowing text. GIFs and videos export at native size (frame and file-size caps).
 - Trade-off: export speed depends on the client device and WebCodecs support (Chromium, Safari 17+ / Firefox 130+). A server-side fallback can reuse the same TS code later (e.g. node canvas) without changing the data model.
 
 ### Text model (ideas taken from jacebrowning/memegen)
-- A `TextLayer` is a box: center anchor `x,y` + `maxWidth,maxHeight` as fractions of the media size. `fontSize` is a *max*; text wraps at the box width and shrinks until it fits (jacebrowning's fit-to-box behavior).
+- A `TextLayer` is a box: center anchor `x,y` + `maxWidth,maxHeight` as fractions of the media size. `fontSize` is a *max*; text wraps at the box width and shrinks until it fits (jacebrowning's fit-to-box behavior). The `TextLayer`/`Keyframe` types are derived from their zod schemas (`z.output`), so the API boundary and the editor cannot drift.
 - `textStyle`: `upper | lower | none | mock` (deterministic sPoNgEbOb casing).
 - `angle` rotates the box around its center.
 - Stroke width is a fraction of font size, so it scales with the media.

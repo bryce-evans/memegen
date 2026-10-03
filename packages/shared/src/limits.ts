@@ -21,6 +21,13 @@ export const DEFAULT_LIMITS: UploadLimits = {
   video: { maxDimension: 1920, maxFrames: 1800 },
 };
 
+/** Characters in one text layer. */
+export const TEXT_MAX_LENGTH = 2000;
+/** Characters in one comment. */
+export const COMMENT_MAX_LENGTH = 2000;
+/** Tags on one meme or template. */
+export const MAX_TAGS = 20;
+
 /**
  * Still memes export at least this long on their longest edge (never past the image cap): small templates are
  * upscaled so the text is rasterized sharply. GIFs and videos keep their native size (frame/size caps).

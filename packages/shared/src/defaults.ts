@@ -23,3 +23,8 @@ export function newTextLayer(partial: Partial<TextLayer> = {}): TextLayer {
     ...partial,
   };
 }
+
+/** The classic two-box meme: captions near the top and bottom edges. */
+export function topBottomLayers(top = "TOP TEXT", bottom = "BOTTOM TEXT", fontAssetId: string | null = null): TextLayer[] {
+  return [newTextLayer({ text: top, y: 0.1, fontAssetId }), newTextLayer({ text: bottom, y: 0.9, fontAssetId })];
+}

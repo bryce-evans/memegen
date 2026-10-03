@@ -22,6 +22,7 @@
       "dependencies": {
         "@memegen/render": "workspace:*",
         "@memegen/shared": "workspace:*",
+        "@memegen/ui": "workspace:*",
         "react": "^19.2.8",
         "react-dom": "^19.2.8",
         "react-router-dom": "^7.9.0",

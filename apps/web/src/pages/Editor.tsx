@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { decodeMedia, loadFont, type DecodedMedia } from "@memegen/render";
 import {
   layerStateAt,
@@ -10,6 +10,7 @@ import {
   type TextLayer,
   type UploadLimits,
 } from "@memegen/shared";
+import { Alert, EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, Spinner } from "@memegen/ui";
 import { fetchAssetBlob, fontUrl, getLimits, getMeme, getTemplate, listFonts, uploadAsset } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
@@ -133,31 +134,46 @@ function EditorLoader() {
 
   return (
     <section className="editor-start">
-      <h1>{memeId ? "Edit meme" : templateId ? "Loading template" : "Create a meme"}</h1>
+      <PageHeader title={memeId ? "Edit meme" : templateId ? "Loading template" : "Create a meme"} />
       {!memeId && !templateId && (
-        <div className="panel dropzone">
-          <p>Upload an image, GIF, MP4 or MOV — or pick one from the templates.</p>
-          <input
-            type="file"
-            data-testid="media-upload"
-            accept={MEDIA_ACCEPT}
-            disabled={busy || !limits}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) void pickFile(file);
-            }}
+        <Panel className="dropzone">
+          <EmptyState
+            icon={<Icon name="upload" />}
+            title="Upload an image, GIF, MP4 or MOV — or pick one from the templates."
+            description={
+              limits && (
+                <>
+                  Max {(limits.maxBytes / 1024 / 1024).toFixed(0)} MB · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
+                  {limits.gif.maxDimension}px / {limits.gif.maxFrames} frames · videos ≤ {limits.video.maxDimension}px /{" "}
+                  {limits.video.maxFrames} frames
+                </>
+              )
+            }
+            action={
+              <Inline justify="center">
+                <FileButton
+                  variant="primary"
+                  icon={<Icon name="upload" />}
+                  data-testid="media-upload"
+                  accept={MEDIA_ACCEPT}
+                  disabled={busy || !limits}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void pickFile(file);
+                  }}
+                >
+                  Choose media
+                </FileButton>
+                <LinkButton as={Link} to="/templates" icon={<Icon name="image" />}>
+                  Browse templates
+                </LinkButton>
+              </Inline>
+            }
           />
-          {limits && (
-            <p className="muted small">
-              Max {(limits.maxBytes / 1024 / 1024).toFixed(0)} MB · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
-              {limits.gif.maxDimension}px / {limits.gif.maxFrames} frames · videos ≤ {limits.video.maxDimension}px /{" "}
-              {limits.video.maxFrames} frames
-            </p>
-          )}
-        </div>
+        </Panel>
       )}
-      {(busy || (fonts === null && error === null)) && <p className="muted">Loading…</p>}
+      {(busy || (fonts === null && error === null)) && <Spinner label="Loading…" />}
       {error !== null && <ErrorView error={error} testId="editor-error" />}
     </section>
   );
@@ -270,9 +286,9 @@ function Workspace({ session, fonts, limits, onFontsChange }: WorkspaceProps) {
           onMove={(id, x, y) => placeLayer(id, { x, y })}
         />
         {fontError && (
-          <div className="error" data-testid="editor-error">
+          <Alert tone="error" data-testid="editor-error">
             {fontError}
-          </div>
+          </Alert>
         )}
         {animated && (
           <Timeline
@@ -324,22 +340,17 @@ function Workspace({ session, fonts, limits, onFontsChange }: WorkspaceProps) {
             if (selectedId) updateLayer(selectedId, { fontAssetId: font.id });
           }}
         />
-        {isOwnMeme ? (
-          <SavePanel
-            media={media}
-            layers={layers}
-            limits={limits}
-            editingMeme={source.kind === "meme" ? source.meme : null}
-            templateId={source.kind === "template" ? source.templateId : null}
-            defaultTitle={source.kind === "template" ? source.name : ""}
-            suggestedTags={source.kind === "template" ? source.tags : []}
-            getSourceAssetId={getSourceAssetId}
-          />
-        ) : (
-          <div className="panel">
-            <p className="muted">Only the owner can edit this meme.</p>
-          </div>
-        )}
+        <SavePanel
+          media={media}
+          layers={layers}
+          limits={limits}
+          canSave={isOwnMeme}
+          editingMeme={source.kind === "meme" ? source.meme : null}
+          templateId={source.kind === "template" ? source.templateId : null}
+          defaultTitle={source.kind === "template" ? source.name : ""}
+          suggestedTags={source.kind === "template" ? source.tags : []}
+          getSourceAssetId={getSourceAssetId}
+        />
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import { GALLERY_SORTS, PERIODS, type GallerySort, type Meme, type Period } from "@memegen/shared";
+import { Button, PageHeader, SegmentedControl, SidebarSection, Spinner, useSkin } from "@memegen/ui";
 import { getGallery } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
@@ -23,46 +24,55 @@ function useGalleryFilters(defaultPeriod: Period) {
   const sortParam = params.get("sort");
   const period: Period = PERIODS.find((p) => p === periodParam) ?? defaultPeriod;
   const sort: GallerySort = GALLERY_SORTS.find((s) => s === sortParam) ?? "best";
-  const update = (next: { period?: Period; sort?: GallerySort }) =>
-    setParams({ period: next.period ?? period, sort: next.sort ?? sort }, { replace: true });
+  // Build from the live URL, not this render's params: React Router applies navigations in a
+  // transition, so two quick clicks would otherwise both start from the same stale value.
+  const update = (next: { period?: Period; sort?: GallerySort }) => {
+    const live = new URLSearchParams(window.location.search);
+    setParams(
+      { period: next.period ?? live.get("period") ?? period, sort: next.sort ?? live.get("sort") ?? sort },
+      { replace: true },
+    );
+  };
   return { period, sort, update };
 }
 
-/** Side-column controls for gallery-style meme feeds (`/` defaults to this week, tag pages to all time). */
-export function GalleryFilters({ defaultPeriod }: { defaultPeriod: Period }) {
+/**
+ * Sort/period controls for gallery-style meme feeds (`/` defaults to this week, tag pages to all time).
+ * The skin decides whether they sit in the side column or beside the feed title.
+ */
+export function GalleryFilters({ defaultPeriod, placement }: { defaultPeriod: Period; placement: "sidebar" | "header" }) {
   const { period, sort, update } = useGalleryFilters(defaultPeriod);
+  const sortControl = (
+    <SegmentedControl
+      aria-label="Sort"
+      size="sm"
+      value={sort}
+      onChange={(s) => update({ sort: s })}
+      options={GALLERY_SORTS.map((s) => ({ value: s, label: SORT_LABELS[s], testId: `sort-${s}` }))}
+    />
+  );
+  const periodControl = (
+    <SegmentedControl
+      aria-label="Period"
+      size="sm"
+      orientation={placement === "sidebar" ? "vertical" : "horizontal"}
+      value={period}
+      onChange={(p) => update({ period: p })}
+      options={PERIODS.map((p) => ({ value: p, label: PERIOD_LABELS[p], testId: `period-${p}` }))}
+    />
+  );
+  if (placement === "header") {
+    return (
+      <>
+        {sortControl}
+        {periodControl}
+      </>
+    );
+  }
   return (
     <>
-      <div className="side-group" role="group" aria-label="Sort">
-        <h4>Sort</h4>
-        {GALLERY_SORTS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            className={s === sort ? "side-item active" : "side-item"}
-            aria-pressed={s === sort}
-            data-testid={`sort-${s}`}
-            onClick={() => update({ sort: s })}
-          >
-            {SORT_LABELS[s]}
-          </button>
-        ))}
-      </div>
-      <div className="side-group" role="group" aria-label="Period">
-        <h4>Period</h4>
-        {PERIODS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            className={p === period ? "side-item active" : "side-item"}
-            aria-pressed={p === period}
-            data-testid={`period-${p}`}
-            onClick={() => update({ period: p })}
-          >
-            {PERIOD_LABELS[p]}
-          </button>
-        ))}
-      </div>
+      <SidebarSection heading="Sort">{sortControl}</SidebarSection>
+      <SidebarSection heading="Period">{periodControl}</SidebarSection>
     </>
   );
 }
@@ -70,28 +80,34 @@ export function GalleryFilters({ defaultPeriod }: { defaultPeriod: Period }) {
 /** Paged meme grid for the URL's period/sort, optionally limited to a tag. */
 export function GalleryFeed({ defaultPeriod, tag, title }: { defaultPeriod: Period; tag?: string; title: string }) {
   const { user } = useAuth();
+  const { layout } = useSkin();
   const { period, sort } = useGalleryFilters(defaultPeriod);
   const list = usePaged<Meme>(`${period}:${sort}:${tag ?? ""}:${user?.id ?? ""}`, (offset) =>
     getGallery(period, sort, offset, 24, tag),
   );
+  const filtersHere = layout.filters === "header";
 
   return (
     <>
-      <h2 className={tag ? "section-title" : "page-title"}>
-        {title} · {SORT_LABELS[sort]} · {PERIOD_LABELS[period]}
-      </h2>
+      <PageHeader
+        level={tag ? 2 : 1}
+        title={filtersHere ? title : `${title} · ${SORT_LABELS[sort]} · ${PERIOD_LABELS[period]}`}
+        actions={filtersHere ? <GalleryFilters defaultPeriod={defaultPeriod} placement="header" /> : undefined}
+      />
       {list.error !== null && <ErrorView error={list.error} />}
-      {!(list.loading && list.items.length === 0) && (
-        <MemeGrid memes={list.items} onChange={(m) => list.setItems((items) => items.map((x) => (x.id === m.id ? m : x)))} />
-      )}
-      {list.loading && <p className="muted">Loading…</p>}
-      {list.hasMore && !list.loading && (
-        <div className="center">
-          <button type="button" data-testid="load-more" onClick={list.loadMore}>
-            Load more
-          </button>
-        </div>
-      )}
+      <div className="meme-feed" data-testid="meme-feed" aria-busy={list.loading}>
+        {!(list.loading && list.items.length === 0) && (
+          <MemeGrid memes={list.items} onChange={(m) => list.setItems((items) => items.map((x) => (x.id === m.id ? m : x)))} />
+        )}
+        {list.loading && <Spinner label="Loading…" />}
+        {list.hasMore && !list.loading && (
+          <div className="load-more">
+            <Button data-testid="load-more" onClick={list.loadMore}>
+              Load more
+            </Button>
+          </div>
+        )}
+      </div>
     </>
   );
 }

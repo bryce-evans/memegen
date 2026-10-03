@@ -35,3 +35,42 @@ export async function precheckMedia(file: File, limits: UploadLimits): Promise<D
   }
   return media;
 }
+
+/** Download/upload base name for a meme: its slugified title, or "meme". */
+export function fileSlug(title: string): string {
+  return (
+    title
+      .trim()
+      .toLowerCase()
+      .replace(/[^\w-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "meme"
+  );
+}
+
+const EXTENSION_BY_MIME: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+  "video/mp4": ".mp4",
+  "video/quicktime": ".mov",
+};
+
+/** File extension (with dot) for a stored asset: from its filename, else its mime type. */
+export function assetExtension(asset: { filename: string; mime: string }): string {
+  return asset.filename.match(/\.[a-z0-9]+$/i)?.[0].toLowerCase() ?? EXTENSION_BY_MIME[asset.mime] ?? "";
+}
+
+/** Save a blob through a temporary `<a download>`. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  // Revoke once the browser has had time to start the download.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}

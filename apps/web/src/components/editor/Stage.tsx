@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { composeFrame, layerBoxes, type DecodedMedia, type LayerBox } from "@memegen/render";
 import { layerStateAt, type TextLayer } from "@memegen/shared";
+import { Alert } from "@memegen/ui";
 
 export interface StageProps {
   media: DecodedMedia;
@@ -140,9 +141,9 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
         })}
       </div>
       {error && (
-        <div className="error" data-testid="editor-error">
+        <Alert tone="error" data-testid="editor-error">
           Could not draw frame: {error}
-        </div>
+        </Alert>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
+import { Button, PageHeader, Spinner, Text } from "@memegen/ui";
 import { getUser, getUserMemes, type UserProfile } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
@@ -32,7 +33,7 @@ export function Profile() {
   return (
     <section>
       <header className="profile-head">
-        <h1>@{username}</h1>
+        <PageHeader title={`@${username}`} />
         {profile && (
           <dl className="stats">
             <div>
@@ -49,20 +50,22 @@ export function Profile() {
             </div>
           </dl>
         )}
-        {profile && <p className="muted">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</p>}
+        {profile && <Text tone="muted">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</Text>}
       </header>
       {memes.error !== null && <ErrorView error={memes.error} />}
-      {!(memes.loading && memes.items.length === 0) && (
-        <MemeGrid memes={memes.items} onChange={(m) => memes.setItems((items) => items.map((x) => (x.id === m.id ? m : x)))} />
-      )}
-      {memes.loading && <p className="muted">Loading…</p>}
-      {memes.hasMore && !memes.loading && (
-        <div className="center">
-          <button type="button" data-testid="load-more" onClick={memes.loadMore}>
-            Load more
-          </button>
-        </div>
-      )}
+      <div className="meme-feed" data-testid="meme-feed" aria-busy={memes.loading}>
+        {!(memes.loading && memes.items.length === 0) && (
+          <MemeGrid memes={memes.items} onChange={(m) => memes.setItems((items) => items.map((x) => (x.id === m.id ? m : x)))} />
+        )}
+        {memes.loading && <Spinner label="Loading…" />}
+        {memes.hasMore && !memes.loading && (
+          <div className="load-more">
+            <Button data-testid="load-more" onClick={memes.loadMore}>
+              Load more
+            </Button>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

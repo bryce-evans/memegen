@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
 import { isVisibleAt, type TextLayer } from "@memegen/shared";
+import { Icon, IconButton, Text } from "@memegen/ui";
 
 const THUMB_HEIGHT = 48;
 
@@ -59,23 +60,23 @@ export function Timeline({ media, frame, playing, selectedLayer, onSeek, onToggl
   return (
     <div className="timeline">
       <div className="transport">
-        <button type="button" data-testid="prev-frame" onClick={() => onSeek((frame - 1 + count) % count)} aria-label="Previous frame">
-          ⏮
-        </button>
-        <button type="button" data-testid="play-toggle" className="primary" onClick={onTogglePlay} aria-label={playing ? "Pause" : "Play"}>
-          {playing ? "⏸" : "▶"}
-        </button>
-        <button type="button" data-testid="next-frame" onClick={() => onSeek((frame + 1) % count)} aria-label="Next frame">
-          ⏭
-        </button>
-        <span className="readout">
+        <IconButton size="sm" variant="quiet" data-testid="prev-frame" onClick={() => onSeek((frame - 1 + count) % count)} label="Previous frame">
+          <Icon name="prev" />
+        </IconButton>
+        <IconButton size="sm" variant="primary" data-testid="play-toggle" onClick={onTogglePlay} label={playing ? "Pause" : "Play"}>
+          <Icon name={playing ? "pause" : "play"} />
+        </IconButton>
+        <IconButton size="sm" variant="quiet" data-testid="next-frame" onClick={() => onSeek((frame + 1) % count)} label="Next frame">
+          <Icon name="next" />
+        </IconButton>
+        <Text as="span" size="sm" numeric>
           {t.toFixed(2)}s / {media.duration.toFixed(2)}s · frame <span data-testid="current-frame">{frame + 1} / {count}</span>
-        </span>
+        </Text>
         {selectedLayer && (selectedLayer.start !== null || selectedLayer.end !== null) && (
-          <span className="readout muted">
+          <Text as="span" size="sm" tone="muted" numeric>
             layer shown {selectedLayer.start === null ? "start" : `${selectedLayer.start.toFixed(2)}s`} →{" "}
             {selectedLayer.end === null ? "end" : `${selectedLayer.end.toFixed(2)}s`}
-          </span>
+          </Text>
         )}
       </div>
       <div className="strip" ref={stripRef} data-testid="timeline" data-complete={complete ? "true" : undefined}>

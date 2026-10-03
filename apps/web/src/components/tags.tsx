@@ -1,6 +1,21 @@
 import { useEffect, useId, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { TAG_KINDS, tagSlug, type Tag, type TagKind } from "@memegen/shared";
+import {
+  Badge,
+  Button,
+  Chip,
+  ChipGroup,
+  Icon,
+  IconButton,
+  Inline,
+  NavItem,
+  NavList,
+  SelectField,
+  SidebarSection,
+  Text,
+  TextField,
+} from "@memegen/ui";
 import { createTag, listTags } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "./common.tsx";
@@ -8,13 +23,13 @@ import { ErrorView } from "./common.tsx";
 export function TagChips({ slugs }: { slugs: readonly string[] }) {
   if (slugs.length === 0) return null;
   return (
-    <span className="tag-chips">
+    <ChipGroup>
       {slugs.map((slug) => (
-        <Link key={slug} to={`/t/${slug}`} className="tag-chip" data-testid="tag-chip" data-tag={slug}>
+        <Chip key={slug} as={Link} to={`/t/${slug}`} data-testid="tag-chip" data-tag={slug}>
           #{slug}
-        </Link>
+        </Chip>
       ))}
-    </span>
+    </ChipGroup>
   );
 }
 
@@ -76,17 +91,22 @@ export function TagInput(props: {
   const offered = suggestions.filter((s) => !value.includes(s));
   return (
     <div className="tag-input">
-      <div className="tag-chips">
-        {value.map((slug) => (
-          <span key={slug} className="tag-chip editable" data-tag={slug}>
-            #{slug}
-            <button type="button" aria-label={`Remove ${slug}`} disabled={disabled} onClick={() => onChange(value.filter((t) => t !== slug))}>
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-      <input
+      {value.length > 0 && (
+        <ChipGroup>
+          {value.map((slug) => (
+            <Chip
+              key={slug}
+              data-tag={slug}
+              removeLabel={`Remove ${slug}`}
+              removeDisabled={disabled}
+              onRemove={() => onChange(value.filter((t) => t !== slug))}
+            >
+              #{slug}
+            </Chip>
+          ))}
+        </ChipGroup>
+      )}
+      <TextField
         value={text}
         list={listId}
         disabled={disabled}
@@ -111,14 +131,16 @@ export function TagInput(props: {
         ))}
       </datalist>
       {offered.length > 0 && (
-        <div className="tag-suggest">
-          <span className="muted small">Suggested:</span>
+        <ChipGroup className="tag-suggest">
+          <Text as="span" size="sm" tone="muted">
+            Suggested:
+          </Text>
           {offered.map((slug) => (
-            <button key={slug} type="button" className="tag-chip add" disabled={disabled} onClick={() => onChange([...value, slug])}>
+            <Chip key={slug} as="button" type="button" variant="suggest" disabled={disabled} onClick={() => onChange([...value, slug])}>
               + #{slug}
-            </button>
+            </Chip>
           ))}
-        </div>
+        </ChipGroup>
       )}
     </div>
   );
@@ -133,9 +155,10 @@ export function TagEditor({ tags, onSave, testId }: { tags: string[]; onSave: (t
 
   if (!editing) {
     return (
-      <button
-        type="button"
-        className="small-button"
+      <Button
+        size="sm"
+        variant="quiet"
+        icon={<Icon name="tag" />}
         data-testid={testId}
         onClick={() => {
           setDraft(tags);
@@ -144,7 +167,7 @@ export function TagEditor({ tags, onSave, testId }: { tags: string[]; onSave: (t
         }}
       >
         Edit tags
-      </button>
+      </Button>
     );
   }
 
@@ -164,25 +187,84 @@ export function TagEditor({ tags, onSave, testId }: { tags: string[]; onSave: (t
   return (
     <div className="tag-editor">
       <TagInput value={draft} onChange={setDraft} testId="tags-input" disabled={busy} />
-      <div className="actions">
-        <button type="button" className="primary" disabled={busy} onClick={save} data-testid="tags-save">
+      <Inline className="tag-editor-actions">
+        <Button size="sm" variant="primary" disabled={busy} onClick={save} data-testid="tags-save">
           Save tags
-        </button>
-        <button type="button" disabled={busy} onClick={() => setEditing(false)}>
+        </Button>
+        <Button size="sm" disabled={busy} onClick={() => setEditing(false)}>
           Cancel
-        </button>
-      </div>
+        </Button>
+      </Inline>
       {error !== null && <ErrorView error={error} />}
     </div>
   );
 }
 
-/** Side-column tag search, popular/team tag lists, and the "new tag" form. */
-export function TagSidebar() {
-  const { user } = useAuth();
+/**
+ * Tag search: Enter (or a suggestion) opens the tag page. In the sidebar the suggestions list inline; in the
+ * header they drop down under the field while it has focus.
+ */
+export function TagSearch({ placement }: { placement: "sidebar" | "header" }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const suggestions = useTagSuggestions(query, 8);
+
+  function go(slug: string) {
+    setQuery("");
+    navigate(`/t/${slug}`);
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const slug = suggestions[0]?.slug ?? tagSlug(query);
+    if (slug) go(slug);
+  }
+
+  const form = (
+    <form className={`tag-search tag-search--${placement}`} onSubmit={submit} role="search">
+      <div className="tag-search-field">
+        <TextField
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search tags…"
+          aria-label="Search tags"
+          data-testid="tag-search"
+        />
+        {placement === "header" && (
+          <IconButton type="submit" variant="primary" label="Search" className="tag-search-submit">
+            <Icon name="search" />
+          </IconButton>
+        )}
+      </div>
+      {suggestions.length > 0 && (
+        <NavList className="tag-suggestions">
+          {suggestions.map((t) => (
+            <NavItem
+              key={t.slug}
+              as="button"
+              type="button"
+              icon={<Icon name={t.kind === "team" ? "team" : "tag"} />}
+              trailing={t.kind === "team" ? <Badge tone="success">team</Badge> : undefined}
+              data-testid="tag-suggestion"
+              data-tag={t.slug}
+              onClick={() => go(t.slug)}
+            >
+              #{t.slug}
+            </NavItem>
+          ))}
+        </NavList>
+      )}
+    </form>
+  );
+
+  return placement === "sidebar" ? <SidebarSection heading="Tags">{form}</SidebarSection> : form;
+}
+
+/** Side-column popular/team tag lists and the "new tag" form. */
+export function TagSidebar() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [popular, setPopular] = useState<Tag[]>([]);
   const [teams, setTeams] = useState<Tag[]>([]);
   const [reloads, setReloads] = useState(0);
@@ -202,49 +284,15 @@ export function TagSidebar() {
     };
   }, [reloads, user?.id]);
 
-  function go(slug: string) {
-    setQuery("");
-    navigate(`/t/${slug}`);
-  }
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const slug = suggestions[0]?.slug ?? tagSlug(query);
-    if (slug) go(slug);
-  }
-
   return (
     <>
-      <form className="side-group tag-search" onSubmit={submit} role="search">
-        <h4>Tags</h4>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search tags…"
-          aria-label="Search tags"
-          data-testid="tag-search"
-        />
-        {suggestions.length > 0 && (
-          <ul className="tag-suggestions">
-            {suggestions.map((t) => (
-              <li key={t.slug}>
-                <button type="button" className="side-item" data-testid="tag-suggestion" data-tag={t.slug} onClick={() => go(t.slug)}>
-                  #{t.slug}
-                  {t.kind === "team" && <span className="badge team">team</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </form>
       {popular.length > 0 && <TagList title="Popular tags" tags={popular} />}
       {teams.length > 0 && <TagList title="Teams" tags={teams} />}
       {user && (
         <NewTagForm
           onCreated={(tag) => {
             setReloads((n) => n + 1);
-            go(tag.slug);
+            navigate(`/t/${tag.slug}`);
           }}
         />
       )}
@@ -254,14 +302,23 @@ export function TagSidebar() {
 
 function TagList({ title, tags }: { title: string; tags: Tag[] }) {
   return (
-    <nav className="side-group" aria-label={title}>
-      <h4>{title}</h4>
-      {tags.map((t) => (
-        <Link key={t.slug} to={`/t/${t.slug}`} className={t.kind === "team" ? "side-item team" : "side-item"} data-tag={t.slug}>
-          #{t.slug} <span className="muted small">{t.templateCount + t.memeCount}</span>
-        </Link>
-      ))}
-    </nav>
+    <SidebarSection as="nav" aria-label={title} heading={title}>
+      <NavList>
+        {tags.map((t) => (
+          <NavItem
+            key={t.slug}
+            as={Link}
+            to={`/t/${t.slug}`}
+            icon={<Icon name={t.kind === "team" ? "team" : "tag"} />}
+            trailing={t.templateCount + t.memeCount}
+            className={t.kind === "team" ? "tag-item team" : "tag-item"}
+            data-tag={t.slug}
+          >
+            #{t.slug}
+          </NavItem>
+        ))}
+      </NavList>
+    </SidebarSection>
   );
 }
 
@@ -288,22 +345,38 @@ function NewTagForm({ onCreated }: { onCreated: (tag: Tag) => void }) {
   }
 
   return (
-    <form className="side-group new-tag" onSubmit={submit}>
-      <h4>New tag</h4>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tag name" maxLength={60} data-testid="new-tag-name" />
-      <div className="row">
-        <select value={kind} onChange={(e) => setKind(e.target.value as TagKind)} data-testid="new-tag-kind" aria-label="Tag kind">
-          {TAG_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </select>
-        <button type="submit" disabled={busy || !name.trim()} data-testid="new-tag-submit">
-          Create
-        </button>
-      </div>
-      {error !== null && <ErrorView error={error} />}
-    </form>
+    <SidebarSection heading="New tag">
+      <form className="new-tag" onSubmit={submit}>
+        <TextField
+          size="sm"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Tag name"
+          aria-label="Tag name"
+          maxLength={60}
+          data-testid="new-tag-name"
+        />
+        <Inline wrap={false}>
+          <SelectField
+            size="sm"
+            className="new-tag-kind"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as TagKind)}
+            data-testid="new-tag-kind"
+            aria-label="Tag kind"
+          >
+            {TAG_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </SelectField>
+          <Button size="sm" type="submit" disabled={busy || !name.trim()} data-testid="new-tag-submit">
+            Create
+          </Button>
+        </Inline>
+        {error !== null && <ErrorView error={error} />}
+      </form>
+    </SidebarSection>
   );
 }

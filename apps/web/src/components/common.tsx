@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { Asset } from "@memegen/shared";
+import { Alert, Button, TextField } from "@memegen/ui";
 import { ApiError, contentUrl } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 
@@ -27,7 +28,8 @@ export function LoginForm({ inHeader = false }: { inHeader?: boolean }) {
 
   return (
     <form className={inHeader ? "login login-compact" : "login"} onSubmit={submit}>
-      <input
+      <TextField
+        size={inHeader ? "sm" : "md"}
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         placeholder="username"
@@ -35,9 +37,15 @@ export function LoginForm({ inHeader = false }: { inHeader?: boolean }) {
         autoComplete="username"
         data-testid={inHeader ? "login-username" : undefined}
       />
-      <button type="submit" disabled={busy || !username.trim()} data-testid={inHeader ? "login-submit" : undefined}>
+      <Button
+        type="submit"
+        variant="primary"
+        size={inHeader ? "sm" : "md"}
+        disabled={busy || !username.trim()}
+        data-testid={inHeader ? "login-submit" : undefined}
+      >
         Sign in
-      </button>
+      </Button>
       {error !== null && <ErrorView error={error} />}
     </form>
   );
@@ -45,10 +53,10 @@ export function LoginForm({ inHeader = false }: { inHeader?: boolean }) {
 
 export function SignInPrompt({ action = "do that" }: { action?: string }) {
   return (
-    <div className="notice">
+    <Alert tone="info">
       <p>Sign in to {action}. (Dev login: pick any username.)</p>
       <LoginForm />
-    </div>
+    </Alert>
   );
 }
 
@@ -58,7 +66,7 @@ export function ErrorView({ error, testId }: { error: unknown; testId?: string }
   const message = error instanceof Error ? error.message : String(error);
   const details = error instanceof ApiError ? error.details : [];
   return (
-    <div className="error" role="alert" data-testid={testId}>
+    <Alert tone="error" data-testid={testId}>
       <strong>{message}</strong>
       {details.length > 0 && (
         <ul>
@@ -67,7 +75,7 @@ export function ErrorView({ error, testId }: { error: unknown; testId?: string }
           ))}
         </ul>
       )}
-    </div>
+    </Alert>
   );
 }
 

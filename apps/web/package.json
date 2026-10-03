@@ -13,7 +13,8 @@
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.9.0",
     "@memegen/shared": "workspace:*",
-    "@memegen/render": "workspace:*"
+    "@memegen/render": "workspace:*",
+    "@memegen/ui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

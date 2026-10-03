@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { Tag, Template } from "@memegen/shared";
+import { Badge, Button, EmptyState, Icon, MediaGrid, PageHeader, Spinner, Text } from "@memegen/ui";
 import { getTag, listTemplates } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
@@ -33,37 +34,40 @@ export function TagPage() {
   return (
     <section className={tag?.kind === "team" ? "tag-page team" : "tag-page"}>
       <header className="tag-head">
-        <h1 className="page-title" data-testid="tag-title">
-          #{tag?.slug ?? slug}
-          {tag && tag.name !== tag.slug && <span className="tag-name"> {tag.name}</span>}
-          {tag && <span className={`badge kind ${tag.kind}`}>{tag.kind}</span>}
-        </h1>
-        {tag?.description && <p>{tag.description}</p>}
+        <PageHeader
+          titleProps={{ "data-testid": "tag-title" }}
+          title={
+            <>
+              #{tag?.slug ?? slug}
+              {tag && tag.name !== tag.slug && <span className="tag-name"> {tag.name}</span>}
+              {tag && <Badge tone={tag.kind === "team" ? "success" : "neutral"}>{tag.kind}</Badge>}
+            </>
+          }
+        />
+        {tag?.description && <Text>{tag.description}</Text>}
         {tag && (
-          <p className="muted">
+          <Text tone="muted">
             {tag.templateCount} {tag.templateCount === 1 ? "template" : "templates"} · {tag.memeCount}{" "}
             {tag.memeCount === 1 ? "meme" : "memes"}
-          </p>
+          </Text>
         )}
       </header>
 
       <div data-testid="tag-templates">
-        <h2 className="section-title">Templates</h2>
+        <PageHeader level={2} title="Templates" />
         {templates.error !== null && <ErrorView error={templates.error} />}
         {!templates.loading && templates.items.length === 0 && templates.error === null && (
-          <p className="muted">No templates with this tag.</p>
+          <EmptyState icon={<Icon name="image" />} title="No templates with this tag." />
         )}
-        <div className="grid">
+        <MediaGrid>
           {templates.items.map((t) => (
             <TemplateCard key={t.id} template={t} onChanged={templates.reload} />
           ))}
-        </div>
-        {templates.loading && <p className="muted">Loading…</p>}
+        </MediaGrid>
+        {templates.loading && <Spinner label="Loading…" />}
         {templates.hasMore && !templates.loading && (
-          <div className="center">
-            <button type="button" onClick={templates.loadMore}>
-              More templates
-            </button>
+          <div className="load-more">
+            <Button onClick={templates.loadMore}>More templates</Button>
           </div>
         )}
       </div>

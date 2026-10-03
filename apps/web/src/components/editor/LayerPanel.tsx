@@ -1,6 +1,23 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
 import { layerStateAt, TEXT_STYLES, upsertKeyframe, type Asset, type TextAlign, type TextLayer, type TextStyle } from "@memegen/shared";
+import {
+  Badge,
+  Button,
+  ColorField,
+  Field,
+  FileButton,
+  Icon,
+  IconButton,
+  Inline,
+  Panel,
+  SegmentedControl,
+  SelectField,
+  Slider,
+  Text,
+  TextArea,
+  TextField,
+} from "@memegen/ui";
 import { uploadAsset } from "../../api.ts";
 import { useAuth } from "../../auth.tsx";
 import { FONT_ACCEPT } from "../../media.ts";
@@ -31,49 +48,55 @@ export function LayerPanel(props: LayerPanelProps) {
   const selected = layers.find((l) => l.id === selectedId) ?? null;
 
   return (
-    <div className="panel layer-panel">
-      <div className="panel-head">
-        <h3>Layers</h3>
-        <button type="button" data-testid="add-layer" onClick={onAdd}>
-          + Add text
-        </button>
-      </div>
+    <Panel
+      heading="Layers"
+      className="layer-panel"
+      headingActions={
+        <Button size="sm" icon={<Icon name="plus" />} data-testid="add-layer" onClick={onAdd}>
+          Add text
+        </Button>
+      }
+    >
       <ol className="layer-list">
         {layers.map((layer, i) => (
-          <li key={layer.id} data-testid="layer-item" data-layer-id={layer.id} className={layer.id === selectedId ? "selected" : ""}>
-            <button type="button" className="layer-name" onClick={() => onSelect(layer.id)}>
-              {layer.text.split("\n")[0]?.trim() || "(empty)"}
-              {layer.keyframes.length > 0 && <span className="badge">anim</span>}
-            </button>
-            <button type="button" onClick={() => onMoveOrder(layer.id, -1)} disabled={i === 0} aria-label="Move back (drawn behind)">
-              ↑
-            </button>
-            <button
-              type="button"
+          <li key={layer.id} data-testid="layer-item" data-layer-id={layer.id} className={layer.id === selectedId ? "selected" : undefined}>
+            <Button
+              size="sm"
+              variant="quiet"
+              className="layer-name"
+              pressed={layer.id === selectedId}
+              onClick={() => onSelect(layer.id)}
+            >
+              <span className="layer-name-text">{layer.text.split("\n")[0]?.trim() || "(empty)"}</span>
+              {layer.keyframes.length > 0 && <Badge>anim</Badge>}
+            </Button>
+            <IconButton size="sm" variant="quiet" onClick={() => onMoveOrder(layer.id, -1)} disabled={i === 0} label="Move back (drawn behind)">
+              <Icon name="up" />
+            </IconButton>
+            <IconButton
+              size="sm"
+              variant="quiet"
               onClick={() => onMoveOrder(layer.id, 1)}
               disabled={i === layers.length - 1}
-              aria-label="Move forward (drawn on top)"
+              label="Move forward (drawn on top)"
             >
-              ↓
-            </button>
-            <button type="button" className="danger" onClick={() => onRemove(layer.id)} aria-label="Remove layer">
-              ✕
-            </button>
+              <Icon name="down" />
+            </IconButton>
+            <IconButton size="sm" variant="quiet" className="danger-icon" onClick={() => onRemove(layer.id)} label="Remove layer">
+              <Icon name="close" />
+            </IconButton>
           </li>
         ))}
       </ol>
-      {layers.length === 0 ? <p className="muted">No text layers. Add one to start.</p> : <p className="muted small">Lower in the list draws on top.</p>}
-      {selected ? <LayerEditor {...props} layer={selected} /> : layers.length > 0 && <p className="muted">Select a layer to edit it.</p>}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
-    </label>
+      {layers.length === 0 ? (
+        <Text tone="muted">No text layers. Add one to start.</Text>
+      ) : (
+        <Text tone="muted" size="sm">
+          Lower in the list draws on top.
+        </Text>
+      )}
+      {selected ? <LayerEditor {...props} layer={selected} /> : layers.length > 0 && <Text tone="muted">Select a layer to edit it.</Text>}
+    </Panel>
   );
 }
 
@@ -107,19 +130,13 @@ function LayerEditor({ layer, media, frame, fonts, onUpdate, onPlace, onSeek, on
 
   return (
     <div className="layer-editor">
-      <Field label="Text">
-        <textarea
-          rows={3}
-          data-testid="layer-text"
-          value={layer.text}
-          maxLength={2000}
-          onChange={(e) => update({ text: e.target.value })}
-        />
-      </Field>
+      <TextArea label="Text" rows={3} data-testid="layer-text" value={layer.text} maxLength={2000} onChange={(e) => update({ text: e.target.value })} />
 
-      <Field label="Font">
-        <div className="row">
-          <select
+      <Field as="div" label="Font">
+        <Inline wrap={false}>
+          <SelectField
+            aria-label="Font"
+            className="font-select"
             data-testid="layer-font"
             value={layer.fontAssetId ?? ""}
             onChange={(e) => update({ fontAssetId: e.target.value || null })}
@@ -130,186 +147,188 @@ function LayerEditor({ layer, media, frame, fonts, onUpdate, onPlace, onSeek, on
                 {f.name}
               </option>
             ))}
-          </select>
+          </SelectField>
           {user && (
-            <label className="button file-button">
+            <FileButton
+              icon={<Icon name="upload" />}
+              data-testid="font-upload"
+              accept={FONT_ACCEPT}
+              disabled={fontBusy}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void uploadFont(file);
+              }}
+            >
               {fontBusy ? "Uploading…" : "Upload font"}
-              <input
-                type="file"
-                data-testid="font-upload"
-                accept={FONT_ACCEPT}
-                disabled={fontBusy}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void uploadFont(file);
-                }}
-              />
-            </label>
+            </FileButton>
           )}
-        </div>
+        </Inline>
       </Field>
       {fontError !== null && <ErrorView error={fontError} testId="editor-error" />}
 
-      <Field label={`Max size ${(layer.fontSize * 100).toFixed(1)}% of height`}>
-        <input
-          type="range"
-          min={1}
-          max={50}
-          step={0.5}
-          value={layer.fontSize * 100}
-          onChange={(e) => update({ fontSize: Number(e.target.value) / 100 })}
+      <Slider
+        label={`Max size ${(layer.fontSize * 100).toFixed(1)}% of height`}
+        min={1}
+        max={50}
+        step={0.5}
+        value={layer.fontSize * 100}
+        onChange={(e) => update({ fontSize: Number(e.target.value) / 100 })}
+      />
+
+      <div className="field-row">
+        <ColorField label="Color" value={layer.color.slice(0, 7)} onChange={(e) => update({ color: e.target.value })} />
+        <ColorField label="Outline" value={layer.strokeColor.slice(0, 7)} onChange={(e) => update({ strokeColor: e.target.value })} />
+        <Slider
+          label={`Outline width ${Math.round(layer.strokeWidth * 100)}%`}
+          className="grow"
+          min={0}
+          max={30}
+          step={1}
+          value={Math.round(layer.strokeWidth * 100)}
+          onChange={(e) => update({ strokeWidth: Number(e.target.value) / 100 })}
         />
-      </Field>
-
-      <div className="row">
-        <Field label="Color">
-          <input type="color" value={layer.color.slice(0, 7)} onChange={(e) => update({ color: e.target.value })} />
-        </Field>
-        <Field label="Outline">
-          <input type="color" value={layer.strokeColor.slice(0, 7)} onChange={(e) => update({ strokeColor: e.target.value })} />
-        </Field>
-        <Field label={`Outline width ${Math.round(layer.strokeWidth * 100)}%`}>
-          <input
-            type="range"
-            min={0}
-            max={30}
-            step={1}
-            value={Math.round(layer.strokeWidth * 100)}
-            onChange={(e) => update({ strokeWidth: Number(e.target.value) / 100 })}
-          />
-        </Field>
       </div>
 
-      <div className="row">
-        <Field label="Align">
-          <div className="segmented">
-            {ALIGNS.map((a) => (
-              <button key={a} type="button" className={layer.align === a ? "active" : ""} onClick={() => update({ align: a })}>
-                {a}
-              </button>
-            ))}
-          </div>
+      <div className="field-row">
+        <Field as="div" label="Align">
+          <SegmentedControl
+            aria-label="Align"
+            size="sm"
+            value={layer.align}
+            onChange={(a) => update({ align: a })}
+            options={ALIGNS.map((a) => ({ value: a, label: a }))}
+          />
         </Field>
-        <Field label="Case">
-          <select data-testid="layer-style" value={layer.textStyle} onChange={(e) => update({ textStyle: e.target.value as TextStyle })}>
-            {TEXT_STYLES.map((s) => (
-              <option key={s} value={s}>
-                {STYLE_LABELS[s]}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <SelectField
+          label="Case"
+          className="grow"
+          data-testid="layer-style"
+          value={layer.textStyle}
+          onChange={(e) => update({ textStyle: e.target.value as TextStyle })}
+        >
+          {TEXT_STYLES.map((s) => (
+            <option key={s} value={s}>
+              {STYLE_LABELS[s]}
+            </option>
+          ))}
+        </SelectField>
       </div>
 
-      <Field label={`Rotation ${layer.angle}°`}>
-        <input type="range" min={-180} max={180} step={1} value={layer.angle} onChange={(e) => update({ angle: Number(e.target.value) })} />
-      </Field>
+      <Slider label={`Rotation ${layer.angle}°`} min={-180} max={180} step={1} value={layer.angle} onChange={(e) => update({ angle: Number(e.target.value) })} />
 
-      <div className="row">
-        <Field label={`Box width ${Math.round(layer.maxWidth * 100)}%`}>
-          <input
-            type="range"
-            min={5}
-            max={100}
-            step={1}
-            value={Math.round(layer.maxWidth * 100)}
-            onChange={(e) => update({ maxWidth: Number(e.target.value) / 100 })}
-          />
-        </Field>
-        <Field label={`Box height ${Math.round(layer.maxHeight * 100)}%`}>
-          <input
-            type="range"
-            min={5}
-            max={100}
-            step={1}
-            value={Math.round(layer.maxHeight * 100)}
-            onChange={(e) => update({ maxHeight: Number(e.target.value) / 100 })}
-          />
-        </Field>
+      <div className="field-row">
+        <Slider
+          label={`Box width ${Math.round(layer.maxWidth * 100)}%`}
+          className="grow"
+          min={5}
+          max={100}
+          step={1}
+          value={Math.round(layer.maxWidth * 100)}
+          onChange={(e) => update({ maxWidth: Number(e.target.value) / 100 })}
+        />
+        <Slider
+          label={`Box height ${Math.round(layer.maxHeight * 100)}%`}
+          className="grow"
+          min={5}
+          max={100}
+          step={1}
+          value={Math.round(layer.maxHeight * 100)}
+          onChange={(e) => update({ maxHeight: Number(e.target.value) / 100 })}
+        />
       </div>
 
-      <div className="row">
-        <Field label="X %">
-          <input
-            type="number"
-            step={1}
-            value={Math.round(state.x * 100)}
-            onChange={(e) => onPlace(layer.id, { x: Number(e.target.value) / 100 })}
-          />
-        </Field>
-        <Field label="Y %">
-          <input
-            type="number"
-            step={1}
-            value={Math.round(state.y * 100)}
-            onChange={(e) => onPlace(layer.id, { y: Number(e.target.value) / 100 })}
-          />
-        </Field>
-        <Field label={`Opacity ${Math.round(state.opacity * 100)}%`}>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={Math.round(state.opacity * 100)}
-            onChange={(e) => onPlace(layer.id, { opacity: Number(e.target.value) / 100 })}
-          />
-        </Field>
+      <div className="field-row">
+        <TextField
+          label="X %"
+          className="number-field"
+          type="number"
+          step={1}
+          value={Math.round(state.x * 100)}
+          onChange={(e) => onPlace(layer.id, { x: Number(e.target.value) / 100 })}
+        />
+        <TextField
+          label="Y %"
+          className="number-field"
+          type="number"
+          step={1}
+          value={Math.round(state.y * 100)}
+          onChange={(e) => onPlace(layer.id, { y: Number(e.target.value) / 100 })}
+        />
+        <Slider
+          label={`Opacity ${Math.round(state.opacity * 100)}%`}
+          className="grow"
+          min={0}
+          max={100}
+          step={1}
+          value={Math.round(state.opacity * 100)}
+          onChange={(e) => onPlace(layer.id, { opacity: Number(e.target.value) / 100 })}
+        />
       </div>
-      {layer.keyframes.length > 0 && <p className="muted small">Animated: position/opacity edits set a keyframe at the current frame.</p>}
+      {layer.keyframes.length > 0 && (
+        <Text tone="muted" size="sm">
+          Animated: position/opacity edits set a keyframe at the current frame.
+        </Text>
+      )}
 
       {animated && (
-        <fieldset className="animation">
-          <legend>Animation</legend>
-          <div className="row">
-            <span>Shown from {layer.start === null ? "the start" : `${layer.start.toFixed(2)}s`}</span>
-            <button type="button" data-testid="set-start" onClick={() => setWindow("start", t)}>
+        <Panel variant="inset" heading="Animation" className="animation">
+          <Inline wrap={false} className="window-row">
+            <Text as="span" size="sm" className="grow">
+              Shown from {layer.start === null ? "the start" : `${layer.start.toFixed(2)}s`}
+            </Text>
+            <Button size="sm" data-testid="set-start" onClick={() => setWindow("start", t)}>
               Set to current
-            </button>
-            <button type="button" onClick={() => setWindow("start", null)} disabled={layer.start === null}>
+            </Button>
+            <Button size="sm" variant="quiet" onClick={() => setWindow("start", null)} disabled={layer.start === null}>
               Clear
-            </button>
-          </div>
-          <div className="row">
-            <span>Shown until {layer.end === null ? "the end" : `${layer.end.toFixed(2)}s`}</span>
-            <button type="button" data-testid="set-end" onClick={() => setWindow("end", t)}>
+            </Button>
+          </Inline>
+          <Inline wrap={false} className="window-row">
+            <Text as="span" size="sm" className="grow">
+              Shown until {layer.end === null ? "the end" : `${layer.end.toFixed(2)}s`}
+            </Text>
+            <Button size="sm" data-testid="set-end" onClick={() => setWindow("end", t)}>
               Set to current
-            </button>
-            <button type="button" onClick={() => setWindow("end", null)} disabled={layer.end === null}>
+            </Button>
+            <Button size="sm" variant="quiet" onClick={() => setWindow("end", null)} disabled={layer.end === null}>
               Clear
-            </button>
-          </div>
+            </Button>
+          </Inline>
 
-          <div className="panel-head">
-            <h4>Keyframes</h4>
-            <button
-              type="button"
+          <Inline justify="between" className="keyframes-head">
+            <h5 className="keyframes-title">Keyframes</h5>
+            <Button
+              size="sm"
+              icon={<Icon name="plus" />}
               data-testid="add-keyframe"
               onClick={() => update({ keyframes: upsertKeyframe(layer.keyframes, { t, x: state.x, y: state.y, opacity: state.opacity }) })}
             >
               Add keyframe at current frame
-            </button>
-          </div>
+            </Button>
+          </Inline>
           {layer.keyframes.length === 0 ? (
-            <p className="muted small">No keyframes: the layer stays put. Add keyframes on different frames, then drag the text to animate it.</p>
+            <Text tone="muted" size="sm">
+              No keyframes: the layer stays put. Add keyframes on different frames, then drag the text to animate it.
+            </Text>
           ) : (
             <ul className="keyframes">
               {layer.keyframes.map((k) => {
                 const kfFrame = frameIndexAt(media.times, k.t);
                 return (
-                  <li key={k.t} data-testid="keyframe-item" className={kfFrame === frame ? "current" : ""}>
+                  <li key={k.t} data-testid="keyframe-item" className={kfFrame === frame ? "current" : undefined}>
                     <span>
                       {k.t.toFixed(2)}s (#{kfFrame + 1}) · x {Math.round(k.x * 100)}% · y {Math.round(k.y * 100)}% · α{" "}
                       {Math.round(k.opacity * 100)}%
                     </span>
-                    <button type="button" onClick={() => onSeek(kfFrame)}>
+                    <Button size="sm" variant="quiet" onClick={() => onSeek(kfFrame)}>
                       Go
-                    </button>
-                    <button
-                      type="button"
-                      className="danger"
-                      aria-label="Delete keyframe"
+                    </Button>
+                    <IconButton
+                      size="sm"
+                      variant="quiet"
+                      className="danger-icon"
+                      label="Delete keyframe"
                       onClick={() =>
                         update(
                           layer.keyframes.length === 1
@@ -318,21 +337,22 @@ function LayerEditor({ layer, media, frame, fonts, onUpdate, onPlace, onSeek, on
                         )
                       }
                     >
-                      ✕
-                    </button>
+                      <Icon name="close" />
+                    </IconButton>
                   </li>
                 );
               })}
             </ul>
           )}
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="danger"
             disabled={layer.keyframes.length === 0 && layer.start === null && layer.end === null}
             onClick={() => update({ keyframes: [], start: null, end: null, x: state.x, y: state.y, opacity: state.opacity })}
           >
             Clear animation
-          </button>
-        </fieldset>
+          </Button>
+        </Panel>
       )}
     </div>
   );

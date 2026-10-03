@@ -1,6 +1,27 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { PERIODS, type HotTemplate, type Period, type Template, type TemplateUsage } from "@memegen/shared";
+import {
+  Badge,
+  Button,
+  Card,
+  CardMeta,
+  CardTitle,
+  EmptyState,
+  Field,
+  FileButton,
+  Icon,
+  Inline,
+  LinkButton,
+  MediaGrid,
+  PageHeader,
+  Panel,
+  SegmentedControl,
+  SelectField,
+  Spinner,
+  Text,
+  TextField,
+} from "@memegen/ui";
 import { createTemplate, getHotTemplates, getLimits, getTemplateUsage, listTemplates, setTemplateTags, uploadAsset } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView, MediaView, SignInPrompt } from "../components/common.tsx";
@@ -30,34 +51,39 @@ export function Templates() {
 
   return (
     <section>
-      <h1 className="page-title">Templates</h1>
+      <PageHeader title="Templates" />
       <HotTemplates />
-      <h2 className="section-title">All templates</h2>
-      <div className="toolbar">
-        <input
-          type="search"
-          className="search"
-          placeholder="Search templates…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search templates"
-          data-testid="template-search"
-        />
-      </div>
+      <PageHeader
+        level={2}
+        title="All templates"
+        actions={
+          <TextField
+            type="search"
+            className="template-search"
+            placeholder="Search templates…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search templates"
+            data-testid="template-search"
+          />
+        }
+      />
       <NewTemplateForm onDone={list.reload} />
       {list.error !== null && <ErrorView error={list.error} />}
-      {!list.loading && list.items.length === 0 && list.error === null && <p className="muted">No templates found.</p>}
-      <div className="grid">
+      {!list.loading && list.items.length === 0 && list.error === null && (
+        <EmptyState icon={<Icon name="search" />} title="No templates found." />
+      )}
+      <MediaGrid>
         {list.items.map((t) => (
           <TemplateCard key={t.id} template={t} onChanged={list.reload} />
         ))}
-      </div>
-      {list.loading && <p className="muted">Loading…</p>}
+      </MediaGrid>
+      {list.loading && <Spinner label="Loading…" />}
       {list.hasMore && !list.loading && (
-        <div className="center">
-          <button type="button" data-testid="load-more" onClick={list.loadMore}>
+        <div className="load-more">
+          <Button data-testid="load-more" onClick={list.loadMore}>
             Load more
-          </button>
+          </Button>
         </div>
       )}
     </section>
@@ -85,26 +111,26 @@ function HotTemplates() {
 
   return (
     <section className="hot">
-      <div className="toolbar">
-        <h2 className="section-title">🔥 Hot</h2>
-        <div className="tabs" role="group" aria-label="Hot period">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={p === period ? "tab active" : "tab"}
-              aria-pressed={p === period}
-              data-testid={`hot-period-${p}`}
-              onClick={() => setPeriod(p)}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        level={2}
+        title={
+          <>
+            <Icon name="flame" className="hot-icon" /> Hot
+          </>
+        }
+        actions={
+          <SegmentedControl
+            aria-label="Hot period"
+            size="sm"
+            value={period}
+            onChange={setPeriod}
+            options={PERIODS.map((p) => ({ value: p, label: PERIOD_LABELS[p], testId: `hot-period-${p}` }))}
+          />
+        }
+      />
       {error !== null && <ErrorView error={error} />}
-      {items === null && error === null && <p className="muted">Loading…</p>}
-      {items?.length === 0 && <p className="muted">No templates used in this period yet.</p>}
+      {items === null && error === null && <Spinner label="Loading…" />}
+      {items?.length === 0 && <EmptyState icon={<Icon name="flame" />} title="No templates used in this period yet." />}
       {items && items.length > 0 && (
         <div className="hot-row">
           {items.map(({ template, uses, posts }) => (
@@ -118,9 +144,9 @@ function HotTemplates() {
             >
               <MediaView asset={template.asset} alt={template.name} />
               <span className="hot-name">{template.name}</span>
-              <span className="muted small">
+              <Text as="span" size="sm" tone="muted">
                 <span data-testid="hot-uses">{uses}</span> {uses === 1 ? "use" : "uses"} · {posts} posted
-              </span>
+              </Text>
             </Link>
           ))}
         </div>
@@ -157,20 +183,20 @@ function UsageChart({ templateId }: { templateId: string }) {
 
   return (
     <div className="usage">
-      <div className="row">
-        <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} aria-label="Usage period">
+      <Inline>
+        <SelectField size="sm" value={period} onChange={(e) => setPeriod(e.target.value as Period)} aria-label="Usage period">
           {PERIODS.map((p) => (
             <option key={p} value={p}>
               {PERIOD_LABELS[p]}
             </option>
           ))}
-        </select>
+        </SelectField>
         {usage && (
-          <span className="muted small">
+          <Text as="span" size="sm" tone="muted">
             {total} {total === 1 ? "use" : "uses"} · per {usage.bucket}
-          </span>
+          </Text>
         )}
-      </div>
+      </Inline>
       {error !== null && <ErrorView error={error} />}
       {usage && (
         <svg
@@ -218,72 +244,82 @@ export function TemplateCard({ template, onChanged }: { template: Template; onCh
   }
 
   return (
-    <article className="card" data-testid="template-card" data-template-id={template.id}>
-      <Link to={`/create?template=${template.id}`} className="card-media">
-        <MediaView asset={template.asset} alt={template.name} />
-      </Link>
-      <div className="card-body">
-        <button type="button" className="card-title linkish" onClick={() => setShowUsage((s) => !s)} title="Show usage">
-          {template.name}
-        </button>
-        <div className="card-meta">
-          {template.owner ? <Link to={`/u/${template.owner.username}`}>@{template.owner.username}</Link> : <span>built-in</span>}
-          <span aria-hidden> · </span>
-          <span data-testid="template-use-count">used {template.useCount}×</span>
-          {!template.isPublic && <span className="badge private">Private</span>}
-        </div>
-        <TagChips slugs={tags} />
-        {canTag && (
-          <TagEditor
-            tags={tags}
-            testId="template-tags-edit"
-            onSave={async (next) => setTags((await setTemplateTags(template.id, next)).tags)}
-          />
-        )}
-        {showUsage && <UsageChart templateId={template.id} />}
-        {template.variations.length > 0 && (
-          <div className="variations" aria-label="Variations">
-            {template.variations.map((v) => (
-              <Link
-                key={v.id}
-                to={`/create?template=${v.id}`}
-                className="variation"
-                title={`Use “${v.name}”`}
-                data-testid="variation-item"
-                data-template-id={v.id}
-              >
-                <MediaView asset={v.asset} alt={v.name} />
-              </Link>
-            ))}
-          </div>
-        )}
-        <div className="actions">
-          <Link to={`/create?template=${template.id}`} className="button primary" data-testid="use-template">
+    <Card
+      borderless
+      className="template-card"
+      data-testid="template-card"
+      data-template-id={template.id}
+      media={
+        <Link to={`/create?template=${template.id}`}>
+          <MediaView asset={template.asset} alt={template.name} />
+        </Link>
+      }
+      actions={
+        <>
+          <LinkButton as={Link} size="sm" variant="primary" to={`/create?template=${template.id}`} data-testid="use-template">
             Use
-          </Link>
+          </LinkButton>
           {template.parentId === null && user && (
-            <label className={busy ? "button file-button disabled" : "button file-button"}>
+            <FileButton
+              size="sm"
+              icon={<Icon name="upload" />}
+              accept={MEDIA_ACCEPT}
+              disabled={busy}
+              data-testid="add-variation"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void addVariation(file);
+              }}
+            >
               {busy ? "Uploading…" : "Add variation"}
-              <input
-                type="file"
-                accept={MEDIA_ACCEPT}
-                disabled={busy}
-                data-testid="add-variation"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void addVariation(file);
-                }}
-              />
-            </label>
+            </FileButton>
           )}
-          <button type="button" onClick={() => setShowUsage((s) => !s)} aria-pressed={showUsage} data-testid="usage-toggle">
-            📈 Usage
-          </button>
+          <Button
+            size="sm"
+            variant="quiet"
+            icon={<Icon name="chart" />}
+            onClick={() => setShowUsage((s) => !s)}
+            pressed={showUsage}
+            data-testid="usage-toggle"
+          >
+            Usage
+          </Button>
+        </>
+      }
+    >
+      <CardTitle as="button" type="button" onClick={() => setShowUsage((s) => !s)} title="Show usage">
+        {template.name}
+      </CardTitle>
+      <CardMeta>
+        {template.owner ? <Link to={`/u/${template.owner.username}`}>@{template.owner.username}</Link> : <span>built-in</span>}
+        <span aria-hidden> · </span>
+        <span data-testid="template-use-count">used {template.useCount}×</span>
+        {!template.isPublic && <Badge tone="info">Private</Badge>}
+      </CardMeta>
+      <TagChips slugs={tags} />
+      {canTag && (
+        <TagEditor tags={tags} testId="template-tags-edit" onSave={async (next) => setTags((await setTemplateTags(template.id, next)).tags)} />
+      )}
+      {showUsage && <UsageChart templateId={template.id} />}
+      {template.variations.length > 0 && (
+        <div className="variations" aria-label="Variations">
+          {template.variations.map((v) => (
+            <Link
+              key={v.id}
+              to={`/create?template=${v.id}`}
+              className="variation"
+              title={`Use “${v.name}”`}
+              data-testid="variation-item"
+              data-template-id={v.id}
+            >
+              <MediaView asset={v.asset} alt={v.name} />
+            </Link>
+          ))}
         </div>
-        {error !== null && <ErrorView error={error} />}
-      </div>
-    </article>
+      )}
+      {error !== null && <ErrorView error={error} />}
+    </Card>
   );
 }
 
@@ -316,34 +352,40 @@ function NewTemplateForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form className="panel upload-form" onSubmit={submit}>
-      <h3>New template</h3>
-      <div className="row">
-        <label className="field">
-          <span>Name</span>
-          <input
+    <Panel heading="New template" className="upload-form">
+      <form onSubmit={submit}>
+        <Inline align="end" gap="md">
+          <TextField
+            label="Name"
+            className="upload-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={120}
             data-testid="new-template-name"
           />
-        </label>
-        <label className="field">
-          <span>Image, GIF or video</span>
-          <input
-            type="file"
-            accept={MEDIA_ACCEPT}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            required
-            data-testid="new-template-file"
-          />
-        </label>
-        <button type="submit" className="primary" disabled={busy || !file || !name.trim()} data-testid="new-template-submit">
-          {busy ? "Uploading…" : "Upload"}
-        </button>
-      </div>
+          <Field as="div" label="Image, GIF or video" className="upload-file">
+            <Inline wrap={false}>
+              <FileButton
+                icon={<Icon name="upload" />}
+                accept={MEDIA_ACCEPT}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                required
+                data-testid="new-template-file"
+              >
+                Choose file
+              </FileButton>
+              <Text as="span" size="sm" tone="muted" className="file-name">
+                {file?.name ?? "No file chosen"}
+              </Text>
+            </Inline>
+          </Field>
+          <Button type="submit" variant="primary" className="upload-submit" disabled={busy || !file || !name.trim()} data-testid="new-template-submit">
+            {busy ? "Uploading…" : "Upload"}
+          </Button>
+        </Inline>
+      </form>
       {error !== null && <ErrorView error={error} />}
-    </form>
+    </Panel>
   );
 }

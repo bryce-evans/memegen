@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
+import { Button, Icon, Inline, LinkButton, Spinner, Text } from "@memegen/ui";
 import { contentUrl, deleteMeme, getMeme, postMeme, updateMeme } from "../api.ts";
 import { useAuth } from "../auth.tsx";
 import { ErrorView, MediaView } from "../components/common.tsx";
 import { MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
 import { TagChips, TagEditor } from "../components/tags.tsx";
+import { assetExtension, fileSlug } from "../media.ts";
 
 export function MemeDetail() {
   const { id = "" } = useParams();
@@ -43,7 +45,7 @@ export function MemeDetail() {
   }
 
   if (error !== null) return <ErrorView error={error} />;
-  if (!meme) return <p className="muted">Loading…</p>;
+  if (!meme) return <Spinner label="Loading…" />;
 
   const isOwner = user?.id === meme.owner.id;
 
@@ -57,15 +59,17 @@ export function MemeDetail() {
         )}
       </div>
       <aside className="detail-side">
-        <h1 data-testid="meme-title">{meme.title || "Untitled"}</h1>
-        <p>
+        <h1 className="detail-title" data-testid="meme-title">
+          {meme.title || "Untitled"}
+        </h1>
+        <Text>
           by <Link to={`/u/${meme.owner.username}`}>@{meme.owner.username}</Link> · <MemeAge meme={meme} /> <MemeBadges meme={meme} />
-        </p>
-        <p className="muted" data-testid="meme-status">
+        </Text>
+        <Text tone="muted" size="sm" data-testid="meme-status">
           {meme.postedAt ? `posted ${new Date(meme.postedAt).toLocaleString()}` : "draft"}
           {" · "}
           {meme.visibility}
-        </p>
+        </Text>
         <VoteButtons meme={meme} onChange={setMeme} />
         <div className="detail-tags">
           <TagChips slugs={meme.tags} />
@@ -77,26 +81,29 @@ export function MemeDetail() {
             />
           )}
         </div>
-        {meme.templateId && (
-          <p>
-            <Link to={`/create?template=${meme.templateId}`}>Make one with this template</Link>
-          </p>
-        )}
+        <Inline className="detail-links">
+          <LinkButton
+            href={contentUrl(meme.outputAsset)}
+            download={`${fileSlug(meme.title)}${assetExtension(meme.outputAsset)}`}
+            icon={<Icon name="down" />}
+            data-testid="download-meme"
+          >
+            Download
+          </LinkButton>
+          {meme.templateId && (
+            <LinkButton as={Link} variant="quiet" to={`/create?template=${meme.templateId}`} icon={<Icon name="image" />}>
+              Make one with this template
+            </LinkButton>
+          )}
+        </Inline>
         {isOwner && (
-          <div className="actions">
+          <Inline className="detail-actions">
             {meme.postedAt === null && (
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                data-testid="post-meme"
-                onClick={() => act(() => postMeme(meme.id))}
-              >
+              <Button variant="primary" disabled={busy} data-testid="post-meme" onClick={() => act(() => postMeme(meme.id))}>
                 Post
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
+            <Button
               disabled={busy}
               data-testid="visibility-toggle"
               onClick={() =>
@@ -104,13 +111,12 @@ export function MemeDetail() {
               }
             >
               Make {meme.visibility === "public" ? "private" : "public"}
-            </button>
-            <button type="button" disabled={busy} data-testid="edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
+            </Button>
+            <Button disabled={busy} data-testid="edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
               Edit
-            </button>
-            <button
-              type="button"
-              className="danger"
+            </Button>
+            <Button
+              variant="danger"
               disabled={busy}
               data-testid="delete-meme"
               onClick={() =>
@@ -122,8 +128,8 @@ export function MemeDetail() {
               }
             >
               Delete
-            </button>
-          </div>
+            </Button>
+          </Inline>
         )}
         {actionError !== null && <ErrorView error={actionError} />}
       </aside>

@@ -55,7 +55,7 @@ export function drawLayers(ctx: Ctx2D, layers: readonly TextLayer[], width: numb
   }
 }
 
-/** Frame + layers into `ctx`, which must be sized to the media. */
+/** Frame + layers into `ctx` at `width`×`height` (any size: the frame is scaled, text is laid out in fractions). */
 export function composeFrame(
   ctx: Ctx2D,
   frame: CanvasImageSource,
@@ -65,6 +65,8 @@ export function composeFrame(
   t: number,
 ): void {
   ctx.clearRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(frame, 0, 0, width, height);
   drawLayers(ctx, layers, width, height, t);
 }

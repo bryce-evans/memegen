@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
 import { newTextLayer } from "./defaults.ts";
-import { DEFAULT_LIMITS, limitViolations } from "./limits.ts";
+import { DEFAULT_LIMITS, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
 import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { sessionSchema, textLayerSchema } from "./schema.ts";
 import { badgesFor } from "./badges.ts";
@@ -106,4 +106,14 @@ test("badges: only the highest reached tier per stat shows, at exact thresholds"
 test("sessionSchema rejects the reserved system username in any case", () => {
   assert.equal(sessionSchema.safeParse({ username: "MemeGen" }).success, false);
   assert.equal(sessionSchema.safeParse({ username: "memegen2" }).success, true);
+});
+
+test("stillExportSize upscales small stills to the minimum edge, keeps larger ones, never passes the cap", () => {
+  assert.equal(STILL_EXPORT_MIN_EDGE, 1200);
+  assert.deepEqual(stillExportSize(600, 450, DEFAULT_LIMITS), { width: 1200, height: 900 });
+  assert.deepEqual(stillExportSize(300, 600, DEFAULT_LIMITS), { width: 600, height: 1200 });
+  assert.deepEqual(stillExportSize(2000, 1000, DEFAULT_LIMITS), { width: 2000, height: 1000 });
+  const tight = { ...DEFAULT_LIMITS, image: { maxDimension: 800 } };
+  assert.deepEqual(stillExportSize(400, 200, tight), { width: 800, height: 400 });
+  assert.deepEqual(stillExportSize(800, 600, tight), { width: 800, height: 600 });
 });

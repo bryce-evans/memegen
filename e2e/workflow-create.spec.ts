@@ -32,7 +32,8 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   // Download the rendered meme without saving it.
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("download-export").click()]);
   expect(download.suggestedFilename()).toMatch(/\.png$/);
-  expect(pngSize(readFileSync((await download.path())!))).toEqual({ width: 600, height: 450 });
+  // 600×450 template, exported upscaled to the 1200px minimum edge so the text stays sharp.
+  expect(pngSize(readFileSync((await download.path())!))).toEqual({ width: 1200, height: 900 });
 
   // Save: a draft that shows on the author's profile but not in the gallery.
   await page.getByTestId("save-draft").click();

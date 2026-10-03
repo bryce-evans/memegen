@@ -18,6 +18,8 @@ export interface ExportOptions {
   /** 0..1 */
   onProgress?: (progress: number) => void;
   signal?: AbortSignal;
+  /** Output size for stills (default: the media's native size); GIFs and videos always keep their own. */
+  stillSize?: { width: number; height: number };
 }
 
 export interface ExportResult {
@@ -36,7 +38,7 @@ export class ExportAbortedError extends Error {
 export async function exportMeme(media: DecodedMedia, layers: readonly TextLayer[], opts: ExportOptions = {}): Promise<ExportResult> {
   switch (media.kind) {
     case "image":
-      return exportImage(media, layers);
+      return exportImage(media, layers, opts.stillSize ?? { width: media.width, height: media.height });
     case "gif":
       return exportGif(media, layers, opts);
     case "video":
@@ -44,9 +46,13 @@ export async function exportMeme(media: DecodedMedia, layers: readonly TextLayer
   }
 }
 
-async function exportImage(media: DecodedMedia, layers: readonly TextLayer[]): Promise<ExportResult> {
-  const canvas = createCanvas(media.width, media.height);
-  composeFrame(context2d(canvas), await media.frame(0), layers, media.width, media.height, 0);
+async function exportImage(
+  media: DecodedMedia,
+  layers: readonly TextLayer[],
+  size: { width: number; height: number },
+): Promise<ExportResult> {
+  const canvas = createCanvas(size.width, size.height);
+  composeFrame(context2d(canvas), await media.frame(0), layers, canvas.width, canvas.height, 0);
   const jpeg = media.mime === "image/jpeg";
   const mime = jpeg ? "image/jpeg" : "image/png";
   const blob = await canvas.convertToBlob({ type: mime, quality: jpeg ? 0.92 : undefined });

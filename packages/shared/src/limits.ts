@@ -21,6 +21,20 @@ export const DEFAULT_LIMITS: UploadLimits = {
   video: { maxDimension: 1920, maxFrames: 1800 },
 };
 
+/**
+ * Still memes export at least this long on their longest edge (never past the image cap): small templates are
+ * upscaled so the text is rasterized sharply. GIFs and videos keep their native size (frame/size caps).
+ */
+export const STILL_EXPORT_MIN_EDGE = 1200;
+
+/** Pixel size for a still export of a `width`×`height` source under `limits`. */
+export function stillExportSize(width: number, height: number, limits: UploadLimits): { width: number; height: number } {
+  const longest = Math.max(width, height);
+  const target = Math.min(Math.max(longest, STILL_EXPORT_MIN_EDGE), limits.image.maxDimension);
+  const scale = Math.max(1, target / longest);
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
 export interface MediaFacts {
   kind: MediaKind;
   width: number;

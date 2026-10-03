@@ -4,6 +4,7 @@ import { ensureLayerFonts, exportMeme, ExportAbortedError, type DecodedMedia } f
 import {
   TAG_KINDS,
   limitViolations,
+  stillExportSize,
   tagSlug,
   type Meme,
   type TagKind,
@@ -77,6 +78,7 @@ export function SavePanel(props: SavePanelProps) {
     const out = await exportMeme(media, layers, {
       signal,
       onProgress: (value) => setProgress({ step: "Rendering", value }),
+      stillSize: stillExportSize(media.width, media.height, limits),
     });
     if (signal.aborted) throw new ExportAbortedError();
     return out;

@@ -29,7 +29,8 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
 
   const user = await apiUser(request, scoped("imgfan"));
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
-  expect(meme.outputAsset).toMatchObject({ kind: "image", width: 640, height: 480 });
+  // 640×480 template, exported upscaled to the 1200px minimum edge.
+  expect(meme.outputAsset).toMatchObject({ kind: "image", width: 1200, height: 900 });
   expect(meme.layers[0]).toMatchObject({ text: "when the e2e passes", textStyle: "mock" });
   expect(meme.layers[0]!.y).toBeGreaterThan(0.15); // dragged down from the default top position
   expect(meme.tags).toEqual(["movie"]);

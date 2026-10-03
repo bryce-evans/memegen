@@ -36,7 +36,13 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const t = media.times[frame] ?? 0;
-  const scale = displayWidth / media.width;
+  // Backing store at displayed size × device pixels, so text is rasterized at screen resolution instead of at the
+  // media's (often small) native size and then stretched. Layout is in fractions, so the result matches the export.
+  const dpr = window.devicePixelRatio || 1;
+  const pixelWidth = displayWidth > 0 ? Math.round(displayWidth * dpr) : media.width;
+  const pixelHeight = Math.max(1, Math.round((pixelWidth * media.height) / media.width));
+  /** CSS px per canvas px, for placing the selection handles. */
+  const boxScale = displayWidth > 0 ? displayWidth / pixelWidth : 0;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,8 +68,8 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!ctx) return;
-      composeFrame(ctx, image, layers, media.width, media.height, t);
-      setBoxes(layerBoxes(ctx, layers, media.width, media.height, t));
+      composeFrame(ctx, image, layers, pixelWidth, pixelHeight, t);
+      setBoxes(layerBoxes(ctx, layers, pixelWidth, pixelHeight, t));
       setError(null);
       setReady(true);
     };
@@ -73,7 +79,7 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
     return () => {
       cancelled = true;
     };
-  }, [media, frame, t, layers, fontsVersion]);
+  }, [media, frame, t, layers, fontsVersion, pixelWidth, pixelHeight]);
 
   function startDrag(e: PointerEvent<HTMLDivElement>, layer: TextLayer) {
     e.stopPropagation();
@@ -86,9 +92,10 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
 
   function moveDrag(e: PointerEvent<HTMLDivElement>) {
     const d = drag.current;
-    if (!d || d.pointerId !== e.pointerId || scale <= 0) return;
-    const x = clampAnchor(d.x0 + (e.clientX - d.startX) / scale / media.width);
-    const y = clampAnchor(d.y0 + (e.clientY - d.startY) / scale / media.height);
+    if (!d || d.pointerId !== e.pointerId || displayWidth <= 0) return;
+    const displayHeight = (displayWidth * media.height) / media.width;
+    const x = clampAnchor(d.x0 + (e.clientX - d.startX) / displayWidth);
+    const y = clampAnchor(d.y0 + (e.clientY - d.startY) / displayHeight);
     onMove(d.id, x, y);
   }
 
@@ -105,8 +112,8 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
       >
         <canvas
           ref={canvasRef}
-          width={media.width}
-          height={media.height}
+          width={pixelWidth}
+          height={pixelHeight}
           className="stage-canvas"
           data-testid="stage-canvas"
           data-ready={ready ? "true" : undefined}
@@ -126,10 +133,10 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
               ].join(" ")}
               title={box.overflow ? "Text does not fit the box at the minimum size" : layer.text}
               style={{
-                left: (box.cx - box.width / 2) * scale,
-                top: (box.cy - box.height / 2) * scale,
-                width: box.width * scale,
-                height: box.height * scale,
+                left: (box.cx - box.width / 2) * boxScale,
+                top: (box.cy - box.height / 2) * boxScale,
+                width: box.width * boxScale,
+                height: box.height * boxScale,
                 transform: `rotate(${box.angle}deg)`,
               }}
               onPointerDown={(e) => startDrag(e, layer)}

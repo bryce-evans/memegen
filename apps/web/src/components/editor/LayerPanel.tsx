@@ -80,6 +80,7 @@ export function LayerPanel({ media, layers, selectedId, frame, fonts, onSelect, 
         <LayerEditor
           key={selected.id}
           layer={selected}
+          layers={layers}
           media={media}
           frame={frame}
           fonts={fonts}
@@ -96,6 +97,8 @@ export function LayerPanel({ media, layers, selectedId, frame, fonts, onSelect, 
 
 interface LayerEditorProps {
   layer: TextLayer;
+  /** Every layer, for the animation preview. */
+  layers: readonly TextLayer[];
   media: DecodedMedia;
   frame: number;
   fonts: Asset[];
@@ -104,7 +107,7 @@ interface LayerEditorProps {
   onFontUploaded: (font: Asset) => void;
 }
 
-function LayerEditor({ layer, media, frame, fonts, onChange, onSeek, onFontUploaded }: LayerEditorProps) {
+function LayerEditor({ layer, layers, media, frame, fonts, onChange, onSeek, onFontUploaded }: LayerEditorProps) {
   const t = media.times[frame] ?? 0;
   const set = (patch: Partial<TextLayer>) => onChange((l) => ({ ...l, ...patch }));
 
@@ -187,7 +190,9 @@ function LayerEditor({ layer, media, frame, fonts, onChange, onSeek, onFontUploa
 
       <PlacementFields state={layerStateAt(layer, t)} animated={layer.keyframes.length > 0} onPlace={(patch) => onChange((l) => placeAt(l, t, patch))} />
 
-      {media.kind !== "image" && <AnimationPanel layer={layer} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />}
+      {media.kind !== "image" && (
+        <AnimationPanel layer={layer} layers={layers} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />
+      )}
     </div>
   );
 }

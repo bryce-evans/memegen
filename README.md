@@ -8,7 +8,7 @@ Design and decisions live in [ARCH.md](ARCH.md).
 |---|---|---|
 | Gallery: Popular, Recent, voting, comments | `apps/web` | http://localhost:5173/ (Popular), http://localhost:5173/recent |
 | Leaderboard | `apps/web` | http://localhost:5173/leaderboard |
-| Profiles (stats, badges, templates contributed; your favorites and recent activity) | `apps/web` | http://localhost:5173/u/mock-alice |
+| Profiles (stats, badges, templates contributed; your favorites and recent activity) | `apps/web` | http://localhost:5173/u/dana |
 | Editor + template browser (find/add templates, hot templates, usage charts) | `apps/web` | http://localhost:5173/create |
 | Tag pages (templates + memes for a tag) | `apps/web` | http://localhost:5173/t/oldschool |
 | API (memes, templates, votes, users) | `services/api` | http://localhost:4000 |
@@ -28,9 +28,10 @@ The editor and gallery are routes of one Vite app. Meme rendering (text overlay,
 Everything goes through `run.sh` and a config file:
 
 ```sh
-git clone --depth 1 https://github.com/jacebrowning/memegen demo/jacebrowning-memegen   # optional: fonts + ~260 templates
+git clone --depth 1 https://github.com/jacebrowning/memegen demo/jacebrowning-memegen   # fonts + ~260 templates (the sample memes need them)
+bunx playwright install chromium   # headless browser the seed renders sample memes in
 ./run.sh config/dev.env setup    # bun install, create databases if missing, migrate
-./run.sh config/dev.env seed     # mock users/memes/votes + the template import
+./run.sh config/dev.env seed     # template import, then sample users/memes/votes/comments
 ./run.sh config/dev.env dev      # storage :4001 + API :4000 + web :5173, reloading on change
 ```
 
@@ -54,7 +55,8 @@ Sign in with any username except the reserved `memegen` in the header. There are
 |---|---|
 | `setup` | `bun install`, create the database(s) if missing, run migrations |
 | `migrate` | apply pending migrations |
-| `seed` | load mock data if `SEED_MOCK=true`; import templates if `SEED_TEMPLATES_FROM` is set |
+| `seed` | import templates if `SEED_TEMPLATES_FROM` is set, then the sample dataset if `SEED_SAMPLE=true` |
+| `reset` | drop the database schema and wipe local storage, then `seed` *(dev only)* |
 | `dev` | migrate, then storage + API + Vite dev server with reload *(dev only)* |
 | `build` | production build of the web app (`apps/web/dist`) |
 | `start` | build, migrate, then run storage + API + `scripts/serve-web.ts`, which serves `dist` and proxies `/api` and `/storage` |
@@ -65,8 +67,8 @@ Sign in with any username except the reserved `memegen` in the header. There are
 
 Configs are plain `KEY=value` files:
 
-- **`config/dev.env`** (committed): local Postgres, local file storage, mock data on, all test commands allowed.
-- **`config/prod.env`** (gitignored; copy from `config/prod.env.example`): real user data. `MODE=prod` enables guards. `run.sh` refuses mock seeding, `dev`, `test`, and `e2e`, and requires a strong `INTERNAL_TOKEN` and a real `DATABASE_URL`.
+- **`config/dev.env`** (committed): local Postgres, local file storage, sample data on, all test commands allowed.
+- **`config/prod.env`** (gitignored; copy from `config/prod.env.example`): real user data. `MODE=prod` enables guards. `run.sh` refuses sample seeding, `dev`, `reset`, `test`, and `e2e`, and requires a strong `INTERNAL_TOKEN` and a real `DATABASE_URL`.
 
 ```sh
 cp config/prod.env.example config/prod.env   # then edit: DATABASE_URL, INTERNAL_TOKEN, S3_*
@@ -76,7 +78,7 @@ cp config/prod.env.example config/prod.env   # then edit: DATABASE_URL, INTERNAL
 
 Auth is still the dev placeholder, so put a real `AuthProvider` in place before exposing prod to untrusted users.
 
-Individual `bun run …` scripts (`dev`, `db:migrate`, `seed`, `seed:mock`) still work and fall back to `config/dev.env`.
+Individual `bun run …` scripts (`dev`, `db:migrate`, `seed`, `seed:sample`) still work and fall back to `config/dev.env`.
 
 ### Database
 
@@ -94,11 +96,14 @@ docker run -d --name memegen-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust 
 
 ### Seeding
 
-- **Templates and fonts** (`SEED_TEMPLATES_FROM`): imports Impact plus the OFL fonts and about 260 templates and variations from a [jacebrowning/memegen](https://github.com/jacebrowning/memegen) checkout. It dedupes by hash/slug, so re-runs are safe. Pass `--limit 20` through `seed` for a quick subset.
-- **Mock data** (`SEED_MOCK=true`, dev only): a deterministic dataset defined in `scripts/mock/data.ts`, with all media generated in code. The e2e suite uses the same dataset, and re-running is a no-op. It contains:
-  - authors `mock-alice`, `mock-bob`, `mock-carol`, `mock-dave`, plus voter accounts
-  - templates, with one variation, tagged `oldschool`/`movie`
-  - a dozen memes posted between 1 hour and 400 days ago, with votes, a private meme, and a draft
+- **Templates and fonts** (`SEED_TEMPLATES_FROM`): imports Impact plus the OFL fonts and about 260 templates and variations from a [jacebrowning/memegen](https://github.com/jacebrowning/memegen) checkout. It dedupes by hash/slug, so re-runs are safe. Pass `--limit 20` through `seed` for a quick subset (the sample dataset then can't find its templates).
+- **Sample data** (`SEED_SAMPLE=true`, dev only): the realistic dataset in `scripts/sample/data.ts`, so the dev app looks like a live site. It contains:
+  - twelve users (`dana`, `eli`, … `otto`) who post, vote, comment, reply, and favorite
+  - about 20 memes captioned on real templates (two animated GIFs), posted between 1 hour and 420 days ago, plus a private meme and a draft
+  - `programming` and `office` tags on memes
+
+  Only data is committed. During `seed`, each meme's image is rendered from its template by the same client renderer the editor uses (`@memegen/render`, in Playwright's headless Chromium) and stored like any upload. Seeding is offline and a no-op once `dana` exists. To start over (e.g. after changing the dataset): `./run.sh config/dev.env reset`.
+- **Mock data** (e2e only): `scripts/mock/data.ts`, a small dataset with generated gradient media and hand-written expectations. The e2e setup loads it into `memegen_e2e`; it is never seeded into dev.
 
 ## Tests
 
@@ -137,7 +142,7 @@ The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) agai
 - Popular (by period) and Recent feeds, voting (up +1; down removes the upvote and moves the negative downvote count, e.g. −2 → −3), checked against the mock dataset
 - sidebar order, leaderboard, profile stats, badges and templates contributed, the owner-only Favorites and Recent activity tabs
 - comments and replies on a meme
-- still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, and exported frame counts/audio checked with `ffprobe`
+- still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, the looping animation preview, and exported frame counts/audio checked with `ffprobe`
 - templates and variations, base and added tags, tag creation in the editor, tag search, hot templates, auto-loading template list
 - upload caps and custom fonts
 - skin selection: `?skin=`, the header switcher, persistence across reloads, a distinct look and favicon per skin

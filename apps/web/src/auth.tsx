@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { User } from "@memegen/shared";
-import { createSession, storedUser, storeUser } from "./api.ts";
+import { createSession, setSessionRejectedHandler, storedUser, storeUser } from "./api.ts";
 
 interface AuthValue {
   user: User | null;
@@ -12,6 +12,7 @@ const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(storedUser);
+  useEffect(() => setSessionRejectedHandler(() => setUser(null)), []);
 
   const signIn = useCallback(async (username: string) => {
     const { user } = await createSession(username);

@@ -5,7 +5,8 @@
 #
 #   setup    install deps, create the database if missing, run migrations
 #   migrate  apply pending migrations
-#   seed     load SEED_MOCK data and/or templates from SEED_TEMPLATES_FROM
+#   seed     import templates from SEED_TEMPLATES_FROM, then the SEED_SAMPLE dataset
+#   reset    wipe the database and local storage, then seed (dev only)
 #   dev      storage + api + Vite dev server with reload (dev only)
 #   build    production build of the web app
 #   start    build, then run storage + api + web server (apps/web/dist)
@@ -61,7 +62,7 @@ check_prod() {
   [[ "$MODE" == prod ]] || return 0
   [[ -n "${INTERNAL_TOKEN:-}" && "$INTERNAL_TOKEN" != dev-internal-token ]] ||
     die "prod requires a strong INTERNAL_TOKEN (e.g. openssl rand -hex 32)"
-  [[ "${SEED_MOCK:-false}" != true ]] || die "SEED_MOCK=true is not allowed in prod"
+  [[ "${SEED_SAMPLE:-false}" != true ]] || die "SEED_SAMPLE=true is not allowed in prod"
   [[ "$DATABASE_URL" != *CHANGE_ME* ]] || die "set a real DATABASE_URL in $CONFIG"
 }
 
@@ -94,6 +95,23 @@ migrate() {
   node packages/server-kit/src/migrate.ts
 }
 
+# Templates first: the sample memes are made from them.
+seed() {
+  migrate
+  local seeded=false
+  if [[ -n "${SEED_TEMPLATES_FROM:-}" ]]; then
+    [[ -d "$SEED_TEMPLATES_FROM" ]] ||
+      die "SEED_TEMPLATES_FROM=$SEED_TEMPLATES_FROM not found (git clone --depth 1 https://github.com/jacebrowning/memegen $SEED_TEMPLATES_FROM)"
+    node scripts/seed.ts --from "$SEED_TEMPLATES_FROM" "$@"
+    seeded=true
+  fi
+  if [[ "${SEED_SAMPLE:-false}" == true ]]; then
+    node scripts/sample/seed.ts
+    seeded=true
+  fi
+  [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_TEMPLATES_FROM or SEED_SAMPLE=true in $CONFIG)"
+}
+
 check_prod
 
 case "$COMMAND" in
@@ -113,19 +131,16 @@ case "$COMMAND" in
     migrate
     ;;
   seed)
-    migrate
-    seeded=false
-    if [[ "${SEED_MOCK:-false}" == true ]]; then
-      node scripts/mock/seed.ts
-      seeded=true
-    fi
-    if [[ -n "${SEED_TEMPLATES_FROM:-}" ]]; then
-      [[ -d "$SEED_TEMPLATES_FROM" ]] ||
-        die "SEED_TEMPLATES_FROM=$SEED_TEMPLATES_FROM not found (git clone --depth 1 https://github.com/jacebrowning/memegen $SEED_TEMPLATES_FROM)"
-      node scripts/seed.ts --from "$SEED_TEMPLATES_FROM" "$@"
-      seeded=true
-    fi
-    [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_MOCK=true or SEED_TEMPLATES_FROM in $CONFIG)"
+    seed "$@"
+    ;;
+  reset)
+    dev_only
+    [[ "${STORAGE_PROVIDER:-local}" == local ]] || die "reset only wipes local storage (STORAGE_PROVIDER=${STORAGE_PROVIDER})"
+    PGOPTIONS='-c client_min_messages=warning' psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 \
+      -c 'drop schema if exists public cascade' -c 'create schema public'
+    rm -rf "${LOCAL_STORAGE_DIR:-.data/storage}"
+    mkdir -p "${LOCAL_STORAGE_DIR:-.data/storage}"
+    seed "$@"
     ;;
   dev)
     dev_only

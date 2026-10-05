@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type CSSProperties, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import type { Asset, Meme } from "@memegen/shared";
 import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, MediaGrid, Spinner, Text } from "@memegen/ui";
@@ -103,17 +103,46 @@ export function MemeAge({ meme }: { meme: Meme }) {
   return <TimeAgo iso={meme.postedAt ?? meme.createdAt} className="age" data-testid="meme-age" />;
 }
 
-/**
- * Media row height as a fraction of a column's width (keep in sync with `.meme-grid` in styles.css).
- * A meme spans round(aspect × this) columns, 1 to MAX_SPAN, so wide memes get room instead of being cropped.
- */
-const ROW_PER_COLUMN = 0.8;
-const MAX_SPAN = 3;
+/** Width ÷ height, for the flowing meme rows; square when the asset has no dimensions. */
+function aspect(asset: Asset): number {
+  return asset.width && asset.height ? asset.width / asset.height : 1;
+}
 
-function columnSpan(asset: Asset, columns: number): number {
-  if (!asset.width || !asset.height) return 1;
-  const wanted = Math.round((asset.width / asset.height) * ROW_PER_COLUMN);
-  return Math.max(1, Math.min(wanted, MAX_SPAN, columns));
+/**
+ * Justified rows: splits items (by aspect) into rows that exactly fill `width`, each as close to `target` height as
+ * possible. A row closes at the first item that brings it to or below the target, keeping that item only if it lands
+ * nearer the target than stopping before it. The last, unfilled row stays at the target instead of stretching.
+ * Returns one height per item; an item's width is aspect × height. Half a pixel is held back so rounding never wraps.
+ */
+function justifyRows(aspects: readonly number[], width: number, gap: number, target: number): number[] {
+  const heights: number[] = [];
+  let start = 0;
+  while (start < aspects.length) {
+    let n = 0;
+    let sum = 0;
+    let height = Infinity;
+    let full = false;
+    while (start + n < aspects.length) {
+      const nextSum = sum + aspects[start + n]!;
+      const nextHeight = (width - gap * n - 0.5) / nextSum;
+      if (nextHeight > target) {
+        n++;
+        sum = nextSum;
+        height = nextHeight;
+        continue;
+      }
+      // This item fills the row: keep it if that lands nearer the target than stopping before it.
+      if (n === 0 || target - nextHeight <= height - target) {
+        n++;
+        height = nextHeight;
+      }
+      full = true;
+      break;
+    }
+    for (let i = 0; i < n; i++) heights.push(full ? height : target);
+    start += n;
+  }
+  return heights;
 }
 
 /** CSS length (px or rem) in px. */
@@ -122,40 +151,45 @@ function toPx(value: string): number {
   return value.trim().endsWith("rem") ? n * parseFloat(getComputedStyle(document.documentElement).fontSize) : n;
 }
 
-/**
- * Columns the grid's `repeat(auto-fill, minmax(--ui-grid-min, 1fr))` yields at its width. Computed from the width,
- * not the rendered tracks: a spanning card adds implicit tracks, which would otherwise feed back into the count.
- */
-function useColumnCount(ref: RefObject<HTMLDivElement | null>, mounted: boolean): number {
-  const [columns, setColumns] = useState(MAX_SPAN);
+interface RowBox {
+  width: number;
+  gap: number;
+  target: number;
+}
+
+/** The grid's content width, column gap, and target row height, re-measured on resize. */
+function useRowBox(ref: RefObject<HTMLDivElement | null>, mounted: boolean): RowBox | null {
+  const [box, setBox] = useState<RowBox | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!mounted || !el) return;
     const measure = () => {
       const style = getComputedStyle(el);
-      // Masonry skins lay the grid out as CSS columns; spans don't apply there.
-      if (style.display !== "grid") return setColumns(1);
-      const min = toPx(style.getPropertyValue("--ui-grid-min"));
-      const gap = parseFloat(style.columnGap) || 0;
-      setColumns(min > 0 ? Math.max(1, Math.floor((el.clientWidth + gap) / (min + gap))) : 1);
+      const next = {
+        width: el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+        gap: parseFloat(style.columnGap) || 0,
+        target: toPx(style.getPropertyValue("--meme-row-height")),
+      };
+      setBox((prev) => (prev && prev.width === next.width && prev.gap === next.gap && prev.target === next.target ? prev : next));
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, [ref, mounted]);
-  return columns;
+  return box;
 }
 
-export function MemeCard({ meme, onChange, span = 1 }: { meme: Meme; onChange: (meme: Meme) => void; span?: number }) {
+export function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (meme: Meme) => void; height?: number }) {
+  // Until the grid is measured, cards sit at the CSS default row height.
+  const style = { "--meme-aspect": aspect(meme.outputAsset), "--meme-height": height ? `${height}px` : undefined } as CSSProperties;
   return (
     <Card
       borderless
       className="meme-card"
       data-testid="meme-card"
       data-meme-id={meme.id}
-      data-span={span}
-      style={span > 1 ? { gridColumn: `span ${span}` } : undefined}
+      style={style}
       media={
         <Link to={`/m/${meme.id}`}>
           <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} />
@@ -189,15 +223,16 @@ export function MemeCard({ meme, onChange, span = 1 }: { meme: Meme; onChange: (
   );
 }
 
-/** Memes at their native aspect: one media height per row, wide memes spanning up to three columns. */
+/** Memes flow in justified rows at their native aspect: one height per row, widths vary, nothing cropped. */
 export function MemeGrid({ memes, onChange }: { memes: Meme[]; onChange: (meme: Meme) => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const columns = useColumnCount(ref, memes.length > 0);
+  const box = useRowBox(ref, memes.length > 0);
   if (memes.length === 0) return <EmptyState icon={<Icon name="image" />} title="No memes yet." />;
+  const heights = box && box.width > 0 ? justifyRows(memes.map((m) => aspect(m.outputAsset)), box.width, box.gap, box.target) : null;
   return (
     <MediaGrid ref={ref} className="meme-grid">
-      {memes.map((m) => (
-        <MemeCard key={m.id} meme={m} onChange={onChange} span={columnSpan(m.outputAsset, columns)} />
+      {memes.map((m, i) => (
+        <MemeCard key={m.id} meme={m} onChange={onChange} height={heights?.[i]} />
       ))}
     </MediaGrid>
   );

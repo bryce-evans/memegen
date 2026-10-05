@@ -1,9 +1,12 @@
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
 import { addKeyframeAt, clearAnimation, removeKeyframe, setWindow, type TextLayer, type WindowEdge } from "@memegen/shared";
 import { Button, Icon, IconButton, Inline, Panel, Text } from "@memegen/ui";
+import { AnimationPreview } from "./AnimationPreview.tsx";
 
 export interface AnimationPanelProps {
   layer: TextLayer;
+  /** Every layer, for the preview. */
+  layers: readonly TextLayer[];
   media: DecodedMedia;
   frame: number;
   onChange: (update: (layer: TextLayer) => TextLayer) => void;
@@ -16,8 +19,8 @@ const WINDOW_TEXT: Record<WindowEdge, { label: string; empty: string }> = {
   end: { label: "Shown until", empty: "the end" },
 };
 
-/** Visibility window and keyframes of one layer (animated media only). */
-export function AnimationPanel({ layer, media, frame, onChange, onSeek }: AnimationPanelProps) {
+/** Visibility window and keyframes of one layer (animated media only), then a looping preview of the whole meme. */
+export function AnimationPanel({ layer, layers, media, frame, onChange, onSeek }: AnimationPanelProps) {
   const t = media.times[frame] ?? 0;
   return (
     <Panel variant="inset" heading="Animation" className="animation">
@@ -64,6 +67,7 @@ export function AnimationPanel({ layer, media, frame, onChange, onSeek }: Animat
       >
         Clear animation
       </Button>
+      <AnimationPreview media={media} layers={layers} />
     </Panel>
   );
 }

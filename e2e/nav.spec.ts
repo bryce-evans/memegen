@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { signIn } from "./helpers.ts";
+import { openFeed, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 const navIds = (page: Page) =>
@@ -27,4 +27,20 @@ test("sidebar nav: browse entries in order, profile only when signed in", async 
     await expect(page).toHaveURL(url);
     await expect(page.getByTestId(id)).toHaveAttribute("aria-current", "page");
   }
+});
+
+test("a stored user the server no longer knows (e.g. after a DB reset) is signed out and feeds load", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "memegen.user",
+      JSON.stringify({ id: crypto.randomUUID(), username: "ghost", createdAt: new Date().toISOString() }),
+    ),
+  );
+  await page.reload();
+  await openFeed(page, { feed: "recent" });
+
+  await expect(page.getByTestId("meme-card").first()).toBeVisible();
+  await expect(page.getByTestId("nav-profile")).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("memegen.user"))).toBeNull();
 });

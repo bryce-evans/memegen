@@ -5,6 +5,7 @@
     "": {
       "name": "memegen",
       "dependencies": {
+        "@memegen/render": "workspace:*",
         "@memegen/server-kit": "workspace:*",
         "@memegen/shared": "workspace:*",
         "@memegen/storage": "workspace:*",

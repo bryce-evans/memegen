@@ -19,7 +19,7 @@
     "build": "bun run --cwd apps/web build",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "seed:mock": "node --env-file-if-exists=config/dev.env scripts/mock/seed.ts"
+    "seed:sample": "node --env-file-if-exists=config/dev.env scripts/sample/seed.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -29,6 +29,7 @@
     "yaml": "^2.9.1"
   },
   "dependencies": {
+    "@memegen/render": "workspace:*",
     "@memegen/server-kit": "workspace:*",
     "@memegen/shared": "workspace:*",
     "@memegen/storage": "workspace:*",

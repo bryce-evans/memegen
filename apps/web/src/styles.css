@@ -177,17 +177,21 @@
   white-space: nowrap;
 }
 
-/* Meme grids: native aspect, never cropped. Every image is one row tall (0.8 × the column minimum, matching
-   ROW_PER_COLUMN in memes.tsx); wide memes span up to 3 columns via an inline grid-column. The card shrinks to its
-   image so the hover overlay covers exactly the meme. */
-.meme-grid {
-  --meme-row-height: calc(var(--ui-grid-min) * 0.8);
-  grid-auto-flow: row dense;
+/* Meme feeds flow in justified rows instead of a grid: native aspect, never cropped, widths vary. MemeGrid
+   (justifyRows in memes.tsx) gives each card a row height (--meme-height) so every row fills the line at close to
+   the target --meme-row-height, which the code reads, so keep it a plain px/rem length; skins may override it
+   (Spectrum: 270px). Widths are --meme-aspect × that height. Before the first measurement cards sit at the target
+   height. The card shrinks to its image so the hover overlay covers exactly the meme. */
+.ui-media-grid.meme-grid {
+  --meme-row-height: 250px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
 .meme-grid .meme-card.ui-card.ui-card--borderless {
   position: relative;
-  justify-self: center;
-  width: fit-content;
+  flex: none;
+  width: calc(var(--meme-aspect) * var(--meme-height, var(--meme-row-height)));
   max-width: 100%;
   margin: 0;
   padding: 0;
@@ -198,11 +202,15 @@
   border-radius: 0;
   background: var(--ui-color-media-bg);
 }
+.meme-grid .ui-card-media a {
+  display: block;
+}
 .meme-grid .ui-card-media img,
 .meme-grid .ui-card-media video {
-  width: auto;
-  height: var(--meme-row-height);
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--meme-aspect);
   max-height: none;
   object-fit: contain;
 }
@@ -687,6 +695,17 @@
 .keyframes li.current span {
   color: var(--ui-color-primary);
   font-weight: var(--ui-font-weight-semibold);
+}
+.animation-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-3);
+}
+.animation-preview canvas {
+  border-radius: var(--ui-radius-media);
+  background: var(--ui-color-media-bg);
 }
 
 .save-actions {

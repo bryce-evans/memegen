@@ -1,5 +1,10 @@
 /* App-specific tweaks for the studio skin: app classes only, scoped like packages/ui/src/skins/studio.css. */
 
+/* Meme feeds flow in justified rows (.meme-grid in styles.css) here too, not in the skin's masonry columns. */
+:root[data-skin="studio"] .ui-media-grid.meme-grid {
+  display: flex;
+}
+
 /* ---- buttons: pills, gray secondary, near-black CTA ------------------------ */
 
 /* Toned toggles (upvote, favorite) keep their tint over the pressed style above. */

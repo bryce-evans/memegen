@@ -1,7 +1,7 @@
 /**
  * Writes the mock dataset (users, templates + variation, tags, memes spread over time, votes) into an
  * already-migrated database. Media is generated in code, so no external files are needed.
- * Used by `scripts/mock/seed.ts` (dev) and e2e global setup (fresh database).
+ * Used only by e2e global setup (fresh database); dev seeds the realistic dataset in scripts/sample.
  */
 import { createRequire } from "node:module";
 import { deflateSync, crc32 } from "node:zlib";
@@ -73,7 +73,7 @@ function gif(width: number, height: number, hue: number, frames: number): Uint8A
   return enc.bytes();
 }
 
-/** Seeds the mock dataset. Not idempotent; see `isSeeded`. */
+/** Seeds the mock dataset into a fresh database. */
 export async function seedMockData(sql: Sql, store: AssetStore): Promise<void> {
   const userIds = new Map<string, string>();
   const usernames = [...MOCK_AUTHORS, ...Array.from({ length: MOCK_VOTER_COUNT }, (_, i) => mockVoter(i))];
@@ -135,9 +135,4 @@ export async function seedMockData(sql: Sql, store: AssetStore): Promise<void> {
         values (${userIds.get(mockVoter(i))!}, ${row!.id}, ${i < m.up ? 1 : -1}, ${at})`;
     }
   }
-}
-
-export async function isSeeded(sql: Sql): Promise<boolean> {
-  const [row] = await sql`select 1 from users where username = ${MOCK_AUTHORS[0]}`;
-  return Boolean(row);
 }

@@ -51,3 +51,20 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   expect(slide.start).toBeCloseTo(0.2, 2);
   expect(probeStreams(await download(request, meme.outputAsset), ".gif")).toEqual({ video: 12 });
 });
+
+test("gif: the animation preview loops the meme and can be hidden", async ({ page, request }) => {
+  await editFixture(page, request, scoped("previewer"), "anim.gif");
+  await expect(page.getByTestId("timeline")).toHaveAttribute("data-complete", "true");
+  await page.getByTestId("layer-item").first().click();
+
+  await page.getByTestId("preview-toggle").click();
+  const preview = page.getByTestId("animation-preview");
+  await expect(preview).toBeVisible();
+  // 12 frames × 0.1s: the preview advances through frames and wraps around more than once.
+  await expect.poll(async () => Number(await preview.getAttribute("data-loop"))).toBeGreaterThanOrEqual(2);
+  const box = await preview.boundingBox();
+  expect(Math.max(box!.width, box!.height)).toBeLessThanOrEqual(240);
+
+  await page.getByTestId("preview-toggle").click();
+  await expect(preview).toHaveCount(0);
+});

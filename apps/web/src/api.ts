@@ -38,6 +38,13 @@ export function storeUser(user: User | null): void {
   else localStorage.removeItem(USER_KEY);
 }
 
+let onSessionRejected: () => void = () => {};
+
+/** Called when the API rejects the stored user (e.g. the dev database was reset); AuthProvider signs out. */
+export function setSessionRejectedHandler(handler: () => void): void {
+  onSessionRejected = handler;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly details: string[];
@@ -66,6 +73,11 @@ async function send(url: string, opts: RequestOptions = {}): Promise<Response> {
   }
   const res = await fetch(url, { method: opts.method ?? "GET", headers, body, signal: opts.signal });
   if (!res.ok) {
+    // The stored user no longer exists server-side: forget it, so the app falls back to signed out.
+    if (res.status === 401 && user) {
+      storeUser(null);
+      onSessionRejected();
+    }
     let message = `${res.status} ${res.statusText}`;
     let details: string[] = [];
     try {

@@ -1,5 +1,10 @@
 /* App-specific tweaks for the spectrum skin: app classes only, scoped like packages/ui/src/skins/spectrum.css. */
 
+/* Taller meme rows than the other skins, matching Spectrum's larger grid tiles. */
+:root[data-skin="spectrum"] .ui-media-grid.meme-grid {
+  --meme-row-height: 270px;
+}
+
 /* ---- buttons: Spectrum 2 pills -------------------------------------------------------------------------- */
 
 /* The one accent-blue action, like Firefly's "+ New" atop the nav rail. Buttons read their colors from

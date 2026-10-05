@@ -55,6 +55,7 @@ flowchart LR
 - Per-layer visibility window `start/end` (seconds, null = unbounded).
 - Per-layer `keyframes[] {t, x, y, opacity}`; linear interpolation, clamped at the ends (`packages/shared/src/animation.ts`). Empty keyframes = fixed layer.
 - The editor shows every decoded frame on a timeline; "set keyframe" stores the current frame's timestamp, which is how per-frame placement works.
+- The Animation panel ends with a **Preview** toggle: a small (≤ 240px) canvas that loops the whole meme in real time with the export's compositor (`composeFrame`), each frame shown for its own duration and the layers evaluated at the frame's start time, exactly as the GIF/MP4 export does. Frames that decode too slowly are skipped rather than slowing the clock, so the timing stays true. It reads the latest layers on every frame, so edits show while it plays. Unlike the stage's Play, it has no selection handles and uses the export's timing.
 - Every layer edit rule lives in `animation.ts` as a pure `TextLayer → TextLayer` function, and the editor only applies them: `placeAt` (static layers move their anchor, animated layers get a keyframe at the current time; x/y clamped to -0.5..1.5 by `clampAnchor`, for dragging and the X/Y fields alike), `addKeyframeAt`, `removeKeyframe` (removing the last keyframe keeps its state as the static position), `clearAnimation` and `setWindow` (an edge that would invert the window clears the other edge).
 
 ### Storage (component 1)
@@ -106,7 +107,7 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - Saved = row exists (`posted_at` null). Posted = `posted_at` set. `visibility` is `public` (default) or `private`.
 - Gallery and public profiles list memes that are posted **and** public ("listed"). Private memes are visible only to their owner and can't be voted on. A meme opened by id is readable when public (drafts included) or owned by the viewer.
 - These rules live once in `services/api/src/rows.ts` as SQL fragments (`memeListed`, `memeVisibleTo`, `memeOpenTo`, `templateVisibleTo`) plus `requireListed` for loaded rows (votes, favorites, comments).
-- Meme grids show media at native aspect, never cropped: every image is one row tall (0.8 × `--ui-grid-min`), and a meme spans `round(aspect × 0.8)` columns, 1 to 3, clamped to the columns the grid has (computed from its width and tokens, not its rendered tracks, which a spanning card inflates). `grid-auto-flow: dense` backfills gaps, so a later narrow meme can sit beside an earlier wide one. Masonry skins ignore spans.
+- Meme feeds flow in justified rows, not a grid: media at native aspect, never cropped, widths vary. `justifyRows` (`apps/web/src/components/memes.tsx`) splits the memes into rows that exactly fill the measured width, each as close as possible to the target `--meme-row-height`, breaking a row before or after the item that crosses the target, whichever lands nearer. The target is 250px in every skin except Spectrum (270px); it is its own token rather than derived from `--ui-grid-min`, so a skin with dense template tiles (Google) still gets full-size memes. The last row stays at the target height, left-aligned. Rows can shrink as well as grow, which pure-CSS flex-grow rows can't; that is why this is JS (a ResizeObserver re-runs it on resize). Every skin uses it, including Studio, whose generic masonry columns still apply to other media grids.
 - Grid cards shrink to their image; title, author, tags, votes, star and comment count sit on a scrim (`--ui-color-scrim` / `--ui-color-on-scrim`, dark in every skin) that fades in from the bottom and slides up on hover or keyboard focus. Devices without hover (`@media (hover: none)`) always show it. The overlay stays in the DOM (opacity, not `display`), so it remains reachable by keyboard and automation.
 
 ### API code layout (`services/api`)
@@ -144,6 +145,7 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 
 ### Auth (placeholder)
 - No passwords yet. `POST /api/session {username}` finds or creates the user; the client sends `X-User-Id` on requests.
+- The client drops its stored user when the API answers 401 to a request that carried `X-User-Id` (the user no longer exists, e.g. after `./run.sh config/dev.env reset`), so the app falls back to signed out instead of failing every request.
 - Behind an `AuthProvider` interface (`packages/server-kit/src/auth.ts`); a real provider (OAuth/session) replaces `HeaderAuthProvider` without touching route code.
 - **Not secure**: anyone can act as anyone. Fine for local development only.
 
@@ -162,7 +164,8 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 ### Testing
 - `node --test` (`bun run test`): pure logic in `packages/shared` (interpolation, limits, fit-to-box layout) plus storage/API behavior through `app.request()` against a fresh `memegen_test` schema (caps, ranges, stats, hierarchy, visibility, votes, usage, tags).
 - Playwright (`bun run test:e2e`): full browser flows against real servers on separate ports and a fresh `memegen_e2e` DB. Exported files are checked with `ffprobe` (frame counts, audio passthrough). Uses branded Chrome, since Playwright's Chromium lacks H.264/AAC for WebCodecs.
-- Mock dataset (`scripts/mock/data.ts`, written by `seed-data.ts`; `seed.ts` is the dev CLI): deterministic users, templates, memes backdated across periods, and votes, with expected stats and orderings exported for specs. Rankings and stats in `MOCK_EXPECT` are hand-written as an independent oracle; facts like which memes are hidden are derived from `MOCK_MEMES`. `./run.sh config/dev.env seed` loads it into dev (`SEED_MOCK=true`; refused in prod); e2e setup loads it into `memegen_e2e`. Media is generated in code. Both seed scripts share their template SQL (`scripts/lib.ts`) and build the asset store with `assetStoreFromEnv`.
+- Mock dataset (`scripts/mock/data.ts`, written by `seed-data.ts`): e2e only. Deterministic users, templates, memes backdated across periods, and votes, with expected stats and orderings exported for specs. Rankings and stats in `MOCK_EXPECT` are hand-written as an independent oracle; facts like which memes are hidden are derived from `MOCK_MEMES`. e2e setup loads it into `memegen_e2e`. Media is generated in code. Both seed paths share their template SQL (`scripts/lib.ts`) and build the asset store with `assetStoreFromEnv`.
+- Sample dataset (`scripts/sample/data.ts`, written by `scripts/sample/seed.ts`): the dev DB's content, so dev looks like a real site instead of placeholders. It is committed as code, not as a DB dump: dumps go stale with every migration and can't carry media, while the fixture refers to templates by slug and survives schema changes. Memes are made from the jacebrowning templates (`SEED_TEMPLATES_FROM`, imported first). Their images are rendered at seed time by `@memegen/render` (the editor's export path) in Playwright's headless Chromium. The page and every asset it loads are served from the asset store through `page.route`, so seeding needs no running services and no network. Rendering happens before any DB write, so a browser failure leaves the DB untouched. `./run.sh config/dev.env seed` loads it (`SEED_SAMPLE=true`; refused in prod); `reset` (dev only) drops the schema and local storage, then seeds again.
 - e2e specs reuse contracts instead of copying them: the skin matrix is `SKIN_IDS` (`@memegen/ui/skin-ids`, React-free), expected slugs come from `tagSlug`. API setup goes through `apiPost`/`apiTemplate`/`apiMeme` in `e2e/helpers.ts`.
 - Each e2e spec runs once per skin (one Playwright project per skin). Identities are suffixed per project (`scoped()`), and vote assertions are relative to what's shown, so all projects share one seeded DB.
 - The UI exposes `data-testid` hooks plus readiness markers (`stage-canvas[data-ready]`, `timeline[data-complete]`), so specs wait on state rather than sleeps.
@@ -177,7 +180,7 @@ Rendered outputs go through the same caps, so an export over 20 MB is rejected.
 - `run.sh <config> <command>` is the single entry point. A config is a plain `KEY=value` file. `run.sh` exports it literally (no shell expansion), and Node's `--env-file` reads the same format as a fallback.
 - `config/dev.env` is committed with no secrets. `config/prod.env` is gitignored and copied from `config/prod.env.example`.
 - `MODE=prod` guards:
-  - mock seeding, `dev`, `test`, and `e2e` are refused
+  - sample seeding, `dev`, `reset`, `test`, and `e2e` are refused
   - `INTERNAL_TOKEN` must be set and not the dev value
   - placeholder `DATABASE_URL`s are rejected
   - masked values only in `config` output

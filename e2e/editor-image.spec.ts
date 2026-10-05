@@ -1,6 +1,6 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme } from "@memegen/shared";
-import { apiGet, download, dragLayer, editFixture, memeCard, memeIdFromUrl, openFeed, stagePixels } from "./helpers.ts";
+import { apiGet, download, dragLayer, editFixture, memeCard, memeIdFromUrl, openFeed, stagePixels, tagChip } from "./helpers.ts";
 
 test("still image: edit and drag text on a template, tag, save draft, post, show in Recent", async ({ page, request }) => {
   const { user } = await editFixture(page, request, scoped("imgfan"), "still.png");
@@ -33,13 +33,14 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   const [source, output] = await Promise.all([download(request, meme.sourceAsset), download(request, meme.outputAsset)]);
   expect(output.equals(source)).toBe(false);
 
-  // Drafts never reach the gallery; posting publishes.
+  // Drafts never reach the gallery; posting publishes. Tags show on the meme's page, not on gallery cards.
   await page.getByTestId("post-meme").click();
   await expect(page.getByTestId("meme-status")).toContainText("posted");
+  await expect(tagChip(page, "movie")).toBeVisible();
 
   await openFeed(page, { feed: "recent" });
   const card = memeCard(page, id);
   await expect(card).toBeVisible();
-  await expect(card.getByTestId("tag-chip")).toHaveAttribute("data-tag", "movie");
   await expect(card.getByTestId("meme-age")).toHaveText(/now|ago/);
+  await expect(card.getByTestId("tag-chip")).toHaveCount(0);
 });

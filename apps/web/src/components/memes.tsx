@@ -8,7 +8,6 @@ import { plural } from "../format.ts";
 import { useAction } from "../useAction.ts";
 import type { Paged } from "../usePaged.ts";
 import { ErrorView, LoadMoreButton, MediaView, TimeAgo } from "./common.tsx";
-import { TagChips } from "./tags.tsx";
 
 /** 👍/👎 with up/down counts (downvotes shown negative); clicking your current vote clears it. */
 export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
@@ -202,7 +201,6 @@ export function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (me
         <MemeAge meme={meme} />
         <MemeBadges meme={meme} />
       </CardMeta>
-      <TagChips slugs={meme.tags} />
       <div className="meme-card-actions">
         <VoteButtons meme={meme} onChange={onChange} />
         <FavoriteButton meme={meme} onChange={onChange} />

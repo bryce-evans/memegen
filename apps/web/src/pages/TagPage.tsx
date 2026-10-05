@@ -2,7 +2,6 @@ import { useParams } from "react-router-dom";
 import type { Template } from "@memegen/shared";
 import { Badge, EmptyState, Icon, PageHeader, Text } from "@memegen/ui";
 import { getTag, listTemplates } from "../api.ts";
-import { useAuth } from "../auth.tsx";
 import { ErrorView, LoadMoreButton } from "../components/common.tsx";
 import { GalleryFeed } from "../components/feed.tsx";
 import { TemplateGrid } from "../components/templates.tsx";
@@ -12,9 +11,8 @@ import { usePaged } from "../usePaged.ts";
 
 export function TagPage() {
   const { slug = "" } = useParams();
-  const { user } = useAuth();
   const { data: tag, error } = useAsync(slug, () => getTag(slug));
-  const templates = usePaged<Template>(`${slug}:${user?.id ?? ""}`, (offset) => listTemplates({ tag: slug, offset }));
+  const templates = usePaged<Template>(slug, (offset) => listTemplates({ tag: slug, offset }));
 
   if (error !== null) return <ErrorView error={error} />;
 

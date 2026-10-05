@@ -1,7 +1,17 @@
 import { leaderboardQuerySchema, pageQuerySchema, sessionSchema, type User, type UserProfile } from "@memegen/shared";
 import { page, parse, parseJson, requireInternal, toUser, type Sql, type UserRow } from "@memegen/server-kit";
 import { findUserByName, requireUser, type ApiApp } from "../access.ts";
-import { memeListed, memeSelect, memeVisibleTo, toMeme, type MemeRow } from "../rows.ts";
+import {
+  memeListed,
+  memeSelect,
+  memeVisibleTo,
+  templateSelect,
+  templateVisibleTo,
+  toMeme,
+  withVariations,
+  type MemeRow,
+  type TemplateRow,
+} from "../rows.ts";
 import { leaderboard, publicStats, userStats } from "../stats.ts";
 
 const pageQuery = pageQuerySchema();
@@ -49,6 +59,19 @@ export function register(app: ApiApp, sql: Sql): void {
       order by coalesce(m.posted_at, m.created_at) desc, m.id
       offset ${offset} limit ${limit + 1}`;
     return c.json(page(rows.map(toMeme), offset, limit));
+  });
+
+  /** Templates the user added (variations included), newest first; the owner also sees private ones. */
+  app.get("/api/users/:username/templates", async (c) => {
+    const owner = await findUserByName(sql, c.req.param("username"));
+    const { offset, limit } = parse(pageQuery, c.req.query());
+    const viewerId = c.get("user")?.id ?? null;
+    const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
+      where t.owner_id = ${owner.id} and ${templateVisibleTo(sql, viewerId)}
+      order by t.created_at desc, t.id
+      offset ${offset} limit ${limit + 1}`;
+    const { items, nextOffset } = page(rows, offset, limit);
+    return c.json({ items: await withVariations(sql, items, viewerId), nextOffset });
   });
 
   app.get("/internal/users/:username/stats", async (c) => {

@@ -94,9 +94,7 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   expect(meme.tags).toEqual([teamSlug]);
 
   // The meme is found under the template's tag; the parent template too.
-  await page.getByTestId("tag-search").fill("mov");
-  await page.locator('[data-testid="tag-suggestion"][data-tag="movie"]').click();
-  await expect(page).toHaveURL(/\/t\/movie$/);
+  await page.goto("/t/movie");
   await expect(page.getByTestId("tag-title")).toContainText(/movie/i);
   await expect(page.getByTestId("tag-templates")).toContainText(base);
   await expect(page.getByTestId("tag-memes").locator(`[data-meme-id="${id}"]`)).toBeVisible();

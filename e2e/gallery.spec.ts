@@ -5,6 +5,7 @@ import { expect, scoped, test } from "./test.ts";
 
 test("gallery: popular all time and this month, recent newest first; hidden memes stay hidden", async ({ page }) => {
   await page.goto("/recent");
+  await signIn(page, scoped("browser"));
 
   // Popular (best) over all time.
   await openFeed(page, { feed: "popular", period: "all" });

@@ -4,13 +4,14 @@ import { layerFontIds, loadFont } from "@memegen/render";
 import { newTextLayer, placeAt, type Asset, type TextLayer } from "@memegen/shared";
 import { Alert, PageHeader, Spinner } from "@memegen/ui";
 import { fontUrl, listFonts } from "../api.ts";
-import { useAuth } from "../auth.tsx";
+import { useUser } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { CreateStart } from "../components/editor/CreateStart.tsx";
 import { LayerPanel } from "../components/editor/LayerPanel.tsx";
 import { SavePanel } from "../components/editor/SavePanel.tsx";
 import { defaultFontId, sourceRef, useEditorSession, type Session, type SourceRef } from "../components/editor/session.ts";
 import { Stage } from "../components/editor/Stage.tsx";
+import { TemplateEditPanel } from "../components/editor/TemplateEditPanel.tsx";
 import { TemplateSavePanel } from "../components/editor/TemplateSavePanel.tsx";
 import { Timeline } from "../components/editor/Timeline.tsx";
 import { TemplateDetails } from "../components/templateDetails.tsx";
@@ -19,9 +20,10 @@ const LOADING_TITLES: Record<SourceRef["kind"], string> = {
   meme: "Edit meme",
   template: "Loading template",
   "new-template": "Template Editor",
+  "edit-template": "Edit template",
 };
 
-/** `/create`: the start page, or the editor for `?meme=` / `?template=` / `?newTemplate=`. */
+/** `/create`: the start page, or the editor for `?meme=` / `?template=` / `?newTemplate=` / `?editTemplate=`. */
 export function Editor() {
   const location = useLocation();
   const [params] = useSearchParams();
@@ -43,7 +45,7 @@ function EditorSession({ source }: { source: SourceRef }) {
 
 function Workspace({ session }: { session: Session }) {
   const { media, source, limits } = session;
-  const { user } = useAuth();
+  const user = useUser();
   const [fonts, setFonts] = useState<Asset[]>(session.fonts);
   const [layers, setLayers] = useState<TextLayer[]>(session.layers);
   const [selectedId, setSelectedId] = useState<string | null>(session.layers[0]?.id ?? null);
@@ -54,7 +56,7 @@ function Workspace({ session }: { session: Session }) {
   const animated = media.kind !== "image";
   const t = media.times[frame] ?? 0;
   const selectedLayer = layers.find((l) => l.id === selectedId) ?? null;
-  const isOwnMeme = source.kind !== "meme" || source.meme.owner.id === user?.id;
+  const isOwnMeme = source.kind !== "meme" || source.meme.owner.id === user.id;
 
   // Load every referenced font; redraw (re-measure) once each is ready.
   const fontKey = layerFontIds(layers).sort().join(",");
@@ -124,6 +126,7 @@ function Workspace({ session }: { session: Session }) {
   return (
     <>
       {source.kind === "new-template" && <PageHeader title="Template Editor" titleProps={{ "data-testid": "editor-title" }} />}
+      {source.kind === "edit-template" && <PageHeader title="Edit template" titleProps={{ "data-testid": "editor-title" }} />}
       <section className="editor">
         <div className="editor-main">
           <Stage
@@ -169,6 +172,8 @@ function Workspace({ session }: { session: Session }) {
           />
           {source.kind === "new-template" ? (
             <TemplateSavePanel asset={source.asset} layers={layers} />
+          ) : source.kind === "edit-template" ? (
+            <TemplateEditPanel template={source.template} layers={layers} canEdit={source.template.owner.id === user.id} />
           ) : (
             <SavePanel
               media={media}

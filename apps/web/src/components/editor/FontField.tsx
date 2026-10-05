@@ -1,7 +1,6 @@
 import { FONT_ACCEPT, type Asset } from "@memegen/shared";
 import { Field, FileButton, Icon, Inline, SelectField } from "@memegen/ui";
 import { uploadAsset } from "../../api.ts";
-import { useAuth } from "../../auth.tsx";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
 
@@ -9,13 +8,12 @@ export interface FontFieldProps {
   value: string | null;
   fonts: Asset[];
   onChange: (fontAssetId: string | null) => void;
-  /** A signed-in user uploaded a font for this layer. */
+  /** The user uploaded a font for this layer. */
   onUploaded: (font: Asset) => void;
 }
 
-/** Font picker plus upload (signed-in users). */
+/** Font picker plus upload. */
 export function FontField({ value, fonts, onChange, onUploaded }: FontFieldProps) {
-  const { user } = useAuth();
   const upload = useAction();
 
   async function uploadFont(file: File) {
@@ -45,21 +43,19 @@ export function FontField({ value, fonts, onChange, onUploaded }: FontFieldProps
               </option>
             ))}
           </SelectField>
-          {user && (
-            <FileButton
-              icon={<Icon name="upload" />}
-              data-testid="font-upload"
-              accept={FONT_ACCEPT}
-              disabled={upload.busy}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) void uploadFont(file);
-              }}
-            >
-              {upload.busy ? "Uploading…" : "Upload font"}
-            </FileButton>
-          )}
+          <FileButton
+            icon={<Icon name="upload" />}
+            data-testid="font-upload"
+            accept={FONT_ACCEPT}
+            disabled={upload.busy}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void uploadFont(file);
+            }}
+          >
+            {upload.busy ? "Uploading…" : "Upload font"}
+          </FileButton>
         </Inline>
       </Field>
       {upload.error !== null && <ErrorView error={upload.error} testId="editor-error" />}

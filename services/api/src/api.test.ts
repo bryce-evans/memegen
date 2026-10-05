@@ -168,6 +168,22 @@ test("profiles count the public templates a user added, variations included", as
   assert.equal(await count("/api/users/bob", null), 0);
 });
 
+test("a user's templates: variations included, newest first; private ones only for their owner", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const base = await makeTemplate(alice);
+  const tweak = await makeTemplate(alice, { name: "Tweak", parentId: base.id });
+  const hidden = await makeTemplate(alice, { name: "Hidden", isPublic: false });
+  await makeTemplate(bob, { name: "Not hers" });
+
+  const names = async (viewer: User | null) =>
+    (await call<Page<Template>>("GET", "/api/users/alice/templates", viewer)).body.items.map((t) => t.name);
+  assert.deepEqual(await names(alice), [hidden.name, tweak.name, base.name]);
+  assert.deepEqual(await names(bob), [tweak.name, base.name]);
+  assert.deepEqual(await names(null), [tweak.name, base.name]);
+  assert.equal((await call("GET", "/api/users/nobody/templates", null)).status, 404);
+});
+
 test("leaderboard: posters only, ordered by the chosen stat with tie-breaks, public stats only", async () => {
   const alice = await signIn("alice");
   const bob = await signIn("bob");

@@ -1,4 +1,4 @@
-import { apiTemplate, apiUpload, apiUser } from "./helpers.ts";
+import { apiTemplate, apiUpload, apiUser, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("templates: the create page loads more matches as the end of the list scrolls into view", async ({ page, request }) => {
@@ -12,6 +12,7 @@ test("templates: the create page loads more matches as the end of the list scrol
   }
 
   await page.goto("/create");
+  await signIn(page, scoped("scroll-viewer"));
   await page.getByTestId("template-search").fill(prefix);
   // The search is debounced; wait until the grid shows it, or the unfiltered list could satisfy the count.
   const grid = page.getByTestId("template-grid");

@@ -1,6 +1,0 @@
-/* Per-skin tweaks to app classes (packages/ui skins style only `.ui-*` components). Loaded after styles.css. */
-@import "./apple.css";
-@import "./matte.css";
-@import "./google.css";
-@import "./studio.css";
-@import "./spectrum.css";

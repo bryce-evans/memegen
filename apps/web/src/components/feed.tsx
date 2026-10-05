@@ -2,7 +2,6 @@ import { useSearchParams } from "react-router-dom";
 import { GALLERY_SORTS, PERIODS, type GallerySort, type Meme, type Period } from "@memegen/shared";
 import { PageHeader, SegmentedControl, SidebarSection, useSkin } from "@memegen/ui";
 import { getGallery } from "../api.ts";
-import { useAuth } from "../auth.tsx";
 import { usePaged } from "../usePaged.ts";
 import { MemeFeed } from "./memes.tsx";
 
@@ -115,11 +114,8 @@ export function GalleryFilters({ kind, placement }: { kind: FeedKind; placement:
 
 /** Paged meme grid for one feed kind, optionally limited to a tag. */
 export function GalleryFeed({ kind, tag, title }: { kind: FeedKind; tag?: string; title: string }) {
-  const { user } = useAuth();
   const { config, period, sort } = useFeedFilters(kind);
-  const list = usePaged<Meme>(`${period}:${sort}:${tag ?? ""}:${user?.id ?? ""}`, (offset) =>
-    getGallery({ period, sort, tag, offset }),
-  );
+  const list = usePaged<Meme>(`${period}:${sort}:${tag ?? ""}`, (offset) => getGallery({ period, sort, tag, offset }));
   // Filters beside the title show the choice; elsewhere the title names it.
   const filtersHere = useFiltersAt(kind, "header");
   const subtitle = [config.sortControl && SORT_LABELS[sort], config.periodControl && PERIOD_LABELS[period]].filter(Boolean);

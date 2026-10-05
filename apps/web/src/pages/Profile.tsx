@@ -1,17 +1,26 @@
 import { useParams, useSearchParams } from "react-router-dom";
-import { badgesFor, type Meme, type Page } from "@memegen/shared";
-import { Badge, PageHeader, SegmentedControl, Text } from "@memegen/ui";
-import { getMyActivity, getMyFavorites, getUser, getUserMemes, type PageParams } from "../api.ts";
-import { useAuth } from "../auth.tsx";
-import { ErrorView } from "../components/common.tsx";
+import { badgesFor, type Meme, type Page, type Template } from "@memegen/shared";
+import { Badge, EmptyState, Icon, PageHeader, SegmentedControl, Text } from "@memegen/ui";
+import { getMyActivity, getMyFavorites, getUser, getUserMemes, getUserTemplates, type PageParams } from "../api.ts";
+import { useUser } from "../auth.tsx";
+import { ErrorView, LoadMoreButton } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
+import { TemplateGrid } from "../components/templates.tsx";
 import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
-const PROFILE_TABS = ["memes", "favorites", "activity"] as const;
+/** Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own. */
+const PUBLIC_TABS = ["memes", "templates"] as const;
+const PROFILE_TABS = [...PUBLIC_TABS, "favorites", "activity"] as const;
 type ProfileTab = (typeof PROFILE_TABS)[number];
-const TAB_LABELS: Record<ProfileTab, string> = { memes: "Memes", favorites: "Favorites", activity: "Recent activity" };
-const LOADERS: Record<Exclude<ProfileTab, "memes">, (page: PageParams) => Promise<Page<Meme>>> = {
+type MemeTab = Exclude<ProfileTab, "templates">;
+const TAB_LABELS: Record<ProfileTab, string> = {
+  memes: "Memes",
+  templates: "Templates",
+  favorites: "Favorites",
+  activity: "Recent activity",
+};
+const LOADERS: Record<Exclude<MemeTab, "memes">, (page: PageParams) => Promise<Page<Meme>>> = {
   favorites: getMyFavorites,
   activity: getMyActivity,
 };
@@ -19,15 +28,12 @@ const LOADERS: Record<Exclude<ProfileTab, "memes">, (page: PageParams) => Promis
 export function Profile() {
   const { username = "" } = useParams();
   const [params, setParams] = useSearchParams();
-  const { user } = useAuth();
+  const user = useUser();
   const { data: profile, error } = useAsync(username, () => getUser(username));
-  // Favorites and recent activity (votes) are the owner's own; everyone else only sees the memes tab.
-  const isOwner = user?.username === username;
+  const isOwner = user.username === username;
+  const tabs: readonly ProfileTab[] = isOwner ? PROFILE_TABS : PUBLIC_TABS;
   const tabParam = params.get("tab");
-  const tab: ProfileTab = (isOwner && PROFILE_TABS.find((t) => t === tabParam)) || "memes";
-  const memes = usePaged<Meme>(`${username}:${tab}:${user?.id ?? ""}`, (offset) =>
-    tab === "memes" ? getUserMemes(username, { offset }) : LOADERS[tab]({ offset }),
-  );
+  const tab: ProfileTab = tabs.find((t) => t === tabParam) ?? "memes";
 
   if (error !== null) return <ErrorView error={error} />;
 
@@ -70,16 +76,41 @@ export function Profile() {
         )}
         {profile && <Text tone="muted">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</Text>}
       </header>
-      {isOwner && (
-        <SegmentedControl
-          aria-label="Show"
-          className="profile-tabs"
-          value={tab}
-          onChange={(next) => setParams(next === "memes" ? {} : { tab: next })}
-          options={PROFILE_TABS.map((t) => ({ value: t, label: TAB_LABELS[t], testId: `profile-tab-${t}` }))}
-        />
+      <SegmentedControl
+        aria-label="Show"
+        className="profile-tabs"
+        value={tab}
+        onChange={(next) => setParams(next === "memes" ? {} : { tab: next })}
+        options={tabs.map((t) => ({ value: t, label: TAB_LABELS[t], testId: `profile-tab-${t}` }))}
+      />
+      {tab === "templates" ? (
+        <ProfileTemplates username={username} editable={isOwner} />
+      ) : (
+        <ProfileMemes username={username} tab={tab} />
       )}
-      <MemeFeed list={memes} data-tab={tab} />
     </section>
+  );
+}
+
+function ProfileMemes({ username, tab }: { username: string; tab: MemeTab }) {
+  const memes = usePaged<Meme>(`${username}:${tab}`, (offset) =>
+    tab === "memes" ? getUserMemes(username, { offset }) : LOADERS[tab]({ offset }),
+  );
+  return <MemeFeed list={memes} data-tab={tab} />;
+}
+
+/** Templates the user added; on their own profile each one opens in the template editor. */
+function ProfileTemplates({ username, editable }: { username: string; editable: boolean }) {
+  const templates = usePaged<Template>(username, (offset) => getUserTemplates(username, { offset }));
+  return (
+    <>
+      <TemplateGrid
+        list={templates}
+        editable={editable}
+        empty={<EmptyState icon={<Icon name="image" />} title="No templates yet." />}
+        data-testid="profile-templates"
+      />
+      <LoadMoreButton hasMore={templates.hasMore} loading={templates.loading} onLoadMore={templates.loadMore} label="More templates" />
+    </>
   );
 }

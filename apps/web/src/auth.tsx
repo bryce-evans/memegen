@@ -35,3 +35,10 @@ export function useAuth(): AuthValue {
   if (!value) throw new Error("useAuth must be used inside <AuthProvider>");
   return value;
 }
+
+/** The signed-in user. The app renders only behind the sign-in gate (`App.tsx`), so pages always have one. */
+export function useUser(): User {
+  const { user } = useAuth();
+  if (!user) throw new Error("useUser must be used behind the sign-in gate");
+  return user;
+}

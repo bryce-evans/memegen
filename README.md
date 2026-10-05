@@ -38,12 +38,13 @@ bunx playwright install chromium   # headless browser the seed renders sample me
 Then open:
 
 - **Popular / Recent**: http://localhost:5173/ ranks by score over today, week, month, year, or all time; http://localhost:5173/recent lists the newest posts. Open a meme to vote and join its discussion (comments with replies).
-- **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎) and how many templates the user contributed. Star (☆) other people's memes to save them; your own profile has Favorites and Recent activity (everything you liked or disliked, newest first) next to your memes.
+- **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎), how many templates the user contributed, and a Templates tab listing them. Star (☆) other people's memes to save them; your own profile has Favorites and Recent activity (everything you liked or disliked, newest first) next to your memes, and Edit on each of your templates to rename it and change its default text boxes.
 - **Create**: http://localhost:5173/create. Every meme starts from a template: find one (the list loads more as you scroll), or add your own media as a new template: upload it, place its default text boxes in the Template Editor, name and tag it, and confirm. Opening a template shows its tags, usage, and variations under the image. Templates show who added them; built-in ones are added by the reserved `memegen` account.
-- **Tags**: search tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
-- **Skins**: switch between Default, Apple, Matte, Google, Studio, and Spectrum in the header, or add `?skin=<id>` to a URL. The browser tab icon follows the skin.
+- **Tags**: browse popular and team tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
 
-Sign in with any username except the reserved `memegen` in the header. There are no passwords yet: the dev login only sets a user id header, which is not secure (see ARCH.md, "Auth").
+Every page asks you to sign in first, with any username except the reserved `memegen`; you then land on the page you opened. The login is kept in a `memegen.user` cookie for a year, until you sign out. There are no passwords yet: the dev login only sets a user id header, which is not secure (see ARCH.md, "Auth").
+
+The app runs in one fixed look (the `default` skin from `packages/ui`); there is no skin switcher.
 
 ## run.sh and configs
 
@@ -109,8 +110,8 @@ docker run -d --name memegen-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust 
 
 ```sh
 ./run.sh config/dev.env test                       # unit/integration: shared logic, storage caps, API rules (memegen_test DB, wiped)
-./run.sh config/dev.env e2e                        # Playwright browser flows, every skin (memegen_e2e DB, wiped)
-./run.sh config/dev.env e2e --project=google       # one skin; any Playwright args pass through
+./run.sh config/dev.env e2e                        # Playwright browser flows (memegen_e2e DB, wiped)
+./run.sh config/dev.env e2e nav.spec.ts            # one spec; any Playwright args pass through
 bun run test:e2e:ui                                # Playwright UI mode
 bun run typecheck                                  # servers/packages/e2e + web app (incl. packages/ui)
 ```
@@ -136,16 +137,16 @@ cp "../../demo/jacebrowning-memegen/fonts/SIL Open Font License.txt" OFL.txt
 cd ../..
 ```
 
-The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) against `memegen_e2e` and `.data/e2e-storage`, so it doesn't touch a running dev stack. It reseeds that database with the mock dataset on every run. Every spec runs once per UI skin (Playwright projects `default`, `apple`, `matte`, `google`, `studio`, `spectrum`). It drives branded **Google Chrome** (`channel: "chrome"`), because MP4 export needs Chrome's H.264/AAC WebCodecs. Set `E2E_CHANNEL=chromium` to use Playwright's Chromium; the video spec will then fail. The specs cover:
+The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) against `memegen_e2e` and `.data/e2e-storage`, so it doesn't touch a running dev stack. It reseeds that database with the mock dataset on every run. It drives branded **Google Chrome** (`channel: "chrome"`, the single Playwright project), because MP4 export needs Chrome's H.264/AAC WebCodecs. Set `E2E_CHANNEL=chromium` to use Playwright's Chromium; the video spec will then fail. The specs cover:
 
+- the sign-in gate: every URL shows the sign-in page first, then opens; the cookie login survives reloads until sign-out; a stored user the server no longer knows is signed out
 - the core workflow: pick a template on Create, add top and bottom text, download, save to profile, post, find it under Recent
 - Popular (by period) and Recent feeds, voting (up +1; down removes the upvote and moves the negative downvote count, e.g. −2 → −3), checked against the mock dataset
-- sidebar order, leaderboard, profile stats, badges and templates contributed, the owner-only Favorites and Recent activity tabs
+- sidebar order, leaderboard, profile stats, badges and templates contributed, the Templates tab (Edit for the author: rename and change default text), the owner-only Favorites and Recent activity tabs
 - comments and replies on a meme
 - still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, the looping animation preview, and exported frame counts/audio checked with `ffprobe`
-- templates and variations, base and added tags, tag creation in the editor, tag search, hot templates, auto-loading template list
+- templates and variations, base and added tags, tag creation in the editor, tag pages, hot templates, auto-loading template list
 - upload caps and custom fonts
-- skin selection: `?skin=`, the header switcher, persistence across reloads, a distinct look and favicon per skin
 
 `ffprobe` (from ffmpeg) must be on `PATH` for the e2e media checks. The app itself does not need ffmpeg.
 

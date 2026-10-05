@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { Asset, Meme } from "@memegen/shared";
 import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, MediaGrid, Spinner, Text } from "@memegen/ui";
 import { favoriteMeme, voteMeme } from "../api.ts";
-import { useAuth } from "../auth.tsx";
+import { useUser } from "../auth.tsx";
 import { plural } from "../format.ts";
 import { useAction } from "../useAction.ts";
 import type { Paged } from "../usePaged.ts";
@@ -12,12 +12,10 @@ import { TagChips } from "./tags.tsx";
 
 /** 👍/👎 with up/down counts (downvotes shown negative); clicking your current vote clears it. */
 export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
-  const { user } = useAuth();
-  const { busy, error, setError, run } = useAction();
+  const { busy, error, run } = useAction();
   const votable = meme.postedAt !== null && meme.visibility === "public";
 
   function vote(dir: -1 | 1) {
-    if (!user) return setError(new Error("Sign in (top right) to vote."));
     void run(async () => onChange(await voteMeme(meme.id, meme.myVote === dir ? 0 : dir)));
   }
 
@@ -60,12 +58,11 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
 
 /** ☆/★ toggle that saves someone else's posted public meme to your Favorites; hidden on your own and unposted memes. */
 export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
-  const { user } = useAuth();
-  const { busy, error, setError, run } = useAction();
-  if (user?.id === meme.owner.id || meme.postedAt === null || meme.visibility !== "public") return null;
+  const user = useUser();
+  const { busy, error, run } = useAction();
+  if (user.id === meme.owner.id || meme.postedAt === null || meme.visibility !== "public") return null;
 
   function toggle() {
-    if (!user) return setError(new Error("Sign in (top right) to save favorites."));
     void run(async () => onChange(await favoriteMeme(meme.id, !meme.favorited)));
   }
 

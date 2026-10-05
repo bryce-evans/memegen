@@ -4,9 +4,8 @@ import { ensureLayerFonts, exportMeme, ExportAbortedError, type DecodedMedia } f
 import { limitViolations, stillExportSize, type Meme, type TextLayer, type UploadLimits, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
 import { ApiError, createMeme, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
-import { useAuth } from "../../auth.tsx";
 import { downloadBlob, fileSlug } from "../../media.ts";
-import { ErrorView, SignInPrompt } from "../common.tsx";
+import { ErrorView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
 
 export interface SavePanelProps {
@@ -31,7 +30,6 @@ interface Progress {
 export function SavePanel(props: SavePanelProps) {
   const { media, layers, limits, canSave, target, defaultTitle, suggestedTags } = props;
   const editingMeme = "editing" in target ? target.editing : null;
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState(editingMeme?.title ?? defaultTitle);
   const [visibility, setVisibility] = useState<Visibility>(editingMeme?.visibility ?? "public");
@@ -41,7 +39,6 @@ export function SavePanel(props: SavePanelProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const busy = progress !== null;
-  const saving = user !== null && canSave;
 
   // Leaving the editor cancels an export/upload in flight; a save that still finishes must not navigate away from
   // wherever the user went.
@@ -117,7 +114,7 @@ export function SavePanel(props: SavePanelProps) {
   const alreadyPosted = editingMeme !== null && editingMeme.postedAt !== null;
 
   return (
-    <Panel heading={editingMeme && saving ? "Save changes" : "Save"} className="save-panel">
+    <Panel heading={editingMeme && canSave ? "Save changes" : "Save"} className="save-panel">
       <TextField
         label="Title"
         value={title}
@@ -127,7 +124,7 @@ export function SavePanel(props: SavePanelProps) {
         disabled={busy}
         data-testid="meme-title"
       />
-      {saving && (
+      {canSave && (
         <>
           <SelectField
             label="Visibility"
@@ -146,7 +143,7 @@ export function SavePanel(props: SavePanelProps) {
         <Button disabled={busy} onClick={download} icon={<Icon name="down" />} data-testid="download-export">
           Download
         </Button>
-        {saving &&
+        {canSave &&
           (alreadyPosted ? (
             <Button variant="primary" disabled={busy} onClick={() => save(false)} data-testid="save-draft">
               Save changes
@@ -178,8 +175,7 @@ export function SavePanel(props: SavePanelProps) {
       {notice && <Text tone="muted">{notice}</Text>}
       {error !== null && <ErrorView error={error} testId="editor-error" />}
 
-      {!user && <SignInPrompt action="save or post memes" />}
-      {user && !canSave && <Alert tone="info">Only the owner can save changes to this meme.</Alert>}
+      {!canSave && <Alert tone="info">Only the owner can save changes to this meme.</Alert>}
     </Panel>
   );
 }

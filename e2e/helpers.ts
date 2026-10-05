@@ -6,7 +6,7 @@ import type { Asset, Meme, Template, User } from "@memegen/shared";
 
 export const fixture = (name: string) => join(import.meta.dirname, "fixtures", name);
 
-/** Dev login through the header form. */
+/** Dev login through the sign-in page, which every URL shows while signed out; the app then opens at that URL. */
 export async function signIn(page: Page, username: string): Promise<void> {
   await page.getByTestId("login-username").fill(username);
   await page.getByTestId("login-submit").click();

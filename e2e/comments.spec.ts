@@ -8,13 +8,9 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   const commenter = scoped("commenter");
   page.on("dialog", (dialog) => void dialog.accept());
 
-  // Signed out: the discussion asks to sign in.
   await page.goto(`/m/${meme.id}`);
-  const comments = page.getByTestId("comments");
-  await expect(comments).toBeVisible();
-  await expect(page.getByTestId("comment-input")).toHaveCount(0);
-
   await signIn(page, commenter);
+  const comments = page.getByTestId("comments");
   await page.getByTestId("comment-input").fill("first!");
   await page.getByTestId("comment-submit").click();
   const top = comments.getByTestId("comment");

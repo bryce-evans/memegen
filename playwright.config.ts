@@ -1,5 +1,4 @@
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_SKINS, type E2ESkin } from "./e2e/test.ts";
 import { services } from "./scripts/services.ts";
 
 /**
@@ -25,7 +24,7 @@ export const E2E_ENV = {
 
 const serverEnv = { ...process.env, ...E2E_ENV } as Record<string, string>;
 
-export default defineConfig<{ skin: E2ESkin }>({
+export default defineConfig({
   testDir: "e2e",
   // Shared database: run specs one at a time, in file order.
   workers: 1,
@@ -40,13 +39,9 @@ export default defineConfig<{ skin: E2ESkin }>({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  // One project per UI skin: every flow must work under every skin.
   // Branded Chrome ships the H.264/AAC codecs WebCodecs needs for MP4 export;
   // Playwright's bundled Chromium does not. Override with E2E_CHANNEL=chromium.
-  projects: E2E_SKINS.map((skin) => ({
-    name: skin,
-    use: { ...devices["Desktop Chrome"], channel: process.env.E2E_CHANNEL ?? "chrome", skin },
-  })),
+  projects: [{ name: "chrome", use: { ...devices["Desktop Chrome"], channel: process.env.E2E_CHANNEL ?? "chrome" } }],
   webServer: services({ watch: false, web: "vite" }, serverEnv).map((s) => ({
     command: [s.command, ...s.args].join(" "),
     cwd: s.cwd,

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
 import { Button, Icon, Inline, LinkButton, Spinner, Text } from "@memegen/ui";
 import { contentUrl, deleteMeme, getMeme, postMeme, updateMeme } from "../api.ts";
-import { useAuth } from "../auth.tsx";
+import { useUser } from "../auth.tsx";
 import { Comments } from "../components/comments.tsx";
 import { ErrorView, MediaView } from "../components/common.tsx";
 import { FavoriteButton, MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
@@ -15,10 +15,10 @@ import { useAsync } from "../useAsync.ts";
 
 export function MemeDetail() {
   const { id = "" } = useParams();
-  const { user } = useAuth();
+  const user = useUser();
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { data: meme, error, setData: setMeme } = useAsync(`${id}:${user?.id ?? ""}`, () => getMeme(id));
+  const { data: meme, error, setData: setMeme } = useAsync(id, () => getMeme(id));
   const { busy, error: actionError, run } = useAction();
 
   // Router navigations don't scroll to fragments; jump to `#comments` once the page has rendered.
@@ -43,7 +43,7 @@ export function MemeDetail() {
   if (error !== null) return <ErrorView error={error} />;
   if (!meme) return <Spinner label="Loading…" />;
 
-  const isOwner = user?.id === meme.owner.id;
+  const isOwner = user.id === meme.owner.id;
 
   return (
     <section className="detail">

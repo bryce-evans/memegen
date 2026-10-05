@@ -5,14 +5,35 @@ import { expect, scoped, test } from "./test.ts";
 const navIds = (page: Page) =>
   page.locator('[data-testid^="nav-"]').evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")));
 
-test("sidebar nav: browse entries in order, profile only when signed in", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByTestId("nav-create")).toBeVisible();
-  expect(await navIds(page)).toEqual(["nav-create", "nav-recent", "nav-popular", "nav-leaderboard"]);
+const userCookie = async (page: Page) => (await page.context().cookies()).find((c) => c.name === "memegen.user");
 
-  const username = scoped("navigator");
+test("sign-in gate: every URL asks to sign in first, then opens there; the login survives reloads until sign-out", async ({
+  page,
+}) => {
+  await page.goto("/leaderboard");
+  await expect(page.getByTestId("sign-in-page")).toBeVisible();
+  await expect(page.getByTestId("nav-create")).toHaveCount(0);
+
+  const username = scoped("gatekeeper");
   await signIn(page, username);
-  await expect(page.getByTestId("nav-profile")).toBeVisible();
+  await expect(page).toHaveURL(/\/leaderboard$/);
+  await expect(page.getByTestId("nav-leaderboard")).toHaveAttribute("aria-current", "page");
+  expect((await userCookie(page))?.expires).toBeGreaterThan(Date.now() / 1000);
+
+  await page.reload();
+  await expect(page.getByTestId("current-user")).toContainText(username);
+
+  await page.getByTestId("sign-out").click();
+  await expect(page.getByTestId("sign-in-page")).toBeVisible();
+  expect(await userCookie(page)).toBeUndefined();
+  await page.reload();
+  await expect(page.getByTestId("sign-in-page")).toBeVisible();
+});
+
+test("sidebar nav: entries in order, each opens its page", async ({ page }) => {
+  const username = scoped("navigator");
+  await page.goto("/");
+  await signIn(page, username);
   expect(await navIds(page)).toEqual(["nav-create", "nav-recent", "nav-popular", "nav-leaderboard", "nav-profile"]);
 
   const routes: [string, RegExp][] = [
@@ -29,18 +50,18 @@ test("sidebar nav: browse entries in order, profile only when signed in", async 
   }
 });
 
-test("a stored user the server no longer knows (e.g. after a DB reset) is signed out and feeds load", async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() =>
-    localStorage.setItem(
-      "memegen.user",
-      JSON.stringify({ id: crypto.randomUUID(), username: "ghost", createdAt: new Date().toISOString() }),
-    ),
-  );
-  await page.reload();
-  await openFeed(page, { feed: "recent" });
+test("a stored user the server no longer knows (e.g. after a DB reset) is signed out back to the sign-in page", async ({
+  page,
+  baseURL,
+}) => {
+  const ghost = { id: crypto.randomUUID(), username: "ghost", createdAt: new Date().toISOString() };
+  await page.context().addCookies([{ name: "memegen.user", value: encodeURIComponent(JSON.stringify(ghost)), url: baseURL! }]);
+  await page.goto("/recent");
+  await expect(page.getByTestId("sign-in-page")).toBeVisible();
+  expect(await userCookie(page)).toBeUndefined();
 
+  // Signing in again works and lands on the same feed.
+  await signIn(page, scoped("revenant"));
+  await openFeed(page, { feed: "recent" });
   await expect(page.getByTestId("meme-card").first()).toBeVisible();
-  await expect(page.getByTestId("nav-profile")).toHaveCount(0);
-  expect(await page.evaluate(() => localStorage.getItem("memegen.user"))).toBeNull();
 });

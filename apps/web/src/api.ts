@@ -20,22 +20,35 @@ import type {
   Visibility,
 } from "@memegen/shared";
 
-const USER_KEY = "memegen.user";
+/** Cookie holding the signed-in user (JSON); a year, so the dev login survives restarts. Not a credential. */
+const USER_COOKIE = "memegen.user";
+const USER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function readCookie(name: string): string | null {
+  const prefix = `${name}=`;
+  const entry = document.cookie.split("; ").find((c) => c.startsWith(prefix));
+  return entry === undefined ? null : decodeURIComponent(entry.slice(prefix.length));
+}
+
+/** `null` deletes the cookie. */
+function writeCookie(name: string, value: string | null): void {
+  const lifetime = value === null ? "max-age=0" : `max-age=${USER_COOKIE_MAX_AGE}`;
+  document.cookie = `${name}=${encodeURIComponent(value ?? "")}; ${lifetime}; path=/; SameSite=Lax`;
+}
 
 export function storedUser(): User | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = readCookie(USER_COOKIE);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as User;
   } catch {
-    localStorage.removeItem(USER_KEY);
+    writeCookie(USER_COOKIE, null);
     return null;
   }
 }
 
 export function storeUser(user: User | null): void {
-  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
-  else localStorage.removeItem(USER_KEY);
+  writeCookie(USER_COOKIE, user ? JSON.stringify(user) : null);
 }
 
 let onSessionRejected: () => void = () => {};
@@ -152,6 +165,10 @@ export const getUser = (username: string) => request<UserProfile>(`/api/users/${
 export const getUserMemes = (username: string, { offset = 0, limit = 24 }: PageParams = {}) =>
   request<Page<Meme>>(`/api/users/${encodeURIComponent(username)}/memes${qs({ offset, limit })}`);
 
+/** Templates the user added (variations included), newest first; their owner also sees private ones. */
+export const getUserTemplates = (username: string, { offset = 0, limit = 24 }: PageParams = {}) =>
+  request<Page<Template>>(`/api/users/${encodeURIComponent(username)}/templates${qs({ offset, limit })}`);
+
 export const listTemplates = ({ q, tag, offset = 0, limit = 24 }: PageParams & { q?: string; tag?: string } = {}) =>
   request<Page<Template>>(`/api/templates${qs({ q, tag, offset, limit })}`);
 
@@ -174,6 +191,10 @@ export interface CreateTemplateInput {
 
 export const createTemplate = (input: CreateTemplateInput) =>
   request<Template>("/api/templates", { method: "POST", json: input });
+
+/** Owner only: rename and/or replace the default text boxes. Existing memes keep their own layers. */
+export const updateTemplate = (id: string, changes: { name?: string; defaultLayers?: TextLayer[] }) =>
+  request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
 
 /** Adds (never removes) tags; the author's base tags always stay. */
 export const addTemplateTags = (id: string, tags: string[]) =>

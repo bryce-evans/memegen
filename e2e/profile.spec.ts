@@ -1,9 +1,11 @@
+import { topBottomLayers, type Template } from "@memegen/shared";
 import { MOCK_EXPECT, MOCK_TEMPLATES } from "../scripts/mock/data.ts";
-import { apiMeme, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn } from "./helpers.ts";
+import { apiGet, apiMeme, apiPost, apiUpload, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("profile: open an author from the gallery and see their stats, badges and public memes", async ({ page }) => {
   await page.goto("/recent");
+  await signIn(page, scoped("visitor"));
   await openFeed(page, { feed: "popular", period: "week" });
   const card = page.getByTestId("meme-card").filter({ hasText: "Mock: Top of the Week" });
   await card.getByRole("link", { name: "mock-alice" }).click();
@@ -32,6 +34,7 @@ test("profile: open an author from the gallery and see their stats, badges and p
 test("profile: shows how many templates the user contributed", async ({ page }) => {
   const carolTemplates = MOCK_TEMPLATES.filter((t) => t.owner === "mock-carol").length;
   await page.goto("/u/mock-carol");
+  await signIn(page, scoped("counter"));
   await expect(page.getByTestId("stat-template-count")).toHaveText(String(carolTemplates));
   await page.goto("/u/mock-alice");
   await expect(page.getByTestId("stat-template-count")).toHaveText("0");
@@ -62,9 +65,10 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
 
   await page.getByTestId("nav-profile").click();
   const tabs = page.locator('[data-testid^="profile-tab-"]');
-  await expect(tabs).toHaveCount(3);
+  await expect(tabs).toHaveCount(4);
   expect(await tabs.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")))).toEqual([
     "profile-tab-memes",
+    "profile-tab-templates",
     "profile-tab-favorites",
     "profile-tab-activity",
   ]);
@@ -98,4 +102,57 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   await expect(page.getByTestId("profile-tab-favorites")).toHaveCount(0);
   await expect(memeCard(page, starred.id)).toHaveCount(0);
   await expect(memeCard(page, own.id)).toBeVisible();
+});
+
+test("profile templates: everyone sees the tab; the author opens one, edits its name and default text, and saves", async ({
+  page,
+  request,
+}) => {
+  const author = await apiUser(request, scoped("template-author"));
+  const name = scoped("Editable");
+  const asset = await apiUpload(request, author, "still.png");
+  const template = await apiPost<Template>(request, "/api/templates", author, {
+    name,
+    assetId: asset.id,
+    defaultLayers: topBottomLayers("FIRST TOP", "FIRST BOTTOM"),
+  });
+  const hidden = await apiPost<Template>(request, "/api/templates", author, {
+    name: scoped("Hidden draft"),
+    assetId: asset.id,
+    isPublic: false,
+  });
+  const card = (id: string) => page.locator(`[data-testid="template-card"][data-template-id="${id}"]`);
+
+  // A visitor sees the public template with Use, not Edit, and never the private one.
+  await page.goto(`/u/${author.username}?tab=templates`);
+  await signIn(page, scoped("template-visitor"));
+  const grid = page.getByTestId("profile-templates");
+  await expect(grid).toHaveAttribute("aria-busy", "false");
+  await expect(page.getByTestId("profile-tab-templates")).toHaveAttribute("aria-pressed", "true");
+  await expect(card(template.id).getByTestId("use-template")).toBeVisible();
+  await expect(card(template.id).getByTestId("edit-template")).toHaveCount(0);
+  await expect(card(hidden.id)).toHaveCount(0);
+
+  // The author sees both, and Edit opens the template editor with its stored default text.
+  await page.getByTestId("sign-out").click();
+  await signIn(page, author.username);
+  await expect(grid).toHaveAttribute("aria-busy", "false");
+  await expect(card(hidden.id)).toBeVisible();
+  await card(template.id).getByTestId("edit-template").click();
+  await expect(page).toHaveURL(new RegExp(`/create\\?editTemplate=${template.id}$`));
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  await expect(page.getByTestId("editor-title")).toHaveText("Edit template");
+  await expect(page.getByTestId("template-name")).toHaveValue(name);
+  await expect(page.getByTestId("template-update")).toBeDisabled(); // nothing changed yet
+
+  const renamed = scoped("Edited");
+  await page.getByTestId("template-name").fill(renamed);
+  await page.getByTestId("layer-text").first().fill("EDITED TOP");
+  await expect(page.getByTestId("template-status")).toHaveAttribute("data-dirty", "true");
+  await page.getByTestId("template-update").click();
+  await expect(page.getByTestId("template-status")).toHaveAttribute("data-dirty", "false");
+
+  const saved = await apiGet<Template>(request, `/api/templates/${template.id}`);
+  expect(saved.name).toBe(renamed);
+  expect(saved.defaultLayers.map((l) => l.text)).toEqual(["EDITED TOP", "FIRST BOTTOM"]);
 });

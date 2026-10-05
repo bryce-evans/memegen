@@ -3,21 +3,19 @@ import { Link, useNavigate } from "react-router-dom";
 import { MEDIA_ACCEPT, PERIODS, type Period, type Template, type UploadLimits } from "@memegen/shared";
 import { EmptyState, FileButton, Icon, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
 import { getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
-import { useAuth } from "../auth.tsx";
 import { precheckMedia } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { usePaged } from "../usePaged.ts";
-import { ErrorView, LoadMoreSentinel, MediaView, SignInPrompt } from "./common.tsx";
+import { ErrorView, LoadMoreSentinel, MediaView } from "./common.tsx";
 import { PERIOD_LABELS } from "./feed.tsx";
 import { TemplateGrid } from "./templates.tsx";
 
 /** All templates: a debounced name search under the heading, loading more as the list end scrolls into view. */
 export function TemplateBrowser({ search, onSearchChange }: { search: string; onSearchChange: (search: string) => void }) {
-  const { user } = useAuth();
   const q = useDebounced(search.trim(), 300);
-  const list = usePaged<Template>(`${q}:${user?.id ?? ""}`, (offset) => listTemplates({ q, offset }));
+  const list = usePaged<Template>(q, (offset) => listTemplates({ q, offset }));
 
   return (
     <section className="template-start">
@@ -43,9 +41,8 @@ export function TemplateBrowser({ search, onSearchChange }: { search: string; on
 }
 
 export function HotTemplates() {
-  const { user } = useAuth();
   const [period, setPeriod] = useState<Period>("week");
-  const { data: items, error, loading } = useAsync(`${period}:${user?.id ?? ""}`, () => getHotTemplates(period));
+  const { data: items, error, loading } = useAsync(period, () => getHotTemplates(period));
 
   return (
     <section className="hot">
@@ -98,11 +95,8 @@ export function HotTemplates() {
  * (pre-checked against `limits`, then uploaded) and place its text boxes in the Template Editor.
  */
 export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { busy, error, run } = useAction();
-
-  if (!user) return <SignInPrompt action="add templates" />;
 
   function upload(file: File, caps: UploadLimits) {
     void run(async () => {

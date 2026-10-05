@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { COMMENT_MAX_LENGTH, type Comment, type Meme } from "@memegen/shared";
 import { Button, PageHeader, Spinner, Text, TextArea } from "@memegen/ui";
 import { createComment, deleteComment, listComments } from "../api.ts";
-import { useAuth } from "../auth.tsx";
+import { useUser } from "../auth.tsx";
 import { useAction } from "../useAction.ts";
 import { usePaged } from "../usePaged.ts";
-import { ErrorView, LoadMoreButton, SignInPrompt, TimeAgo } from "./common.tsx";
+import { ErrorView, LoadMoreButton, TimeAgo } from "./common.tsx";
 
 /**
  * Mirrors the server's delete rule: a comment with replies stays as a placeholder; otherwise it goes, and a
@@ -27,10 +27,8 @@ function removeComment(items: Comment[], target: Comment): Comment[] {
 
 /** Discussion under a meme: top-level comments with one level of replies. `onCountChange` gets ±1 per post/delete. */
 export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (delta: number) => void }) {
-  const { user } = useAuth();
-  const list = usePaged<Comment>(`${meme.id}:${user?.id ?? ""}`, (offset) => listComments(meme.id, { offset }));
+  const list = usePaged<Comment>(meme.id, (offset) => listComments(meme.id, { offset }));
   const open = meme.postedAt !== null && meme.visibility === "public";
-  const canPost = open && user !== null;
 
   function added(comment: Comment) {
     onCountChange(1);
@@ -58,14 +56,13 @@ export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (
       <ol className="comment-list">
         {list.items.map((c) => (
           <li key={c.id}>
-            <CommentItem comment={c} canReply={canPost} onPosted={added} onDelete={remove} />
+            <CommentItem comment={c} canReply={open} onPosted={added} onDelete={remove} />
           </li>
         ))}
       </ol>
       {list.loading && <Spinner label="Loading…" />}
       <LoadMoreButton hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} label="More comments" />
-      {open && !user && <SignInPrompt action="join the discussion" />}
-      {canPost && <CommentForm memeId={meme.id} parentId={null} onPosted={added} />}
+      {open && <CommentForm memeId={meme.id} parentId={null} onPosted={added} />}
     </section>
   );
 }
@@ -77,7 +74,7 @@ function CommentItem(props: {
   onDelete: (comment: Comment) => Promise<void>;
 }) {
   const { comment, canReply, onPosted, onDelete } = props;
-  const { user } = useAuth();
+  const user = useUser();
   const [replying, setReplying] = useState(false);
   const { busy, error, run } = useAction();
   const isReply = comment.parentId !== null;
@@ -109,7 +106,7 @@ function CommentItem(props: {
               Reply
             </Button>
           )}
-          {user?.id === comment.author.id && (
+          {user.id === comment.author.id && (
             <Button size="sm" variant="quiet" disabled={busy} onClick={remove} data-testid="comment-delete">
               Delete
             </Button>

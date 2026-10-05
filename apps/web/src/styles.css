@@ -18,67 +18,38 @@
   flex: 1 1 8rem;
 }
 
-/* ---- header / side column -------------------------------------------------- */
+/* ---- sign-in page ----------------------------------------------------------- */
 
+.sign-in-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--ui-space-6);
+}
+.sign-in {
+  width: min(26rem, 100%);
+  text-align: center;
+}
 .login {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--ui-space-2);
+  width: 100%;
 }
 .login .ui-input {
   width: auto;
   flex: 1 1 9rem;
 }
-.login-compact .ui-input {
-  flex: 0 1 9rem;
-}
 .login .ui-alert {
   flex-basis: 100%;
   margin: var(--ui-space-2) 0 0;
 }
-.ui-alert .login {
-  margin-top: var(--ui-space-3);
-}
+
+/* ---- header / side column -------------------------------------------------- */
 
 .sidebar-action {
   align-self: flex-start;
-}
-
-.tag-search {
-  position: relative;
-}
-.tag-search-field {
-  display: flex;
-  min-width: 0;
-}
-.tag-search .tag-search-field .ui-input {
-  border-start-end-radius: 0;
-  border-end-end-radius: 0;
-}
-.tag-search-submit {
-  flex: none;
-  border-start-start-radius: 0;
-  border-end-start-radius: 0;
-}
-.tag-suggestions {
-  margin-top: var(--ui-space-2);
-}
-/* Header search: suggestions drop down while the form has focus. */
-.tag-search .tag-suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  padding: var(--ui-space-2);
-  border: var(--ui-border-width) solid var(--ui-color-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-color-surface);
-  box-shadow: var(--ui-shadow-2);
-}
-.tag-search:not(:focus-within) .tag-suggestions {
-  display: none;
 }
 
 .tag-item.team,

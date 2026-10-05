@@ -11,28 +11,28 @@ import {
   Sidebar,
   SidebarSection,
   SkinProvider,
-  SkinSwitcher,
   Text,
   Wordmark,
   useSkinFavicon,
 } from "@memegen/ui";
-import { AuthProvider, useAuth } from "./auth.tsx";
-import { LoginForm } from "./components/common.tsx";
+import { AuthProvider, useAuth, useUser } from "./auth.tsx";
 import { GalleryFilters, feedKindFor } from "./components/feed.tsx";
-import { TagSearch, TagSidebar } from "./components/tagNav.tsx";
+import { TagSidebar } from "./components/tagNav.tsx";
 import { Editor } from "./pages/Editor.tsx";
 import { Popular, Recent } from "./pages/Gallery.tsx";
 import { Leaderboard } from "./pages/Leaderboard.tsx";
 import { MemeDetail } from "./pages/MemeDetail.tsx";
 import { Profile } from "./pages/Profile.tsx";
+import { SignIn } from "./pages/SignIn.tsx";
 import { TagPage } from "./pages/TagPage.tsx";
 
 const BRAND = "memegen";
+/** The one skin the app runs in; `SkinProvider` ignores `?skin=` and stored choices. */
+const SKIN = "default";
 
 function SiteHeader() {
-  const { user, signOut } = useAuth();
-  // The tab icon is the wordmark's first letter, drawn in the active skin's wordmark style.
-  useSkinFavicon(BRAND[0]!);
+  const user = useUser();
+  const { signOut } = useAuth();
   return (
     <Header
       brand={
@@ -40,30 +40,22 @@ function SiteHeader() {
           <Wordmark text={BRAND} />
         </Link>
       }
-      center={<TagSearch />}
     >
-      <SkinSwitcher data-testid="skin-select" />
-      {user ? (
-        <>
-          <Text as="span" size="sm">
-            Signed in as{" "}
-            <Link to={`/u/${user.username}`} data-testid="current-user">
-              {user.username}
-            </Link>
-          </Text>
-          <Button size="sm" onClick={signOut} data-testid="sign-out">
-            Sign out
-          </Button>
-        </>
-      ) : (
-        <LoginForm inHeader />
-      )}
+      <Text as="span" size="sm">
+        Signed in as{" "}
+        <Link to={`/u/${user.username}`} data-testid="current-user">
+          {user.username}
+        </Link>
+      </Text>
+      <Button size="sm" onClick={signOut} data-testid="sign-out">
+        Sign out
+      </Button>
     </Header>
   );
 }
 
 function SideColumn() {
-  const { user } = useAuth();
+  const user = useUser();
   const { pathname } = useLocation();
   const feedKind = feedKindFor(pathname);
   return (
@@ -89,11 +81,9 @@ function SideColumn() {
           <NavItem as={NavLink} to="/leaderboard" icon={<Icon name="chart" />} data-testid="nav-leaderboard">
             Leaderboard
           </NavItem>
-          {user && (
-            <NavItem as={NavLink} to={`/u/${user.username}`} icon={<Icon name="user" />} data-testid="nav-profile">
-              Profile
-            </NavItem>
-          )}
+          <NavItem as={NavLink} to={`/u/${user.username}`} icon={<Icon name="user" />} data-testid="nav-profile">
+            Profile
+          </NavItem>
         </NavList>
       </SidebarSection>
       {feedKind && <GalleryFilters kind={feedKind} placement="sidebar" />}
@@ -102,23 +92,34 @@ function SideColumn() {
   );
 }
 
+/** Signed out, every URL shows the sign-in page; signing in renders the app at that same URL. */
+function Root() {
+  const { user } = useAuth();
+  // The tab icon is the wordmark's first letter, drawn in the skin's wordmark style.
+  useSkinFavicon(BRAND[0]!);
+  if (!user) return <SignIn brand={BRAND} />;
+  return (
+    <AppShell header={<SiteHeader />} sidebar={<SideColumn />}>
+      <Routes>
+        <Route path="/" element={<Popular />} />
+        <Route path="/recent" element={<Recent />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/m/:id" element={<MemeDetail />} />
+        <Route path="/u/:username" element={<Profile />} />
+        <Route path="/create" element={<Editor />} />
+        <Route path="/t/:slug" element={<TagPage />} />
+        <Route path="*" element={<EmptyState icon={<Icon name="search" />} title="Page not found." />} />
+      </Routes>
+    </AppShell>
+  );
+}
+
 export default function App() {
   return (
-    <SkinProvider>
+    <SkinProvider locked={SKIN}>
       <AuthProvider>
         <BrowserRouter>
-          <AppShell header={<SiteHeader />} sidebar={<SideColumn />}>
-            <Routes>
-              <Route path="/" element={<Popular />} />
-              <Route path="/recent" element={<Recent />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/m/:id" element={<MemeDetail />} />
-              <Route path="/u/:username" element={<Profile />} />
-              <Route path="/create" element={<Editor />} />
-              <Route path="/t/:slug" element={<TagPage />} />
-              <Route path="*" element={<EmptyState icon={<Icon name="search" />} title="Page not found." />} />
-            </Routes>
-          </AppShell>
+          <Root />
         </BrowserRouter>
       </AuthProvider>
     </SkinProvider>

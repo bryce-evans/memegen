@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import type { Asset, TextLayer } from "@memegen/shared";
 import { Button, Dialog, Inline, Panel, Text, TextField } from "@memegen/ui";
 import { createTemplate } from "../../api.ts";
-import { useAuth } from "../../auth.tsx";
 import { plural } from "../../format.ts";
 import { useAction } from "../../useAction.ts";
-import { ErrorView, SignInPrompt } from "../common.tsx";
+import { ErrorView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
 
 /** "distracted-boyfriend_v2.jpg" → "distracted boyfriend v2". */
@@ -23,20 +22,11 @@ function nameFromFile(filename: string): string {
  * the placed text boxes (with their placeholder text) become the template's default layers.
  */
 export function TemplateSavePanel({ asset, layers }: { asset: Asset; layers: TextLayer[] }) {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState(() => nameFromFile(asset.filename));
   const [tags, setTags] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const { busy, error, run } = useAction();
-
-  if (!user) {
-    return (
-      <Panel heading="Save template" className="save-panel">
-        <SignInPrompt action="add templates" />
-      </Panel>
-    );
-  }
 
   async function create() {
     const template = await run(() => createTemplate({ name: name.trim(), assetId: asset.id, defaultLayers: layers, tags }));

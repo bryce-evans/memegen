@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { PERIODS, type Period, type Template } from "@memegen/shared";
 import { Inline, Panel, SelectField, Text } from "@memegen/ui";
 import { addTemplateTags, getTemplateUsage } from "../api.ts";
-import { useAuth } from "../auth.tsx";
 import { plural } from "../format.ts";
 import { useAsync } from "../useAsync.ts";
 import { ErrorView, MediaView } from "./common.tsx";
@@ -12,9 +11,8 @@ import { TagEditor } from "./tagInputs.tsx";
 import { TagChips } from "./tags.tsx";
 import { TemplateMeta } from "./templates.tsx";
 
-/** Under the editor stage when a template is open: its tags (anyone signed in can add), usage, and variations. */
+/** Under the editor stage when a template is open: its tags (anyone can add), usage, and variations. */
 export function TemplateDetails({ template }: { template: Template }) {
-  const { user } = useAuth();
   // Base tags come from the author and always stay; added tags sit beside them.
   const [tagged, setTagged] = useState({ tags: template.tags, baseTags: template.baseTags });
 
@@ -23,17 +21,15 @@ export function TemplateDetails({ template }: { template: Template }) {
       <TemplateMeta template={template} />
       <div className="template-details-tags">
         <TagChips slugs={tagged.tags} base={tagged.baseTags} />
-        {user && (
-          <TagEditor
-            tags={[]}
-            label="Add tags"
-            testId="template-tags-add"
-            onSave={async (added) => {
-              const next = await addTemplateTags(template.id, added);
-              setTagged({ tags: next.tags, baseTags: next.baseTags });
-            }}
-          />
-        )}
+        <TagEditor
+          tags={[]}
+          label="Add tags"
+          testId="template-tags-add"
+          onSave={async (added) => {
+            const next = await addTemplateTags(template.id, added);
+            setTagged({ tags: next.tags, baseTags: next.baseTags });
+          }}
+        />
       </div>
       <Panel variant="inset" heading="Usage">
         <UsageChart templateId={template.id} />

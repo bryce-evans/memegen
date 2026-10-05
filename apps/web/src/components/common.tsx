@@ -6,8 +6,8 @@ import { useAuth } from "../auth.tsx";
 import { timeAgo } from "../time.ts";
 import { useAction } from "../useAction.ts";
 
-/** `inHeader` marks the header instance, which carries the e2e test ids (prompts elsewhere reuse the form). */
-export function LoginForm({ inHeader = false }: { inHeader?: boolean }) {
+/** The sign-in page's form (dev login: any username). */
+export function LoginForm() {
   const { signIn } = useAuth();
   const [username, setUsername] = useState("");
   const { busy, error, run } = useAction();
@@ -22,23 +22,18 @@ export function LoginForm({ inHeader = false }: { inHeader?: boolean }) {
   }
 
   return (
-    <form className={inHeader ? "login login-compact" : "login"} onSubmit={submit}>
+    <form className="login" onSubmit={submit}>
       <TextField
-        size={inHeader ? "sm" : "md"}
+        size="md"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         placeholder="username"
         aria-label="Username"
         autoComplete="username"
-        data-testid={inHeader ? "login-username" : undefined}
+        autoFocus
+        data-testid="login-username"
       />
-      <Button
-        type="submit"
-        variant="primary"
-        size={inHeader ? "sm" : "md"}
-        disabled={busy || !username.trim()}
-        data-testid={inHeader ? "login-submit" : undefined}
-      >
+      <Button type="submit" variant="primary" size="md" disabled={busy || !username.trim()} data-testid="login-submit">
         Sign in
       </Button>
       {error !== null && <ErrorView error={error} />}
@@ -46,18 +41,11 @@ export function LoginForm({ inHeader = false }: { inHeader?: boolean }) {
   );
 }
 
-export function SignInPrompt({ action = "do that" }: { action?: string }) {
-  return (
-    <Alert tone="info">
-      <p>Sign in to {action}. (Dev login: pick any username.)</p>
-      <LoginForm />
-    </Alert>
-  );
-}
-
-/** Renders any thrown value; API 401s become a sign-in prompt, `details[]` are listed. */
+/**
+ * Renders any thrown value, listing `details[]`. A 401 needs no special case: `api.ts` signs out on one, which swaps
+ * the app for the sign-in page.
+ */
 export function ErrorView({ error, testId }: { error: unknown; testId?: string }) {
-  if (error instanceof ApiError && error.status === 401) return <SignInPrompt />;
   const message = error instanceof Error ? error.message : String(error);
   const details = error instanceof ApiError ? error.details : [];
   return (

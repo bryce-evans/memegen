@@ -29,13 +29,13 @@ import { SkinProvider, SkinSwitcher } from "@memegen/ui";
 </SkinProvider>;
 ```
 
-`SkinProvider` picks the skin from `?skin=<id>`, then `localStorage["memegen.skin"]`, then `"default"`; it persists every change to that key and sets `data-skin="<id>"` on `<html>`. `useSkin()` returns `{ skin, setSkin, skins, definition, layout }`.
+`SkinProvider` picks the skin from `?skin=<id>`, then `localStorage["memegen.skin"]`, then `fallback` (`"default"`); it persists every change to that key and sets `data-skin="<id>"` on `<html>`. Pass `locked="<id>"` to pin one skin instead: no URL or storage lookup, nothing persisted, `setSkin` ignored (the memegen app runs locked to `default`). `useSkin()` returns `{ skin, setSkin, skins, definition, layout }`.
 
 ## How skins work
 
 1. **Tokens.** `src/tokens.css` defines every design decision as a custom property on `:root` (the default skin): color roles (`--ui-color-bg`, `-surface`, `-surface-raised`, `-text`, `-text-muted`, `-primary`, `-on-primary`, `-tonal`, `-danger`, `-success`, `-warning`, `-info`, `-border`, `-separator`, `-focus-ring`, `-link`, `-overlay`, `-media-bg`…), state layers (`--ui-color-state-hover/press`), typography, shape (`--ui-radius-*`), spacing (`--ui-space-1…8`), elevation (`--ui-shadow-*`), control sizes, motion, and layout (`--ui-sidebar-width`, `--ui-grid-min`…).
 2. **Components** (`src/components.css`) read only tokens.
-3. **Skins** (`src/skins/<id>.css`) override tokens under `:root[data-skin="<id>"]`, plus component tweaks scoped the same way where tokens are not enough (Apple's raised segmented thumb, Google's gradient jfk-buttons, Studio's masonry gallery…). Skins here style only `.ui-*` classes; an app's own markup gets its per-skin tweaks in the app (memegen: `apps/web/src/skins/<id>.css`). Buttons are skinned through variables: `.ui-button` and its hover read `--ui-button-bg`, `-fg`, `-border`, `-hover-bg`, `-hover-border`, and variants/states (`--primary`, `--quiet`, `--danger`, `[aria-pressed]`, toned pressed) in `components.css` and in skins only reassign them (Google keeps its own `--g-*` gradient set).
+3. **Skins** (`src/skins/<id>.css`) override tokens under `:root[data-skin="<id>"]`, plus component tweaks scoped the same way where tokens are not enough (Apple's raised segmented thumb, Google's gradient jfk-buttons, Studio's masonry gallery…). Skins here style only `.ui-*` classes; an app that offers several skins puts per-skin tweaks to its own markup in the app, same scoping. Buttons are skinned through variables: `.ui-button` and its hover read `--ui-button-bg`, `-fg`, `-border`, `-hover-bg`, `-hover-border`, and variants/states (`--primary`, `--quiet`, `--danger`, `[aria-pressed]`, toned pressed) in `components.css` and in skins only reassign them (Google keeps its own `--g-*` gradient set).
 4. **Layout hints** (`Skin.layout`) let a skin move app controls without duplicating them: `filters: "sidebar" | "header"` (sort/period beside the page title). The app reads them via `useSkin().layout`.
 5. **Component overrides** (`Skin.components`) replace any component for one skin (below).
 

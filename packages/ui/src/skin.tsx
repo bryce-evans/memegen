@@ -128,9 +128,21 @@ export interface SkinContextValue {
 
 const SkinContext = createContext<SkinContextValue | null>(null);
 
-export function SkinProvider({ children, fallback = "default" }: { children: ReactNode; fallback?: SkinId }) {
+/**
+ * `locked` pins the skin: `?skin=` and the stored choice are ignored, nothing is persisted, and `setSkin` does
+ * nothing. Without it the skin comes from `?skin=`, then storage, then `fallback`.
+ */
+export function SkinProvider({
+  children,
+  fallback = "default",
+  locked,
+}: {
+  children: ReactNode;
+  fallback?: SkinId;
+  locked?: SkinId;
+}) {
   const skins = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const [skin, setSkinState] = useState<SkinId>(() => initialSkin(fallback));
+  const [skin, setSkinState] = useState<SkinId>(() => locked ?? initialSkin(fallback));
 
   const rootClassName = skins.find((s) => s.id === skin)?.rootClassName;
   useLayoutEffect(() => {
@@ -142,17 +154,23 @@ export function SkinProvider({ children, fallback = "default" }: { children: Rea
   }, [skin, rootClassName]);
 
   // Persist the initial pick too, so a `?skin=` link sticks after navigating away from it.
-  useEffect(() => writeStorage(skin), [skin]);
+  useEffect(() => {
+    if (!locked) writeStorage(skin);
+  }, [skin, locked]);
 
-  const setSkin = useCallback((id: SkinId) => {
-    setSkinState(id);
-    // Keep a `?skin=` in the address bar in sync, or a reload would switch back.
-    const url = new URL(window.location.href);
-    if (url.searchParams.has(SKIN_PARAM)) {
-      url.searchParams.set(SKIN_PARAM, id);
-      window.history.replaceState(window.history.state, "", url);
-    }
-  }, []);
+  const setSkin = useCallback(
+    (id: SkinId) => {
+      if (locked) return;
+      setSkinState(id);
+      // Keep a `?skin=` in the address bar in sync, or a reload would switch back.
+      const url = new URL(window.location.href);
+      if (url.searchParams.has(SKIN_PARAM)) {
+        url.searchParams.set(SKIN_PARAM, id);
+        window.history.replaceState(window.history.state, "", url);
+      }
+    },
+    [locked],
+  );
 
   const value = useMemo<SkinContextValue>(() => {
     const definition = skins.find((s) => s.id === skin) ?? { id: skin, label: skin };

@@ -30,6 +30,24 @@ test("sign-in gate: every URL asks to sign in first, then opens there; the login
   await expect(page.getByTestId("sign-in-page")).toBeVisible();
 });
 
+test("dev tools: the sign-in page's skin switcher restyles the app, and the choice outlasts sign-in and reloads", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const root = page.locator("html");
+  await expect(root).toHaveAttribute("data-skin", "default");
+
+  await page.getByTestId("dev-skin").selectOption("google");
+  await expect(root).toHaveAttribute("data-skin", "google");
+
+  await signIn(page, scoped("stylist"));
+  await expect(page.getByTestId("current-user")).toBeVisible();
+  await expect(root).toHaveAttribute("data-skin", "google");
+  await expect(page.getByTestId("dev-tools")).toHaveCount(0);
+  await page.reload();
+  await expect(root).toHaveAttribute("data-skin", "google");
+});
+
 test("sidebar nav: entries in order, each opens its page", async ({ page }) => {
   const username = scoped("navigator");
   await page.goto("/");

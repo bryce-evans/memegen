@@ -42,9 +42,12 @@ Then open:
 - **Create**: http://localhost:5173/create. Every meme starts from a template: find one (the list loads more as you scroll), or add your own media as a new template: upload it, place its default text boxes in the Template Editor, name and tag it, and confirm. Opening a template shows its tags, usage, and variations under the image. Templates show who added them; built-in ones are added by the reserved `memegen` account.
 - **Tags**: browse popular and team tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
 
-Every page asks you to sign in first, with any username except the reserved `memegen`; you then land on the page you opened. The login is kept in a `memegen.user` cookie for a year, until you sign out. There are no passwords yet: the dev login only sets a user id header, which is not secure (see ARCH.md, "Auth").
+Every page asks you to sign in first; you then land on the page you opened. The login is kept in a `memegen.user` cookie for a year, until you sign out.
 
-The app runs in one fixed look (the `default` skin from `packages/ui`); there is no skin switcher.
+The sign-in page depends on the config's `MODE`:
+
+- **dev**: a username box and Sign in button; any username except the reserved `memegen` works. There are no passwords: the dev login only sets a user id header, which is not secure (see ARCH.md, "Auth"). A **Dev tools** panel in the bottom-left corner switches the `packages/ui` skin; the choice is kept in `localStorage` and applies to the whole app.
+- **prod**: a placeholder **Sign in with SSO** button that only shows an alert (no identity provider yet), and the app is locked to the `default` skin.
 
 ## run.sh and configs
 

@@ -30,6 +30,13 @@
   width: min(26rem, 100%);
   text-align: center;
 }
+/* Dev mode only: skin switcher pinned to the bottom-left corner. */
+.dev-tools {
+  position: fixed;
+  left: var(--ui-space-6);
+  bottom: var(--ui-space-6);
+  width: min(16rem, calc(100% - 2 * var(--ui-space-6)));
+}
 .login {
   display: flex;
   flex-wrap: wrap;

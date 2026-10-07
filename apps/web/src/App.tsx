@@ -18,6 +18,7 @@ import {
 import { AuthProvider, useAuth, useUser } from "./auth.tsx";
 import { GalleryFilters, feedKindFor } from "./components/feed.tsx";
 import { TagSidebar } from "./components/tagNav.tsx";
+import { DEV_MODE } from "./mode.ts";
 import { Editor } from "./pages/Editor.tsx";
 import { Popular, Recent } from "./pages/Gallery.tsx";
 import { Leaderboard } from "./pages/Leaderboard.tsx";
@@ -27,7 +28,7 @@ import { SignIn } from "./pages/SignIn.tsx";
 import { TagPage } from "./pages/TagPage.tsx";
 
 const BRAND = "memegen";
-/** The one skin the app runs in; `SkinProvider` ignores `?skin=` and stored choices. */
+/** Prod pins this skin (`?skin=` and stored choices ignored); dev lets the sign-in page's dev tools switch it. */
 const SKIN = "default";
 
 function SiteHeader() {
@@ -116,7 +117,7 @@ function Root() {
 
 export default function App() {
   return (
-    <SkinProvider locked={SKIN}>
+    <SkinProvider locked={DEV_MODE ? undefined : SKIN} fallback={SKIN}>
       <AuthProvider>
         <BrowserRouter>
           <Root />

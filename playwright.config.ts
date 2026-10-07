@@ -20,6 +20,8 @@ export const E2E_ENV = {
   STORAGE_PROVIDER: "local",
   LOCAL_STORAGE_DIR: ".data/e2e-storage",
   INTERNAL_TOKEN: "e2e-internal-token",
+  // Specs sign in through the dev login.
+  MODE: "dev",
 };
 
 const serverEnv = { ...process.env, ...E2E_ENV } as Record<string, string>;

@@ -1,23 +1,59 @@
 import { useState } from "react";
 import type { DecodedMedia } from "@memegen/render";
-import { layerLabel, layerStateAt, LAYER_NAME_MAX_LENGTH, placeAt, TEXT_ALIGNS, TEXT_MAX_LENGTH, TEXT_STYLES, type Asset, type TextLayer, type TextStyle } from "@memegen/shared";
-import { Badge, Button, ColorField, cx, Field, Icon, IconButton, Panel, SegmentedControl, SelectField, Slider, Text, TextArea, TextField } from "@memegen/ui";
+import {
+  IMAGE_ACCEPT,
+  layerLabel,
+  layerStateAt,
+  LAYER_NAME_MAX_LENGTH,
+  placeAt,
+  TEXT_ALIGNS,
+  TEXT_MAX_LENGTH,
+  TEXT_STYLES,
+  type Asset,
+  type ImageLayer,
+  type Layer,
+  type TextLayer,
+  type TextStyle,
+} from "@memegen/shared";
+import {
+  Badge,
+  Button,
+  ColorField,
+  cx,
+  Field,
+  FileButton,
+  Icon,
+  IconButton,
+  Inline,
+  Panel,
+  SegmentedControl,
+  SelectField,
+  Slider,
+  Text,
+  TextArea,
+  TextField,
+} from "@memegen/ui";
+import { assetUrl } from "../../api.ts";
 import { AnimationPanel, WindowFields } from "./AnimationPanel.tsx";
 import { FontField } from "./FontField.tsx";
 import { PlacementFields } from "./PlacementFields.tsx";
 
-type LayerUpdate = (layer: TextLayer) => TextLayer;
+type LayerUpdate = (layer: Layer) => Layer;
 
 export interface LayerPanelProps {
   /** Template editor: layer names are editable (they label the boxes for everyone who uses the template). */
   nameable: boolean;
   media: DecodedMedia;
-  layers: TextLayer[];
+  layers: Layer[];
   selectedId: string | null;
   frame: number;
   fonts: Asset[];
+  /** An image is being checked and uploaded (from Add image or a paste). */
+  addingImage: boolean;
   onSelect: (id: string | null) => void;
   onAdd: () => void;
+  /** Add `file` as an image layer (checked against the image caps, then uploaded). */
+  onAddImage: (file: File) => void;
   onRemove: (id: string) => void;
   onMoveOrder: (id: string, delta: -1 | 1) => void;
   /** Replace a layer by applying `update` to its latest state. */
@@ -28,7 +64,9 @@ export interface LayerPanelProps {
 
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
-export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, onSelect, onAdd, onRemove, onMoveOrder, onUpdate, onSeek, onFontUploaded }: LayerPanelProps) {
+export function LayerPanel(props: LayerPanelProps) {
+  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onRemove, onMoveOrder, onUpdate, onSeek, onFontUploaded } =
+    props;
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
@@ -36,9 +74,26 @@ export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, 
       heading="Layers"
       className="layer-panel"
       headingActions={
-        <Button size="sm" icon={<Icon name="plus" />} data-testid="add-layer" onClick={onAdd}>
-          Add text
-        </Button>
+        <Inline>
+          <Button size="sm" icon={<Icon name="plus" />} data-testid="add-layer" onClick={onAdd}>
+            Add text
+          </Button>
+          <FileButton
+            size="sm"
+            icon={<Icon name="upload" />}
+            accept={IMAGE_ACCEPT}
+            disabled={addingImage}
+            title="Add an image layer (or paste one anywhere in the editor)"
+            data-testid="add-image-file"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) onAddImage(file);
+            }}
+          >
+            {addingImage ? "Adding…" : "Add image"}
+          </FileButton>
+        </Inline>
       }
     >
       <ol className="layer-list">
@@ -47,7 +102,13 @@ export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, 
           const settingsId = `layer-settings-${layer.id}`;
           const name = layerLabel(layer, i);
           return (
-            <li key={layer.id} data-testid="layer-item" data-layer-id={layer.id} className={cx("layer-row", layer.id === selectedId && "selected")}>
+            <li
+              key={layer.id}
+              data-testid="layer-item"
+              data-layer-id={layer.id}
+              data-layer-type={layer.type}
+              className={cx("layer-row", layer.id === selectedId && "selected")}
+            >
               <Panel
                 variant="inset"
                 heading={nameable ? undefined : name}
@@ -60,7 +121,7 @@ export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, 
                         className="layer-name-input"
                         data-testid="layer-name-input"
                         value={layer.name ?? ""}
-                        placeholder={layerLabel({}, i)}
+                        placeholder={layerLabel({ type: layer.type }, i)}
                         maxLength={LAYER_NAME_MAX_LENGTH}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -104,19 +165,25 @@ export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, 
                 }
                 className="layer-card"
               >
-                <TextArea
-                  aria-label={`${name} text`}
-                  rows={1}
-                  className="layer-row-text"
-                  data-testid="layer-text"
-                  value={layer.text}
-                  maxLength={TEXT_MAX_LENGTH}
-                  onFocus={() => onSelect(layer.id)}
-                  onChange={(e) => {
-                    const text = e.target.value;
-                    onUpdate(layer.id, (l) => ({ ...l, text }));
-                  }}
-                />
+                {layer.type === "text" ? (
+                  <TextArea
+                    aria-label={`${name} text`}
+                    rows={1}
+                    className="layer-row-text"
+                    data-testid="layer-text"
+                    value={layer.text}
+                    maxLength={TEXT_MAX_LENGTH}
+                    onFocus={() => onSelect(layer.id)}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      onUpdate(layer.id, (l) => (l.type === "text" ? { ...l, text } : l));
+                    }}
+                  />
+                ) : (
+                  <Button variant="quiet" className="layer-image-button" aria-label={`Select ${name}`} data-testid="layer-image" onClick={() => onSelect(layer.id)}>
+                    <img className="layer-image-thumb" src={assetUrl(layer.assetId)} alt="" />
+                  </Button>
+                )}
                 {/* GIF/video: the selected layer (focusing its text selects it) shows when it starts and stops; the
                     settings' Animation panel shows the same rows, so they appear here only while it is closed. */}
                 {media.kind !== "image" && layer.id === selectedId && !open && (
@@ -126,15 +193,19 @@ export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, 
                 )}
                 {open && (
                   <div id={settingsId} className="layer-settings" data-testid="layer-settings">
-                    <LayerSettings
-                      layer={layer}
-                      media={media}
-                      frame={frame}
-                      fonts={fonts}
-                      onChange={(update) => onUpdate(layer.id, update)}
-                      onSeek={onSeek}
-                      onFontUploaded={(font) => onFontUploaded(layer.id, font)}
-                    />
+                    {layer.type === "text" ? (
+                      <TextLayerSettings
+                        layer={layer}
+                        media={media}
+                        frame={frame}
+                        fonts={fonts}
+                        onChange={(update) => onUpdate(layer.id, update)}
+                        onSeek={onSeek}
+                        onFontUploaded={(font) => onFontUploaded(layer.id, font)}
+                      />
+                    ) : (
+                      <ImageLayerSettings layer={layer} media={media} frame={frame} onChange={(update) => onUpdate(layer.id, update)} onSeek={onSeek} />
+                    )}
                   </div>
                 )}
               </Panel>
@@ -142,25 +213,45 @@ export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, 
           );
         })}
       </ol>
-      {layers.length === 0 && <Text tone="muted">No text layers. Add one to start.</Text>}
+      {layers.length === 0 && <Text tone="muted">No layers. Add text or an image (or paste one) to start.</Text>}
     </Panel>
   );
 }
 
-interface LayerSettingsProps {
-  layer: TextLayer;
+interface SettingsProps<L extends Layer> {
+  layer: L;
   media: DecodedMedia;
   frame: number;
-  fonts: Asset[];
   onChange: (update: LayerUpdate) => void;
   onSeek: (frame: number) => void;
-  onFontUploaded: (font: Asset) => void;
 }
 
-/** Everything about a layer except its text: font, size, colors, layout, placement, and (animated media) keyframes. */
-function LayerSettings({ layer, media, frame, fonts, onChange, onSeek, onFontUploaded }: LayerSettingsProps) {
+/** What every layer kind shares: rotation, placement, and (animated media) the visibility window and keyframes. */
+function CommonSettings({ layer, media, frame, onChange, onSeek }: SettingsProps<Layer>) {
   const t = media.times[frame] ?? 0;
-  const set = (patch: Partial<TextLayer>) => onChange((l) => ({ ...l, ...patch }));
+  return (
+    <>
+      <Slider
+        label={`Rotation ${layer.angle}°`}
+        min={-180}
+        max={180}
+        step={1}
+        value={layer.angle}
+        onChange={(e) => {
+          const angle = Number(e.target.value);
+          onChange((l) => ({ ...l, angle }));
+        }}
+      />
+      <PlacementFields state={layerStateAt(layer, t)} animated={layer.keyframes.length > 0} onPlace={(patch) => onChange((l) => placeAt(l, t, patch))} />
+      {media.kind !== "image" && <AnimationPanel layer={layer} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />}
+    </>
+  );
+}
+
+/** Everything about a text layer except its text: font, size, colors, layout, then the shared settings. */
+function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; onFontUploaded: (font: Asset) => void }) {
+  const { layer, fonts, onChange, onFontUploaded } = props;
+  const set = (patch: Partial<TextLayer>) => onChange((l) => (l.type === "text" ? { ...l, ...patch } : l));
 
   return (
     <div className="layer-settings-fields">
@@ -214,8 +305,6 @@ function LayerSettings({ layer, media, frame, fonts, onChange, onSeek, onFontUpl
         </SelectField>
       </div>
 
-      <Slider label={`Rotation ${layer.angle}°`} min={-180} max={180} step={1} value={layer.angle} onChange={(e) => set({ angle: Number(e.target.value) })} />
-
       <div className="field-row">
         <Slider
           label={`Box width ${Math.round(layer.maxWidth * 100)}%`}
@@ -237,11 +326,29 @@ function LayerSettings({ layer, media, frame, fonts, onChange, onSeek, onFontUpl
         />
       </div>
 
-      <PlacementFields state={layerStateAt(layer, t)} animated={layer.keyframes.length > 0} onPlace={(patch) => onChange((l) => placeAt(l, t, patch))} />
+      <CommonSettings {...props} />
+    </div>
+  );
+}
 
-      {media.kind !== "image" && (
-        <AnimationPanel layer={layer} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />
-      )}
+/** An image layer's size (its height follows the image), then the shared settings. */
+function ImageLayerSettings(props: SettingsProps<ImageLayer>) {
+  const { layer, onChange } = props;
+  return (
+    <div className="layer-settings-fields">
+      <Slider
+        label={`Width ${Math.round(layer.width * 100)}% of the media`}
+        min={2}
+        max={200}
+        step={1}
+        value={Math.round(layer.width * 100)}
+        data-testid="image-layer-width"
+        onChange={(e) => {
+          const width = Number(e.target.value) / 100;
+          onChange((l) => (l.type === "image" ? { ...l, width } : l));
+        }}
+      />
+      <CommonSettings {...props} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   DEFAULT_LIMITS,
   newPanel,
   PANEL_FONT_SIZE_DEFAULT,
+  newImageLayer,
   newTextLayer,
   type Comment,
   type HotTemplate,
@@ -371,6 +372,45 @@ test("memes need an existing template and an output uploaded by the author", asy
   assert.equal((await call("DELETE", `/api/templates/${template.id}`, alice)).status, 409);
   const unused = await makeTemplate(alice, { name: "Unused" });
   assert.equal((await call("DELETE", `/api/templates/${unused.id}`, alice)).status, 204);
+});
+
+test("image layers: stored in order with text layers, need an existing still image, and pin it in storage", async () => {
+  const alice = await signIn("alice");
+  const template = await makeTemplate(alice);
+  const sticker = await upload(alice);
+  const layers = [newTextLayer({ text: "top" }), newImageLayer(sticker, { width: 0.4 }), newTextLayer({ text: "bottom" })];
+  const create = async (body: Record<string, unknown>) =>
+    call<Meme>("POST", "/api/memes", alice, { templateId: template.id, outputAssetId: await upload(alice, "o.png"), ...body });
+  const made = await create({ layers });
+  assert.equal(made.status, 201, JSON.stringify(made.body));
+  assert.deepEqual(made.body.layers, layers);
+  assert.deepEqual((await call<Meme>("GET", `/api/memes/${made.body.id}`, null)).body.layers, layers);
+
+  const animated = await upload(alice);
+  await sql`update assets set kind = 'gif' where id = ${animated}`;
+  assert.equal((await create({ layers: [newImageLayer(crypto.randomUUID())] })).status, 400);
+  assert.equal((await create({ layers: [newImageLayer(animated)] })).status, 400);
+  const badEdit = await call("PATCH", `/api/memes/${made.body.id}`, alice, {
+    layers: [newImageLayer(animated)],
+    outputAssetId: made.body.outputAsset.id,
+  });
+  assert.equal(badEdit.status, 400);
+  assert.deepEqual((await call<Meme>("GET", `/api/memes/${made.body.id}`, null)).body.layers, layers);
+
+  const defaults = [newImageLayer(sticker), newTextLayer()];
+  const withImage = await call<Template>("POST", "/api/templates", alice, { name: "Sticker", assetId: await upload(alice), defaultLayers: defaults });
+  assert.equal(withImage.status, 201, JSON.stringify(withImage.body));
+  assert.deepEqual(withImage.body.defaultLayers, defaults);
+  const badDefaults = await call("PATCH", `/api/templates/${template.id}`, alice, { defaultLayers: [newImageLayer(animated)] });
+  assert.equal(badDefaults.status, 400);
+
+  // An image only a layer uses is still in use: by the meme, and (once the meme is gone) by a template's defaults.
+  const inUse = (err: unknown) => err instanceof HttpError && err.status === 409;
+  await assert.rejects(store.delete((await findAssetRow(sql, sticker))!), inUse);
+  assert.equal((await call("DELETE", `/api/memes/${made.body.id}`, alice)).status, 204);
+  await assert.rejects(store.delete((await findAssetRow(sql, sticker))!), inUse);
+  assert.equal((await call("DELETE", `/api/templates/${withImage.body.id}`, alice)).status, 204);
+  await store.delete((await findAssetRow(sql, sticker))!);
 });
 
 test("multi-panel templates: an ordered still-image pack; memes must fill panels from it", async () => {

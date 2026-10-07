@@ -154,5 +154,5 @@ test("profile templates: everyone sees the tab; the author opens one, edits its 
 
   const saved = await apiGet<Template>(request, `/api/templates/${template.id}`);
   expect(saved.name).toBe(renamed);
-  expect(saved.defaultLayers.map((l) => l.text)).toEqual(["EDITED TOP", "FIRST BOTTOM"]);
+  expect(saved.defaultLayers.map((l) => (l.type === "text" ? l.text : l.type))).toEqual(["EDITED TOP", "FIRST BOTTOM"]);
 });

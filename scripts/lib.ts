@@ -1,12 +1,12 @@
 /** SQL shared by the seed scripts (scripts/seed.ts, scripts/mock/seed-data.ts). */
-import type { TextLayer } from "@memegen/shared";
+import type { Layer } from "@memegen/shared";
 import type { Sql } from "@memegen/server-kit";
 
 export interface TemplateInsert {
   slug: string;
   name: string;
   assetId: string;
-  layers: TextLayer[];
+  layers: Layer[];
   parentId?: string | null;
   /** null: the reserved `memegen` account (filled in by a trigger). */
   ownerId?: string | null;

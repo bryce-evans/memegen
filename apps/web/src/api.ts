@@ -8,6 +8,7 @@ import type {
   LeaderboardSort,
   Meme,
   Page,
+  Layer,
   Panel,
   PanelLayout,
   PanelSet,
@@ -17,7 +18,6 @@ import type {
   TemplateUsage,
   Tag,
   TagKind,
-  TextLayer,
   UploadLimits,
   User,
   UserProfile,
@@ -135,7 +135,8 @@ export function contentUrl(asset: Pick<Asset, "contentPath">): string {
   return `/storage${asset.contentPath}`;
 }
 
-export const fontUrl = (assetId: string) => contentUrl({ contentPath: assetContentPath(assetId) });
+/** Content URL for an asset known only by id (fonts, image layers). */
+export const assetUrl = (assetId: string) => contentUrl({ contentPath: assetContentPath(assetId) });
 
 export const getLimits = () => request<UploadLimits>("/storage/limits");
 
@@ -189,7 +190,7 @@ export interface CreateTemplateInput {
   /** The media; for a multi-panel template, its rendered cover. */
   assetId: string;
   parentId?: string | null;
-  defaultLayers?: TextLayer[];
+  defaultLayers?: Layer[];
   panels?: PanelTemplateInput | null;
   isPublic?: boolean;
   tags?: string[];
@@ -213,7 +214,7 @@ export const createTemplate = (input: CreateTemplateInput) =>
  */
 export const updateTemplate = (
   id: string,
-  changes: { name?: string; defaultLayers?: TextLayer[] } & ({ panels: PanelTemplateInput; assetId: string } | { panels?: never; assetId?: never }),
+  changes: { name?: string; defaultLayers?: Layer[] } & ({ panels: PanelTemplateInput; assetId: string } | { panels?: never; assetId?: never }),
 ) => request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
 
 /** Adds (never removes) tags; the author's base tags always stay. */
@@ -233,7 +234,7 @@ export interface CreateMemeInput {
   /** Every meme is made from an existing template. */
   templateId: string;
   outputAssetId: string;
-  layers: TextLayer[];
+  layers: Layer[];
   /** Required for multi-panel templates (with no layers). */
   panels: PanelSet | null;
   visibility: Visibility;
@@ -249,7 +250,7 @@ export type UpdateMemeInput = {
   title?: string;
   visibility?: Visibility;
   tags?: string[];
-} & ({ layers: TextLayer[]; panels: PanelSet | null; outputAssetId: string } | { layers?: never; panels?: never; outputAssetId?: never });
+} & ({ layers: Layer[]; panels: PanelSet | null; outputAssetId: string } | { layers?: never; panels?: never; outputAssetId?: never });
 
 export const updateMeme = (id: string, input: UpdateMemeInput) =>
   request<Meme>(`/api/memes/${id}`, { method: "PATCH", json: input });

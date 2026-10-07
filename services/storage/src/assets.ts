@@ -92,12 +92,16 @@ export class AssetStore {
     }
   }
 
-  /** Deletes metadata then bytes. Refuses while templates (as media or pack image) or memes reference the asset. */
+  /**
+   * Deletes metadata then bytes. Refuses while templates (as media, pack image, or default image layer) or memes
+   * (as source, output, or image layer) reference the asset.
+   */
   async delete(row: AssetRow): Promise<void> {
+    const imageLayer = this.sql.json([{ type: "image", assetId: row.id }] as never);
     const [ref] = await this.sql`
-      select 1 from templates where asset_id = ${row.id}
+      select 1 from templates where asset_id = ${row.id} or default_layers @> ${imageLayer}
       union all select 1 from template_pack_assets where asset_id = ${row.id}
-      union all select 1 from memes where source_asset_id = ${row.id} or output_asset_id = ${row.id}
+      union all select 1 from memes where source_asset_id = ${row.id} or output_asset_id = ${row.id} or layers @> ${imageLayer}
       limit 1`;
     if (ref) throw new HttpError(409, "asset is in use by a template or meme");
     await this.sql`delete from assets where id = ${row.id}`;

@@ -1,4 +1,4 @@
-import type { Comment, Meme, Panel, PanelLayout, PanelSet, Period, Tag, Template, TemplateKind, TextLayer, Visibility } from "@memegen/shared";
+import type { Comment, Layer, Meme, Panel, PanelLayout, PanelSet, Period, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
 import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
 
 // ---- shared SQL pieces -------------------------------------------------------------
@@ -69,7 +69,7 @@ export interface MemeRow {
   template_id: string;
   source_asset: AssetRow;
   output_asset: AssetRow;
-  layers: TextLayer[];
+  layers: Layer[];
   panels: PanelSet | null;
   visibility: Visibility;
   posted_at: Date | null;
@@ -153,7 +153,7 @@ export interface TemplateRow {
   owner_id: string;
   owner_username: string;
   asset: AssetRow;
-  default_layers: TextLayer[];
+  default_layers: Layer[];
   /** Pack lives in `template_pack_assets`, selected as `pack`. */
   panels: { layout: PanelLayout; grid: boolean; fontSize: number; defaultPanels: Panel[] } | null;
   /** Pack assets in order; null for single-media templates. */

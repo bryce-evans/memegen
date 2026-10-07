@@ -52,41 +52,59 @@ export const keyframeSchema = z.object({
   opacity: z.number().min(0).max(1),
 });
 
-export const textLayerSchema = z
-  .object({
-    id: z.string().min(1).max(64),
-    /** Editor label ("Top text", "Panel 1"), named in the template editor; never drawn. Absent on older layers. */
-    name: z.string().max(LAYER_NAME_MAX_LENGTH).optional(),
-    text: z.string().max(TEXT_MAX_LENGTH),
-    /** Font asset; null uses the fallback family. */
-    fontAssetId: z.uuid().nullable(),
-    /** Max font size as a fraction of media height; text shrinks to fit the box. */
-    fontSize: z.number().gt(0).max(1),
-    color,
-    strokeColor: color,
-    /** Stroke width as a fraction of the font size. */
-    strokeWidth: z.number().min(0).max(0.5),
-    align: z.enum(TEXT_ALIGNS),
-    /** Text box size as fractions of media width/height; wraps at width, shrinks to fit. */
-    maxWidth: z.number().gt(0).max(1),
-    maxHeight: z.number().gt(0).max(1),
-    textStyle: z.enum(TEXT_STYLES),
-    /** Clockwise rotation in degrees around the box center. */
-    angle: z.number().min(-360).max(360),
-    /** Static anchor/opacity, used when `keyframes` is empty. */
-    x: unit,
-    y: unit,
-    opacity: z.number().min(0).max(1),
-    /** Visibility window in seconds; null = unbounded. */
-    start: time.nullable(),
-    end: time.nullable(),
-    /** Sorted by `t`; when non-empty, overrides x/y/opacity with linear interpolation. */
-    keyframes: z.array(keyframeSchema).max(2000),
-  })
+/** What every layer kind has: identity, placement, rotation, opacity, visibility window, and keyframes. */
+const layerFields = {
+  id: z.string().min(1).max(64),
+  /** Editor label ("Top text", "Panel 1"), named in the template editor; never drawn. Absent on older layers. */
+  name: z.string().max(LAYER_NAME_MAX_LENGTH).optional(),
+  /** Clockwise rotation in degrees around the box center. */
+  angle: z.number().min(-360).max(360),
+  /** Static anchor (box center, fractions of media width/height) and opacity, used when `keyframes` is empty. */
+  x: unit,
+  y: unit,
+  opacity: z.number().min(0).max(1),
+  /** Visibility window in seconds; null = unbounded. */
+  start: time.nullable(),
+  end: time.nullable(),
+  /** Sorted by `t`; when non-empty, overrides x/y/opacity with linear interpolation. */
+  keyframes: z.array(keyframeSchema).max(2000),
+};
+
+export const textLayerSchema = z.object({
+  type: z.literal("text"),
+  ...layerFields,
+  text: z.string().max(TEXT_MAX_LENGTH),
+  /** Font asset; null uses the fallback family. */
+  fontAssetId: z.uuid().nullable(),
+  /** Max font size as a fraction of media height; text shrinks to fit the box. */
+  fontSize: z.number().gt(0).max(1),
+  color,
+  strokeColor: color,
+  /** Stroke width as a fraction of the font size. */
+  strokeWidth: z.number().min(0).max(0.5),
+  align: z.enum(TEXT_ALIGNS),
+  /** Text box size as fractions of media width/height; wraps at width, shrinks to fit. */
+  maxWidth: z.number().gt(0).max(1),
+  maxHeight: z.number().gt(0).max(1),
+  textStyle: z.enum(TEXT_STYLES),
+});
+
+/** An uploaded or pasted still image drawn over the media, at its own aspect ratio. */
+export const imageLayerSchema = z.object({
+  type: z.literal("image"),
+  ...layerFields,
+  /** A still image asset. */
+  assetId: z.uuid(),
+  /** Drawn width as a fraction of media width; the height follows the image's aspect ratio. */
+  width: z.number().gt(0).max(2),
+});
+
+export const layerSchema = z
+  .discriminatedUnion("type", [textLayerSchema, imageLayerSchema])
   .refine((l) => l.start === null || l.end === null || l.start <= l.end, "start must be <= end")
   .transform((l) => ({ ...l, keyframes: [...l.keyframes].sort((a, b) => a.t - b.t) }));
 
-export const layersSchema = z.array(textLayerSchema).max(50);
+export const layersSchema = z.array(layerSchema).max(50);
 
 export const panelSchema = z.object({
   id: z.string().min(1).max(64),

@@ -1,4 +1,4 @@
-import type { Keyframe, TextLayer } from "./types.ts";
+import type { Keyframe, Layer } from "./types.ts";
 
 export interface LayerState {
   x: number;
@@ -6,6 +6,9 @@ export interface LayerState {
   opacity: number;
   visible: boolean;
 }
+
+/** What placement and animation need from a layer; text and image layers both have it. */
+export type AnimatedLayer = Pick<Layer, "x" | "y" | "opacity" | "start" | "end" | "keyframes">;
 
 /** Linear interpolation of one keyframe channel; clamps outside the keyframe range. */
 export function interpolate(keyframes: readonly Keyframe[], t: number, key: "x" | "y" | "opacity"): number {
@@ -22,11 +25,11 @@ export function interpolate(keyframes: readonly Keyframe[], t: number, key: "x" 
   return keyframes[keyframes.length - 1]![key];
 }
 
-export function isVisibleAt(layer: Pick<TextLayer, "start" | "end">, t: number): boolean {
+export function isVisibleAt(layer: Pick<Layer, "start" | "end">, t: number): boolean {
   return (layer.start === null || t >= layer.start) && (layer.end === null || t <= layer.end);
 }
 
-export function layerStateAt(layer: TextLayer, t: number): LayerState {
+export function layerStateAt(layer: AnimatedLayer, t: number): LayerState {
   const visible = isVisibleAt(layer, t);
   if (layer.keyframes.length === 0) {
     return { x: layer.x, y: layer.y, opacity: layer.opacity, visible };
@@ -53,7 +56,7 @@ export function clampAnchor(v: number): number {
 export type Placement = Partial<Pick<Keyframe, "x" | "y" | "opacity">>;
 
 /** Move/fade a layer at time `t`: static layers change their anchor, animated ones get a keyframe at `t`. */
-export function placeAt(layer: TextLayer, t: number, patch: Placement): TextLayer {
+export function placeAt<L extends AnimatedLayer>(layer: L, t: number, patch: Placement): L {
   const state = layerStateAt(layer, t);
   const x = patch.x === undefined ? state.x : clampAnchor(patch.x);
   const y = patch.y === undefined ? state.y : clampAnchor(patch.y);
@@ -63,13 +66,13 @@ export function placeAt(layer: TextLayer, t: number, patch: Placement): TextLaye
 }
 
 /** Keyframe the layer's current state at `t`. */
-export function addKeyframeAt(layer: TextLayer, t: number): TextLayer {
+export function addKeyframeAt<L extends AnimatedLayer>(layer: L, t: number): L {
   const { x, y, opacity } = layerStateAt(layer, t);
   return { ...layer, keyframes: upsertKeyframe(layer.keyframes, { t, x, y, opacity }) };
 }
 
 /** Drop one keyframe; removing the last one keeps its state as the static position. */
-export function removeKeyframe(layer: TextLayer, index: number): TextLayer {
+export function removeKeyframe<L extends AnimatedLayer>(layer: L, index: number): L {
   const kf = layer.keyframes[index];
   if (!kf) return layer;
   if (layer.keyframes.length === 1) return { ...layer, keyframes: [], x: kf.x, y: kf.y, opacity: kf.opacity };
@@ -77,7 +80,7 @@ export function removeKeyframe(layer: TextLayer, index: number): TextLayer {
 }
 
 /** Remove keyframes and the visibility window, keeping the state at `t` as the static position. */
-export function clearAnimation(layer: TextLayer, t: number): TextLayer {
+export function clearAnimation<L extends AnimatedLayer>(layer: L, t: number): L {
   const { x, y, opacity } = layerStateAt(layer, t);
   return { ...layer, keyframes: [], start: null, end: null, x, y, opacity };
 }
@@ -85,7 +88,7 @@ export function clearAnimation(layer: TextLayer, t: number): TextLayer {
 export type WindowEdge = "start" | "end";
 
 /** Set (or clear with null) one edge of the visibility window; the other edge is cleared if it would invert it. */
-export function setWindow(layer: TextLayer, edge: WindowEdge, value: number | null): TextLayer {
+export function setWindow<L extends AnimatedLayer>(layer: L, edge: WindowEdge, value: number | null): L {
   if (edge === "start") {
     return { ...layer, start: value, end: value !== null && layer.end !== null && layer.end < value ? null : layer.end };
   }

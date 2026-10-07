@@ -737,6 +737,17 @@
   align-items: center;
   margin-left: auto;
 }
+/* Image layers show a thumbnail where text layers have their text box; clicking it selects the layer. */
+.layer-image-button {
+  display: block;
+  padding: var(--ui-space-1);
+}
+.layer-image-thumb {
+  display: block;
+  max-width: 100%;
+  max-height: 64px;
+  object-fit: contain;
+}
 .layer-row-text {
   display: block;
   width: 100%;

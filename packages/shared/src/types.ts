@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { keyframeSchema, panelSchema, panelSetSchema, textLayerSchema } from "./schema.ts";
+import type { imageLayerSchema, keyframeSchema, panelSchema, panelSetSchema, textLayerSchema } from "./schema.ts";
 
 export const ASSET_KINDS = ["image", "gif", "video", "font"] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];
@@ -40,6 +40,10 @@ export type TextStyle = (typeof TEXT_STYLES)[number];
 
 /** Field docs live on `textLayerSchema`, the single definition. */
 export type TextLayer = z.output<typeof textLayerSchema>;
+/** A still image over the media (uploaded or pasted); field docs on `imageLayerSchema`. */
+export type ImageLayer = z.output<typeof imageLayerSchema>;
+/** Anything drawn over a single image/GIF/video meme, in order (later on top). */
+export type Layer = TextLayer | ImageLayer;
 
 /**
  * Every template's kind, fixed when it is created; each has its own editor. `single` = one still image with text
@@ -132,7 +136,7 @@ export interface Template {
   owner: Pick<User, "id" | "username">;
   asset: Asset;
   /** Empty for multi-panel templates. */
-  defaultLayers: TextLayer[];
+  defaultLayers: Layer[];
   /** Set for multi-panel templates; `asset` is then a rendered cover of `defaultPanels`. */
   panels: PanelTemplate | null;
   isPublic: boolean;
@@ -197,7 +201,7 @@ export interface Meme {
   sourceAsset: Asset;
   outputAsset: Asset;
   /** Empty for multi-panel memes. */
-  layers: TextLayer[];
+  layers: Layer[];
   /** Set for memes made from a multi-panel template. */
   panels: PanelSet | null;
   visibility: Visibility;

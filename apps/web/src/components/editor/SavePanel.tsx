@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExportAbortedError, type ExportResult } from "@memegen/render";
-import { limitViolations, type Meme, type PanelSet, type TextLayer, type UploadLimits, type Visibility } from "@memegen/shared";
+import { limitViolations, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
 import { ApiError, createMeme, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { downloadBlob, fileSlug } from "../../media.ts";
@@ -14,8 +14,8 @@ export type RenderProgress = (step: string, value: number | null) => void;
 export interface SavePanelProps {
   /** Render the meme in the browser (the editor's own exporter). */
   render: (signal: AbortSignal, progress: RenderProgress) => Promise<ExportResult>;
-  /** What the meme stores: text layers, or a multi-panel meme's panels (with no layers). */
-  content: { layers: TextLayer[]; panels: PanelSet | null };
+  /** What the meme stores: its layers, or a multi-panel meme's panels (with no layers). */
+  content: { layers: Layer[]; panels: PanelSet | null };
   limits: UploadLimits;
   /** False when re-editing someone else's meme: only Download is offered. */
   canSave: boolean;

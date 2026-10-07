@@ -1,12 +1,12 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from "react";
 import type { DecodedMedia } from "@memegen/render";
-import { layerLabel, type TextLayer, type WindowEdge } from "@memegen/shared";
+import { layerLabel, type Layer, type WindowEdge } from "@memegen/shared";
 import { cx } from "@memegen/ui";
 import { clampEdgeFrame, setEdgeFrame, windowFrames } from "./windowFrames.ts";
 
 export interface LayerTracksProps {
   media: DecodedMedia;
-  layers: readonly TextLayer[];
+  layers: readonly Layer[];
   frame: number;
   selectedId: string | null;
   /** Width of one frame cell in the strip above, borders included. */
@@ -14,7 +14,7 @@ export interface LayerTracksProps {
   /** Distance from one frame cell to the next (cell width plus the strip's gap). */
   pitch: number;
   onSelect: (id: string) => void;
-  onUpdate: (id: string, update: (layer: TextLayer) => TextLayer) => void;
+  onUpdate: (id: string, update: (layer: Layer) => Layer) => void;
   onSeek: (frame: number) => void;
 }
 
@@ -36,14 +36,14 @@ export function LayerTracks({ media, layers, frame, selectedId, cellWidth, pitch
   const drag = useRef<Drag | null>(null);
 
   /** Move one edge to frame `index` (clamped so the window can't invert), then show that frame. */
-  function setEdge(layer: TextLayer, edge: WindowEdge, index: number): number {
+  function setEdge(layer: Layer, edge: WindowEdge, index: number): number {
     const i = clampEdgeFrame(layer, edge, index, times);
     onUpdate(layer.id, (l) => setEdgeFrame(l, edge, i, times));
     onSeek(i);
     return i;
   }
 
-  function startDrag(e: PointerEvent<HTMLDivElement>, layer: TextLayer, edge: WindowEdge) {
+  function startDrag(e: PointerEvent<HTMLDivElement>, layer: Layer, edge: WindowEdge) {
     e.preventDefault();
     e.stopPropagation();
     onSelect(layer.id);
@@ -52,7 +52,7 @@ export function LayerTracks({ media, layers, frame, selectedId, cellWidth, pitch
     e.currentTarget.focus();
   }
 
-  function moveDrag(e: PointerEvent<HTMLDivElement>, layer: TextLayer) {
+  function moveDrag(e: PointerEvent<HTMLDivElement>, layer: Layer) {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
     // Measured on every move: seeking scrolls the strip to keep the current frame in view, which moves the rail.
@@ -65,7 +65,7 @@ export function LayerTracks({ media, layers, frame, selectedId, cellWidth, pitch
     if (drag.current?.pointerId === e.pointerId) drag.current = null;
   }
 
-  function nudge(e: KeyboardEvent<HTMLDivElement>, layer: TextLayer, edge: WindowEdge) {
+  function nudge(e: KeyboardEvent<HTMLDivElement>, layer: Layer, edge: WindowEdge) {
     const current = windowFrames(layer, times)[edge];
     const next = { ArrowLeft: current - 1, ArrowDown: current - 1, ArrowRight: current + 1, ArrowUp: current + 1, Home: 0, End: last }[e.key];
     if (next === undefined) return;
@@ -109,7 +109,7 @@ export function LayerTracks({ media, layers, frame, selectedId, cellWidth, pitch
             style={{ width: times.length * pitch - (pitch - cellWidth) }}
           >
             <div className="layer-track-span" data-testid="track-span" style={{ left, width: right - left }} onPointerDown={() => onSelect(layer.id)}>
-              {layer.text.split("\n")[0]?.trim() || label}
+              {(layer.type === "text" && layer.text.split("\n")[0]?.trim()) || label}
             </div>
             <div className="layer-track-playhead" style={{ left: frame * pitch + cellWidth / 2 }} />
             {handle("start", left, s)}

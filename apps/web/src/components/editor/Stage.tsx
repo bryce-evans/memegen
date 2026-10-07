@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { composeFrame, type DecodedMedia, type LayerBox } from "@memegen/render";
-import { layerStateAt, type TextLayer } from "@memegen/shared";
+import { composeFrame, type DecodedMedia, type LayerBox, type LayerImages } from "@memegen/render";
+import { layerLabel, layerStateAt, type Layer } from "@memegen/shared";
 import { Alert } from "@memegen/ui";
 
 export interface StageProps {
   media: DecodedMedia;
-  layers: TextLayer[];
+  layers: Layer[];
+  /** Decoded image-layer assets; a layer whose image is still loading draws nothing but stays selectable. */
+  images: LayerImages;
   frame: number;
   selectedId: string | null;
   /** Bumped whenever a font finishes loading so text is re-measured. */
@@ -24,7 +26,7 @@ interface Drag {
   y0: number;
 }
 
-export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect, onMove }: StageProps) {
+export function Stage({ media, layers, images, frame, selectedId, fontsVersion, onSelect, onMove }: StageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameCache = useRef<{ index: number; image: CanvasImageSource } | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -65,7 +67,7 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!ctx) return;
-      setBoxes(composeFrame(ctx, image, layers, pixelWidth, pixelHeight, t));
+      setBoxes(composeFrame(ctx, image, layers, images, pixelWidth, pixelHeight, t));
       setError(null);
       setReady(true);
     };
@@ -75,9 +77,9 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
     return () => {
       cancelled = true;
     };
-  }, [media, frame, t, layers, fontsVersion, pixelWidth, pixelHeight]);
+  }, [media, frame, t, layers, images, fontsVersion, pixelWidth, pixelHeight]);
 
-  function startDrag(e: PointerEvent<HTMLDivElement>, layer: TextLayer) {
+  function startDrag(e: PointerEvent<HTMLDivElement>, layer: Layer) {
     e.stopPropagation();
     e.preventDefault();
     onSelect(layer.id);
@@ -113,7 +115,8 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
           data-ready={ready ? "true" : undefined}
         />
         {boxes.map((box) => {
-          const layer = layers.find((l) => l.id === box.layerId);
+          const index = layers.findIndex((l) => l.id === box.layerId);
+          const layer = layers[index];
           if (!layer) return null;
           return (
             <div
@@ -125,7 +128,7 @@ export function Stage({ media, layers, frame, selectedId, fontsVersion, onSelect
                 box.layerId === selectedId ? "selected" : "",
                 box.overflow ? "overflow" : "",
               ].join(" ")}
-              title={box.overflow ? "Text does not fit the box at the minimum size" : layer.text}
+              title={box.overflow ? "Text does not fit the box at the minimum size" : layer.type === "text" ? layer.text : layerLabel(layer, index)}
               style={{
                 left: (box.cx - box.width / 2) * boxScale,
                 top: (box.cy - box.height / 2) * boxScale,

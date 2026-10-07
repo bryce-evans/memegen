@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
-import { isVisibleAt, type TextLayer } from "@memegen/shared";
+import { isVisibleAt, type Layer } from "@memegen/shared";
 import { Icon, IconButton, Panel, Text } from "@memegen/ui";
 import { LayerTracks } from "./LayerTracks.tsx";
 
@@ -13,13 +13,13 @@ export interface TimelineProps {
   media: DecodedMedia;
   frame: number;
   playing: boolean;
-  selectedLayer: TextLayer | null;
+  selectedLayer: Layer | null;
   /** Every layer, each drawn as a window track under the frames, on the same cells. */
-  layers: readonly TextLayer[];
+  layers: readonly Layer[];
   onSeek: (frame: number) => void;
   onTogglePlay: () => void;
   onSelectLayer: (id: string) => void;
-  onUpdateLayer: (id: string, update: (layer: TextLayer) => TextLayer) => void;
+  onUpdateLayer: (id: string, update: (layer: Layer) => Layer) => void;
 }
 
 export function Timeline({ media, frame, playing, selectedLayer, layers, onSeek, onTogglePlay, onSelectLayer, onUpdateLayer }: TimelineProps) {

@@ -10,7 +10,7 @@ import {
   type TemplateUsage,
 } from "@memegen/shared";
 import { HttpError, idParam, page, parse, parseJson, type Sql } from "@memegen/server-kit";
-import { loadTemplate, ownTemplate, requireMediaAsset, requirePackImages, requireUser, type ApiApp } from "../access.ts";
+import { loadTemplate, ownTemplate, requireLayerImages, requireMediaAsset, requirePackImages, requireUser, type ApiApp } from "../access.ts";
 import {
   addTemplateTags,
   containsPattern,
@@ -116,6 +116,7 @@ export function register(app: ApiApp, sql: Sql): void {
       if (parent.parent_id) throw new HttpError(400, "variations cannot have variations; use the top-level template");
     }
     if (body.panels) await requirePackImages(sql, body.panels.packAssetIds);
+    await requireLayerImages(sql, body.defaultLayers);
     const id = await sql.begin(async (tx) => {
       const [row] = await tx<{ id: string }[]>`
         insert into templates ${tx({
@@ -155,7 +156,10 @@ export function register(app: ApiApp, sql: Sql): void {
     const changes: Record<string, unknown> = {};
     if (body.name !== undefined) changes.name = body.name;
     if (body.isPublic !== undefined) changes.is_public = body.isPublic;
-    if (body.defaultLayers !== undefined) changes.default_layers = sql.json(body.defaultLayers as never);
+    if (body.defaultLayers !== undefined) {
+      await requireLayerImages(sql, body.defaultLayers);
+      changes.default_layers = sql.json(body.defaultLayers as never);
+    }
     const panels = body.panels;
     if (panels && body.assetId) {
       if (!current!.multi) throw new HttpError(400, "only multi-panel templates have panels");

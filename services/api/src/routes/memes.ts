@@ -1,6 +1,6 @@
 import { createMemeSchema, favoriteSchema, updateMemeSchema, voteSchema } from "@memegen/shared";
 import { idParam, parse, parseJson, type Sql } from "@memegen/server-kit";
-import { loadMeme, loadTemplate, ownMeme, requireMemePanels, requireOwnOutput, requireUser, type ApiApp } from "../access.ts";
+import { loadMeme, loadTemplate, ownMeme, requireLayerImages, requireMemePanels, requireOwnOutput, requireUser, type ApiApp } from "../access.ts";
 import { replaceMemeTags, requireListed, toMeme } from "../rows.ts";
 
 /** Meme authoring, posting, votes, and favorites. */
@@ -11,6 +11,7 @@ export function register(app: ApiApp, sql: Sql): void {
     const template = await loadTemplate(sql, body.templateId, user);
     const output = await requireOwnOutput(sql, body.outputAssetId, user);
     const panels = await requireMemePanels(sql, template.id, body.panels);
+    await requireLayerImages(sql, body.layers);
     const [row] = await sql<{ id: string }[]>`
       insert into memes ${sql({
         owner_id: user.id,
@@ -41,6 +42,7 @@ export function register(app: ApiApp, sql: Sql): void {
     if (body.layers && body.outputAssetId) {
       const output = await requireOwnOutput(sql, body.outputAssetId, user);
       const panels = await requireMemePanels(sql, meme.template_id, body.panels);
+      await requireLayerImages(sql, body.layers);
       changes.layers = sql.json(body.layers as never);
       changes.panels = panels ? sql.json(panels as never) : null;
       changes.output_asset_id = output.id;

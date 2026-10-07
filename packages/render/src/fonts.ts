@@ -1,4 +1,4 @@
-import { fontFamilyFor, type TextLayer } from "@memegen/shared";
+import { fontFamilyFor, type Layer } from "@memegen/shared";
 
 const loaded = new Map<string, Promise<void>>();
 
@@ -16,12 +16,12 @@ export function loadFont(assetId: string, url: string): Promise<void> {
   return pending;
 }
 
-/** Distinct font assets the layers reference. */
-export function layerFontIds(layers: readonly TextLayer[]): string[] {
-  return [...new Set(layers.map((l) => l.fontAssetId).filter((id): id is string => id !== null))];
+/** Distinct font assets the text layers reference. */
+export function layerFontIds(layers: readonly Layer[]): string[] {
+  return [...new Set(layers.flatMap((l) => (l.type === "text" && l.fontAssetId !== null ? [l.fontAssetId] : [])))];
 }
 
 /** Load every font the layers reference; text measured before this resolves uses a fallback. */
-export async function ensureLayerFonts(layers: readonly TextLayer[], urlFor: (assetId: string) => string): Promise<void> {
+export async function ensureLayerFonts(layers: readonly Layer[], urlFor: (assetId: string) => string): Promise<void> {
   await Promise.all(layerFontIds(layers).map((id) => loadFont(id, urlFor(id))));
 }

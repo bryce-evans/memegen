@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { ensureLayerFonts, exportMeme, layerFontIds, loadFont } from "@memegen/render";
-import { newTextLayer, placeAt, stillExportSize, type Asset, type TextLayer } from "@memegen/shared";
+import { ensureLayerFonts, ensureLayerImages, exportMeme, layerFontIds, layerImageIds, loadFont, loadLayerImage, type LayerImages } from "@memegen/render";
+import { newImageLayer, newTextLayer, placeAt, stillExportSize, type Asset, type Layer } from "@memegen/shared";
 import { Alert, PageHeader, Spinner } from "@memegen/ui";
-import { createTemplate, fontUrl, listFonts, updateTemplate } from "../api.ts";
+import { assetUrl, createTemplate, listFonts, updateTemplate, uploadAsset } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { CreateStart } from "../components/editor/CreateStart.tsx";
@@ -18,6 +18,7 @@ import { nameFromFile, TemplateSavePanel } from "../components/editor/TemplateSa
 import { Timeline } from "../components/editor/Timeline.tsx";
 import { TemplateDetails } from "../components/templateDetails.tsx";
 import { plural } from "../format.ts";
+import { precheckMedia } from "../media.ts";
 
 const LOADING_TITLES: Record<SourceRef["kind"], string> = {
   meme: "Edit meme",
@@ -54,12 +55,15 @@ function Workspace({ session }: { session: MediaSession }) {
   const { media, source, limits } = session;
   const user = useUser();
   const [fonts, setFonts] = useState<Asset[]>(session.fonts);
-  const [layers, setLayers] = useState<TextLayer[]>(session.layers);
+  const [layers, setLayers] = useState<Layer[]>(session.layers);
   const [selectedId, setSelectedId] = useState<string | null>(session.layers[0]?.id ?? null);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [fontsVersion, setFontsVersion] = useState(0);
   const [fontError, setFontError] = useState<string | null>(null);
+  const [layerImages, setLayerImages] = useState<LayerImages>(() => new Map());
+  const [addingImage, setAddingImage] = useState(false);
+  const [imageError, setImageError] = useState<unknown>(null);
   const animated = media.kind !== "image";
   const t = media.times[frame] ?? 0;
   const selectedLayer = layers.find((l) => l.id === selectedId) ?? null;
@@ -72,7 +76,7 @@ function Workspace({ session }: { session: MediaSession }) {
     if (!fontKey) return;
     let cancelled = false;
     for (const id of fontKey.split(",")) {
-      loadFont(id, fontUrl(id)).then(
+      loadFont(id, assetUrl(id)).then(
         () => !cancelled && setFontsVersion((v) => v + 1),
         (err: unknown) => !cancelled && setFontError(`font failed to load: ${err instanceof Error ? err.message : String(err)}`),
       );
@@ -82,6 +86,20 @@ function Workspace({ session }: { session: MediaSession }) {
     };
   }, [fontKey]);
 
+  // Decode every referenced image (cached per asset); redraw once they are all ready.
+  const imageKey = layerImageIds(layers).sort().join(",");
+  useEffect(() => {
+    const ids = imageKey ? imageKey.split(",") : [];
+    let cancelled = false;
+    Promise.all(ids.map((id) => loadLayerImage(id, assetUrl(id)))).then(
+      (images) => !cancelled && setLayerImages(new Map(ids.map((id, i) => [id, images[i]!]))),
+      (err: unknown) => !cancelled && setImageError(err),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [imageKey]);
+
   // Playback: advance by each frame's own duration.
   useEffect(() => {
     if (!playing || !animated) return;
@@ -90,7 +108,7 @@ function Workspace({ session }: { session: MediaSession }) {
     return () => clearTimeout(timer);
   }, [playing, animated, frame, media]);
 
-  const updateLayer = useCallback((id: string, update: (layer: TextLayer) => TextLayer) => {
+  const updateLayer = useCallback((id: string, update: (layer: Layer) => Layer) => {
     setLayers((ls) => ls.map((l) => (l.id === id ? update(l) : l)));
   }, []);
 
@@ -104,6 +122,40 @@ function Workspace({ session }: { session: MediaSession }) {
     setLayers((ls) => [...ls, layer]);
     setSelectedId(layer.id);
   }
+
+  /** Check `file` against the image caps, upload it, and add it centered (at most half the media's width). */
+  async function addImageFile(file: File) {
+    setImageError(null);
+    setAddingImage(true);
+    try {
+      const checked = await precheckMedia(file, limits);
+      const { kind, width } = checked;
+      checked.dispose();
+      if (kind !== "image") throw new Error("image layers must be still images (PNG, JPEG, or WebP)");
+      const asset = await uploadAsset(file, file.name || "pasted.png");
+      const layer = newImageLayer(asset.id, { name: `Image ${layers.length + 1}`, width: Math.min(0.5, width / media.width) });
+      setLayers((ls) => [...ls, layer]);
+      setSelectedId(layer.id);
+    } catch (err) {
+      setImageError(err);
+    } finally {
+      setAddingImage(false);
+    }
+  }
+
+  // Pasting an image anywhere in the editor adds it as a layer; text pastes go where they normally would.
+  const addImageRef = useRef(addImageFile);
+  addImageRef.current = addImageFile;
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith("image/"));
+      if (!file) return;
+      e.preventDefault();
+      void addImageRef.current(file);
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, []);
 
   function removeLayer(id: string) {
     setLayers((ls) => ls.filter((l) => l.id !== id));
@@ -127,21 +179,21 @@ function Workspace({ session }: { session: MediaSession }) {
     } catch {
       setFonts((fs) => [...fs, font]);
     }
-    updateLayer(layerId, (l) => ({ ...l, fontAssetId: font.id }));
+    updateLayer(layerId, (l) => (l.type === "text" ? { ...l, fontAssetId: font.id } : l));
   }
 
   async function render(signal: AbortSignal, progress: RenderProgress) {
-    progress("Loading fonts", null);
-    await ensureLayerFonts(layers, fontUrl);
+    progress("Loading fonts and images", null);
+    const [, images] = await Promise.all([ensureLayerFonts(layers, assetUrl), ensureLayerImages(layers, assetUrl)]);
     progress("Rendering", 0);
-    return exportMeme(media, layers, {
+    return exportMeme(media, layers, images, {
       signal,
       onProgress: (value) => progress("Rendering", value),
       stillSize: stillExportSize(media.width, media.height, limits),
     });
   }
 
-  const boxes = plural(layers.length, "text box", "text boxes");
+  const boxes = plural(layers.length, "layer", "layers");
   return (
     <>
       {source.kind === "new-template" && <PageHeader title="Template Editor" titleProps={{ "data-testid": "editor-title" }} />}
@@ -151,6 +203,7 @@ function Workspace({ session }: { session: MediaSession }) {
           <Stage
             media={media}
             layers={layers}
+            images={layerImages}
             frame={frame}
             selectedId={selectedId}
             fontsVersion={fontsVersion}
@@ -162,6 +215,7 @@ function Workspace({ session }: { session: MediaSession }) {
               {fontError}
             </Alert>
           )}
+          {imageError !== null && <ErrorView error={imageError} testId="image-layer-error" />}
           {animated && (
             <Timeline
               media={media}
@@ -185,7 +239,9 @@ function Workspace({ session }: { session: MediaSession }) {
             selectedId={selectedId}
             frame={frame}
             fonts={fonts}
+            addingImage={addingImage}
             onSelect={setSelectedId}
+            onAddImage={(file) => void addImageFile(file)}
             onAdd={addLayer}
             onRemove={removeLayer}
             onMoveOrder={moveLayer}
@@ -193,12 +249,12 @@ function Workspace({ session }: { session: MediaSession }) {
             onSeek={seek}
             onFontUploaded={fontUploaded}
           />
-          {animated && <PreviewPanel media={media} layers={layers} />}
+          {animated && <PreviewPanel media={media} layers={layers} images={layerImages} />}
           {source.kind === "new-template" ? (
             <TemplateSavePanel
               defaultName={nameFromFile(source.asset.filename)}
               what={boxes}
-              note={`The ${boxes} and their placeholder text become the template's defaults.`}
+              note={`The ${boxes} (text with its placeholder, and images) become the template's defaults.`}
               ready
               create={(name, tags) => createTemplate({ name, assetId: source.asset.id, defaultLayers: layers, tags })}
             />
@@ -208,7 +264,7 @@ function Workspace({ session }: { session: MediaSession }) {
               canEdit={source.template.owner.id === user.id}
               initialContent={source.template.defaultLayers}
               content={layers}
-              note={`The ${boxes} and their placeholder text are the template's defaults. Memes already made from it keep their own text.`}
+              note={`The ${boxes} (text with its placeholder, and images) are the template's defaults. Memes already made from it keep their own layers.`}
               ready
               save={(name) => updateTemplate(source.template.id, { name, defaultLayers: layers })}
             />

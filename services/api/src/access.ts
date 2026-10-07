@@ -1,5 +1,5 @@
 import type { Context, Hono } from "hono";
-import type { PanelSet, Template, User } from "@memegen/shared";
+import type { Layer, PanelSet, Template, User } from "@memegen/shared";
 import { findAssetRow, HttpError, idParam, parse, toUser, type AssetRow, type Sql, type UserRow } from "@memegen/server-kit";
 import { memeOpenTo, memeSelect, templateSelect, templateVisibleTo, withVariations, type MemeRow, type TemplateRow } from "./rows.ts";
 
@@ -70,6 +70,15 @@ export async function requirePackImages(sql: Sql, ids: readonly string[]): Promi
   const rows = await sql<{ kind: AssetRow["kind"] }[]>`select kind from assets where id in ${sql(ids as string[])}`;
   if (rows.length !== ids.length) throw new HttpError(400, "a pack image does not exist");
   if (rows.some((r) => r.kind !== "image")) throw new HttpError(400, "pack images must be still images");
+}
+
+/** Image layers draw existing still images (one frame, like pack images). One query for all of them. */
+export async function requireLayerImages(sql: Sql, layers: readonly Layer[] | undefined): Promise<void> {
+  const ids = [...new Set((layers ?? []).flatMap((l) => (l.type === "image" ? [l.assetId] : [])))];
+  if (!ids.length) return;
+  const [row] = await sql<{ count: number }[]>`
+    select count(*)::int as count from assets where id in ${sql(ids)} and kind = 'image'`;
+  if (row!.count !== ids.length) throw new HttpError(400, "image layers need an existing still image");
 }
 
 /** A meme's panels checked against its template: required (from the pack) for multi-panel templates, else absent. */

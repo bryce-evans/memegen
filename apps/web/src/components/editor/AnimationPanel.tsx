@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
-import { addKeyframeAt, clearAnimation, removeKeyframe, type TextLayer, type WindowEdge } from "@memegen/shared";
+import { addKeyframeAt, clearAnimation, removeKeyframe, type Layer, type WindowEdge } from "@memegen/shared";
 import { Button, Icon, IconButton, Inline, Panel, Text, TextField } from "@memegen/ui";
 import { clampEdgeFrame, setEdgeFrame, windowFrames } from "./windowFrames.ts";
 
 export interface AnimationPanelProps {
-  layer: TextLayer;
+  layer: Layer;
   media: DecodedMedia;
   frame: number;
-  onChange: (update: (layer: TextLayer) => TextLayer) => void;
+  onChange: (update: (layer: Layer) => Layer) => void;
   onSeek: (frame: number) => void;
 }
 
@@ -63,7 +63,7 @@ export function AnimationPanel({ layer, media, frame, onChange, onSeek }: Animat
 }
 
 interface WindowFieldsProps {
-  layer: TextLayer;
+  layer: Layer;
   media: DecodedMedia;
   onChange: AnimationPanelProps["onChange"];
   onSeek: (frame: number) => void;

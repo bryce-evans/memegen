@@ -7,7 +7,7 @@ import {
   type Meme,
   type PanelSet,
   type Template,
-  type TextLayer,
+  type Layer,
   type UploadLimits,
 } from "@memegen/shared";
 import { fetchAssetBlob, getAsset, getLimits, getMeme, getTemplate, listFonts } from "../../api.ts";
@@ -42,7 +42,7 @@ export interface MediaSession {
   type: "media";
   source: Source;
   media: DecodedMedia;
-  layers: TextLayer[];
+  layers: Layer[];
   fonts: Asset[];
   limits: UploadLimits;
 }
@@ -97,7 +97,7 @@ async function panelSource(source: Source | { kind: "new-panels" }): Promise<Pan
   }
 }
 
-function initialLayers(source: Source, fontId: string | null): TextLayer[] {
+function initialLayers(source: Source, fontId: string | null): Layer[] {
   if (source.kind === "meme") return source.meme.layers;
   // Editing works on the stored defaults themselves (ids kept); an empty list stays empty.
   if (source.kind === "edit-template") return source.template.defaultLayers;

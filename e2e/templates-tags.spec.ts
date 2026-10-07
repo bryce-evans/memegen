@@ -42,7 +42,7 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await expect(page).toHaveURL(/\/create\?template=[0-9a-f-]{36}$/);
   const templateId = new URL(page.url()).searchParams.get("template")!;
   const saved = await apiGet<Template>(request, `/api/templates/${templateId}`);
-  expect(saved.defaultLayers.map((l) => l.text)).toEqual(["when the template", "BOTTOM TEXT"]);
+  expect(saved.defaultLayers.map((l) => (l.type === "text" ? l.text : l.type))).toEqual(["when the template", "BOTTOM TEXT"]);
   expect(saved.defaultLayers.map((l) => l.name)).toEqual(["Panel 1", "Bottom text"]);
   expect(saved.baseTags).toEqual(["e2e-base"]);
   // Using the template shows the names as labels; only the Template Editor renames.

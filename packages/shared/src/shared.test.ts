@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
-import { newTextLayer } from "./defaults.ts";
+import { newImageLayer, newTextLayer } from "./defaults.ts";
 import { DEFAULT_LIMITS, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
 import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
-import { sessionSchema, textLayerSchema } from "./schema.ts";
+import { layerSchema, sessionSchema } from "./schema.ts";
 import { badgesFor } from "./badges.ts";
 import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
 
@@ -87,10 +87,18 @@ test("layoutText reports overflow when even the minimum size does not fit", () =
   assert.equal(layout.overflow, true);
 });
 
-test("textLayerSchema sorts keyframes and rejects inverted windows", () => {
-  const layer = newTextLayer({ keyframes: [kf(2, 0), kf(1, 0)] });
-  assert.deepEqual(textLayerSchema.parse(layer).keyframes.map((k) => k.t), [1, 2]);
-  assert.equal(textLayerSchema.safeParse({ ...layer, start: 3, end: 1 }).success, false);
+test("layerSchema sorts keyframes and rejects inverted windows, for text and image layers alike", () => {
+  for (const layer of [newTextLayer({ keyframes: [kf(2, 0), kf(1, 0)] }), newImageLayer(crypto.randomUUID(), { keyframes: [kf(2, 0), kf(1, 0)] })]) {
+    assert.deepEqual(layerSchema.parse(layer).keyframes.map((k) => k.t), [1, 2]);
+    assert.equal(layerSchema.safeParse({ ...layer, start: 3, end: 1 }).success, false);
+  }
+});
+
+test("layerSchema requires a known type and that type's fields", () => {
+  const text = newTextLayer();
+  assert.equal(layerSchema.safeParse({ ...text, type: undefined }).success, false);
+  assert.equal(layerSchema.safeParse({ ...text, type: "image" }).success, false); // no assetId/width
+  assert.equal(layerSchema.safeParse({ ...newImageLayer(crypto.randomUUID()), type: "video" }).success, false);
 });
 
 test("badges: only the highest reached tier per stat shows, at exact thresholds", () => {

@@ -9,10 +9,11 @@ import {
   Mp4OutputFormat,
   Output,
 } from "mediabunny";
-import type { TextLayer } from "@memegen/shared";
+import type { Layer } from "@memegen/shared";
 import { context2d, createCanvas, yieldToEventLoop } from "./canvas.ts";
 import { composeFrame, drawLayers } from "./compose.ts";
 import type { DecodedMedia } from "./decode.ts";
+import type { LayerImages } from "./images.ts";
 
 export interface ExportOptions {
   /** 0..1 */
@@ -34,32 +35,41 @@ export class ExportAbortedError extends Error {
   }
 }
 
-/** Render layers onto the media and encode: still → PNG/JPEG, GIF → GIF, video → MP4 (audio kept). */
-export async function exportMeme(media: DecodedMedia, layers: readonly TextLayer[], opts: ExportOptions = {}): Promise<ExportResult> {
+/**
+ * Render layers onto the media and encode: still → PNG/JPEG, GIF → GIF, video → MP4 (audio kept). `images` holds the
+ * image layers' decoded assets (`ensureLayerImages`).
+ */
+export async function exportMeme(
+  media: DecodedMedia,
+  layers: readonly Layer[],
+  images: LayerImages,
+  opts: ExportOptions = {},
+): Promise<ExportResult> {
   switch (media.kind) {
     case "image":
-      return exportImage(media, layers, opts.stillSize ?? { width: media.width, height: media.height });
+      return exportImage(media, layers, images, opts.stillSize ?? { width: media.width, height: media.height });
     case "gif":
-      return exportGif(media, layers, opts);
+      return exportGif(media, layers, images, opts);
     case "video":
-      return exportVideo(media, layers, opts);
+      return exportVideo(media, layers, images, opts);
   }
 }
 
 async function exportImage(
   media: DecodedMedia,
-  layers: readonly TextLayer[],
+  layers: readonly Layer[],
+  images: LayerImages,
   size: { width: number; height: number },
 ): Promise<ExportResult> {
   const canvas = createCanvas(size.width, size.height);
-  composeFrame(context2d(canvas), await media.frame(0), layers, canvas.width, canvas.height, 0);
+  composeFrame(context2d(canvas), await media.frame(0), layers, images, canvas.width, canvas.height, 0);
   const jpeg = media.mime === "image/jpeg";
   const mime = jpeg ? "image/jpeg" : "image/png";
   const blob = await canvas.convertToBlob({ type: mime, quality: jpeg ? 0.92 : undefined });
   return { blob, mime, extension: jpeg ? ".jpg" : ".png" };
 }
 
-async function exportGif(media: DecodedMedia, layers: readonly TextLayer[], opts: ExportOptions): Promise<ExportResult> {
+async function exportGif(media: DecodedMedia, layers: readonly Layer[], images: LayerImages, opts: ExportOptions): Promise<ExportResult> {
   const { width, height } = media;
   const canvas = createCanvas(width, height);
   const ctx = context2d(canvas, { willReadFrequently: true });
@@ -67,7 +77,7 @@ async function exportGif(media: DecodedMedia, layers: readonly TextLayer[], opts
   const total = media.times.length;
   for (let i = 0; i < total; i++) {
     if (opts.signal?.aborted) throw new ExportAbortedError();
-    composeFrame(ctx, await media.frame(i), layers, width, height, media.times[i]!);
+    composeFrame(ctx, await media.frame(i), layers, images, width, height, media.times[i]!);
     const { data } = ctx.getImageData(0, 0, width, height);
     const palette = quantize(data, 256);
     gif.writeFrame(applyPalette(data, palette), width, height, {
@@ -82,7 +92,7 @@ async function exportGif(media: DecodedMedia, layers: readonly TextLayer[], opts
   return { blob: new Blob([gif.bytes() as BlobPart], { type: "image/gif" }), mime: "image/gif", extension: ".gif" };
 }
 
-async function exportVideo(media: DecodedMedia, layers: readonly TextLayer[], opts: ExportOptions): Promise<ExportResult> {
+async function exportVideo(media: DecodedMedia, layers: readonly Layer[], images: LayerImages, opts: ExportOptions): Promise<ExportResult> {
   const { width, height } = media;
   const codec = await getFirstEncodableVideoCodec(["avc", "vp9", "av1", "hevc"], { width, height });
   if (!codec) throw new Error("this browser cannot encode MP4 video (no WebCodecs encoder available)");
@@ -105,7 +115,7 @@ async function exportVideo(media: DecodedMedia, layers: readonly TextLayer[], op
           firstTimestamp ??= sample.timestamp;
           ctx.clearRect(0, 0, width, height);
           sample.draw(ctx, 0, 0, width, height);
-          drawLayers(ctx, layers, width, height, sample.timestamp - firstTimestamp);
+          drawLayers(ctx, layers, images, width, height, sample.timestamp - firstTimestamp);
           return canvas;
         },
         processedWidth: width,

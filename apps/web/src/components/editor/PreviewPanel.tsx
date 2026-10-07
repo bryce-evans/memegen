@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { composeFrame, context2d, frameIndexAt, type DecodedMedia } from "@memegen/render";
-import type { TextLayer } from "@memegen/shared";
+import { composeFrame, context2d, frameIndexAt, type DecodedMedia, type LayerImages } from "@memegen/render";
+import type { Layer } from "@memegen/shared";
 import { Button, Icon, Panel } from "@memegen/ui";
 
+interface PreviewProps {
+  media: DecodedMedia;
+  layers: readonly Layer[];
+  /** Decoded image-layer assets (`ensureLayerImages`). */
+  images: LayerImages;
+}
+
 /** The "Preview" card (GIF/video): a button that plays the finished meme on a loop, exactly as it will export. */
-export function PreviewPanel({ media, layers }: { media: DecodedMedia; layers: readonly TextLayer[] }) {
+export function PreviewPanel({ media, layers, images }: PreviewProps) {
   const [open, setOpen] = useState(false);
   return (
     <Panel
@@ -22,7 +29,7 @@ export function PreviewPanel({ media, layers }: { media: DecodedMedia; layers: r
         </Button>
       }
     >
-      {open && <PreviewLoop media={media} layers={layers} />}
+      {open && <PreviewLoop media={media} layers={layers} images={images} />}
     </Panel>
   );
 }
@@ -33,10 +40,10 @@ export function PreviewPanel({ media, layers }: { media: DecodedMedia; layers: r
  * slowly to keep up are skipped rather than slowing the clock. Edits show on the next frame drawn.
  * `data-frame` / `data-loop` on the canvas expose playback state to tests.
  */
-function PreviewLoop({ media, layers }: { media: DecodedMedia; layers: readonly TextLayer[] }) {
+function PreviewLoop({ media, layers, images }: PreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const layersRef = useRef(layers);
-  layersRef.current = layers;
+  const layersRef = useRef({ layers, images });
+  layersRef.current = { layers, images };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -56,7 +63,7 @@ function PreviewLoop({ media, layers }: { media: DecodedMedia; layers: readonly 
       const index = frameIndexAt(media.times, elapsed - loop * media.duration);
       const image = await media.frame(index);
       if (cancelled) return;
-      composeFrame(ctx, image, layersRef.current, canvas.width, canvas.height, media.times[index]!);
+      composeFrame(ctx, image, layersRef.current.layers, layersRef.current.images, canvas.width, canvas.height, media.times[index]!);
       canvas.dataset.frame = String(index);
       canvas.dataset.loop = String(loop);
       if (media.duration <= 0) return;

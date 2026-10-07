@@ -38,7 +38,7 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   const id = await memeIdFromUrl(page);
   await expect(page.getByTestId("meme-status")).toContainText("draft");
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, await apiUser(request, username));
-  expect(meme.layers.map((l) => l.text)).toEqual(["when the mock data", "just works"]);
+  expect(meme.layers.map((l) => (l.type === "text" ? l.text : l.type))).toEqual(["when the mock data", "just works"]);
   expect(meme.templateId).not.toBeNull();
 
   await page.getByTestId("nav-profile").click();

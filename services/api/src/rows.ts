@@ -295,12 +295,16 @@ export interface StickerRow {
   owner_username: string;
   asset: AssetRow;
   created_at: Date;
+  use_count: number;
+  saved_count: number;
 }
 
-/** Base select for stickers (alias `s`). Append where/order. */
+/** Base select for stickers (alias `s`) with their posted/saved use counts. Append where/order. */
 export function stickerSelect(sql: Sql) {
   return sql`
-    select s.id, s.name, s.owner_id, u.username as owner_username, row_to_json(a.*) as asset, s.created_at
+    select s.id, s.name, s.owner_id, u.username as owner_username, row_to_json(a.*) as asset, s.created_at,
+      (select count(*)::int from sticker_uses su where su.sticker_id = s.id and su.kind = 'posted') as use_count,
+      (select count(*)::int from sticker_uses su where su.sticker_id = s.id and su.kind = 'created') as saved_count
     from stickers s
     join assets a on a.id = s.asset_id
     join users u on u.id = s.owner_id`;
@@ -313,6 +317,8 @@ export function toSticker(r: StickerRow): Sticker {
     owner: { id: r.owner_id, username: r.owner_username },
     asset: toAsset(r.asset),
     createdAt: r.created_at.toISOString(),
+    useCount: r.use_count,
+    savedCount: r.saved_count,
   };
 }
 

@@ -5,10 +5,12 @@ import { stickerSelect, toSticker, type StickerRow } from "../rows.ts";
 
 /** The sticker library: small PNGs anyone can add to a meme as image layers. */
 export function register(app: ApiApp, sql: Sql): void {
+  /** Most used first (posts, then saves), so popular stickers lead the picker; then newest. */
   app.get("/api/stickers", async (c) => {
     const { offset, limit } = parse(stickersQuerySchema, c.req.query());
-    const rows = await sql<StickerRow[]>`${stickerSelect(sql)}
-      order by s.created_at desc, s.id
+    const rows = await sql<StickerRow[]>`
+      select * from (${stickerSelect(sql)}) s
+      order by s.use_count desc, s.saved_count desc, s.created_at desc, s.id
       offset ${offset} limit ${limit + 1}`;
     const { items, nextOffset } = page(rows, offset, limit);
     return c.json({ items: items.map(toSticker), nextOffset });

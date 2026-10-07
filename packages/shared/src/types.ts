@@ -151,7 +151,10 @@ export interface Template {
   baseTags: string[];
 }
 
-/** A small PNG anyone can drop on a meme as an image layer (Add sticker); its `asset` is what layers reference. */
+/**
+ * A small PNG anyone can drop on a meme as an image layer (the Layers panel's Sticker button); its `asset` is what
+ * layers reference.
+ */
 export interface Sticker {
   id: string;
   name: string;
@@ -159,6 +162,10 @@ export interface Sticker {
   owner: Pick<User, "id" | "username">;
   asset: Asset;
   createdAt: string;
+  /** All-time posted memes carrying it (each meme once, however often it places the sticker); the picker ranks by it. */
+  useCount: number;
+  /** All-time saved memes carrying it (posted or not); breaks `useCount` ties. */
+  savedCount: number;
 }
 
 export const TAG_KINDS = ["topic", "team"] as const;

@@ -432,7 +432,7 @@ test("stickers: your own PNG up to 512x512 joins the library; bigger, reused, or
   assert.equal((await call("POST", "/api/stickers", bob, { name: "Mine", assetId: await sized(alice, 8, 8) })).status, 403);
   assert.equal((await call("POST", "/api/stickers", null, { name: "Anon", assetId: await sized(alice, 8, 8) })).status, 401);
 
-  // Anyone can list the library, newest first; built-ins (no owner) belong to `memegen`.
+  // Anyone can list the library (unused ones newest first); built-ins (no owner) belong to `memegen`.
   await sql`insert into stickers (name, asset_id) values ('Builtin', ${await sized(bob, 16, 16)})`;
   const list = await call<Page<Sticker>>("GET", "/api/stickers", null);
   assert.deepEqual(
@@ -445,6 +445,54 @@ test("stickers: your own PNG up to 512x512 joins the library; bigger, reused, or
 
   // Storage keeps a sticker's image.
   await assert.rejects(store.delete((await findAssetRow(sql, edge))!), (err) => err instanceof HttpError && err.status === 409);
+});
+
+test("sticker usage: saves and posts count once per meme however often it places a sticker; the library ranks by it", async () => {
+  const alice = await signIn("alice");
+  const sticker = async (name: string) =>
+    (await call<Sticker>("POST", "/api/stickers", alice, { name, assetId: await upload(alice) })).body;
+  const popular = await sticker("Popular");
+  const saved = await sticker("Saved");
+  const fresh = await sticker("Fresh"); // newest, never used
+  const template = await makeTemplate(alice);
+  const meme = async (stickers: Sticker[], post: boolean) => {
+    const res = await call<Meme>("POST", "/api/memes", alice, {
+      templateId: template.id,
+      outputAssetId: await upload(alice, "o.png"),
+      layers: stickers.map((s) => newImageLayer(s.asset.id)),
+      visibility: "public",
+      post,
+    });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    return res.body;
+  };
+  const counts = async () =>
+    (await call<Page<Sticker>>("GET", "/api/stickers", null)).body.items.map((s) => [s.name, s.useCount, s.savedCount]);
+
+  // Placed three times in one posted meme: one save, one post.
+  await meme([popular, popular, popular], true);
+  // A draft counts as saved, not posted.
+  const draft = await meme([saved], false);
+  assert.deepEqual(await counts(), [
+    ["Popular", 1, 1],
+    ["Saved", 0, 1],
+    ["Fresh", 0, 0],
+  ]);
+
+  // Posting the draft, then adding a sticker to it afterwards, both count; re-saving the same layers doesn't.
+  assert.equal((await call("POST", `/api/memes/${draft.id}/post`, alice)).status, 200);
+  const layers = [newImageLayer(saved.asset.id), newImageLayer(fresh.asset.id), newImageLayer(fresh.asset.id)];
+  for (let i = 0; i < 2; i++) {
+    const patch = await call("PATCH", `/api/memes/${draft.id}`, alice, { layers, outputAssetId: await upload(alice, "o.png") });
+    assert.equal(patch.status, 200, JSON.stringify(patch.body));
+  }
+  await meme([saved], true);
+  // Ties (Popular and Fresh: one post and one save each) go newest first.
+  assert.deepEqual(await counts(), [
+    ["Saved", 2, 2],
+    ["Fresh", 1, 1],
+    ["Popular", 1, 1],
+  ]);
 });
 
 test("multi-panel templates: an ordered still-image pack; memes must fill panels from it", async () => {

@@ -14,13 +14,13 @@ test("top section: the toggle adds a white band with its own text as layer 0; it
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   expect(await stageAspect(page)).toBeCloseTo(480 / 640, 2);
 
-  // On: the band's text is layer 0 and the stage grows by the band (33% of the width by default, for one line).
+  // On: the band's text is layer 0 and the stage grows by the band (20% of the width by default, for one line).
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect(items).toHaveCount(3);
   await expect(items.first()).toHaveAttribute("data-top-section", "true");
   await expect(items.first()).toHaveClass(/selected/);
-  await expect.poll(() => stageAspect(page)).toBeCloseTo((480 + 211) / 640, 2);
+  await expect.poll(() => stageAspect(page)).toBeCloseTo((480 + 128) / 640, 2);
 
   // Its settings size the band.
   let shown = await stagePixels(page);

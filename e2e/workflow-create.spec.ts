@@ -22,10 +22,8 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   const layers = page.getByTestId("layer-item");
   await expect(layers).toHaveCount(2);
   const blank = await stagePixels(page);
-  await layers.nth(0).click();
-  await page.getByTestId("layer-text").fill("when the mock data");
-  await layers.nth(1).click();
-  await page.getByTestId("layer-text").fill("just works");
+  await layers.nth(0).getByTestId("layer-text").fill("when the mock data");
+  await layers.nth(1).getByTestId("layer-text").fill("just works");
   await expect.poll(() => stagePixels(page)).not.toBe(blank);
   await page.getByTestId("meme-title").fill(`Workflow ${username}`);
 

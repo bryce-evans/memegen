@@ -547,18 +547,23 @@
   padding: var(--ui-space-3) var(--ui-space-4);
   border-bottom: var(--ui-border-width) solid var(--ui-color-separator);
 }
+/* Frames and layer tracks share this scroller and its origin; the cell geometry (--thumb-border, --frame-gap) is
+   set from Timeline.tsx, which uses the same numbers to place the tracks on the cells. */
 .strip {
   position: relative;
-  display: flex;
-  gap: 2px;
   padding: 6px;
   overflow-x: auto;
+}
+.strip-frames {
+  display: flex;
+  gap: var(--frame-gap);
+  width: max-content;
 }
 .thumb {
   position: relative;
   flex: 0 0 auto;
   padding: 0;
-  border: 2px solid transparent;
+  border: var(--thumb-border) solid transparent;
   border-radius: var(--ui-radius-sm);
   background: var(--ui-color-media-bg);
   line-height: 0;
@@ -594,35 +599,113 @@
   color: var(--ui-color-warning);
   text-shadow: 0 0 2px var(--ui-color-overlay);
 }
+/* One track per layer under the frames, on the same cells: the bar spans the frames the layer shows on and carries
+   its text (clipped); the handles at its ends sit on cell edges. The strip's padding keeps the edge handles inside
+   the scroller. */
+.layer-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  margin-top: var(--ui-space-2);
+}
+.layer-track {
+  position: relative;
+  height: 20px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-surface-sunken);
+}
+.layer-track-span {
+  position: absolute;
+  inset-block: 0;
+  overflow: hidden;
+  padding-inline: 8px;
+  border-radius: var(--ui-radius-sm);
+  background: color-mix(in srgb, var(--ui-color-primary) 35%, transparent);
+  color: var(--ui-color-text);
+  font-size: var(--ui-font-size-xs);
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.layer-track.selected .layer-track-span {
+  background: var(--ui-color-primary);
+  color: var(--ui-color-on-primary);
+}
+.layer-track-playhead {
+  position: absolute;
+  inset-block: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ui-color-text);
+  pointer-events: none;
+}
+.layer-track-handle {
+  position: absolute;
+  inset-block: -2px;
+  width: 8px;
+  margin-left: -4px;
+  border: 2px solid var(--ui-color-primary);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-on-primary);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.layer-track-handle:focus-visible {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: 2px;
+}
 
 .layer-list {
   display: flex;
   flex-direction: column;
-  gap: var(--ui-space-1);
   margin: 0 0 var(--ui-space-3);
   padding: 0;
   list-style: none;
 }
-.layer-list li {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-1);
-}
-.layer-name {
-  flex: 1;
-  min-width: 0;
-  justify-content: flex-start;
-}
-.layer-name-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .danger-icon {
   color: var(--ui-color-danger);
 }
-.layer-editor {
-  padding-top: var(--ui-space-4);
+/* Each layer is an inset card: its name (or, in the Template Editor, a name field) with its actions at the top
+   right, then a full-width one-line text box that grows to two lines while focused. The actions stay visible while
+   typing. The settings drop down inside the card. */
+.layer-row + .layer-row {
+  margin-top: var(--ui-space-2);
+}
+.layer-card {
+  margin: 0;
+}
+.layer-name-input {
+  flex: 1;
+  min-width: 0;
+}
+.layer-card-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+.layer-row-text {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  height: calc(1lh + 0.8rem + 2 * var(--ui-border-width));
+  resize: none;
+  transition: height var(--ui-duration-fast) var(--ui-easing-standard);
+}
+.layer-row-text:focus {
+  height: calc(2lh + 0.8rem + 2 * var(--ui-border-width));
+}
+.layer-row.selected .layer-row-text {
+  border-color: var(--ui-color-primary);
+}
+.layer-window {
+  margin-top: var(--ui-space-3);
+}
+.layer-window .window-row:last-child {
+  margin-bottom: 0;
+}
+.layer-settings {
+  margin-top: var(--ui-space-3);
+  padding-top: var(--ui-space-3);
   border-top: var(--ui-border-width) solid var(--ui-color-separator);
 }
 .field-row {
@@ -639,6 +722,9 @@
 }
 .window-row {
   margin-bottom: var(--ui-space-2);
+}
+.window-frame {
+  width: 4.5rem;
 }
 .keyframes-head {
   margin: var(--ui-space-4) 0 var(--ui-space-2);
@@ -667,14 +753,10 @@
   color: var(--ui-color-primary);
   font-weight: var(--ui-font-weight-semibold);
 }
-.animation-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--ui-space-2);
-  margin-top: var(--ui-space-3);
-}
-.animation-preview canvas {
+/* Preview card: the looping render fills the card's width at the media's aspect ratio. */
+.preview-canvas {
+  display: block;
+  width: 100%;
   border-radius: var(--ui-radius-media);
   background: var(--ui-color-media-bg);
 }

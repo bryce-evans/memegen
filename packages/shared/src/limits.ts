@@ -23,6 +23,8 @@ export const DEFAULT_LIMITS: UploadLimits = {
 
 /** Characters in one text layer. */
 export const TEXT_MAX_LENGTH = 2000;
+/** Characters in a text layer's name ("Top text", "Panel 1"). */
+export const LAYER_NAME_MAX_LENGTH = 40;
 /** Characters in one comment. */
 export const COMMENT_MAX_LENGTH = 2000;
 /** Tags on one meme or template. */

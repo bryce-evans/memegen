@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COMMENT_MAX_LENGTH, MAX_TAGS, TEXT_MAX_LENGTH } from "./limits.ts";
+import { COMMENT_MAX_LENGTH, LAYER_NAME_MAX_LENGTH, MAX_TAGS, TEXT_MAX_LENGTH } from "./limits.ts";
 import {
   GALLERY_SORTS,
   LEADERBOARD_SORTS,
@@ -52,6 +52,8 @@ export const keyframeSchema = z.object({
 export const textLayerSchema = z
   .object({
     id: z.string().min(1).max(64),
+    /** Editor label ("Top text", "Panel 1"), named in the template editor; never drawn. Absent on older layers. */
+    name: z.string().max(LAYER_NAME_MAX_LENGTH).optional(),
     text: z.string().max(TEXT_MAX_LENGTH),
     /** Font asset; null uses the fallback family. */
     fontAssetId: z.uuid().nullable(),

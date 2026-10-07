@@ -26,5 +26,13 @@ export function newTextLayer(partial: Partial<TextLayer> = {}): TextLayer {
 
 /** The classic two-box meme: captions near the top and bottom edges. */
 export function topBottomLayers(top = "TOP TEXT", bottom = "BOTTOM TEXT", fontAssetId: string | null = null): TextLayer[] {
-  return [newTextLayer({ text: top, y: 0.1, fontAssetId }), newTextLayer({ text: bottom, y: 0.9, fontAssetId })];
+  return [
+    newTextLayer({ name: "Top text", text: top, y: 0.1, fontAssetId }),
+    newTextLayer({ name: "Bottom text", text: bottom, y: 0.9, fontAssetId }),
+  ];
+}
+
+/** A layer's editor label: its name, or "Text N" by position (1-based) for layers stored before names existed. */
+export function layerLabel(layer: Pick<TextLayer, "name">, index: number): string {
+  return layer.name || `Text ${index + 1}`;
 }

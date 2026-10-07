@@ -1,27 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { composeFrame, context2d, frameIndexAt, type DecodedMedia } from "@memegen/render";
 import type { TextLayer } from "@memegen/shared";
-import { Button, Icon } from "@memegen/ui";
+import { Button, Icon, Panel } from "@memegen/ui";
 
-/** Longest side of the preview, in CSS pixels. */
-const PREVIEW_MAX = 240;
-
-/** "Preview" toggle plus a small looping render of the meme, to check animation timings. */
-export function AnimationPreview({ media, layers }: { media: DecodedMedia; layers: readonly TextLayer[] }) {
+/** The "Preview" card (GIF/video): a button that plays the finished meme on a loop, exactly as it will export. */
+export function PreviewPanel({ media, layers }: { media: DecodedMedia; layers: readonly TextLayer[] }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="animation-preview">
-      <Button
-        size="sm"
-        icon={<Icon name={open ? "pause" : "play"} />}
-        aria-pressed={open}
-        data-testid="preview-toggle"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {open ? "Hide preview" : "Preview"}
-      </Button>
+    <Panel
+      heading="Preview"
+      className="preview-panel"
+      headingActions={
+        <Button
+          size="sm"
+          icon={<Icon name={open ? "pause" : "play"} />}
+          aria-pressed={open}
+          data-testid="preview-toggle"
+          onClick={() => setOpen((o) => !o)}
+        >
+          {open ? "Hide preview" : `Preview ${media.kind === "gif" ? "GIF" : "video"}`}
+        </Button>
+      }
+    >
       {open && <PreviewLoop media={media} layers={layers} />}
-    </div>
+    </Panel>
   );
 }
 
@@ -36,16 +38,13 @@ function PreviewLoop({ media, layers }: { media: DecodedMedia; layers: readonly 
   const layersRef = useRef(layers);
   layersRef.current = layers;
 
-  const scale = Math.min(1, PREVIEW_MAX / Math.max(media.width, media.height));
-  const cssWidth = Math.max(1, Math.round(media.width * scale));
-  const cssHeight = Math.max(1, Math.round(media.height * scale));
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // The canvas fills the card's width at the media's aspect ratio (CSS); render at that size × devicePixelRatio.
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(cssWidth * dpr);
-    canvas.height = Math.round(cssHeight * dpr);
+    canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+    canvas.height = Math.max(1, Math.round((canvas.width * media.height) / media.width));
     const ctx = context2d(canvas);
     const start = performance.now();
     let cancelled = false;
@@ -69,7 +68,15 @@ function PreviewLoop({ media, layers }: { media: DecodedMedia; layers: readonly 
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [media, cssWidth, cssHeight]);
+  }, [media]);
 
-  return <canvas ref={canvasRef} data-testid="animation-preview" style={{ width: cssWidth, height: cssHeight }} aria-label="Animation preview" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="preview-canvas"
+      data-testid="animation-preview"
+      style={{ aspectRatio: `${media.width} / ${media.height}` }}
+      aria-label="Meme preview"
+    />
+  );
 }

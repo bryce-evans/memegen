@@ -1,24 +1,33 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
 import { isVisibleAt, type TextLayer } from "@memegen/shared";
 import { Icon, IconButton, Panel, Text } from "@memegen/ui";
+import { LayerTracks } from "./LayerTracks.tsx";
 
 const THUMB_HEIGHT = 48;
+/** Frame cell geometry, shared with `LayerTracks` (and exported to CSS) so the tracks line up with the cells. */
+const THUMB_BORDER = 2;
+const FRAME_GAP = 2;
 
 export interface TimelineProps {
   media: DecodedMedia;
   frame: number;
   playing: boolean;
   selectedLayer: TextLayer | null;
+  /** Every layer, each drawn as a window track under the frames, on the same cells. */
+  layers: readonly TextLayer[];
   onSeek: (frame: number) => void;
   onTogglePlay: () => void;
+  onSelectLayer: (id: string) => void;
+  onUpdateLayer: (id: string, update: (layer: TextLayer) => TextLayer) => void;
 }
 
-export function Timeline({ media, frame, playing, selectedLayer, onSeek, onTogglePlay }: TimelineProps) {
+export function Timeline({ media, frame, playing, selectedLayer, layers, onSeek, onTogglePlay, onSelectLayer, onUpdateLayer }: TimelineProps) {
   const stripRef = useRef<HTMLDivElement>(null);
   const canvases = useRef<(HTMLCanvasElement | null)[]>([]);
   const count = media.times.length;
   const thumbWidth = Math.max(1, Math.round((media.width / media.height) * THUMB_HEIGHT));
+  const cellWidth = thumbWidth + 2 * THUMB_BORDER;
   const [complete, setComplete] = useState(false);
 
   // Thumbnails stream in progressively; draw each into its slot as it arrives.
@@ -79,21 +88,43 @@ export function Timeline({ media, frame, playing, selectedLayer, onSeek, onToggl
           </Text>
         )}
       </div>
-      <div className="strip" ref={stripRef} data-testid="timeline" data-complete={complete ? "true" : undefined}>
-        {media.times.map((time, i) => (
-          <Thumb
-            key={i}
-            index={i}
-            time={time}
-            width={thumbWidth}
-            height={THUMB_HEIGHT}
-            current={i === frame}
-            keyframe={keyframeFrames.has(i)}
-            outside={selectedLayer !== null && !isVisibleAt(selectedLayer, time)}
+      {/* One scroller for the frames and the layer tracks, so a track's ends stay on the frames they mark. */}
+      <div
+        className="strip"
+        ref={stripRef}
+        data-testid="timeline"
+        data-complete={complete ? "true" : undefined}
+        style={{ "--frame-gap": `${FRAME_GAP}px`, "--thumb-border": `${THUMB_BORDER}px` } as CSSProperties}
+      >
+        <div className="strip-frames">
+          {media.times.map((time, i) => (
+            <Thumb
+              key={i}
+              index={i}
+              time={time}
+              width={thumbWidth}
+              height={THUMB_HEIGHT}
+              current={i === frame}
+              keyframe={keyframeFrames.has(i)}
+              outside={selectedLayer !== null && !isVisibleAt(selectedLayer, time)}
+              onSeek={onSeek}
+              canvases={canvases}
+            />
+          ))}
+        </div>
+        {layers.length > 0 && (
+          <LayerTracks
+            media={media}
+            layers={layers}
+            frame={frame}
+            selectedId={selectedLayer?.id ?? null}
+            cellWidth={cellWidth}
+            pitch={cellWidth + FRAME_GAP}
+            onSelect={onSelectLayer}
+            onUpdate={onUpdateLayer}
             onSeek={onSeek}
-            canvases={canvases}
           />
-        ))}
+        )}
       </div>
     </Panel>
   );

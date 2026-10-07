@@ -20,6 +20,7 @@ const PATHS = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  edit: <path d="M15.5 5.5l3 3M4.5 19.5l1-4L15.5 5.5l3 3-10 10z" />,
   user: (
     <>
       <circle cx="12" cy="8.5" r="3.75" />

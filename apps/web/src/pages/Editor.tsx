@@ -8,6 +8,7 @@ import { useUser } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { CreateStart } from "../components/editor/CreateStart.tsx";
 import { LayerPanel } from "../components/editor/LayerPanel.tsx";
+import { PreviewPanel } from "../components/editor/PreviewPanel.tsx";
 import { SavePanel } from "../components/editor/SavePanel.tsx";
 import { defaultFontId, sourceRef, useEditorSession, type Session, type SourceRef } from "../components/editor/session.ts";
 import { Stage } from "../components/editor/Stage.tsx";
@@ -93,7 +94,7 @@ function Workspace({ session }: { session: Session }) {
   }, []);
 
   function addLayer() {
-    const layer = newTextLayer({ text: "TEXT", y: 0.5, fontAssetId: defaultFontId(fonts) });
+    const layer = newTextLayer({ name: `Text ${layers.length + 1}`, text: "TEXT", y: 0.5, fontAssetId: defaultFontId(fonts) });
     setLayers((ls) => [...ls, layer]);
     setSelectedId(layer.id);
   }
@@ -149,14 +150,18 @@ function Workspace({ session }: { session: Session }) {
               frame={frame}
               playing={playing}
               selectedLayer={selectedLayer}
+              layers={layers}
               onSeek={seek}
               onTogglePlay={() => setPlaying((p) => !p)}
+              onSelectLayer={setSelectedId}
+              onUpdateLayer={updateLayer}
             />
           )}
           {source.kind === "template" && <TemplateDetails template={source.template} />}
         </div>
         <div className="editor-side">
           <LayerPanel
+            nameable={source.kind === "new-template" || source.kind === "edit-template"}
             media={media}
             layers={layers}
             selectedId={selectedId}
@@ -170,6 +175,7 @@ function Workspace({ session }: { session: Session }) {
             onSeek={seek}
             onFontUploaded={fontUploaded}
           />
+          {animated && <PreviewPanel media={media} layers={layers} />}
           {source.kind === "new-template" ? (
             <TemplateSavePanel asset={source.asset} layers={layers} />
           ) : source.kind === "edit-template" ? (

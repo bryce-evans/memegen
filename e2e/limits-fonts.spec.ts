@@ -17,7 +17,7 @@ test("upload caps are enforced before upload, with the reason shown", async ({ p
 test("custom font upload becomes selectable and changes the render", async ({ page, request }) => {
   const fontName = scoped("My Font");
   await editFixture(page, request, scoped("typographer"), "still.png");
-  await page.getByTestId("layer-item").first().click();
+  await page.getByTestId("layer-item").first().getByTestId("layer-settings-toggle").click();
 
   await page.getByTestId("font-upload").setInputFiles({
     name: `${fontName}.ttf`,

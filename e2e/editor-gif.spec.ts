@@ -22,8 +22,9 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   await expect(page.getByTestId("current-frame")).toHaveText("1 / 12");
 
   // Keyframe at frame 1, then move the text at the last frame (creates a second keyframe).
-  await page.getByTestId("layer-item").first().click();
-  await page.getByTestId("layer-text").fill("slide");
+  const layer = page.getByTestId("layer-item").first();
+  await layer.getByTestId("layer-text").fill("slide");
+  await layer.getByTestId("layer-settings-toggle").click();
   await page.getByTestId("add-keyframe").click();
   await expect(page.getByTestId("keyframe-item")).toHaveCount(1);
   await timelineFrame(page, 11).click();
@@ -32,8 +33,7 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   await expect(page.getByTestId("keyframe-item")).toHaveCount(2);
 
   // Text only from frame 3 on.
-  await timelineFrame(page, 2).click();
-  await page.getByTestId("set-start").click();
+  await page.getByTestId("window-start").fill("3");
 
   await page.getByTestId("meme-title").fill("E2E gif");
   await page.getByTestId("post-meme").click();
@@ -52,18 +52,19 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   expect(probeStreams(await download(request, meme.outputAsset), ".gif")).toEqual({ video: 12 });
 });
 
-test("gif: the animation preview loops the meme and can be hidden", async ({ page, request }) => {
+test("gif: the Preview card loops the finished meme and can be hidden", async ({ page, request }) => {
   await editFixture(page, request, scoped("previewer"), "anim.gif");
   await expect(page.getByTestId("timeline")).toHaveAttribute("data-complete", "true");
-  await page.getByTestId("layer-item").first().click();
 
+  // The Preview card sits between Layers and Save, with no layer settings open.
   await page.getByTestId("preview-toggle").click();
   const preview = page.getByTestId("animation-preview");
   await expect(preview).toBeVisible();
   // 12 frames × 0.1s: the preview advances through frames and wraps around more than once.
   await expect.poll(async () => Number(await preview.getAttribute("data-loop"))).toBeGreaterThanOrEqual(2);
-  const box = await preview.boundingBox();
-  expect(Math.max(box!.width, box!.height)).toBeLessThanOrEqual(240);
+  // Drawn at the GIF's own 4:3 shape.
+  const box = (await preview.boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(160 / 120, 1);
 
   await page.getByTestId("preview-toggle").click();
   await expect(preview).toHaveCount(0);

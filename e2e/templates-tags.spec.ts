@@ -21,11 +21,12 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   const layers = page.getByTestId("layer-item");
   await expect(layers).toHaveCount(2);
-  await layers.nth(0).click();
-  await expect(page.getByTestId("layer-text")).toHaveValue("TOP TEXT");
-  await page.getByTestId("layer-text").fill("when the template");
-  await layers.nth(1).click();
-  await expect(page.getByTestId("layer-text")).toHaveValue("BOTTOM TEXT");
+  // Every preset box's text is editable in place, and the Template Editor names the boxes.
+  await expect(layers.nth(0).getByTestId("layer-text")).toHaveValue("TOP TEXT");
+  await expect(layers.nth(1).getByTestId("layer-text")).toHaveValue("BOTTOM TEXT");
+  await layers.nth(0).getByTestId("layer-text").fill("when the template");
+  await expect(layers.nth(0).getByTestId("layer-name-input")).toHaveValue("Top text");
+  await layers.nth(0).getByTestId("layer-name-input").fill("Panel 1");
 
   await expect(page.getByTestId("template-name")).toHaveValue("still");
   await page.getByTestId("template-name").fill(base);
@@ -42,7 +43,11 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   const templateId = new URL(page.url()).searchParams.get("template")!;
   const saved = await apiGet<Template>(request, `/api/templates/${templateId}`);
   expect(saved.defaultLayers.map((l) => l.text)).toEqual(["when the template", "BOTTOM TEXT"]);
+  expect(saved.defaultLayers.map((l) => l.name)).toEqual(["Panel 1", "Bottom text"]);
   expect(saved.baseTags).toEqual(["e2e-base"]);
+  // Using the template shows the names as labels; only the Template Editor renames.
+  await expect(layers.nth(0)).toContainText("Panel 1");
+  await expect(page.getByTestId("layer-name-input")).toHaveCount(0);
 
   await page.getByTestId("nav-create").click();
   await page.getByTestId("template-search").fill(base);

@@ -6,13 +6,16 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   const { user } = await editFixture(page, request, scoped("imgfan"), "still.png");
   await expect(page.getByTestId("timeline")).toHaveCount(0); // stills have no timeline
 
+  // Stills edit each layer's text in place; the other settings open from the layer's edit button.
   const layer = page.getByTestId("layer-item").first();
-  await layer.click();
   const before = await stagePixels(page);
-  await page.getByTestId("layer-text").fill("when the e2e passes");
+  await layer.getByTestId("layer-text").fill("when the e2e passes");
   await expect.poll(() => stagePixels(page)).not.toBe(before);
 
-  await page.getByTestId("layer-style").selectOption("mock");
+  // The edit button stays usable while the text box has focus.
+  await expect(layer.getByTestId("layer-settings")).toHaveCount(0);
+  await layer.getByTestId("layer-settings-toggle").click();
+  await layer.getByTestId("layer-style").selectOption("mock");
   await dragLayer(page, 0, 0, 120);
 
   await page.getByTestId("meme-title").fill("E2E still");

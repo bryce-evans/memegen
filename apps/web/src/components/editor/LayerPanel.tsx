@@ -1,13 +1,16 @@
+import { useState } from "react";
 import type { DecodedMedia } from "@memegen/render";
-import { layerStateAt, placeAt, TEXT_ALIGNS, TEXT_MAX_LENGTH, TEXT_STYLES, type Asset, type TextLayer, type TextStyle } from "@memegen/shared";
-import { Badge, Button, ColorField, Field, Icon, IconButton, Panel, SegmentedControl, SelectField, Slider, Text, TextArea } from "@memegen/ui";
-import { AnimationPanel } from "./AnimationPanel.tsx";
+import { layerLabel, layerStateAt, LAYER_NAME_MAX_LENGTH, placeAt, TEXT_ALIGNS, TEXT_MAX_LENGTH, TEXT_STYLES, type Asset, type TextLayer, type TextStyle } from "@memegen/shared";
+import { Badge, Button, ColorField, cx, Field, Icon, IconButton, Panel, SegmentedControl, SelectField, Slider, Text, TextArea, TextField } from "@memegen/ui";
+import { AnimationPanel, WindowFields } from "./AnimationPanel.tsx";
 import { FontField } from "./FontField.tsx";
 import { PlacementFields } from "./PlacementFields.tsx";
 
 type LayerUpdate = (layer: TextLayer) => TextLayer;
 
 export interface LayerPanelProps {
+  /** Template editor: layer names are editable (they label the boxes for everyone who uses the template). */
+  nameable: boolean;
   media: DecodedMedia;
   layers: TextLayer[];
   selectedId: string | null;
@@ -25,8 +28,8 @@ export interface LayerPanelProps {
 
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
-export function LayerPanel({ media, layers, selectedId, frame, fonts, onSelect, onAdd, onRemove, onMoveOrder, onUpdate, onSeek, onFontUploaded }: LayerPanelProps) {
-  const selected = layers.find((l) => l.id === selectedId) ?? null;
+export function LayerPanel({ nameable, media, layers, selectedId, frame, fonts, onSelect, onAdd, onRemove, onMoveOrder, onUpdate, onSeek, onFontUploaded }: LayerPanelProps) {
+  const [openId, setOpenId] = useState<string | null>(null);
 
   return (
     <Panel
@@ -39,66 +42,113 @@ export function LayerPanel({ media, layers, selectedId, frame, fonts, onSelect, 
       }
     >
       <ol className="layer-list">
-        {layers.map((layer, i) => (
-          <li key={layer.id} data-testid="layer-item" data-layer-id={layer.id} className={layer.id === selectedId ? "selected" : undefined}>
-            <Button
-              size="sm"
-              variant="quiet"
-              className="layer-name"
-              pressed={layer.id === selectedId}
-              onClick={() => onSelect(layer.id)}
-            >
-              <span className="layer-name-text">{layer.text.split("\n")[0]?.trim() || "(empty)"}</span>
-              {layer.keyframes.length > 0 && <Badge>anim</Badge>}
-            </Button>
-            <IconButton size="sm" variant="quiet" onClick={() => onMoveOrder(layer.id, -1)} disabled={i === 0} label="Move back (drawn behind)">
-              <Icon name="up" />
-            </IconButton>
-            <IconButton
-              size="sm"
-              variant="quiet"
-              onClick={() => onMoveOrder(layer.id, 1)}
-              disabled={i === layers.length - 1}
-              label="Move forward (drawn on top)"
-            >
-              <Icon name="down" />
-            </IconButton>
-            <IconButton size="sm" variant="quiet" className="danger-icon" onClick={() => onRemove(layer.id)} label="Remove layer">
-              <Icon name="close" />
-            </IconButton>
-          </li>
-        ))}
+        {layers.map((layer, i) => {
+          const open = layer.id === openId;
+          const settingsId = `layer-settings-${layer.id}`;
+          const name = layerLabel(layer, i);
+          return (
+            <li key={layer.id} data-testid="layer-item" data-layer-id={layer.id} className={cx("layer-row", layer.id === selectedId && "selected")}>
+              <Panel
+                variant="inset"
+                heading={nameable ? undefined : name}
+                headingActions={
+                  <>
+                    {nameable && (
+                      <TextField
+                        size="sm"
+                        aria-label={`Layer ${i + 1} name`}
+                        className="layer-name-input"
+                        data-testid="layer-name-input"
+                        value={layer.name ?? ""}
+                        placeholder={layerLabel({}, i)}
+                        maxLength={LAYER_NAME_MAX_LENGTH}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          onUpdate(layer.id, (l) => ({ ...l, name: value }));
+                        }}
+                      />
+                    )}
+                    <div className="layer-card-actions">
+                      {layer.keyframes.length > 0 && <Badge>anim</Badge>}
+                      <IconButton
+                        size="sm"
+                        variant="quiet"
+                        label={open ? "Hide layer settings" : "Edit layer settings"}
+                        aria-expanded={open}
+                        aria-controls={settingsId}
+                        data-testid="layer-settings-toggle"
+                        onClick={() => {
+                          setOpenId(open ? null : layer.id);
+                          onSelect(layer.id);
+                        }}
+                      >
+                        <Icon name="edit" />
+                      </IconButton>
+                      <IconButton size="sm" variant="quiet" onClick={() => onMoveOrder(layer.id, -1)} disabled={i === 0} label="Move back (drawn behind)">
+                        <Icon name="up" />
+                      </IconButton>
+                      <IconButton
+                        size="sm"
+                        variant="quiet"
+                        onClick={() => onMoveOrder(layer.id, 1)}
+                        disabled={i === layers.length - 1}
+                        label="Move forward (drawn on top)"
+                      >
+                        <Icon name="down" />
+                      </IconButton>
+                      <IconButton size="sm" variant="quiet" className="danger-icon" onClick={() => onRemove(layer.id)} label="Remove layer">
+                        <Icon name="close" />
+                      </IconButton>
+                    </div>
+                  </>
+                }
+                className="layer-card"
+              >
+                <TextArea
+                  aria-label={`${name} text`}
+                  rows={1}
+                  className="layer-row-text"
+                  data-testid="layer-text"
+                  value={layer.text}
+                  maxLength={TEXT_MAX_LENGTH}
+                  onFocus={() => onSelect(layer.id)}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    onUpdate(layer.id, (l) => ({ ...l, text }));
+                  }}
+                />
+                {/* GIF/video: the selected layer (focusing its text selects it) shows when it starts and stops; the
+                    settings' Animation panel shows the same rows, so they appear here only while it is closed. */}
+                {media.kind !== "image" && layer.id === selectedId && !open && (
+                  <div className="layer-window" data-testid="layer-window">
+                    <WindowFields layer={layer} media={media} onChange={(update) => onUpdate(layer.id, update)} onSeek={onSeek} />
+                  </div>
+                )}
+                {open && (
+                  <div id={settingsId} className="layer-settings" data-testid="layer-settings">
+                    <LayerSettings
+                      layer={layer}
+                      media={media}
+                      frame={frame}
+                      fonts={fonts}
+                      onChange={(update) => onUpdate(layer.id, update)}
+                      onSeek={onSeek}
+                      onFontUploaded={(font) => onFontUploaded(layer.id, font)}
+                    />
+                  </div>
+                )}
+              </Panel>
+            </li>
+          );
+        })}
       </ol>
-      {layers.length === 0 ? (
-        <Text tone="muted">No text layers. Add one to start.</Text>
-      ) : (
-        <Text tone="muted" size="sm">
-          Lower in the list draws on top.
-        </Text>
-      )}
-      {selected ? (
-        <LayerEditor
-          key={selected.id}
-          layer={selected}
-          layers={layers}
-          media={media}
-          frame={frame}
-          fonts={fonts}
-          onChange={(update) => onUpdate(selected.id, update)}
-          onSeek={onSeek}
-          onFontUploaded={(font) => onFontUploaded(selected.id, font)}
-        />
-      ) : (
-        layers.length > 0 && <Text tone="muted">Select a layer to edit it.</Text>
-      )}
+      {layers.length === 0 && <Text tone="muted">No text layers. Add one to start.</Text>}
     </Panel>
   );
 }
 
-interface LayerEditorProps {
+interface LayerSettingsProps {
   layer: TextLayer;
-  /** Every layer, for the animation preview. */
-  layers: readonly TextLayer[];
   media: DecodedMedia;
   frame: number;
   fonts: Asset[];
@@ -107,14 +157,13 @@ interface LayerEditorProps {
   onFontUploaded: (font: Asset) => void;
 }
 
-function LayerEditor({ layer, layers, media, frame, fonts, onChange, onSeek, onFontUploaded }: LayerEditorProps) {
+/** Everything about a layer except its text: font, size, colors, layout, placement, and (animated media) keyframes. */
+function LayerSettings({ layer, media, frame, fonts, onChange, onSeek, onFontUploaded }: LayerSettingsProps) {
   const t = media.times[frame] ?? 0;
   const set = (patch: Partial<TextLayer>) => onChange((l) => ({ ...l, ...patch }));
 
   return (
-    <div className="layer-editor">
-      <TextArea label="Text" rows={3} data-testid="layer-text" value={layer.text} maxLength={TEXT_MAX_LENGTH} onChange={(e) => set({ text: e.target.value })} />
-
+    <div className="layer-settings-fields">
       <FontField value={layer.fontAssetId} fonts={fonts} onChange={(fontAssetId) => set({ fontAssetId })} onUploaded={onFontUploaded} />
 
       <Slider
@@ -191,7 +240,7 @@ function LayerEditor({ layer, layers, media, frame, fonts, onChange, onSeek, onF
       <PlacementFields state={layerStateAt(layer, t)} animated={layer.keyframes.length > 0} onPlace={(patch) => onChange((l) => placeAt(l, t, patch))} />
 
       {media.kind !== "image" && (
-        <AnimationPanel layer={layer} layers={layers} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />
+        <AnimationPanel layer={layer} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />
       )}
     </div>
   );

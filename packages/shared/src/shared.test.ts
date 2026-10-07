@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
-import { newImageLayer, newTextLayer } from "./defaults.ts";
+import { newImageLayer, newTextLayer, newTopSectionLayer } from "./defaults.ts";
 import { DEFAULT_LIMITS, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
 import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
-import { layerSchema, sessionSchema } from "./schema.ts";
+import { layerSchema, layersSchema, sessionSchema } from "./schema.ts";
+import { composedHeight, layerArea, layoutTopSection, topSectionPx } from "./section.ts";
 import { badgesFor } from "./badges.ts";
 import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
 
@@ -142,4 +143,30 @@ test("every supported type maps back to its extension and is in exactly one acce
     assert.ok(!other.split(",").includes(mime), `${mime} only in its own list`);
   }
   assert.equal(extensionForMime("application/pdf"), undefined);
+});
+
+test("top section: the band is its one-line height plus every extra line of text, so the padding stays fixed", () => {
+  // fakeCtx is monospace (0.5em); 0.25 of 640 = 160px band, font 0.15 × 160 = 24px, 48 characters per line.
+  const section = { ...newTopSectionLayer(), topSection: { height: 0.25 }, text: "one line" };
+  const caption = newTextLayer();
+  const layers = [section, caption];
+  const ctx = fakeCtx();
+  assert.equal(topSectionPx(ctx, layers, 640), 160);
+  assert.equal(topSectionPx(ctx, layers, 641), 160); // 160.25 → even, for video encoders
+  assert.equal(topSectionPx(ctx, [caption], 640), 0);
+  assert.equal(composedHeight(ctx, layers, 640, 480), 640);
+
+  // A second line (font 24px, line height 27.6px) adds its height and nothing more: 58px of text instead of 30.
+  const twoLines = [{ ...section, text: Array(8).fill("abcdefghi").join(" ") }, caption];
+  const { layout, bandPx } = layoutTopSection(ctx, twoLines[0]!, 640);
+  assert.deepEqual([layout.lines.length, layout.fontPx, bandPx], [2, 24, 188]);
+
+  // The band's text is placed in the band; everything else in the media below it.
+  assert.deepEqual(layerArea(section, 640, 668, 188), { top: 0, width: 640, height: 188 });
+  assert.deepEqual(layerArea(caption, 640, 668, 188), { top: 188, width: 640, height: 480 });
+
+  // One top section at most, within its height range.
+  assert.equal(layersSchema.safeParse(layers).success, true);
+  assert.equal(layersSchema.safeParse([section, { ...section, id: "second" }]).success, false);
+  assert.equal(layersSchema.safeParse([{ ...section, topSection: { height: 0.05 } }]).success, false);
 });

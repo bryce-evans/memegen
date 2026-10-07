@@ -11,7 +11,7 @@ export interface StickerPickerProps {
   onPick: (sticker: Sticker) => void;
 }
 
-/** "Add sticker": the sticker library as a grid of thumbnails; picking one adds it as an image layer. */
+/** The Layers panel's Sticker button: the sticker library as a grid of thumbnails; picking one adds it as an image layer. */
 export function StickerPicker({ open, onClose, onPick }: StickerPickerProps) {
   return (
     <Dialog open={open} onClose={onClose} heading="Add sticker" className="sticker-picker" data-testid="sticker-picker">

@@ -1,3 +1,4 @@
+import { TOP_SECTION_FONT_SIZE_DEFAULT, TOP_SECTION_HEIGHT_DEFAULT } from "./section.ts";
 import type { ImageLayer, Layer, TextLayer } from "./types.ts";
 
 export function newTextLayer(partial: Partial<Omit<TextLayer, "type">> = {}): TextLayer {
@@ -23,6 +24,26 @@ export function newTextLayer(partial: Partial<Omit<TextLayer, "type">> = {}): Te
     keyframes: [],
     ...partial,
   };
+}
+
+/** The top section's text: black Arial (no stroke, as typed) centered in a white band above the media. */
+export function newTopSectionLayer(): TextLayer {
+  return newTextLayer({
+    name: "Top section",
+    text: "Top section text",
+    topSection: { height: TOP_SECTION_HEIGHT_DEFAULT },
+    // Font size is a fraction of the one-line band height; the text wraps inside a small margin and the band grows
+    // with each extra line (maxHeight is unused: band text never shrinks for height).
+    fontSize: TOP_SECTION_FONT_SIZE_DEFAULT,
+    color: "#000000",
+    strokeColor: "#000000",
+    strokeWidth: 0,
+    textStyle: "none",
+    maxWidth: 0.92,
+    maxHeight: 1,
+    x: 0.5,
+    y: 0.5,
+  });
 }
 
 /** An image layer centered on the media, `width` (fraction of media width) wide. */

@@ -116,7 +116,7 @@ export function HotTemplates() {
  * Adding a template — the only way to bring in new media, since every meme is made from a template: pick a file
  * (pre-checked against `limits`, then uploaded) and place its text boxes in the Template Editor, or start a
  * multi-panel template whose image pack is uploaded in its editor. "+ Sticker" adds a small PNG to the sticker
- * library instead (Add sticker in the editor's Layers panel).
+ * library instead (the Sticker button in the editor's Layers panel).
  */
 export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
   const navigate = useNavigate();
@@ -191,7 +191,7 @@ export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
       {sticker.error !== null && <ErrorView error={sticker.error} testId="new-sticker-error" />}
       {addedSticker && (
         <Text size="sm" data-testid="new-sticker-added" data-sticker-id={addedSticker.id}>
-          Added sticker “{addedSticker.name}”. Add it to a meme with Add sticker in the editor’s Layers panel.
+          Added sticker “{addedSticker.name}”. Add it to a meme with the Sticker button in the editor’s Layers panel.
         </Text>
       )}
     </Panel>

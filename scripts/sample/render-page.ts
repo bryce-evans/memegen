@@ -3,7 +3,7 @@
  * (`ensureLayerFonts` + `ensureLayerImages` + `decodeMedia` + `exportMeme`), so seeded memes look exactly like user-made ones.
  * Assets are fetched from `/assets/<id>`, which the seed script serves from the asset store.
  */
-import { decodeMedia, ensureLayerFonts, ensureLayerImages, exportMeme } from "@memegen/render";
+import { canvasHeight, decodeMedia, ensureLayerFonts, ensureLayerImages, exportMeme } from "@memegen/render";
 import { stillExportSize, type Layer, type MediaKind, type UploadLimits } from "@memegen/shared";
 
 export interface RenderRequest {
@@ -25,7 +25,7 @@ async function renderMeme({ sourceAssetId, kind, layers, limits }: RenderRequest
   const res = await fetch(assetUrl(sourceAssetId));
   if (!res.ok) throw new Error(`source asset ${sourceAssetId}: ${res.status}`);
   const media = await decodeMedia(await res.blob(), kind);
-  const out = await exportMeme(media, layers, images, { stillSize: stillExportSize(media.width, media.height, limits) });
+  const out = await exportMeme(media, layers, images, { stillSize: stillExportSize(media.width, canvasHeight(layers, media.width, media.height), limits) });
   const bytes = new Uint8Array(await out.blob.arrayBuffer());
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));

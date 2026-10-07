@@ -1,7 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { ensureLayerFonts, ensureLayerImages, exportMeme, layerFontIds, layerImageIds, loadFont, loadLayerImage, type LayerImages } from "@memegen/render";
-import { LAYER_NAME_MAX_LENGTH, newImageLayer, newTextLayer, placeAt, stillExportSize, type Asset, type Layer, type Sticker } from "@memegen/shared";
+import {
+  canvasHeight,
+  ensureLayerFonts,
+  ensureLayerImages,
+  exportMeme,
+  layerFontIds,
+  layerImageIds,
+  loadFont,
+  loadLayerImage,
+  type LayerImages,
+} from "@memegen/render";
+import {
+  LAYER_NAME_MAX_LENGTH,
+  newImageLayer,
+  newTextLayer,
+  newTopSectionLayer,
+  placeAt,
+  stillExportSize,
+  topSectionLayer,
+  type Asset,
+  type Layer,
+  type Sticker,
+} from "@memegen/shared";
 import { Alert, PageHeader, Spinner } from "@memegen/ui";
 import { assetUrl, createTemplate, listFonts, updateTemplate, uploadAsset } from "../api.ts";
 import { useUser } from "../auth.tsx";
@@ -123,6 +144,18 @@ function Workspace({ session }: { session: MediaSession }) {
     setSelectedId(layer.id);
   }
 
+  /** The top section toggle: on adds the band's text as layer 0 (selected), off removes it and with it the band. */
+  function setTopSection(on: boolean) {
+    const current = topSectionLayer(layers);
+    if (on && !current) {
+      const layer = newTopSectionLayer();
+      setLayers((ls) => [layer, ...ls]);
+      setSelectedId(layer.id);
+    } else if (!on && current) {
+      removeLayer(current.id);
+    }
+  }
+
   /** Add a stored still image centered, at its native width relative to the media but at most half the media's width. */
   function addImageLayer(assetId: string, pixelWidth: number, name: string) {
     const layer = newImageLayer(assetId, { name: name.slice(0, LAYER_NAME_MAX_LENGTH), width: Math.min(0.5, pixelWidth / media.width) });
@@ -177,6 +210,8 @@ function Workspace({ session }: { session: MediaSession }) {
       const i = ls.findIndex((l) => l.id === id);
       const j = i + delta;
       if (i < 0 || j < 0 || j >= ls.length) return ls;
+      // The top section's text stays layer 0.
+      if (ls[i] === topSectionLayer(ls) || ls[j] === topSectionLayer(ls)) return ls;
       const next = [...ls];
       [next[i], next[j]] = [next[j]!, next[i]!];
       return next;
@@ -199,7 +234,7 @@ function Workspace({ session }: { session: MediaSession }) {
     return exportMeme(media, layers, images, {
       signal,
       onProgress: (value) => progress("Rendering", value),
-      stillSize: stillExportSize(media.width, media.height, limits),
+      stillSize: stillExportSize(media.width, canvasHeight(layers, media.width, media.height), limits),
     });
   }
 
@@ -254,6 +289,7 @@ function Workspace({ session }: { session: MediaSession }) {
             onAddImage={(file) => void addImageFile(file)}
             onAddSticker={addSticker}
             onAdd={addLayer}
+            onTopSection={setTopSection}
             onRemove={removeLayer}
             onMoveOrder={moveLayer}
             onUpdate={updateLayer}

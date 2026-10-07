@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { composeFrame, type DecodedMedia, type LayerBox, type LayerImages } from "@memegen/render";
-import { layerLabel, layerStateAt, type Layer } from "@memegen/shared";
+import { canvasHeight, composeFrame, type DecodedMedia, type LayerBox, type LayerImages } from "@memegen/render";
+import { layerArea, layerLabel, layerStateAt, type Layer } from "@memegen/shared";
 import { Alert } from "@memegen/ui";
 
 export interface StageProps {
@@ -37,9 +37,12 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
   const t = media.times[frame] ?? 0;
   // Backing store at displayed size × device pixels, so text is rasterized at screen resolution instead of at the
   // media's (often small) native size and then stretched. Layout is in fractions, so the result matches the export.
+  // A top section adds its band (sized by its text) above the media.
   const dpr = window.devicePixelRatio || 1;
   const pixelWidth = displayWidth > 0 ? Math.round(displayWidth * dpr) : media.width;
-  const pixelHeight = Math.max(1, Math.round((pixelWidth * media.height) / media.width));
+  const mediaPixelHeight = Math.max(1, Math.round((pixelWidth * media.height) / media.width));
+  const pixelHeight = canvasHeight(layers, pixelWidth, mediaPixelHeight);
+  const aspect = media.width / canvasHeight(layers, media.width, media.height);
   /** CSS px per canvas px, for placing the selection handles. */
   const boxScale = displayWidth > 0 ? displayWidth / pixelWidth : 0;
 
@@ -90,9 +93,11 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
 
   function moveDrag(e: PointerEvent<HTMLDivElement>) {
     const d = drag.current;
-    if (!d || d.pointerId !== e.pointerId || displayWidth <= 0) return;
-    const displayHeight = (displayWidth * media.height) / media.width;
-    onMove(d.id, d.x0 + (e.clientX - d.startX) / displayWidth, d.y0 + (e.clientY - d.startY) / displayHeight);
+    const layer = d && layers.find((l) => l.id === d.id);
+    if (!d || !layer || d.pointerId !== e.pointerId || displayWidth <= 0) return;
+    // Fractions of the layer's own area: the band for the top section's text, else the media.
+    const area = layerArea(layer, pixelWidth, pixelHeight, pixelHeight - mediaPixelHeight);
+    onMove(d.id, d.x0 + (e.clientX - d.startX) / (area.width * boxScale), d.y0 + (e.clientY - d.startY) / (area.height * boxScale));
   }
 
   function endDrag(e: PointerEvent<HTMLDivElement>) {
@@ -103,7 +108,7 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
     <div className="stage">
       <div
         className="stage-inner"
-        style={{ width: `min(100%, calc(68vh * ${media.width / media.height}))` }}
+        style={{ width: `min(100%, calc(68vh * ${aspect}))` }}
         onPointerDown={() => onSelect(null)}
       >
         <canvas

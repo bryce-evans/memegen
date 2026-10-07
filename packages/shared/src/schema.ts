@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { COMMENT_MAX_LENGTH, LAYER_NAME_MAX_LENGTH, MAX_PACK_IMAGES, MAX_PANELS, MAX_TAGS, TEXT_MAX_LENGTH } from "./limits.ts";
 import { PANEL_FONT_SIZE_DEFAULT, PANEL_FONT_SIZE_MAX, PANEL_FONT_SIZE_MIN } from "./panels.ts";
+import { TOP_SECTION_HEIGHT_MAX, TOP_SECTION_HEIGHT_MIN } from "./section.ts";
 import {
   GALLERY_SORTS,
   LEADERBOARD_SORTS,
@@ -87,6 +88,11 @@ export const textLayerSchema = z.object({
   maxWidth: z.number().gt(0).max(1),
   maxHeight: z.number().gt(0).max(1),
   textStyle: z.enum(TEXT_STYLES),
+  /**
+   * Set on the one top-section layer: a white band `height` (fraction of the media width) tall above the media holds
+   * this text, whose x/y, box, and font size are then fractions of the band.
+   */
+  topSection: z.object({ height: z.number().min(TOP_SECTION_HEIGHT_MIN).max(TOP_SECTION_HEIGHT_MAX) }).optional(),
 });
 
 /** An uploaded or pasted still image drawn over the media, at its own aspect ratio. */
@@ -104,7 +110,10 @@ export const layerSchema = z
   .refine((l) => l.start === null || l.end === null || l.start <= l.end, "start must be <= end")
   .transform((l) => ({ ...l, keyframes: [...l.keyframes].sort((a, b) => a.t - b.t) }));
 
-export const layersSchema = z.array(layerSchema).max(50);
+export const layersSchema = z
+  .array(layerSchema)
+  .max(50)
+  .refine((ls) => ls.filter((l) => l.type === "text" && l.topSection).length <= 1, "only one layer can be the top section");
 
 export const panelSchema = z.object({
   id: z.string().min(1).max(64),

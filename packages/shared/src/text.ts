@@ -25,15 +25,17 @@ export interface TextContext {
 export const FALLBACK_FONT_FAMILY = "sans-serif";
 export const LINE_HEIGHT = 1.15;
 export const MIN_FONT_PX = 6;
+/** The top section's text is Arial unless the layer picks a font asset. */
+export const TOP_SECTION_FONT_FAMILY = "Arial, Helvetica, sans-serif";
 
 /** CSS family name a font asset is registered under via FontFace. */
 export function fontFamilyFor(fontAssetId: string | null): string {
   return fontAssetId ? `mg-${fontAssetId}` : FALLBACK_FONT_FAMILY;
 }
 
-export function cssFont(fontAssetId: string | null, fontPx: number): string {
-  const family = fontFamilyFor(fontAssetId);
-  return family === FALLBACK_FONT_FAMILY ? `${fontPx}px ${family}` : `${fontPx}px "${family}"`;
+/** Canvas font for an asset, or for `fallback` (a CSS family list, used as is) when there is none. */
+export function cssFont(fontAssetId: string | null, fontPx: number, fallback = FALLBACK_FONT_FAMILY): string {
+  return fontAssetId ? `${fontPx}px "${fontFamilyFor(fontAssetId)}"` : `${fontPx}px ${fallback}`;
 }
 
 /** Deterministic "sPoNgEbOb" casing: alternates per letter, ignoring non-letters. */
@@ -99,7 +101,8 @@ function wrapLines(ctx: TextContext, text: string, maxW: number): string[] {
 }
 
 function measure(ctx: TextContext, layer: TextLayer, text: string, fontPx: number, boxW: number): TextLayout {
-  const font = cssFont(layer.fontAssetId, fontPx);
+  // The top section's text defaults to Arial; every other layer to the fallback family.
+  const font = cssFont(layer.fontAssetId, fontPx, layer.topSection ? TOP_SECTION_FONT_FAMILY : FALLBACK_FONT_FAMILY);
   ctx.font = font;
   const strokePx = layer.strokeWidth * fontPx;
   const pad = Math.ceil(strokePx) + 1;
@@ -119,11 +122,14 @@ function measure(ctx: TextContext, layer: TextLayer, text: string, fontPx: numbe
   };
 }
 
-/** Largest font size (<= layer.fontSize) whose wrapped text fits the layer box. */
+/**
+ * Largest font size (<= layer.fontSize) whose wrapped text fits the layer box. The top section's text only has to fit
+ * the width: its band grows with every line (`layoutTopSection`).
+ */
 export function layoutText(ctx: TextContext, layer: TextLayer, mediaW: number, mediaH: number): TextLayout {
   const text = applyTextStyle(layer.text, layer.textStyle);
   const boxW = layer.maxWidth * mediaW;
-  const boxH = layer.maxHeight * mediaH;
+  const boxH = layer.topSection ? Infinity : layer.maxHeight * mediaH;
   let fontPx = Math.max(MIN_FONT_PX, Math.round(layer.fontSize * mediaH));
   for (;;) {
     const layout = measure(ctx, layer, text, fontPx, boxW);

@@ -10,10 +10,12 @@ export interface FontFieldProps {
   onChange: (fontAssetId: string | null) => void;
   /** The user uploaded a font for this layer. */
   onUploaded: (font: Asset) => void;
+  /** What "no font asset" draws in (the top section's text is Arial). */
+  fallbackLabel?: string;
 }
 
 /** Font picker plus upload. */
-export function FontField({ value, fonts, onChange, onUploaded }: FontFieldProps) {
+export function FontField({ value, fonts, onChange, onUploaded, fallbackLabel = "Sans-serif (fallback)" }: FontFieldProps) {
   const upload = useAction();
 
   async function uploadFont(file: File) {
@@ -36,7 +38,7 @@ export function FontField({ value, fonts, onChange, onUploaded }: FontFieldProps
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value || null)}
           >
-            <option value="">Sans-serif (fallback)</option>
+            <option value="">{fallbackLabel}</option>
             {fonts.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}

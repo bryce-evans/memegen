@@ -9,6 +9,9 @@ import {
   TEXT_ALIGNS,
   TEXT_MAX_LENGTH,
   TEXT_STYLES,
+  TOP_SECTION_HEIGHT_MAX,
+  TOP_SECTION_HEIGHT_MIN,
+  topSectionLayer,
   type Asset,
   type Sticker,
   type ImageLayer,
@@ -50,7 +53,7 @@ export interface LayerPanelProps {
   selectedId: string | null;
   frame: number;
   fonts: Asset[];
-  /** An image is being checked and uploaded (from Add image or a paste). */
+  /** An image is being checked and uploaded (from the Image button or a paste). */
   addingImage: boolean;
   onSelect: (id: string | null) => void;
   onAdd: () => void;
@@ -60,6 +63,8 @@ export interface LayerPanelProps {
   onAddSticker: (sticker: Sticker) => void;
   onRemove: (id: string) => void;
   onMoveOrder: (id: string, delta: -1 | 1) => void;
+  /** Switch the top section (a white band above the media with its own text layer, kept first) on or off. */
+  onTopSection: (on: boolean) => void;
   /** Replace a layer by applying `update` to its latest state. */
   onUpdate: (id: string, update: LayerUpdate) => void;
   onSeek: (frame: number) => void;
@@ -69,19 +74,20 @@ export interface LayerPanelProps {
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
 export function LayerPanel(props: LayerPanelProps) {
-  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onUpdate, onSeek, onFontUploaded } =
+  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onSeek, onFontUploaded } =
     props;
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickingSticker, setPickingSticker] = useState(false);
+  const topSection = topSectionLayer(layers);
 
   return (
-    <Panel
-      heading="Layers"
-      className="layer-panel"
-      headingActions={
-        <Inline>
+    <Panel heading="Layers" className="layer-panel">
+      {/* One row under the heading: the add buttons (a group named "Add layer", so each reads as adding), then the
+          Top section toggle. */}
+      <Inline className="layer-panel-actions" gap="xs">
+        <Inline role="group" aria-label="Add layer" gap="xs" wrap={false}>
           <Button size="sm" icon={<Icon name="plus" />} data-testid="add-layer" onClick={onAdd}>
-            Add text
+            Text
           </Button>
           <FileButton
             size="sm"
@@ -96,26 +102,40 @@ export function LayerPanel(props: LayerPanelProps) {
               if (file) onAddImage(file);
             }}
           >
-            {addingImage ? "Adding…" : "Add image"}
+            {addingImage ? "Adding…" : "Image"}
           </FileButton>
-          <Button size="sm" icon={<Icon name="plus" />} data-testid="add-sticker" onClick={() => setPickingSticker(true)}>
-            Add sticker
+          <Button size="sm" icon={<Icon name="plus" />} title="Add a sticker from the library" data-testid="add-sticker" onClick={() => setPickingSticker(true)}>
+            Sticker
           </Button>
         </Inline>
-      }
-    >
+        <Button
+          size="sm"
+          pressed={topSection !== null}
+          title="A white band above the media with its own text (Arial)"
+          data-testid="top-section-toggle"
+          onClick={() => onTopSection(topSection === null)}
+        >
+          Top section
+        </Button>
+      </Inline>
       <StickerPicker open={pickingSticker} onClose={() => setPickingSticker(false)} onPick={onAddSticker} />
       <ol className="layer-list">
         {layers.map((layer, i) => {
           const open = layer.id === openId;
           const settingsId = `layer-settings-${layer.id}`;
-          const name = layerLabel(layer, i);
+          // The top section's text is pinned as layer 0: it can't move, and nothing moves above it. Unnamed layers
+          // keep their "Text N" numbers when it is switched on, so it doesn't count.
+          const pinned = layer === topSection;
+          const belowPinned = i > 0 && layers[i - 1] === topSection;
+          const position = topSection && !pinned ? i - 1 : i;
+          const name = layerLabel(layer, position);
           return (
             <li
               key={layer.id}
               data-testid="layer-item"
               data-layer-id={layer.id}
               data-layer-type={layer.type}
+              data-top-section={pinned ? "true" : undefined}
               className={cx("layer-row", layer.id === selectedId && "selected")}
             >
               <Panel
@@ -130,7 +150,7 @@ export function LayerPanel(props: LayerPanelProps) {
                         className="layer-name-input"
                         data-testid="layer-name-input"
                         value={layer.name ?? ""}
-                        placeholder={layerLabel({ type: layer.type }, i)}
+                        placeholder={layerLabel({ type: layer.type }, position)}
                         maxLength={LAYER_NAME_MAX_LENGTH}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -154,14 +174,20 @@ export function LayerPanel(props: LayerPanelProps) {
                       >
                         <Icon name="edit" />
                       </IconButton>
-                      <IconButton size="sm" variant="quiet" onClick={() => onMoveOrder(layer.id, -1)} disabled={i === 0} label="Move back (drawn behind)">
+                      <IconButton
+                        size="sm"
+                        variant="quiet"
+                        onClick={() => onMoveOrder(layer.id, -1)}
+                        disabled={i === 0 || pinned || belowPinned}
+                        label="Move back (drawn behind)"
+                      >
                         <Icon name="up" />
                       </IconButton>
                       <IconButton
                         size="sm"
                         variant="quiet"
                         onClick={() => onMoveOrder(layer.id, 1)}
-                        disabled={i === layers.length - 1}
+                        disabled={i === layers.length - 1 || pinned}
                         label="Move forward (drawn on top)"
                       >
                         <Icon name="down" />
@@ -261,13 +287,31 @@ function CommonSettings({ layer, media, frame, onChange, onSeek }: SettingsProps
 function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; onFontUploaded: (font: Asset) => void }) {
   const { layer, fonts, onChange, onFontUploaded } = props;
   const set = (patch: Partial<TextLayer>) => onChange((l) => (l.type === "text" ? { ...l, ...patch } : l));
+  const section = layer.topSection;
 
   return (
     <div className="layer-settings-fields">
-      <FontField value={layer.fontAssetId} fonts={fonts} onChange={(fontAssetId) => set({ fontAssetId })} onUploaded={onFontUploaded} />
+      {section && (
+        <Slider
+          label={`Top section height ${Math.round(section.height * 100)}% of the width (each extra line adds its height)`}
+          min={TOP_SECTION_HEIGHT_MIN * 100}
+          max={TOP_SECTION_HEIGHT_MAX * 100}
+          step={1}
+          value={Math.round(section.height * 100)}
+          data-testid="top-section-height"
+          onChange={(e) => set({ topSection: { height: Number(e.target.value) / 100 } })}
+        />
+      )}
+      <FontField
+        value={layer.fontAssetId}
+        fonts={fonts}
+        fallbackLabel={section ? "Arial" : undefined}
+        onChange={(fontAssetId) => set({ fontAssetId })}
+        onUploaded={onFontUploaded}
+      />
 
       <Slider
-        label={`Max size ${(layer.fontSize * 100).toFixed(1)}% of height`}
+        label={`Max size ${(layer.fontSize * 100).toFixed(1)}% of ${section ? "the top section's height" : "height"}`}
         min={1}
         max={50}
         step={0.5}

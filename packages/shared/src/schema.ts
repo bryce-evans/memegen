@@ -1,8 +1,10 @@
 import { z } from "zod";
-import { COMMENT_MAX_LENGTH, LAYER_NAME_MAX_LENGTH, MAX_TAGS, TEXT_MAX_LENGTH } from "./limits.ts";
+import { COMMENT_MAX_LENGTH, LAYER_NAME_MAX_LENGTH, MAX_PACK_IMAGES, MAX_PANELS, MAX_TAGS, TEXT_MAX_LENGTH } from "./limits.ts";
+import { PANEL_FONT_SIZE_DEFAULT, PANEL_FONT_SIZE_MAX, PANEL_FONT_SIZE_MIN } from "./panels.ts";
 import {
   GALLERY_SORTS,
   LEADERBOARD_SORTS,
+  PANEL_LAYOUTS,
   PERIODS,
   RESERVED_USERNAMES,
   TAG_KINDS,
@@ -85,44 +87,91 @@ export const textLayerSchema = z
 
 export const layersSchema = z.array(textLayerSchema).max(50);
 
+export const panelSchema = z.object({
+  id: z.string().min(1).max(64),
+  /** An image from the template's pack. */
+  assetId: z.uuid(),
+  text: z.string().max(TEXT_MAX_LENGTH),
+});
+
+export const panelSetSchema = z.object({
+  layout: z.enum(PANEL_LAYOUTS),
+  /** Black rules around every caption and image; false draws the panels without them. */
+  grid: z.boolean().default(true),
+  /** Max caption font size for every panel, in units (`panelTextLayer`). */
+  fontSize: z.number().min(PANEL_FONT_SIZE_MIN).max(PANEL_FONT_SIZE_MAX).default(PANEL_FONT_SIZE_DEFAULT),
+  panels: z.array(panelSchema).min(1).max(MAX_PANELS),
+});
+
+/** A multi-panel template as written: pack images by id (in order) and the panels the editor starts with. */
+export const panelTemplateInputSchema = z
+  .object({
+    layout: z.enum(PANEL_LAYOUTS),
+    grid: z.boolean().default(true),
+    fontSize: z.number().min(PANEL_FONT_SIZE_MIN).max(PANEL_FONT_SIZE_MAX).default(PANEL_FONT_SIZE_DEFAULT),
+    packAssetIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(MAX_PACK_IMAGES)
+      .refine((ids) => new Set(ids).size === ids.length, "pack images must be distinct"),
+    defaultPanels: z.array(panelSchema).min(1).max(MAX_PANELS),
+  })
+  .refine((p) => p.defaultPanels.every((d) => p.packAssetIds.includes(d.assetId)), "default panels must use images from the pack");
+
 export const visibilitySchema = z.enum(VISIBILITIES);
 
 /** Every meme is made from an existing template. */
-export const createMemeSchema = z.object({
-  title: z.string().trim().max(200).default(""),
-  templateId: z.uuid(),
-  /** Client-rendered result, already uploaded to storage. */
-  outputAssetId: z.uuid(),
-  layers: layersSchema,
-  visibility: visibilitySchema.default("public"),
-  post: z.boolean().default(false),
-  tags: tagListSchema.default([]),
-});
+export const createMemeSchema = z
+  .object({
+    title: z.string().trim().max(200).default(""),
+    templateId: z.uuid(),
+    /** Client-rendered result, already uploaded to storage. */
+    outputAssetId: z.uuid(),
+    layers: layersSchema,
+    /** Required for multi-panel templates (with no layers), null otherwise. */
+    panels: panelSetSchema.nullable().default(null),
+    visibility: visibilitySchema.default("public"),
+    post: z.boolean().default(false),
+    tags: tagListSchema.default([]),
+  })
+  .refine((m) => !m.panels || !m.layers.length, "multi-panel memes have no text layers");
 
 export const updateMemeSchema = z
   .object({
     title: z.string().trim().max(200).optional(),
     layers: layersSchema.optional(),
+    panels: panelSetSchema.nullable().optional(),
     outputAssetId: z.uuid().optional(),
     visibility: visibilitySchema.optional(),
     tags: tagListSchema.optional(),
   })
-  .refine((m) => !m.layers === !m.outputAssetId, "layers and outputAssetId change together");
+  .refine((m) => !m.layers === !m.outputAssetId, "layers and outputAssetId change together")
+  .refine((m) => m.panels === undefined || m.layers !== undefined, "panels change together with layers and outputAssetId")
+  .refine((m) => !m.panels || !m.layers?.length, "multi-panel memes have no text layers");
 
-export const createTemplateSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  assetId: z.uuid(),
-  parentId: z.uuid().nullable().optional(),
-  defaultLayers: layersSchema.default([]),
-  isPublic: z.boolean().default(true),
-  tags: tagListSchema.default([]),
-});
+export const createTemplateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    /** The media; for a multi-panel template, its rendered cover. */
+    assetId: z.uuid(),
+    parentId: z.uuid().nullable().optional(),
+    defaultLayers: layersSchema.default([]),
+    panels: panelTemplateInputSchema.nullable().default(null),
+    isPublic: z.boolean().default(true),
+    tags: tagListSchema.default([]),
+  })
+  .refine((t) => !t.panels || !t.defaultLayers.length, "multi-panel templates have no text layers");
 
-export const updateTemplateSchema = z.object({
-  name: z.string().trim().min(1).max(120).optional(),
-  defaultLayers: layersSchema.optional(),
-  isPublic: z.boolean().optional(),
-});
+export const updateTemplateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120).optional(),
+    defaultLayers: layersSchema.optional(),
+    /** Multi-panel templates only; comes with `assetId`, the cover re-rendered from the new defaults. */
+    panels: panelTemplateInputSchema.optional(),
+    assetId: z.uuid().optional(),
+    isPublic: z.boolean().optional(),
+  })
+  .refine((t) => !t.panels === !t.assetId, "panels and assetId change together");
 
 export const voteSchema = z.object({ value: z.union([z.literal(-1), z.literal(0), z.literal(1)]) });
 

@@ -10,7 +10,7 @@ import {
   type TemplateUsage,
 } from "@memegen/shared";
 import { HttpError, idParam, page, parse, parseJson, type Sql } from "@memegen/server-kit";
-import { loadTemplate, ownTemplate, requireMediaAsset, requireUser, type ApiApp } from "../access.ts";
+import { loadTemplate, ownTemplate, requireMediaAsset, requirePackImages, requireUser, type ApiApp } from "../access.ts";
 import {
   addTemplateTags,
   containsPattern,
@@ -114,27 +114,74 @@ export function register(app: ApiApp, sql: Sql): void {
       if (!parent) throw new HttpError(400, "parent template does not exist");
       if (parent.parent_id) throw new HttpError(400, "variations cannot have variations; use the top-level template");
     }
-    const [row] = await sql<{ id: string }[]>`
-      insert into templates ${sql({
-        name: body.name,
-        asset_id: body.assetId,
-        parent_id: body.parentId ?? null,
-        owner_id: user.id,
-        default_layers: sql.json(body.defaultLayers as never),
-        is_public: body.isPublic,
-      })} returning id`;
-    await addTemplateTags(sql, row!.id, body.tags, user.id, true);
-    return c.json(await loadTemplate(sql, row!.id, user), 201);
+    if (body.panels) await requirePackImages(sql, body.panels.packAssetIds);
+    const id = await sql.begin(async (tx) => {
+      const [row] = await tx<{ id: string }[]>`
+        insert into templates ${tx({
+          name: body.name,
+          asset_id: body.assetId,
+          parent_id: body.parentId ?? null,
+          owner_id: user.id,
+          default_layers: tx.json(body.defaultLayers as never),
+          panels: body.panels
+            ? tx.json({
+                layout: body.panels.layout,
+                grid: body.panels.grid,
+                fontSize: body.panels.fontSize,
+                defaultPanels: body.panels.defaultPanels,
+              } as never)
+            : null,
+          is_public: body.isPublic,
+        })} returning id`;
+      if (body.panels) {
+        const rows = body.panels.packAssetIds.map((assetId, position) => ({ template_id: row!.id, asset_id: assetId, position }));
+        await tx`insert into template_pack_assets ${tx(rows)}`;
+      }
+      return row!.id;
+    });
+    await addTemplateTags(sql, id, body.tags, user.id, true);
+    return c.json(await loadTemplate(sql, id, user), 201);
   });
 
   app.patch("/api/templates/:id", async (c) => {
     const { user, id } = await ownTemplate(sql, c);
     const body = await parseJson(c, updateTemplateSchema);
+    const [current] = await sql<{ multi: boolean; pack: string[] }[]>`
+      select t.panels is not null as multi,
+        array(select tp.asset_id from template_pack_assets tp where tp.template_id = t.id) as pack
+      from templates t where t.id = ${id}`;
+    if (current!.multi && body.defaultLayers?.length) throw new HttpError(400, "multi-panel templates have no text layers");
     const changes: Record<string, unknown> = {};
     if (body.name !== undefined) changes.name = body.name;
     if (body.isPublic !== undefined) changes.is_public = body.isPublic;
     if (body.defaultLayers !== undefined) changes.default_layers = sql.json(body.defaultLayers as never);
-    if (Object.keys(changes).length) await sql`update templates set ${sql(changes)} where id = ${id}`;
+    const panels = body.panels;
+    if (panels && body.assetId) {
+      if (!current!.multi) throw new HttpError(400, "only multi-panel templates have panels");
+      // Memes keep using the pack images they picked, so the pack only grows.
+      if (!current!.pack.every((assetId) => panels.packAssetIds.includes(assetId))) {
+        throw new HttpError(400, "pack images can't be removed once added");
+      }
+      await requirePackImages(sql, panels.packAssetIds.filter((assetId) => !current!.pack.includes(assetId)));
+      await requireMediaAsset(sql, body.assetId, "assetId");
+      changes.panels = sql.json({
+        layout: panels.layout,
+        grid: panels.grid,
+        fontSize: panels.fontSize,
+        defaultPanels: panels.defaultPanels,
+      } as never);
+      changes.asset_id = body.assetId;
+    }
+    if (Object.keys(changes).length || panels) {
+      await sql.begin(async (tx) => {
+        if (Object.keys(changes).length) await tx`update templates set ${tx(changes)} where id = ${id}`;
+        if (panels) {
+          await tx`
+            insert into template_pack_assets ${tx(panels.packAssetIds.map((assetId, position) => ({ template_id: id, asset_id: assetId, position })))}
+            on conflict (template_id, asset_id) do update set position = excluded.position`;
+        }
+      });
+    }
     return c.json(await loadTemplate(sql, id, user));
   });
 

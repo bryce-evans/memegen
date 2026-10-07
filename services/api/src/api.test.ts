@@ -6,19 +6,24 @@ import { after, before, beforeEach, test } from "node:test";
 import { crc32, deflateSync } from "node:zlib";
 import {
   DEFAULT_LIMITS,
+  newPanel,
+  PANEL_FONT_SIZE_DEFAULT,
   newTextLayer,
   type Comment,
   type HotTemplate,
   type LeaderboardEntry,
   type Meme,
   type Page,
+  type Panel,
+  type PanelLayout,
+  type PanelSet,
   type Template,
   type Tag,
   type TemplateUsage,
   type User,
   type UserProfile,
 } from "@memegen/shared";
-import { config, HeaderAuthProvider, type Sql } from "@memegen/server-kit";
+import { config, findAssetRow, HeaderAuthProvider, HttpError, type Sql } from "@memegen/server-kit";
 import { freshTestDb } from "@memegen/server-kit/testing";
 import { AssetStore, LocalStorageProvider, staticProviders } from "@memegen/storage";
 import { createApiApp, type ApiApp } from "./app.ts";
@@ -87,7 +92,16 @@ async function upload(owner: User, filename = "t.png"): Promise<string> {
 /** A template (public unless `isPublic: false`) from a fresh image, owned by `owner`. */
 async function makeTemplate(
   owner: User,
-  { name = "Base", ...rest }: { name?: string; parentId?: string; isPublic?: boolean; tags?: string[] } = {},
+  {
+    name = "Base",
+    ...rest
+  }: {
+    name?: string;
+    parentId?: string;
+    isPublic?: boolean;
+    tags?: string[];
+    panels?: { layout: PanelLayout; packAssetIds: string[]; defaultPanels: Panel[] };
+  } = {},
 ): Promise<Template> {
   const res = await call<Template>("POST", "/api/templates", owner, { name, assetId: await upload(owner), ...rest });
   assert.equal(res.status, 201, JSON.stringify(res.body));
@@ -97,12 +111,13 @@ async function makeTemplate(
 /** A meme by `owner` (posted and public by default), from `templateId` or else a new template of theirs. */
 async function makeMeme(
   owner: User,
-  opts: { templateId?: string; post?: boolean; visibility?: "public" | "private"; tags?: string[] } = {},
+  opts: { templateId?: string; post?: boolean; visibility?: "public" | "private"; tags?: string[]; panels?: PanelSet } = {},
 ): Promise<Meme> {
   const res = await call<Meme>("POST", "/api/memes", owner, {
     templateId: opts.templateId ?? (await makeTemplate(owner)).id,
     outputAssetId: await upload(owner, "o.png"),
-    layers: [newTextLayer()],
+    layers: opts.panels ? [] : [newTextLayer()],
+    panels: opts.panels,
     visibility: opts.visibility ?? "public",
     post: opts.post ?? true,
     tags: opts.tags,
@@ -356,6 +371,98 @@ test("memes need an existing template and an output uploaded by the author", asy
   assert.equal((await call("DELETE", `/api/templates/${template.id}`, alice)).status, 409);
   const unused = await makeTemplate(alice, { name: "Unused" });
   assert.equal((await call("DELETE", `/api/templates/${unused.id}`, alice)).status, 204);
+});
+
+test("multi-panel templates: an ordered still-image pack; memes must fill panels from it", async () => {
+  const alice = await signIn("alice");
+  const pack = [await upload(alice), await upload(alice), await upload(alice)];
+  const defaultPanels = [newPanel(pack[2]!, "small"), newPanel(pack[0]!, "big")];
+  const template = await makeTemplate(alice, { name: "Brain", panels: { layout: "vertical", packAssetIds: pack, defaultPanels } });
+  assert.deepEqual(template.defaultLayers, []);
+  assert.equal(template.panels?.layout, "vertical");
+  // Omitted style fields default to the grid on and the default caption size.
+  assert.equal(template.panels?.grid, true);
+  assert.equal(template.panels?.fontSize, PANEL_FONT_SIZE_DEFAULT);
+  assert.deepEqual(template.panels?.pack.map((a) => a.id), pack);
+  assert.deepEqual(template.panels?.defaultPanels, defaultPanels);
+  const plain = await makeTemplate(alice, { name: "Plain" });
+  assert.equal(plain.panels, null);
+
+  const stranger = await upload(alice);
+  const missing = crypto.randomUUID();
+  for (const [packAssetIds, panel] of [[pack, stranger], [[missing], missing]] as const) {
+    const bad = await call("POST", "/api/templates", alice, {
+      name: "Bad",
+      assetId: pack[0],
+      panels: { layout: "vertical", packAssetIds, defaultPanels: [newPanel(panel)] },
+    });
+    assert.equal(bad.status, 400, JSON.stringify(bad.body));
+  }
+
+  const panels: PanelSet = { layout: "horizontal", grid: false, fontSize: 0.2, panels: [newPanel(pack[1]!, "a"), newPanel(pack[1]!, "b")] };
+  const meme = await makeMeme(alice, { templateId: template.id, panels });
+  assert.deepEqual(meme.panels, panels);
+  assert.deepEqual(meme.layers, []);
+  assert.deepEqual((await call<Meme>("GET", `/api/memes/${meme.id}`, null)).body.panels, panels);
+  assert.equal((await makeMeme(alice)).panels, null);
+
+  const createMeme = (templateId: string, body: Record<string, unknown>) =>
+    call("POST", "/api/memes", alice, { templateId, outputAssetId: pack[0], layers: [], ...body });
+  assert.equal((await createMeme(template.id, {})).status, 400); // panels required
+  assert.equal((await createMeme(template.id, { panels: { layout: "vertical", panels: [newPanel(stranger)] } })).status, 400);
+  assert.equal((await createMeme(plain.id, { panels })).status, 400);
+  assert.equal((await createMeme(template.id, { panels: { ...panels, fontSize: 0.5 } })).status, 400); // past PANEL_FONT_SIZE_MAX
+
+  const edit = (body: Record<string, unknown>) =>
+    call<Meme>("PATCH", `/api/memes/${meme.id}`, alice, { layers: [], outputAssetId: meme.outputAsset.id, ...body });
+  assert.equal((await edit({})).status, 400);
+  assert.equal((await edit({ panels: { layout: "vertical", panels: [newPanel(stranger)] } })).status, 400);
+  const edited: PanelSet = { layout: "vertical", grid: true, fontSize: 0.05, panels: [newPanel(pack[2]!, "c")] };
+  const patched = await edit({ panels: edited });
+  assert.equal(patched.status, 200, JSON.stringify(patched.body));
+  assert.deepEqual(patched.body.panels, edited);
+
+  // Pack images, even ones no meme uses yet, can't be deleted from storage under the template.
+  await assert.rejects(store.delete((await findAssetRow(sql, pack[1]!))!), (err) => err instanceof HttpError && err.status === 409);
+});
+
+test("multi-panel template edits: the pack grows and reorders but never loses images", async () => {
+  const alice = await signIn("alice");
+  const pack = [await upload(alice), await upload(alice)];
+  const template = await makeTemplate(alice, {
+    panels: { layout: "vertical", packAssetIds: pack, defaultPanels: [newPanel(pack[0]!)] },
+  });
+  const added = await upload(alice);
+  const cover = await upload(alice);
+  const patch = (id: string, body: Record<string, unknown>) => call<Template>("PATCH", `/api/templates/${id}`, alice, body);
+
+  const defaultPanels = [newPanel(added, "new"), newPanel(pack[1]!, "old")];
+  const grown = await patch(template.id, {
+    assetId: cover,
+    panels: { layout: "horizontal", grid: false, fontSize: 0.25, packAssetIds: [added, pack[1], pack[0]], defaultPanels },
+  });
+  assert.equal(grown.status, 200, JSON.stringify(grown.body));
+  assert.equal(grown.body.asset.id, cover);
+  assert.equal(grown.body.panels?.layout, "horizontal");
+  assert.equal(grown.body.panels?.grid, false);
+  assert.equal(grown.body.panels?.fontSize, 0.25);
+  assert.deepEqual(grown.body.panels?.pack.map((a) => a.id), [added, pack[1], pack[0]]);
+  assert.deepEqual(grown.body.panels?.defaultPanels, defaultPanels);
+
+  const dropped = await patch(template.id, {
+    assetId: cover,
+    panels: { layout: "horizontal", packAssetIds: [added, pack[1]], defaultPanels },
+  });
+  assert.equal(dropped.status, 400);
+  assert.deepEqual((await call<Template>("GET", `/api/templates/${template.id}`, null)).body.panels?.pack.length, 3);
+  assert.equal((await patch(template.id, { defaultLayers: [newTextLayer()] })).status, 400);
+
+  const plain = await makeTemplate(alice, { name: "Plain" });
+  const onPlain = await patch(plain.id, {
+    assetId: cover,
+    panels: { layout: "vertical", packAssetIds: [added], defaultPanels: [newPanel(added)] },
+  });
+  assert.equal(onPlain.status, 400);
 });
 
 test("template usage: variations roll up to the parent, history survives deletion, windows apply", async () => {

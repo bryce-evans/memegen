@@ -39,7 +39,7 @@ Then open:
 
 - **Popular / Recent**: http://localhost:5173/ ranks by score over today, week, month, year, or all time; http://localhost:5173/recent lists the newest posts. Open a meme to vote and join its discussion (comments with replies).
 - **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎), how many templates the user contributed, and a Templates tab listing them. Star (☆) other people's memes to save them; your own profile has Favorites and Recent activity (everything you liked or disliked, newest first) next to your memes, and Edit on each of your templates to rename it and change its default text boxes.
-- **Create**: http://localhost:5173/create. Every meme starts from a template: find one (the list loads more as you scroll), or add your own media as a new template: upload it, place its default text boxes in the Template Editor, name and tag it, and confirm. Opening a template shows its tags, usage, and variations under the image. Templates show who added them; built-in ones are added by the reserved `memegen` account.
+- **Create**: http://localhost:5173/create. Every meme starts from a template: find one (the list loads more as you scroll), or add your own media as a new template: upload it, place its default text boxes in the Template Editor, name and tag it, and confirm. **Multi-panel template** builds the other kind (expanding brain, panik kalm mememan): upload a pack of images, then set the default setup: layout (vertical or horizontal), grid on or off, text size, and the panels, each one a pack image plus its caption. Memes made from it can change all of that and add, remove, and reorder panels, picking any pack image for each one; the images are used as they are, never cropped or resized. Opening a template shows its tags, usage, and variations under the image. Templates show who added them; built-in ones are added by the reserved `memegen` account.
 - **Tags**: browse popular and team tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
 
 Every page asks you to sign in first; you then land on the page you opened. The login is kept in a `memegen.user` cookie for a year, until you sign out.
@@ -135,6 +135,8 @@ ffmpeg -f lavfi -i testsrc=size=160x120:rate=10:duration=1.2 \
 ffmpeg -f lavfi -i testsrc=size=320x240:rate=30:duration=1 -f lavfi -i sine=frequency=440:sample_rate=48000:duration=1 \
   -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest -movflags +faststart clip.mp4
 ffmpeg -f lavfi -i color=c=red:size=1100x60:rate=5:duration=0.4 too-wide.gif
+ffmpeg -f lavfi -i testsrc=size=400x400 -frames:v 1 panel-a.jpg
+ffmpeg -f lavfi -i color=c=blue:size=400x300 -frames:v 1 panel-b.jpg
 cp ../../demo/jacebrowning-memegen/fonts/TitilliumWeb-Black.ttf .
 cp "../../demo/jacebrowning-memegen/fonts/SIL Open Font License.txt" OFL.txt
 cd ../..
@@ -148,6 +150,7 @@ The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) agai
 - sidebar order, leaderboard, profile stats, badges and templates contributed, the Templates tab (Edit for the author: rename and change default text), the owner-only Favorites and Recent activity tabs
 - comments and replies on a meme
 - still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, the looping animation preview, and exported frame counts/audio checked with `ffprobe`
+- multi-panel templates: build one from an image pack, add panels and swap their images, switch layout, save, and re-edit, with export sizes checked against the uncropped pack images
 - templates and variations, base and added tags, tag creation in the editor, tag pages, hot templates, auto-loading template list
 - upload caps and custom fonts
 

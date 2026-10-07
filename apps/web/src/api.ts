@@ -8,6 +8,9 @@ import type {
   LeaderboardSort,
   Meme,
   Page,
+  Panel,
+  PanelLayout,
+  PanelSet,
   Period,
   Template,
   TemplateUsage,
@@ -182,19 +185,35 @@ export const getTemplateUsage = (id: string, period: Period) =>
 
 export interface CreateTemplateInput {
   name: string;
+  /** The media; for a multi-panel template, its rendered cover. */
   assetId: string;
   parentId?: string | null;
   defaultLayers?: TextLayer[];
+  panels?: PanelTemplateInput | null;
   isPublic?: boolean;
   tags?: string[];
+}
+
+/** A multi-panel template as written: pack images by id, in order. */
+export interface PanelTemplateInput {
+  layout: PanelLayout;
+  grid: boolean;
+  fontSize: number;
+  packAssetIds: string[];
+  defaultPanels: Panel[];
 }
 
 export const createTemplate = (input: CreateTemplateInput) =>
   request<Template>("/api/templates", { method: "POST", json: input });
 
-/** Owner only: rename and/or replace the default text boxes. Existing memes keep their own layers. */
-export const updateTemplate = (id: string, changes: { name?: string; defaultLayers?: TextLayer[] }) =>
-  request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
+/**
+ * Owner only: rename and/or replace the defaults (text boxes, or a multi-panel template's panels together with its
+ * re-rendered cover; pack images can be added, never removed). Existing memes keep their own content.
+ */
+export const updateTemplate = (
+  id: string,
+  changes: { name?: string; defaultLayers?: TextLayer[] } & ({ panels: PanelTemplateInput; assetId: string } | { panels?: never; assetId?: never }),
+) => request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
 
 /** Adds (never removes) tags; the author's base tags always stay. */
 export const addTemplateTags = (id: string, tags: string[]) =>
@@ -214,6 +233,8 @@ export interface CreateMemeInput {
   templateId: string;
   outputAssetId: string;
   layers: TextLayer[];
+  /** Required for multi-panel templates (with no layers). */
+  panels: PanelSet | null;
   visibility: Visibility;
   post: boolean;
   tags?: string[];
@@ -227,7 +248,7 @@ export type UpdateMemeInput = {
   title?: string;
   visibility?: Visibility;
   tags?: string[];
-} & ({ layers: TextLayer[]; outputAssetId: string } | { layers?: never; outputAssetId?: never });
+} & ({ layers: TextLayer[]; panels: PanelSet | null; outputAssetId: string } | { layers?: never; panels?: never; outputAssetId?: never });
 
 export const updateMeme = (id: string, input: UpdateMemeInput) =>
   request<Meme>(`/api/memes/${id}`, { method: "PATCH", json: input });

@@ -29,6 +29,10 @@ export const LAYER_NAME_MAX_LENGTH = 40;
 export const COMMENT_MAX_LENGTH = 2000;
 /** Tags on one meme or template. */
 export const MAX_TAGS = 20;
+/** Panels in one multi-panel meme or template default. */
+export const MAX_PANELS = 12;
+/** Images in one multi-panel template's pack. */
+export const MAX_PACK_IMAGES = 24;
 
 /**
  * Still memes export at least this long on their longest edge (never past the image cap): small templates are

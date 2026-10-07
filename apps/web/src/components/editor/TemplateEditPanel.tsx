@@ -1,28 +1,40 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { Template, TextLayer } from "@memegen/shared";
+import type { Template } from "@memegen/shared";
 import { Alert, Button, Inline, LinkButton, Panel, Text, TextField } from "@memegen/ui";
-import { updateTemplate } from "../../api.ts";
-import { plural } from "../../format.ts";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
 
 /** What a save writes; equal snapshots mean nothing changed since the last save. */
-const snapshot = (name: string, layers: TextLayer[]) => JSON.stringify({ name: name.trim(), layers });
+const snapshot = (name: string, content: unknown) => JSON.stringify({ name: name.trim(), content });
+
+export interface TemplateEditPanelProps {
+  template: Template;
+  canEdit: boolean;
+  /** The defaults as stored when the editor opened, and as currently edited (compared for "Unsaved changes"). */
+  initialContent: unknown;
+  content: unknown;
+  /** Which parts are the template's defaults. */
+  note: string;
+  /** False while the defaults can't be saved (e.g. no panels). */
+  ready: boolean;
+  /** Writes the name and current defaults (`PATCH /api/templates/:id`). */
+  save: (name: string) => Promise<Template>;
+}
 
 /**
- * Side panel for editing an existing template (`?editTemplate=`): its name and default text boxes, saved with
- * `PATCH /api/templates/:id`. Only the author can save; memes already made from it keep their own text.
+ * Side panel for editing an existing template (`?editTemplate=`): its name and defaults. Only the author can save;
+ * memes already made from it keep their own content.
  */
-export function TemplateEditPanel({ template, layers, canEdit }: { template: Template; layers: TextLayer[]; canEdit: boolean }) {
+export function TemplateEditPanel({ template, canEdit, initialContent, content, note, ready, save: write }: TemplateEditPanelProps) {
   const [name, setName] = useState(template.name);
-  const [saved, setSaved] = useState(() => snapshot(template.name, template.defaultLayers));
+  const [saved, setSaved] = useState(() => snapshot(template.name, initialContent));
   const { busy, error, run } = useAction();
-  const dirty = snapshot(name, layers) !== saved;
+  const dirty = snapshot(name, content) !== saved;
 
   async function save() {
-    const sent = snapshot(name, layers);
-    const updated = await run(() => updateTemplate(template.id, { name: name.trim(), defaultLayers: layers }));
+    const sent = snapshot(name, content);
+    const updated = await run(() => write(name.trim()));
     if (updated) setSaved(sent);
   }
 
@@ -46,11 +58,10 @@ export function TemplateEditPanel({ template, layers, canEdit }: { template: Tem
         data-testid="template-name"
       />
       <Text size="sm" tone="muted">
-        The {plural(layers.length, "text box", "text boxes")} and their placeholder text are the template's defaults. Memes
-        already made from it keep their own text.
+        {note}
       </Text>
       <Inline className="save-actions">
-        <Button variant="primary" disabled={busy || !dirty || !name.trim()} onClick={save} data-testid="template-update">
+        <Button variant="primary" disabled={busy || !dirty || !ready || !name.trim()} onClick={save} data-testid="template-update">
           {busy ? "Saving…" : "Save changes"}
         </Button>
         <LinkButton as={Link} to={`/create?template=${template.id}`} data-testid="template-use">

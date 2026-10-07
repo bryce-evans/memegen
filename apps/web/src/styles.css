@@ -555,6 +555,40 @@
   border-color: var(--ui-color-danger);
 }
 
+/* Multi-panel editor: panels are selected, never dragged (pack images are not moved or resized). */
+.panel-handle {
+  cursor: pointer;
+}
+.panel-style {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  margin-bottom: var(--ui-space-3);
+}
+.panel-images {
+  flex-wrap: wrap;
+  margin-top: var(--ui-space-2);
+}
+.panel-thumb {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+.pack-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  margin: var(--ui-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pack-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+}
+
 .timeline {
   margin-top: var(--ui-space-4);
   overflow: hidden;

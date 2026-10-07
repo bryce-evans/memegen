@@ -92,10 +92,11 @@ export class AssetStore {
     }
   }
 
-  /** Deletes metadata then bytes. Refuses while templates or memes reference the asset. */
+  /** Deletes metadata then bytes. Refuses while templates (as media or pack image) or memes reference the asset. */
   async delete(row: AssetRow): Promise<void> {
     const [ref] = await this.sql`
       select 1 from templates where asset_id = ${row.id}
+      union all select 1 from template_pack_assets where asset_id = ${row.id}
       union all select 1 from memes where source_asset_id = ${row.id} or output_asset_id = ${row.id}
       limit 1`;
     if (ref) throw new HttpError(409, "asset is in use by a template or meme");

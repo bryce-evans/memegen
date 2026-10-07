@@ -1,6 +1,6 @@
 import { createMemeSchema, favoriteSchema, updateMemeSchema, voteSchema } from "@memegen/shared";
 import { idParam, parse, parseJson, type Sql } from "@memegen/server-kit";
-import { loadMeme, loadTemplate, ownMeme, requireOwnOutput, requireUser, type ApiApp } from "../access.ts";
+import { loadMeme, loadTemplate, ownMeme, requireMemePanels, requireOwnOutput, requireUser, type ApiApp } from "../access.ts";
 import { replaceMemeTags, requireListed, toMeme } from "../rows.ts";
 
 /** Meme authoring, posting, votes, and favorites. */
@@ -10,6 +10,7 @@ export function register(app: ApiApp, sql: Sql): void {
     const body = await parseJson(c, createMemeSchema);
     const template = await loadTemplate(sql, body.templateId, user);
     const output = await requireOwnOutput(sql, body.outputAssetId, user);
+    const panels = await requireMemePanels(sql, template.id, body.panels);
     const [row] = await sql<{ id: string }[]>`
       insert into memes ${sql({
         owner_id: user.id,
@@ -18,6 +19,7 @@ export function register(app: ApiApp, sql: Sql): void {
         output_asset_id: output.id,
         title: body.title,
         layers: sql.json(body.layers as never),
+        panels: panels ? sql.json(panels as never) : null,
         visibility: body.visibility,
         posted_at: body.post ? new Date() : null,
       })} returning id`;
@@ -31,14 +33,16 @@ export function register(app: ApiApp, sql: Sql): void {
   });
 
   app.patch("/api/memes/:id", async (c) => {
-    const { user, id } = await ownMeme(sql, c);
+    const { user, id, meme } = await ownMeme(sql, c);
     const body = await parseJson(c, updateMemeSchema);
     const changes: Record<string, unknown> = {};
     if (body.title !== undefined) changes.title = body.title;
     if (body.visibility !== undefined) changes.visibility = body.visibility;
     if (body.layers && body.outputAssetId) {
       const output = await requireOwnOutput(sql, body.outputAssetId, user);
+      const panels = await requireMemePanels(sql, meme.template_id, body.panels);
       changes.layers = sql.json(body.layers as never);
+      changes.panels = panels ? sql.json(panels as never) : null;
       changes.output_asset_id = output.id;
     }
     if (Object.keys(changes).length) {

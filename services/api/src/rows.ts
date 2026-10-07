@@ -1,4 +1,4 @@
-import type { Comment, Meme, Period, Tag, Template, TextLayer, Visibility } from "@memegen/shared";
+import type { Comment, Meme, Panel, PanelLayout, PanelSet, Period, Tag, Template, TextLayer, Visibility } from "@memegen/shared";
 import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
 
 // ---- shared SQL pieces -------------------------------------------------------------
@@ -70,6 +70,7 @@ export interface MemeRow {
   source_asset: AssetRow;
   output_asset: AssetRow;
   layers: TextLayer[];
+  panels: PanelSet | null;
   visibility: Visibility;
   posted_at: Date | null;
   created_at: Date;
@@ -92,7 +93,7 @@ export function memeSelect(sql: Sql, viewerId: string | null) {
   return sql`
     select m.id, m.title, m.owner_id, u.username as owner_username, m.template_id,
       row_to_json(sa.*) as source_asset, row_to_json(oa.*) as output_asset,
-      m.layers, m.visibility, m.posted_at, m.created_at, m.updated_at,
+      m.layers, m.panels, m.visibility, m.posted_at, m.created_at, m.updated_at,
       m.upvotes, m.downvotes, m.score, coalesce(v.value, 0)::int as my_vote,
       exists (select 1 from favorites f where f.meme_id = m.id and f.user_id = ${viewerId}) as favorited,
       array(select g.slug from meme_tags mt join tags g on g.id = mt.tag_id
@@ -114,6 +115,7 @@ export function toMeme(r: MemeRow): Meme {
     sourceAsset: toAsset(r.source_asset),
     outputAsset: toAsset(r.output_asset),
     layers: r.layers,
+    panels: r.panels,
     visibility: r.visibility,
     postedAt: r.posted_at?.toISOString() ?? null,
     createdAt: r.created_at.toISOString(),
@@ -151,6 +153,10 @@ export interface TemplateRow {
   owner_username: string;
   asset: AssetRow;
   default_layers: TextLayer[];
+  /** Pack lives in `template_pack_assets`, selected as `pack`. */
+  panels: { layout: PanelLayout; grid: boolean; fontSize: number; defaultPanels: Panel[] } | null;
+  /** Pack assets in order; null for single-media templates. */
+  pack: AssetRow[] | null;
   is_public: boolean;
   created_at: Date;
   use_count: number;
@@ -162,7 +168,10 @@ export interface TemplateRow {
 export function templateSelect(sql: Sql) {
   return sql`
     select t.id, t.name, t.parent_id, t.owner_id, u.username as owner_username,
-      row_to_json(a.*) as asset, t.default_layers, t.is_public, t.created_at,
+      row_to_json(a.*) as asset, t.default_layers, t.is_public, t.created_at, t.panels,
+      (select json_agg(row_to_json(pa.*) order by tp.position) from template_pack_assets tp
+        join assets pa on pa.id = tp.asset_id
+        where tp.template_id = t.id and t.panels is not null) as pack,
       (select count(*)::int from template_uses tu
         where tu.kind = 'created'
           and (case when t.parent_id is null then tu.root_template_id else tu.template_id end) = t.id) as use_count,
@@ -183,6 +192,15 @@ export function toTemplate(r: TemplateRow, variations: Template[] = []): Templat
     owner: { id: r.owner_id, username: r.owner_username },
     asset: toAsset(r.asset),
     defaultLayers: r.default_layers,
+    panels: r.panels
+      ? {
+          layout: r.panels.layout,
+          grid: r.panels.grid,
+          fontSize: r.panels.fontSize,
+          pack: (r.pack ?? []).map(toAsset),
+          defaultPanels: r.panels.defaultPanels,
+        }
+      : null,
     isPublic: r.is_public,
     createdAt: r.created_at.toISOString(),
     variations,

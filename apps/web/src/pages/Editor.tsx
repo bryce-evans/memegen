@@ -1,30 +1,36 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { layerFontIds, loadFont } from "@memegen/render";
-import { newTextLayer, placeAt, type Asset, type TextLayer } from "@memegen/shared";
+import { ensureLayerFonts, exportMeme, layerFontIds, loadFont } from "@memegen/render";
+import { newTextLayer, placeAt, stillExportSize, type Asset, type TextLayer } from "@memegen/shared";
 import { Alert, PageHeader, Spinner } from "@memegen/ui";
-import { fontUrl, listFonts } from "../api.ts";
+import { createTemplate, fontUrl, listFonts, updateTemplate } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { CreateStart } from "../components/editor/CreateStart.tsx";
 import { LayerPanel } from "../components/editor/LayerPanel.tsx";
+import { PanelWorkspace } from "../components/editor/PanelWorkspace.tsx";
 import { PreviewPanel } from "../components/editor/PreviewPanel.tsx";
-import { SavePanel } from "../components/editor/SavePanel.tsx";
-import { defaultFontId, sourceRef, useEditorSession, type Session, type SourceRef } from "../components/editor/session.ts";
+import { SavePanel, type RenderProgress } from "../components/editor/SavePanel.tsx";
+import { defaultFontId, sourceRef, useEditorSession, type MediaSession, type SourceRef } from "../components/editor/session.ts";
 import { Stage } from "../components/editor/Stage.tsx";
 import { TemplateEditPanel } from "../components/editor/TemplateEditPanel.tsx";
-import { TemplateSavePanel } from "../components/editor/TemplateSavePanel.tsx";
+import { nameFromFile, TemplateSavePanel } from "../components/editor/TemplateSavePanel.tsx";
 import { Timeline } from "../components/editor/Timeline.tsx";
 import { TemplateDetails } from "../components/templateDetails.tsx";
+import { plural } from "../format.ts";
 
 const LOADING_TITLES: Record<SourceRef["kind"], string> = {
   meme: "Edit meme",
   template: "Loading template",
   "new-template": "Template Editor",
   "edit-template": "Edit template",
+  "new-panels": "Multi-panel Template Editor",
 };
 
-/** `/create`: the start page, or the editor for `?meme=` / `?template=` / `?newTemplate=` / `?editTemplate=`. */
+/**
+ * `/create`: the start page, or the editor for `?meme=` / `?template=` / `?newTemplate=` / `?editTemplate=` /
+ * `?newPanels`. Multi-panel templates (and memes made from them) open the panel editor.
+ */
 export function Editor() {
   const location = useLocation();
   const [params] = useSearchParams();
@@ -35,7 +41,7 @@ export function Editor() {
 
 function EditorSession({ source }: { source: SourceRef }) {
   const { session, error } = useEditorSession(source);
-  if (session) return <Workspace session={session} />;
+  if (session) return session.type === "panels" ? <PanelWorkspace session={session} /> : <Workspace session={session} />;
   return (
     <section className="editor-start">
       <PageHeader title={LOADING_TITLES[source.kind]} />
@@ -44,7 +50,7 @@ function EditorSession({ source }: { source: SourceRef }) {
   );
 }
 
-function Workspace({ session }: { session: Session }) {
+function Workspace({ session }: { session: MediaSession }) {
   const { media, source, limits } = session;
   const user = useUser();
   const [fonts, setFonts] = useState<Asset[]>(session.fonts);
@@ -124,6 +130,18 @@ function Workspace({ session }: { session: Session }) {
     updateLayer(layerId, (l) => ({ ...l, fontAssetId: font.id }));
   }
 
+  async function render(signal: AbortSignal, progress: RenderProgress) {
+    progress("Loading fonts", null);
+    await ensureLayerFonts(layers, fontUrl);
+    progress("Rendering", 0);
+    return exportMeme(media, layers, {
+      signal,
+      onProgress: (value) => progress("Rendering", value),
+      stillSize: stillExportSize(media.width, media.height, limits),
+    });
+  }
+
+  const boxes = plural(layers.length, "text box", "text boxes");
   return (
     <>
       {source.kind === "new-template" && <PageHeader title="Template Editor" titleProps={{ "data-testid": "editor-title" }} />}
@@ -177,13 +195,27 @@ function Workspace({ session }: { session: Session }) {
           />
           {animated && <PreviewPanel media={media} layers={layers} />}
           {source.kind === "new-template" ? (
-            <TemplateSavePanel asset={source.asset} layers={layers} />
+            <TemplateSavePanel
+              defaultName={nameFromFile(source.asset.filename)}
+              what={boxes}
+              note={`The ${boxes} and their placeholder text become the template's defaults.`}
+              ready
+              create={(name, tags) => createTemplate({ name, assetId: source.asset.id, defaultLayers: layers, tags })}
+            />
           ) : source.kind === "edit-template" ? (
-            <TemplateEditPanel template={source.template} layers={layers} canEdit={source.template.owner.id === user.id} />
+            <TemplateEditPanel
+              template={source.template}
+              canEdit={source.template.owner.id === user.id}
+              initialContent={source.template.defaultLayers}
+              content={layers}
+              note={`The ${boxes} and their placeholder text are the template's defaults. Memes already made from it keep their own text.`}
+              ready
+              save={(name) => updateTemplate(source.template.id, { name, defaultLayers: layers })}
+            />
           ) : (
             <SavePanel
-              media={media}
-              layers={layers}
+              render={render}
+              content={{ layers, panels: null }}
               limits={limits}
               canSave={isOwnMeme}
               target={source.kind === "meme" ? { editing: source.meme } : { templateId: source.template.id }}

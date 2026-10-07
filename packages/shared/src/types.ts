@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { keyframeSchema, textLayerSchema } from "./schema.ts";
+import type { keyframeSchema, panelSchema, panelSetSchema, textLayerSchema } from "./schema.ts";
 
 export const ASSET_KINDS = ["image", "gif", "video", "font"] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];
@@ -40,6 +40,26 @@ export type TextStyle = (typeof TEXT_STYLES)[number];
 
 /** Field docs live on `textLayerSchema`, the single definition. */
 export type TextLayer = z.output<typeof textLayerSchema>;
+
+/** Multi-panel memes: `vertical` stacks rows (text left of each image), `horizontal` lines up columns (text above). */
+export const PANEL_LAYOUTS = ["vertical", "horizontal"] as const;
+export type PanelLayout = (typeof PANEL_LAYOUTS)[number];
+/** One panel of a multi-panel meme: an image from its template's pack plus the panel's text. */
+export type Panel = z.output<typeof panelSchema>;
+/** A multi-panel meme's content (stored on the meme; `layers` is empty). */
+export type PanelSet = z.output<typeof panelSetSchema>;
+
+/** What makes a template multi-panel: its image pack and the panels the editor starts with. */
+export interface PanelTemplate {
+  layout: PanelLayout;
+  /** Whether the default panels show the black grid rules (`PanelSet.grid`). */
+  grid: boolean;
+  /** Default max caption font size (`PanelSet.fontSize`). */
+  fontSize: number;
+  /** Still images in pack order; panels pick from these. */
+  pack: Asset[];
+  defaultPanels: Panel[];
+}
 
 export interface User {
   id: string;
@@ -101,7 +121,10 @@ export interface Template {
   /** Who added it ("added by"); built-in templates belong to the reserved `memegen` account. */
   owner: Pick<User, "id" | "username">;
   asset: Asset;
+  /** Empty for multi-panel templates. */
   defaultLayers: TextLayer[];
+  /** Set for multi-panel templates; `asset` is then a rendered cover of `defaultPanels`. */
+  panels: PanelTemplate | null;
   isPublic: boolean;
   createdAt: string;
   /** Only populated on top-level templates. */
@@ -163,7 +186,10 @@ export interface Meme {
   templateId: string;
   sourceAsset: Asset;
   outputAsset: Asset;
+  /** Empty for multi-panel memes. */
   layers: TextLayer[];
+  /** Set for memes made from a multi-panel template. */
+  panels: PanelSet | null;
   visibility: Visibility;
   postedAt: string | null;
   createdAt: string;

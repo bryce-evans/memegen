@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ensureLayerFonts, exportMeme, ExportAbortedError, type DecodedMedia } from "@memegen/render";
-import { limitViolations, stillExportSize, type Meme, type TextLayer, type UploadLimits, type Visibility } from "@memegen/shared";
+import { ExportAbortedError, type ExportResult } from "@memegen/render";
+import { limitViolations, type Meme, type PanelSet, type TextLayer, type UploadLimits, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
-import { ApiError, createMeme, fontUrl, postMeme, updateMeme, uploadAsset } from "../../api.ts";
+import { ApiError, createMeme, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { downloadBlob, fileSlug } from "../../media.ts";
 import { ErrorView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
 
+/** Reports a render step ("Loading fonts", "Rendering") and its 0..1 progress, or null when indeterminate. */
+export type RenderProgress = (step: string, value: number | null) => void;
+
 export interface SavePanelProps {
-  media: DecodedMedia;
-  layers: TextLayer[];
+  /** Render the meme in the browser (the editor's own exporter). */
+  render: (signal: AbortSignal, progress: RenderProgress) => Promise<ExportResult>;
+  /** What the meme stores: text layers, or a multi-panel meme's panels (with no layers). */
+  content: { layers: TextLayer[]; panels: PanelSet | null };
   limits: UploadLimits;
   /** False when re-editing someone else's meme: only Download is offered. */
   canSave: boolean;
@@ -28,7 +33,7 @@ interface Progress {
 }
 
 export function SavePanel(props: SavePanelProps) {
-  const { media, layers, limits, canSave, target, defaultTitle, suggestedTags } = props;
+  const { render: renderMeme, content, limits, canSave, target, defaultTitle, suggestedTags } = props;
   const editingMeme = "editing" in target ? target.editing : null;
   const navigate = useNavigate();
   const [title, setTitle] = useState(editingMeme?.title ?? defaultTitle);
@@ -70,14 +75,7 @@ export function SavePanel(props: SavePanelProps) {
 
   /** Render the meme in the browser, reporting progress. */
   async function render(signal: AbortSignal) {
-    setProgress({ step: "Loading fonts", value: null });
-    await ensureLayerFonts(layers, fontUrl);
-    setProgress({ step: "Rendering", value: 0 });
-    const out = await exportMeme(media, layers, {
-      signal,
-      onProgress: (value) => setProgress({ step: "Rendering", value }),
-      stillSize: stillExportSize(media.width, media.height, limits),
-    });
+    const out = await renderMeme(signal, (step, value) => setProgress({ step, value }));
     if (signal.aborted) throw new ExportAbortedError();
     return out;
   }
@@ -100,7 +98,7 @@ export function SavePanel(props: SavePanelProps) {
       const output = await uploadAsset(out.blob, `${fileSlug(title)}${out.extension}`, undefined, signal);
 
       setProgress({ step: "Saving", value: null });
-      const common = { title: title.trim(), visibility, layers, outputAssetId: output.id, tags };
+      const common = { title: title.trim(), visibility, layers: content.layers, panels: content.panels, outputAssetId: output.id, tags };
       let meme: Meme;
       if ("editing" in target) {
         meme = await updateMeme(target.editing.id, common);

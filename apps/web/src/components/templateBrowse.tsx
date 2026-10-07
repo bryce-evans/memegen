@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MEDIA_ACCEPT, PERIODS, type Period, type Template, type UploadLimits } from "@memegen/shared";
-import { EmptyState, FileButton, Icon, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
+import { EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
 import { getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
 import { precheckMedia } from "../media.ts";
 import { useAction } from "../useAction.ts";
@@ -92,7 +92,8 @@ export function HotTemplates() {
 
 /**
  * Adding a template — the only way to bring in new media, since every meme is made from a template: pick a file
- * (pre-checked against `limits`, then uploaded) and place its text boxes in the Template Editor.
+ * (pre-checked against `limits`, then uploaded) and place its text boxes in the Template Editor, or start a
+ * multi-panel template whose image pack is uploaded in its editor.
  */
 export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
   const navigate = useNavigate();
@@ -109,7 +110,10 @@ export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
 
   return (
     <Panel heading="New template" className="upload-form">
-      <Text tone="muted">Upload an image, GIF, MP4 or MOV, then place its default text in the Template Editor.</Text>
+      <Text tone="muted">
+        Upload an image, GIF, MP4 or MOV, then place its default text in the Template Editor. Or build a multi-panel
+        template (like expanding brain) from a pack of images.
+      </Text>
       {limits && (
         <Text size="sm" tone="muted">
           Max {(limits.maxBytes / 1024 / 1024).toFixed(0)} MB · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
@@ -117,19 +121,24 @@ export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
           {limits.video.maxFrames} frames
         </Text>
       )}
-      <FileButton
-        icon={<Icon name="upload" />}
-        accept={MEDIA_ACCEPT}
-        disabled={busy || !limits}
-        data-testid="new-template-file"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file && limits) upload(file, limits);
-        }}
-      >
-        {busy ? "Uploading…" : "Choose file"}
-      </FileButton>
+      <Inline>
+        <FileButton
+          icon={<Icon name="upload" />}
+          accept={MEDIA_ACCEPT}
+          disabled={busy || !limits}
+          data-testid="new-template-file"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file && limits) upload(file, limits);
+          }}
+        >
+          {busy ? "Uploading…" : "Choose file"}
+        </FileButton>
+        <LinkButton as={Link} to="/create?newPanels" icon={<Icon name="plus" />} data-testid="new-panel-template">
+          Multi-panel template
+        </LinkButton>
+      </Inline>
       {error !== null && <ErrorView error={error} testId="new-template-error" />}
     </Panel>
   );

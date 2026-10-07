@@ -10,7 +10,7 @@ Skinnable React components and design tokens for the memegen web app. One compon
 | `google` | Google's internal Memegen, circa 2012 ("Kennedy": Arial 13px, jfk-buttons, red CREATE MEME) |
 | `studio` | A light creative-studio look (rounder, black CTA pills, blue selection, gradient wordmark) |
 | `spectrum` | Real Adobe Spectrum 2, styled like Firefly: `@spectrum-css/tokens` values, dark, pill buttons, accent-blue "new" action, raised content sheet |
-| `painted` | `spectrum` in Spectrum 2 light over a fixed watercolor wash with paper grain: tall clear header that frosts on scroll, translucent content sheet, large painted-ink wordmark on a swatch of brush strokes |
+| `painted` | `spectrum` in Spectrum 2 light over a fixed watercolor wash with paper grain: tall frosted header (50% white + blur), translucent white surfaces instead of grays, black buttons, large painted-ink wordmark on a swatch of brush strokes |
 
 `matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple`, `google`, and `painted` are light only.
 

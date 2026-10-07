@@ -2,8 +2,9 @@
  * painted skin: Spectrum 2 light on a watercolor backdrop. All of `spectrum.css` applies (its selectors include
  * `[data-skin="painted"]`, and `Skin.rootClassName` swaps in `spectrum--light`, so its token mapping resolves to
  * Spectrum's light values). This file, loaded after it at the same specificity, adds what differs: a painted wash
- * with paper grain fixed behind the page, a tall transparent header that frosts over once the page scrolls,
- * a translucent content sheet, and a large painted-ink wordmark (a red → orange → yellow gradient across the word).
+ * with paper grain fixed behind the page, a tall frosted header (50% white, blurring what scrolls under it),
+ * translucent white surfaces in place of Spectrum's light grays, black buttons, and a large painted-ink wordmark
+ * (a fire gradient across the word with a cool under-light at the "m").
  *
  * Wordmark type: Radlush Extra Bold (Arterfak Project) is commercial and can't be bundled, so like Adobe Clean in
  * `spectrum` it is used when installed on the machine; otherwise Archivo at 900 (OFL, bundled from
@@ -22,13 +23,23 @@
 :root[data-skin="painted"] {
   color-scheme: light;
   --ui-color-bg: var(--spectrum-gray-100);
-  --ui-color-header-bg: transparent;
+  /* Shades of translucent white instead of Spectrum's light grays on surfaces, so the wash tints them. The page
+     background under the wash stays Spectrum gray. */
+  --ui-color-header-bg: var(--painted-header-sheet);
+  --ui-header-backdrop: blur(24px) saturate(1.4);
+  --ui-color-surface: var(--painted-sheet);
+  --ui-color-surface-raised: var(--painted-fill);
+  --ui-color-input-bg: var(--painted-field);
   --ui-color-state-hover: rgb(0 0 0 / 0.04);
   --ui-color-state-press: rgb(0 0 0 / 0.08);
   --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.12);
   --ui-shadow-3: 0 8px 32px rgb(0 0 0 / 0.16);
   --ui-header-height: 112px;
+  --painted-main-sheet: rgb(255 255 255 / 0.2);
   --painted-sheet: rgb(255 255 255 / 0.5);
+  --painted-fill: rgb(255 255 255 / 0.7);
+  --painted-field: rgb(255 255 255 / 0.75);
+  --painted-fill-strong: rgb(255 255 255 / 0.9);
   --painted-header-sheet: rgb(255 255 255 / 0.5);
   --painted-backdrop-opacity: 0.8;
   --painted-wordmark-size: 44px;
@@ -65,30 +76,14 @@
   opacity: var(--painted-backdrop-opacity);
 }
 
-/* ---- header: tall and clear over the wash; frosted once content scrolls under it ------------------------- */
+/* ---- header: tall, 50% white, blurring whatever scrolls under it (via --ui-color-header-bg/--ui-header-backdrop) */
 
 :root[data-skin="painted"] .ui-header {
   padding-inline: var(--spectrum-spacing-500, 32px);
-  background-color: var(--painted-header-sheet);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  backdrop-filter: blur(24px) saturate(1.4);
 }
-@supports (animation-timeline: scroll()) {
-  :root[data-skin="painted"] .ui-header {
-    background-color: var(--ui-color-header-bg);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    animation: painted-header-scrolled linear both;
-    animation-timeline: scroll(root block);
-    animation-range: 0 48px;
-  }
-}
-@keyframes painted-header-scrolled {
-  to {
-    background-color: var(--painted-header-sheet);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    backdrop-filter: blur(24px) saturate(1.4);
-  }
+/* Spectrum's shell starts flush under its flat header; here the frosted header and the content sheet need a gap. */
+:root[data-skin="painted"] .ui-shell {
+  padding-top: var(--spectrum-spacing-300);
 }
 
 /* Painted ink on a swatch of brush strokes, lit from below at both ends: a cool light under the "M" (steel blue at
@@ -121,14 +116,37 @@
 
 /* ---- content: translucent white sheets that let the wash through ---------------------------------------- */
 
-/* The content area and panels (sign-in card, dev tools, editor and template panels) share one sheet, replacing
-   Spectrum's opaque gray panel fill. Inset panels keep Spectrum's light gray so they still read as nested. */
-:root[data-skin="painted"] .ui-main,
-:root[data-skin="painted"] .ui-panel {
+/* Spectrum paints these with light grays directly (not through tokens), so each is restated in white: the main
+   content area at 20% (fainter than the 50% header so the two read apart), sheets at 50%, fills that sit on a
+   sheet (nav highlight, chips, segmented group) at 70%, fields and nested panels at 75%, hover/emphasis at 90%. */
+:root[data-skin="painted"] .ui-main {
+  background: var(--painted-main-sheet);
+}
+:root[data-skin="painted"] .ui-panel,
+:root[data-skin="painted"] .ui-card:not(.ui-card--borderless),
+:root[data-skin="painted"] .ui-segmented:not(.ui-segmented--vertical) {
   background: var(--painted-sheet);
 }
 :root[data-skin="painted"] .ui-panel--inset {
-  background-color: var(--spectrum-gray-75);
+  background-color: var(--painted-field);
+}
+:root[data-skin="painted"] .ui-nav-item:hover,
+:root[data-skin="painted"] .ui-nav-item.is-active,
+:root[data-skin="painted"] .ui-nav-item[aria-current="page"],
+:root[data-skin="painted"] .ui-chip:not(.ui-chip--suggest) {
+  background-color: var(--painted-fill);
+}
+:root[data-skin="painted"] a.ui-chip:hover {
+  background-color: var(--painted-fill-strong);
+}
+:root[data-skin="painted"] .ui-button--quiet {
+  --ui-button-hover-bg: var(--painted-fill);
+}
+/* Dialogs float over the dimmed page, so they stay nearly opaque and blur what is behind them. */
+:root[data-skin="painted"] .ui-dialog {
+  background-color: var(--painted-fill-strong);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
 }
 
 /* ---- buttons: black pills with white labels (Spectrum's light fills vanish on the white sheets) ------------ */

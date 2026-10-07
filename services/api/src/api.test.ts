@@ -18,6 +18,7 @@ import {
   type Panel,
   type PanelLayout,
   type PanelSet,
+  type Sticker,
   type Template,
   type Tag,
   type TemplateUsage,
@@ -51,8 +52,8 @@ beforeEach(async () => {
 });
 
 let pngCounter = 0;
-/** Unique tiny PNG so each upload is a distinct file. */
-function png(): Uint8Array {
+/** Unique PNG (4x4 unless sized) so each upload is a distinct file. */
+function png(width = 4, height = 4): Uint8Array {
   const chunk = (type: string, data: Uint8Array) => {
     const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
     const out = Buffer.alloc(body.length + 8);
@@ -62,10 +63,10 @@ function png(): Uint8Array {
     return out;
   };
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(4, 0);
-  ihdr.writeUInt32BE(4, 4);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
   ihdr.set([8, 0, 0, 0, 0], 8);
-  const raw = Buffer.alloc(5 * 4, ++pngCounter % 256);
+  const raw = Buffer.alloc((width + 1) * height, ++pngCounter % 256);
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", ihdr),
@@ -411,6 +412,39 @@ test("image layers: stored in order with text layers, need an existing still ima
   await assert.rejects(store.delete((await findAssetRow(sql, sticker))!), inUse);
   assert.equal((await call("DELETE", `/api/templates/${withImage.body.id}`, alice)).status, 204);
   await store.delete((await findAssetRow(sql, sticker))!);
+});
+
+test("stickers: your own PNG up to 512x512 joins the library; bigger, reused, or someone else's is refused", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const sized = async (owner: User, width: number, height: number) =>
+    (await store.upload({ data: png(width, height), filename: "s.png", ownerId: owner.id })).id;
+
+  const edge = await sized(alice, 512, 512);
+  const made = await call<Sticker>("POST", "/api/stickers", alice, { name: "Deal with it", assetId: edge });
+  assert.equal(made.status, 201, JSON.stringify(made.body));
+  assert.deepEqual([made.body.name, made.body.owner.username, made.body.asset.id], ["Deal with it", "alice", edge]);
+
+  const tall = await call<{ details: string[] }>("POST", "/api/stickers", alice, { name: "Tall", assetId: await sized(alice, 100, 513) });
+  assert.equal(tall.status, 422);
+  assert.deepEqual(tall.body.details, ["sticker is 100x513, max is 512x512"]);
+  assert.equal((await call("POST", "/api/stickers", alice, { name: "Again", assetId: edge })).status, 409);
+  assert.equal((await call("POST", "/api/stickers", bob, { name: "Mine", assetId: await sized(alice, 8, 8) })).status, 403);
+  assert.equal((await call("POST", "/api/stickers", null, { name: "Anon", assetId: await sized(alice, 8, 8) })).status, 401);
+
+  // Anyone can list the library, newest first; built-ins (no owner) belong to `memegen`.
+  await sql`insert into stickers (name, asset_id) values ('Builtin', ${await sized(bob, 16, 16)})`;
+  const list = await call<Page<Sticker>>("GET", "/api/stickers", null);
+  assert.deepEqual(
+    list.body.items.map((s) => [s.name, s.owner.username]),
+    [
+      ["Builtin", "memegen"],
+      ["Deal with it", "alice"],
+    ],
+  );
+
+  // Storage keeps a sticker's image.
+  await assert.rejects(store.delete((await findAssetRow(sql, edge))!), (err) => err instanceof HttpError && err.status === 409);
 });
 
 test("multi-panel templates: an ordered still-image pack; memes must fill panels from it", async () => {

@@ -33,6 +33,21 @@ export const MAX_TAGS = 20;
 export const MAX_PANELS = 12;
 /** Images in one multi-panel template's pack. */
 export const MAX_PACK_IMAGES = 24;
+/** Stickers are PNGs (they need transparency) at most this many pixels on each edge. */
+export const STICKER_MAX_DIMENSION = 512;
+export const STICKER_MIME = "image/png";
+
+/** Why a file can't be a sticker (wrong type or too big); empty when it can. Client pre-check and API alike. */
+export function stickerViolations(file: { mime: string; width: number | null; height: number | null }): string[] {
+  const errors: string[] = [];
+  if (file.mime !== STICKER_MIME) errors.push(`stickers must be PNG, got ${file.mime || "an unknown type"}`);
+  const { width, height } = file;
+  if (width === null || height === null) errors.push("sticker size is unknown");
+  else if (width > STICKER_MAX_DIMENSION || height > STICKER_MAX_DIMENSION) {
+    errors.push(`sticker is ${width}x${height}, max is ${STICKER_MAX_DIMENSION}x${STICKER_MAX_DIMENSION}`);
+  }
+  return errors;
+}
 
 /**
  * Still memes export at least this long on their longest edge (never past the image cap): small templates are

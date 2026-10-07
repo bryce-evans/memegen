@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MEDIA_ACCEPT, PERIODS, type Period, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
+import { MEDIA_ACCEPT, PERIODS, STICKER_ACCEPT, STICKER_MAX_DIMENSION, type Period, type Sticker, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
 import { EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
-import { getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
-import { precheckMedia } from "../media.ts";
+import { createSticker, getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
+import { precheckMedia, precheckSticker } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { usePaged } from "../usePaged.ts";
 import { ErrorView, LoadMoreSentinel, MediaView } from "./common.tsx";
+import { nameFromFile } from "./editor/TemplateSavePanel.tsx";
 import { PERIOD_LABELS } from "./feed.tsx";
 import { TemplateGrid } from "./templates.tsx";
 
@@ -114,11 +115,14 @@ export function HotTemplates() {
 /**
  * Adding a template — the only way to bring in new media, since every meme is made from a template: pick a file
  * (pre-checked against `limits`, then uploaded) and place its text boxes in the Template Editor, or start a
- * multi-panel template whose image pack is uploaded in its editor.
+ * multi-panel template whose image pack is uploaded in its editor. "+ Sticker" adds a small PNG to the sticker
+ * library instead (Add sticker in the editor's Layers panel).
  */
 export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
   const navigate = useNavigate();
   const { busy, error, run } = useAction();
+  const sticker = useAction();
+  const [addedSticker, setAddedSticker] = useState<Sticker | null>(null);
 
   function upload(file: File, caps: UploadLimits) {
     void run(async () => {
@@ -129,17 +133,26 @@ export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
     });
   }
 
+  function addSticker(file: File, caps: UploadLimits) {
+    setAddedSticker(null);
+    void sticker.run(async () => {
+      await precheckSticker(file, caps);
+      const asset = await uploadAsset(file, file.name);
+      setAddedSticker(await createSticker({ name: nameFromFile(file.name) || "Sticker", assetId: asset.id }));
+    });
+  }
+
   return (
     <Panel heading="New template" className="upload-form">
       <Text tone="muted">
         Upload an image, GIF, MP4 or MOV, then place its default text in the Template Editor. Or build a multi-panel
-        template (like expanding brain) from a pack of images.
+        template (like expanding brain) from a pack of images, or add a sticker anyone can drop on a meme.
       </Text>
       {limits && (
         <Text size="sm" tone="muted">
           Max {(limits.maxBytes / 1024 / 1024).toFixed(0)} MB · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
           {limits.gif.maxDimension}px / {limits.gif.maxFrames} frames · videos ≤ {limits.video.maxDimension}px /{" "}
-          {limits.video.maxFrames} frames
+          {limits.video.maxFrames} frames · stickers: PNG ≤ {STICKER_MAX_DIMENSION}×{STICKER_MAX_DIMENSION}px
         </Text>
       )}
       <Inline>
@@ -159,8 +172,28 @@ export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
         <LinkButton as={Link} to="/create?newPanels" icon={<Icon name="plus" />} data-testid="new-panel-template">
           Multi-panel template
         </LinkButton>
+        <FileButton
+          icon={<Icon name="plus" />}
+          accept={STICKER_ACCEPT}
+          disabled={sticker.busy || !limits}
+          title={`Add a sticker: a PNG up to ${STICKER_MAX_DIMENSION}×${STICKER_MAX_DIMENSION}px`}
+          data-testid="new-sticker-file"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file && limits) addSticker(file, limits);
+          }}
+        >
+          {sticker.busy ? "Adding…" : "Sticker"}
+        </FileButton>
       </Inline>
       {error !== null && <ErrorView error={error} testId="new-template-error" />}
+      {sticker.error !== null && <ErrorView error={sticker.error} testId="new-sticker-error" />}
+      {addedSticker && (
+        <Text size="sm" data-testid="new-sticker-added" data-sticker-id={addedSticker.id}>
+          Added sticker “{addedSticker.name}”. Add it to a meme with Add sticker in the editor’s Layers panel.
+        </Text>
+      )}
     </Panel>
   );
 }

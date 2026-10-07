@@ -5,7 +5,7 @@
 #
 #   setup    install deps, create the database if missing, run migrations
 #   migrate  apply pending migrations
-#   seed     import templates from SEED_TEMPLATES_FROM, then the SEED_SAMPLE dataset
+#   seed     import templates from SEED_TEMPLATES_FROM, then the SEED_SAMPLE dataset and SEED_STICKERS_FROM stickers
 #   reset    wipe the database and local storage, then seed (dev only)
 #   dev      storage + api + Vite dev server with reload (dev only)
 #   build    production build of the web app
@@ -63,6 +63,7 @@ check_prod() {
   [[ -n "${INTERNAL_TOKEN:-}" && "$INTERNAL_TOKEN" != dev-internal-token ]] ||
     die "prod requires a strong INTERNAL_TOKEN (e.g. openssl rand -hex 32)"
   [[ "${SEED_SAMPLE:-false}" != true ]] || die "SEED_SAMPLE=true is not allowed in prod"
+  [[ -z "${SEED_STICKERS_FROM:-}" ]] || die "SEED_STICKERS_FROM (dev test stickers) is not allowed in prod"
   [[ "$DATABASE_URL" != *CHANGE_ME* ]] || die "set a real DATABASE_URL in $CONFIG"
 }
 
@@ -108,6 +109,15 @@ seed() {
   if [[ "${SEED_SAMPLE:-false}" == true ]]; then
     node scripts/sample/seed.ts
     seeded=true
+  fi
+  # Local test stickers (gitignored like demo/), so a missing folder is skipped rather than fatal.
+  if [[ -n "${SEED_STICKERS_FROM:-}" ]]; then
+    if [[ -d "$SEED_STICKERS_FROM" ]]; then
+      node scripts/seed-stickers.ts --from "$SEED_STICKERS_FROM"
+      seeded=true
+    else
+      echo "SEED_STICKERS_FROM=$SEED_STICKERS_FROM not found; no stickers seeded"
+    fi
   fi
   [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_TEMPLATES_FROM or SEED_SAMPLE=true in $CONFIG)"
 }

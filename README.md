@@ -41,6 +41,7 @@ Then open:
 - **Leaderboard**: http://localhost:5173/leaderboard ranks authors by h-score, high score, or memes posted. Profiles show tiered badges (🥉🥈🥇🏆💎), how many templates the user contributed, and a Templates tab listing them. Star (☆) other people's memes to save them; your own profile has Favorites and Recent activity (everything you liked or disliked, newest first) next to your memes, and Edit on each of your templates to rename it and change its default text boxes.
 - **Create**: http://localhost:5173/create. Every meme starts from a template: find one (the list loads more as you scroll), or add your own media as a new template: upload it, place its default text boxes in the Template Editor, name and tag it, and confirm. **Multi-panel template** builds the other kind (expanding brain, panik kalm mememan): upload a pack of images, then set the default setup: layout (vertical or horizontal), grid on or off, text size, and the panels, each one a pack image plus its caption. Memes made from it can change all of that and add, remove, and reorder panels, picking any pack image for each one; the images are used as they are, never cropped or resized. Opening a template shows its tags, usage, and variations under the image. Templates show who added them; built-in ones are added by the reserved `memegen` account.
 - **Image layers**: in the image/GIF/video editor, "Add image" in the Layers panel (or pasting an image, e.g. a screenshot, anywhere in the editor) uploads a PNG, JPEG, or WebP and drops it on the meme as a layer you can drag, resize, rotate, fade, reorder, and animate like text.
+- **Stickers**: "+ Sticker" in the New template card on Create adds a PNG of at most 512×512 to the shared sticker library; "Add sticker" in the editor's Layers panel picks one and drops it on the meme as an image layer.
 - **Tags**: browse popular and team tags in the side column, or open `/t/<tag>`. Templates keep their base tags (`oldschool`/`movie`, or team tags such as `google-memes`) and anyone signed in can add more; memes inherit their template's tags. New tags (including team tags) are created in the editor while authoring a meme.
 
 Every page asks you to sign in first; you then land on the page you opened. The login is kept in a `memegen.user` cookie for a year, until you sign out.
@@ -60,7 +61,7 @@ The sign-in page depends on the config's `MODE`:
 |---|---|
 | `setup` | `bun install`, create the database(s) if missing, run migrations |
 | `migrate` | apply pending migrations |
-| `seed` | import templates if `SEED_TEMPLATES_FROM` is set, then the sample dataset if `SEED_SAMPLE=true` |
+| `seed` | import templates if `SEED_TEMPLATES_FROM` is set, then the sample dataset if `SEED_SAMPLE=true`, then dev test stickers from `SEED_STICKERS_FROM` |
 | `reset` | drop the database schema and wipe local storage, then `seed` *(dev only)* |
 | `dev` | migrate, then storage + API + Vite dev server with reload *(dev only)* |
 | `build` | production build of the web app (`apps/web/dist`) |
@@ -108,6 +109,7 @@ docker run -d --name memegen-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust 
   - `programming` and `office` tags on memes
 
   Only data is committed. During `seed`, each meme's image is rendered from its template by the same client renderer the editor uses (`@memegen/render`, in Playwright's headless Chromium) and stored like any upload. Seeding is offline and a no-op once `dana` exists. To start over (e.g. after changing the dataset): `./run.sh config/dev.env reset`.
+- **Test stickers** (`SEED_STICKERS_FROM=demo/stickers`, dev only): every PNG (≤ 512×512) in that local, gitignored folder becomes a built-in sticker, named after its file (`deal-with-it.png` → "Deal With It"). Re-runs are safe; a missing folder is skipped.
 - **Mock data** (e2e only): `scripts/mock/data.ts`, a small dataset with generated gradient media and hand-written expectations. The e2e setup loads it into `memegen_e2e`; it is never seeded into dev.
 
 ## Tests
@@ -138,6 +140,7 @@ ffmpeg -f lavfi -i testsrc=size=320x240:rate=30:duration=1 -f lavfi -i sine=freq
 ffmpeg -f lavfi -i color=c=red:size=1100x60:rate=5:duration=0.4 too-wide.gif
 ffmpeg -f lavfi -i testsrc=size=400x400 -frames:v 1 panel-a.jpg
 ffmpeg -f lavfi -i color=c=blue:size=400x300 -frames:v 1 panel-b.jpg
+ffmpeg -f lavfi -i color=c=magenta:size=120x80 -frames:v 1 sticker.png
 cp ../../demo/jacebrowning-memegen/fonts/TitilliumWeb-Black.ttf .
 cp "../../demo/jacebrowning-memegen/fonts/SIL Open Font License.txt" OFL.txt
 cd ../..
@@ -152,6 +155,7 @@ The e2e suite starts its own storage (:4101), API (:4100), and Vite (:5174) agai
 - comments and replies on a meme
 - still images, GIFs, and videos in the editor: every-frame timeline, keyframes, visibility windows, the looping animation preview, and exported frame counts/audio checked with `ffprobe`
 - image layers: upload one and paste another (a synthetic clipboard paste), resize, GIFs refused, save, the pasted image's pixels in the exported file, and re-edit
+- stickers: "+ Sticker" refuses a PNG over 512×512 and a JPEG, adds a small PNG, and Add sticker puts it on a meme (saved layer and exported pixels checked)
 - multi-panel templates: build one from an image pack, add panels and swap their images, switch layout, save, and re-edit, with export sizes checked against the uncropped pack images
 - templates and variations, base and added tags, tag creation in the editor, tag pages, hot templates, auto-loading template list
 - upload caps and custom fonts

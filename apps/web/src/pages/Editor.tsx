@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { ensureLayerFonts, ensureLayerImages, exportMeme, layerFontIds, layerImageIds, loadFont, loadLayerImage, type LayerImages } from "@memegen/render";
-import { newImageLayer, newTextLayer, placeAt, stillExportSize, type Asset, type Layer } from "@memegen/shared";
+import { LAYER_NAME_MAX_LENGTH, newImageLayer, newTextLayer, placeAt, stillExportSize, type Asset, type Layer, type Sticker } from "@memegen/shared";
 import { Alert, PageHeader, Spinner } from "@memegen/ui";
 import { assetUrl, createTemplate, listFonts, updateTemplate, uploadAsset } from "../api.ts";
 import { useUser } from "../auth.tsx";
@@ -123,7 +123,14 @@ function Workspace({ session }: { session: MediaSession }) {
     setSelectedId(layer.id);
   }
 
-  /** Check `file` against the image caps, upload it, and add it centered (at most half the media's width). */
+  /** Add a stored still image centered, at its native width relative to the media but at most half the media's width. */
+  function addImageLayer(assetId: string, pixelWidth: number, name: string) {
+    const layer = newImageLayer(assetId, { name: name.slice(0, LAYER_NAME_MAX_LENGTH), width: Math.min(0.5, pixelWidth / media.width) });
+    setLayers((ls) => [...ls, layer]);
+    setSelectedId(layer.id);
+  }
+
+  /** Check `file` against the image caps, upload it, and add it as an image layer. */
   async function addImageFile(file: File) {
     setImageError(null);
     setAddingImage(true);
@@ -133,14 +140,17 @@ function Workspace({ session }: { session: MediaSession }) {
       checked.dispose();
       if (kind !== "image") throw new Error("image layers must be still images (PNG, JPEG, or WebP)");
       const asset = await uploadAsset(file, file.name || "pasted.png");
-      const layer = newImageLayer(asset.id, { name: `Image ${layers.length + 1}`, width: Math.min(0.5, width / media.width) });
-      setLayers((ls) => [...ls, layer]);
-      setSelectedId(layer.id);
+      addImageLayer(asset.id, width, `Image ${layers.length + 1}`);
     } catch (err) {
       setImageError(err);
     } finally {
       setAddingImage(false);
     }
+  }
+
+  /** Stickers are stored PNGs with known sizes (the API checks both), so they go straight on as image layers. */
+  function addSticker(sticker: Sticker) {
+    addImageLayer(sticker.asset.id, sticker.asset.width ?? media.width, sticker.name);
   }
 
   // Pasting an image anywhere in the editor adds it as a layer; text pastes go where they normally would.
@@ -242,6 +252,7 @@ function Workspace({ session }: { session: MediaSession }) {
             addingImage={addingImage}
             onSelect={setSelectedId}
             onAddImage={(file) => void addImageFile(file)}
+            onAddSticker={addSticker}
             onAdd={addLayer}
             onRemove={removeLayer}
             onMoveOrder={moveLayer}

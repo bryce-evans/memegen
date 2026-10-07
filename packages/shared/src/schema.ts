@@ -266,3 +266,11 @@ export const createCommentSchema = z.object({
   /** Reply to this top-level comment on the same meme. */
   parentId: z.uuid().nullable().optional(),
 });
+
+export const createStickerSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  /** An uploaded PNG, at most `STICKER_MAX_DIMENSION` on each edge. */
+  assetId: z.uuid(),
+});
+
+export const stickersQuerySchema = pageQuerySchema(60, 200);

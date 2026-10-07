@@ -1,8 +1,10 @@
 import { decodeMedia, type DecodedMedia } from "@memegen/render";
 import {
+  STICKER_MIME,
   SUPPORTED_TYPES,
   extensionForMime,
   limitViolations,
+  stickerViolations,
   supportedTypesLabel,
   type MediaKind,
   type UploadLimits,
@@ -36,6 +38,21 @@ export async function precheckMedia(file: File, limits: UploadLimits): Promise<D
     throw new ApiError(422, "file is over the upload limits", violations);
   }
   return media;
+}
+
+/**
+ * The checks `POST /api/stickers` applies (PNG, ≤ `STICKER_MAX_DIMENSION` each edge) plus the image caps, before
+ * uploading. Violations throw an `ApiError` shaped like the API's 422.
+ */
+export async function precheckSticker(file: File, limits: UploadLimits): Promise<void> {
+  const name = file.name.toLowerCase();
+  const mime = SUPPORTED_TYPES.find((t) => t.mime === file.type || name.endsWith(t.ext))?.mime ?? file.type;
+  // Type first, so a JPEG or GIF is refused without decoding it.
+  if (mime !== STICKER_MIME) throw new ApiError(422, "file can't be a sticker", stickerViolations({ mime, width: 0, height: 0 }));
+  const media = await precheckMedia(file, limits);
+  const violations = stickerViolations({ mime, width: media.width, height: media.height });
+  media.dispose();
+  if (violations.length) throw new ApiError(422, "file can't be a sticker", violations);
 }
 
 /** Download/upload base name for a meme: its slugified title, or "meme". */

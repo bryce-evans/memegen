@@ -1,3 +1,4 @@
+import { STICKER_MIME } from "./limits.ts";
 import type { AssetKind } from "./types.ts";
 
 export interface SupportedType {
@@ -30,6 +31,10 @@ export const MEDIA_ACCEPT = [...MEDIA_TYPES.map((t) => t.mime), ...MEDIA_TYPES.m
 export const FONT_ACCEPT = [...FONT_TYPES.map((t) => t.mime), ...FONT_TYPES.map((t) => t.ext)].join(",");
 /** Still images only (multi-panel template packs). */
 export const IMAGE_ACCEPT = SUPPORTED_TYPES.filter((t) => t.kind === "image")
+  .flatMap((t) => [t.mime, t.ext])
+  .join(",");
+/** Stickers: PNG only. */
+export const STICKER_ACCEPT = SUPPORTED_TYPES.filter((t) => t.mime === STICKER_MIME)
   .flatMap((t) => [t.mime, t.ext])
   .join(",");
 

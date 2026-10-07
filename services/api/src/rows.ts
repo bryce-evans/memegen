@@ -1,4 +1,4 @@
-import type { Comment, Layer, Meme, Panel, PanelLayout, PanelSet, Period, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
+import type { Comment, Layer, Meme, Panel, PanelLayout, PanelSet, Period, Sticker, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
 import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
 
 // ---- shared SQL pieces -------------------------------------------------------------
@@ -283,6 +283,36 @@ export function toTag(r: TagRow): Tag {
     description: r.description,
     templateCount: r.template_count,
     memeCount: r.meme_count,
+  };
+}
+
+// ---- stickers ----------------------------------------------------------------------
+
+export interface StickerRow {
+  id: string;
+  name: string;
+  owner_id: string;
+  owner_username: string;
+  asset: AssetRow;
+  created_at: Date;
+}
+
+/** Base select for stickers (alias `s`). Append where/order. */
+export function stickerSelect(sql: Sql) {
+  return sql`
+    select s.id, s.name, s.owner_id, u.username as owner_username, row_to_json(a.*) as asset, s.created_at
+    from stickers s
+    join assets a on a.id = s.asset_id
+    join users u on u.id = s.owner_id`;
+}
+
+export function toSticker(r: StickerRow): Sticker {
+  return {
+    id: r.id,
+    name: r.name,
+    owner: { id: r.owner_id, username: r.owner_username },
+    asset: toAsset(r.asset),
+    createdAt: r.created_at.toISOString(),
   };
 }
 

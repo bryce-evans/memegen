@@ -151,6 +151,16 @@ export interface Template {
   baseTags: string[];
 }
 
+/** A small PNG anyone can drop on a meme as an image layer (Add sticker); its `asset` is what layers reference. */
+export interface Sticker {
+  id: string;
+  name: string;
+  /** Who added it; built-in stickers belong to the reserved `memegen` account. */
+  owner: Pick<User, "id" | "username">;
+  asset: Asset;
+  createdAt: string;
+}
+
 export const TAG_KINDS = ["topic", "team"] as const;
 /** `team`: an org/group's own memes (e.g. "google"); `topic`: genre such as "oldschool" or "movie". */
 export type TagKind = (typeof TAG_KINDS)[number];

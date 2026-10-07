@@ -10,6 +10,7 @@ import {
   TEXT_MAX_LENGTH,
   TEXT_STYLES,
   type Asset,
+  type Sticker,
   type ImageLayer,
   type Layer,
   type TextLayer,
@@ -37,6 +38,7 @@ import { assetUrl } from "../../api.ts";
 import { AnimationPanel, WindowFields } from "./AnimationPanel.tsx";
 import { FontField } from "./FontField.tsx";
 import { PlacementFields } from "./PlacementFields.tsx";
+import { StickerPicker } from "./StickerPicker.tsx";
 
 type LayerUpdate = (layer: Layer) => Layer;
 
@@ -54,6 +56,8 @@ export interface LayerPanelProps {
   onAdd: () => void;
   /** Add `file` as an image layer (checked against the image caps, then uploaded). */
   onAddImage: (file: File) => void;
+  /** Add a library sticker as an image layer (its asset is already stored). */
+  onAddSticker: (sticker: Sticker) => void;
   onRemove: (id: string) => void;
   onMoveOrder: (id: string, delta: -1 | 1) => void;
   /** Replace a layer by applying `update` to its latest state. */
@@ -65,9 +69,10 @@ export interface LayerPanelProps {
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
 export function LayerPanel(props: LayerPanelProps) {
-  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onRemove, onMoveOrder, onUpdate, onSeek, onFontUploaded } =
+  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onUpdate, onSeek, onFontUploaded } =
     props;
   const [openId, setOpenId] = useState<string | null>(null);
+  const [pickingSticker, setPickingSticker] = useState(false);
 
   return (
     <Panel
@@ -93,9 +98,13 @@ export function LayerPanel(props: LayerPanelProps) {
           >
             {addingImage ? "Adding…" : "Add image"}
           </FileButton>
+          <Button size="sm" icon={<Icon name="plus" />} data-testid="add-sticker" onClick={() => setPickingSticker(true)}>
+            Add sticker
+          </Button>
         </Inline>
       }
     >
+      <StickerPicker open={pickingSticker} onClose={() => setPickingSticker(false)} onPick={onAddSticker} />
       <ol className="layer-list">
         {layers.map((layer, i) => {
           const open = layer.id === openId;

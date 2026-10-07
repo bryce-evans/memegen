@@ -13,6 +13,7 @@ import type {
   PanelLayout,
   PanelSet,
   Period,
+  Sticker,
   Template,
   TemplateKind,
   TemplateUsage,
@@ -228,6 +229,14 @@ export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURICompo
 
 export const createTag = (input: { name: string; kind?: TagKind; description?: string }) =>
   request<Tag>("/api/tags", { method: "POST", json: input });
+
+/** The sticker library, newest first. */
+export const listStickers = ({ offset = 0, limit = 60 }: PageParams = {}) =>
+  request<Page<Sticker>>(`/api/stickers${qs({ offset, limit })}`);
+
+/** An uploaded PNG (≤ `STICKER_MAX_DIMENSION` each edge) becomes a sticker. */
+export const createSticker = (input: { name: string; assetId: string }) =>
+  request<Sticker>("/api/stickers", { method: "POST", json: input });
 
 export interface CreateMemeInput {
   title: string;

@@ -3,7 +3,7 @@
  * `[data-skin="painted"]`, and `Skin.rootClassName` swaps in `spectrum--light`, so its token mapping resolves to
  * Spectrum's light values). This file, loaded after it at the same specificity, adds what differs: a painted wash
  * with paper grain fixed behind the page, a tall frosted header (50% white, blurring what scrolls under it),
- * translucent white surfaces in place of Spectrum's light grays, black buttons, and a large painted-ink wordmark
+ * translucent white surfaces in place of Spectrum's light grays, black primary / white secondary buttons, and a large painted-ink wordmark
  * (a fire gradient across the word with a cool under-light at the "m").
  *
  * Wordmark type: Radlush Extra Bold (Arterfak Project) is commercial and can't be bundled, so like Adobe Clean in
@@ -155,14 +155,27 @@
   backdrop-filter: blur(24px) saturate(1.4);
 }
 
-/* ---- buttons: black pills with white labels (Spectrum's light fills vanish on the white sheets) ------------ */
+/* ---- buttons: black for the emphasized action, white for the rest -------------------------------------------- */
 
-/* Secondary and primary alike; quiet stays chromeless and danger stays red. Spectrum's pressed and toned-toggle
-   rules are more specific, so pressed buttons and upvote/favorite keep their states. */
-:root[data-skin="painted"] :is(.ui-button--secondary, .ui-button--primary) {
+/* Primary (Sign in, Create, Post, Save, …) is a black pill; every other filled button is white with a hairline
+   ring so it still reads on the translucent white sheets. Quiet stays chromeless and danger stays red. Spectrum's
+   pressed and toned-toggle rules are more specific, so pressed buttons and upvote/favorite keep their states. */
+:root[data-skin="painted"] .ui-button--primary {
   --ui-button-bg: var(--spectrum-gray-900);
   --ui-button-fg: var(--spectrum-white);
   --ui-button-hover-bg: var(--spectrum-gray-800);
+}
+:root[data-skin="painted"] .ui-button--secondary {
+  --ui-button-bg: var(--painted-fill-strong);
+  --ui-button-fg: var(--spectrum-gray-900);
+  --ui-button-hover-bg: var(--spectrum-white);
+  box-shadow: inset 0 0 0 1px var(--spectrum-gray-300);
+}
+/* Segmented controls (the period filter): the chosen option is a light gray pill, not Spectrum's inverted black,
+   so only the primary actions read as black. */
+:root[data-skin="painted"] .ui-segmented-option[aria-pressed="true"] {
+  background-color: var(--spectrum-gray-300);
+  color: var(--spectrum-gray-900);
 }
 
 @media (max-width: 760px) {

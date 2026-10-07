@@ -118,7 +118,6 @@ export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
         </Text>
       )}
       <FileButton
-        variant="primary"
         icon={<Icon name="upload" />}
         accept={MEDIA_ACCEPT}
         disabled={busy || !limits}

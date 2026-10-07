@@ -25,11 +25,11 @@ export function TemplateCard({ template, editable = false }: { template: Templat
       }
       actions={
         editable ? (
-          <LinkButton as={Link} size="sm" variant="primary" to={to} data-testid="edit-template">
+          <LinkButton as={Link} size="sm" to={to} data-testid="edit-template">
             Edit
           </LinkButton>
         ) : (
-          <LinkButton as={Link} size="sm" variant="primary" to={to} data-testid="use-template">
+          <LinkButton as={Link} size="sm" to={to} data-testid="use-template">
             Use
           </LinkButton>
         )

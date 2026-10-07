@@ -216,6 +216,19 @@
 .meme-grid .meme-card.ui-card .ui-card-body :is(.ui-card-title, .ui-card-meta, .ui-card-meta a) {
   color: inherit;
 }
+/* Template cards: Use/Edit sits to the right of the title and author lines (centered across both) instead of
+   adding a row under them. Title and meta auto-place into the first column; the action spans both rows. */
+.template-card .ui-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--ui-space-3);
+}
+.template-card .ui-card-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+}
 
 /* ---- comments ------------------------------------------------------------- */
 

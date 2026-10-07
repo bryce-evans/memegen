@@ -8,6 +8,7 @@ import {
   PERIODS,
   RESERVED_USERNAMES,
   TAG_KINDS,
+  TEMPLATE_KINDS,
   TEXT_ALIGNS,
   TEXT_STYLES,
   VISIBILITIES,
@@ -203,6 +204,7 @@ export function pageQuerySchema(defaultLimit = 24, maxLimit = 100) {
 export const templatesQuerySchema = pageQuerySchema().extend({
   q: z.string().trim().max(100).default(""),
   tag: tagSlugSchema.optional(),
+  kind: z.enum(TEMPLATE_KINDS).optional(),
 });
 
 export const commentsQuerySchema = pageQuerySchema(50);

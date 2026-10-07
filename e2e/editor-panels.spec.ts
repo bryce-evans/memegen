@@ -103,4 +103,18 @@ test("multi-panel: build a template from an image pack, make a meme with more pa
   expect(edited.panels?.pack.map((a) => a.id)).toEqual([packA, packB]);
   expect(edited.panels?.defaultPanels.map((p) => p.text)).toEqual(["small brain"]);
   expect(edited.asset).toMatchObject({ kind: "image", width: 600, height: 900 });
+  expect(edited.kind).toBe("multi");
+
+  // All templates filters by kind: the new template is multi-panel, not single (its cover is still an image).
+  await page.goto("/create");
+  await page.getByTestId("template-search").fill(name);
+  const grid = page.getByTestId("template-grid");
+  const card = page.locator(`[data-testid="template-card"][data-template-id="${templateId}"]`);
+  for (const [kind, shown] of [["multi", 1], ["single", 0], ["gif", 0], ["all", 1]] as const) {
+    await page.getByTestId(`template-kind-${kind}`).click();
+    await expect(grid).toHaveAttribute("data-kind", kind);
+    await expect(grid).toHaveAttribute("data-query", name);
+    await expect(grid).toHaveAttribute("aria-busy", "false");
+    await expect(card).toHaveCount(shown);
+  }
 });

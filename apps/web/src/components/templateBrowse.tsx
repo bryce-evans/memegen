@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MEDIA_ACCEPT, PERIODS, type Period, type Template, type UploadLimits } from "@memegen/shared";
+import { MEDIA_ACCEPT, PERIODS, type Period, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
 import { EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
 import { getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
 import { precheckMedia } from "../media.ts";
@@ -12,28 +12,49 @@ import { ErrorView, LoadMoreSentinel, MediaView } from "./common.tsx";
 import { PERIOD_LABELS } from "./feed.tsx";
 import { TemplateGrid } from "./templates.tsx";
 
-/** All templates: a debounced name search under the heading, loading more as the list end scrolls into view. */
+type KindFilter = TemplateKind | "all";
+
+const KIND_OPTIONS: { value: KindFilter; label: string; title: string; testId: string }[] = [
+  { value: "all", label: "All", title: "Every template", testId: "template-kind-all" },
+  { value: "single", label: "Single", title: "One image with text boxes", testId: "template-kind-single" },
+  { value: "multi", label: "Multi-panel", title: "Panels filled from an image pack", testId: "template-kind-multi" },
+  { value: "gif", label: "GIF", title: "GIFs and videos", testId: "template-kind-gif" },
+];
+
+/**
+ * All templates: a kind filter beside the heading and a debounced name search under it, loading more as the list end
+ * scrolls into view.
+ */
 export function TemplateBrowser({ search, onSearchChange }: { search: string; onSearchChange: (search: string) => void }) {
+  const [kind, setKind] = useState<KindFilter>("all");
   const q = useDebounced(search.trim(), 300);
-  const list = usePaged<Template>(q, (offset) => listTemplates({ q, offset }));
+  const filterKind = kind === "all" ? undefined : kind;
+  const list = usePaged<Template>(`${kind}:${q}`, (offset) => listTemplates({ q, kind: filterKind, offset }));
 
   return (
     <section className="template-start">
-      <PageHeader level={2} title="All templates" />
-      <TextField
-        type="search"
-        className="template-search"
-        placeholder="Search templates…"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        aria-label="Search templates"
-        data-testid="template-search"
-      />
+      {/* Heading, kind filter, and search share the search's width, so the filter ends where the search does. */}
+      <div className="template-start-head">
+        <PageHeader
+          level={2}
+          title="All templates"
+          actions={<SegmentedControl<KindFilter> aria-label="Template kind" size="sm" options={KIND_OPTIONS} value={kind} onChange={setKind} />}
+        />
+        <TextField
+          type="search"
+          placeholder="Search templates…"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          aria-label="Search templates"
+          data-testid="template-search"
+        />
+      </div>
       <TemplateGrid
         list={list}
         empty={<EmptyState icon={<Icon name="search" />} title="No templates found." />}
         data-testid="template-grid"
         data-query={q}
+        data-kind={kind}
       />
       <LoadMoreSentinel hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} />
     </section>

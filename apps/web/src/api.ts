@@ -13,6 +13,7 @@ import type {
   PanelSet,
   Period,
   Template,
+  TemplateKind,
   TemplateUsage,
   Tag,
   TagKind,
@@ -172,8 +173,8 @@ export const getUserMemes = (username: string, { offset = 0, limit = 24 }: PageP
 export const getUserTemplates = (username: string, { offset = 0, limit = 24 }: PageParams = {}) =>
   request<Page<Template>>(`/api/users/${encodeURIComponent(username)}/templates${qs({ offset, limit })}`);
 
-export const listTemplates = ({ q, tag, offset = 0, limit = 24 }: PageParams & { q?: string; tag?: string } = {}) =>
-  request<Page<Template>>(`/api/templates${qs({ q, tag, offset, limit })}`);
+export const listTemplates = ({ q, tag, kind, offset = 0, limit = 24 }: PageParams & { q?: string; tag?: string; kind?: TemplateKind } = {}) =>
+  request<Page<Template>>(`/api/templates${qs({ q, tag, kind, offset, limit })}`);
 
 export const getTemplate = (id: string) => request<Template>(`/api/templates/${id}`);
 

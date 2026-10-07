@@ -33,11 +33,12 @@ const PERIOD_BUCKET: Record<Period, TemplateUsage["bucket"]> = {
 /** Template browsing, usage stats, authoring, and community tags. */
 export function register(app: ApiApp, sql: Sql): void {
   app.get("/api/templates", async (c) => {
-    const { q, tag, offset, limit } = parse(templatesQuerySchema, c.req.query());
+    const { q, tag, kind, offset, limit } = parse(templatesQuerySchema, c.req.query());
     const viewerId = c.get("user")?.id ?? null;
     const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
       where t.parent_id is null and ${templateVisibleTo(sql, viewerId)}
       ${q ? sql`and t.name ilike ${containsPattern(q)}` : sql``}
+      ${kind ? sql`and t.kind = ${kind}` : sql``}
       ${tag ? sql`and exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
         where x.template_id = t.id and g.slug = ${tag})` : sql``}
       order by lower(t.name), t.id

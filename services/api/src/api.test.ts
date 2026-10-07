@@ -465,6 +465,36 @@ test("multi-panel template edits: the pack grows and reorders but never loses im
   assert.equal(onPlain.status, 400);
 });
 
+test("templates are classified by kind at creation, keep it on edit, and the list filters by it", async () => {
+  const alice = await signIn("alice");
+  const single = await makeTemplate(alice, { name: "Kind single" });
+  const pack = [await upload(alice)];
+  const multi = await makeTemplate(alice, {
+    name: "Kind multi",
+    panels: { layout: "vertical", packAssetIds: pack, defaultPanels: [newPanel(pack[0]!)] },
+  });
+  // GIFs and videos share the animated editor; the API tests can only make PNGs, so mark one as a GIF.
+  const animated = await upload(alice);
+  await sql`update assets set kind = 'gif' where id = ${animated}`;
+  const gif = (await call<Template>("POST", "/api/templates", alice, { name: "Kind gif", assetId: animated })).body;
+  assert.deepEqual([single.kind, multi.kind, gif.kind], ["single", "multi", "gif"]);
+
+  // A multi-panel template's cover is an image, yet it stays multi when edited.
+  const edited = await call<Template>("PATCH", `/api/templates/${multi.id}`, alice, {
+    assetId: await upload(alice),
+    panels: { layout: "horizontal", packAssetIds: pack, defaultPanels: [newPanel(pack[0]!)] },
+  });
+  assert.equal(edited.body.kind, "multi");
+
+  const names = async (kind?: string) =>
+    (await call<Page<Template>>("GET", `/api/templates?q=Kind${kind ? `&kind=${kind}` : ""}`, alice)).body.items.map((t) => t.name);
+  assert.deepEqual(await names(), ["Kind gif", "Kind multi", "Kind single"]);
+  assert.deepEqual(await names("single"), ["Kind single"]);
+  assert.deepEqual(await names("multi"), ["Kind multi"]);
+  assert.deepEqual(await names("gif"), ["Kind gif"]);
+  assert.equal((await call("GET", "/api/templates?kind=video", alice)).status, 400);
+});
+
 test("template usage: variations roll up to the parent, history survives deletion, windows apply", async () => {
   const alice = await signIn("alice");
   const base = await makeTemplate(alice);

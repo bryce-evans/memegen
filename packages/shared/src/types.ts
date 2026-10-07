@@ -41,6 +41,14 @@ export type TextStyle = (typeof TEXT_STYLES)[number];
 /** Field docs live on `textLayerSchema`, the single definition. */
 export type TextLayer = z.output<typeof textLayerSchema>;
 
+/**
+ * Every template's kind, fixed when it is created; each has its own editor. `single` = one still image with text
+ * boxes, `gif` = a GIF or video with (animated) text boxes, `multi` = multi-panel (image pack). Also the
+ * `GET /api/templates?kind=` filter.
+ */
+export const TEMPLATE_KINDS = ["single", "multi", "gif"] as const;
+export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
+
 /** Multi-panel memes: `vertical` stacks rows (text left of each image), `horizontal` lines up columns (text above). */
 export const PANEL_LAYOUTS = ["vertical", "horizontal"] as const;
 export type PanelLayout = (typeof PANEL_LAYOUTS)[number];
@@ -118,6 +126,8 @@ export interface Template {
   id: string;
   name: string;
   parentId: string | null;
+  /** Fixed at creation; decides the editor (`multi` opens the panel editor). */
+  kind: TemplateKind;
   /** Who added it ("added by"); built-in templates belong to the reserved `memegen` account. */
   owner: Pick<User, "id" | "username">;
   asset: Asset;

@@ -93,7 +93,7 @@ async function panelSource(source: Source | { kind: "new-panels" }): Promise<Pan
     case "meme":
       return source.meme.panels ? { kind: "meme", meme: source.meme, template: await getTemplate(source.meme.templateId) } : null;
     default:
-      return source.template.panels ? source : null;
+      return source.template.kind === "multi" ? source : null;
   }
 }
 

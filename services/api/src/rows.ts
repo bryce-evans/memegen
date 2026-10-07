@@ -1,4 +1,4 @@
-import type { Comment, Meme, Panel, PanelLayout, PanelSet, Period, Tag, Template, TextLayer, Visibility } from "@memegen/shared";
+import type { Comment, Meme, Panel, PanelLayout, PanelSet, Period, Tag, Template, TemplateKind, TextLayer, Visibility } from "@memegen/shared";
 import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
 
 // ---- shared SQL pieces -------------------------------------------------------------
@@ -149,6 +149,7 @@ export interface TemplateRow {
   id: string;
   name: string;
   parent_id: string | null;
+  kind: TemplateKind;
   owner_id: string;
   owner_username: string;
   asset: AssetRow;
@@ -167,7 +168,7 @@ export interface TemplateRow {
 /** Base select for templates (alias `t`). Append where/order. */
 export function templateSelect(sql: Sql) {
   return sql`
-    select t.id, t.name, t.parent_id, t.owner_id, u.username as owner_username,
+    select t.id, t.name, t.parent_id, t.kind, t.owner_id, u.username as owner_username,
       row_to_json(a.*) as asset, t.default_layers, t.is_public, t.created_at, t.panels,
       (select json_agg(row_to_json(pa.*) order by tp.position) from template_pack_assets tp
         join assets pa on pa.id = tp.asset_id
@@ -189,6 +190,7 @@ export function toTemplate(r: TemplateRow, variations: Template[] = []): Templat
     id: r.id,
     name: r.name,
     parentId: r.parent_id,
+    kind: r.kind,
     owner: { id: r.owner_id, username: r.owner_username },
     asset: toAsset(r.asset),
     defaultLayers: r.default_layers,

@@ -1,6 +1,6 @@
 # @memegen/ui
 
-Skinnable React components and design tokens for the memegen web app. One component API, six looks:
+Skinnable React components and design tokens for the memegen web app. One component API, seven looks:
 
 | id | Looks like |
 |---|---|
@@ -10,10 +10,11 @@ Skinnable React components and design tokens for the memegen web app. One compon
 | `google` | Google's internal Memegen, circa 2012 ("Kennedy": Arial 13px, jfk-buttons, red CREATE MEME) |
 | `studio` | A light creative-studio look (rounder, black CTA pills, blue selection, gradient wordmark) |
 | `spectrum` | Real Adobe Spectrum 2, styled like Firefly: `@spectrum-css/tokens` values, dark, pill buttons, accent-blue "new" action, raised content sheet |
+| `painted` | `spectrum` in Spectrum 2 light over a fixed watercolor wash with paper grain: tall clear header that frosts on scroll, translucent content sheet, large painted-ink wordmark on a swatch of brush strokes |
 
-`matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple` and `google` are light only.
+`matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple`, `google`, and `painted` are light only.
 
-`spectrum` puts Spectrum's token classes (`spectrum spectrum--dark spectrum--medium`) on `<html>` through `Skin.rootClassName`, so `--spectrum-*` properties exist only while it is active. Its font stack prefers Adobe Clean (licensed through Adobe Fonts, so never bundled; used when installed) and falls back to the bundled Source Sans 3 (OFL, `@fontsource-variable/source-sans-3`).
+`spectrum` puts Spectrum's token classes (`spectrum spectrum--dark spectrum--medium`) on `<html>` through `Skin.rootClassName`, so `--spectrum-*` properties exist only while it is active. Its font stack prefers Adobe Clean (licensed through Adobe Fonts, so never bundled; used when installed) and falls back to the bundled Source Sans 3 (OFL, `@fontsource-variable/source-sans-3`). `painted` uses `spectrum--light` instead and shares every `spectrum.css` rule (its selectors match both ids); `painted.css` loads after it and overrides only what differs. Its wordmark prefers Radlush Extra Bold (commercial, never bundled; matched through a `local()` `@font-face` when installed) and falls back to the bundled Archivo at 900 (OFL, `@fontsource-variable/archivo`).
 
 `useSkinFavicon(letter)` keeps the page favicon in step with the skin: the letter drawn on a canvas in the skin's wordmark style (font, weight, case, color or gradient) over its page background.
 

@@ -1,0 +1,152 @@
+/*
+ * painted skin: Spectrum 2 light on a watercolor backdrop. All of `spectrum.css` applies (its selectors include
+ * `[data-skin="painted"]`, and `Skin.rootClassName` swaps in `spectrum--light`, so its token mapping resolves to
+ * Spectrum's light values). This file, loaded after it at the same specificity, adds what differs: a painted wash
+ * with paper grain fixed behind the page, a tall transparent header that frosts over once the page scrolls,
+ * a translucent content sheet, and a large painted-ink wordmark (a red → orange → yellow gradient across the word).
+ *
+ * Wordmark type: Radlush Extra Bold (Arterfak Project) is commercial and can't be bundled, so like Adobe Clean in
+ * `spectrum` it is used when installed on the machine; otherwise Archivo at 900 (OFL, bundled from
+ * `@fontsource-variable/archivo`), the heaviest of the open candidates.
+ */
+@import "@fontsource-variable/archivo";
+
+/* By PostScript/full name: the file's legacy family name is "Unnamed ExtBd", so the family alone doesn't match. */
+@font-face {
+  font-family: "Radlush";
+  src: local("Radlush-ExtraBold"), local("Radlush Extra Bold");
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root[data-skin="painted"] {
+  color-scheme: light;
+  --ui-color-bg: var(--spectrum-gray-100);
+  --ui-color-header-bg: transparent;
+  --ui-color-state-hover: rgb(0 0 0 / 0.04);
+  --ui-color-state-press: rgb(0 0 0 / 0.08);
+  --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.12);
+  --ui-shadow-3: 0 8px 32px rgb(0 0 0 / 0.16);
+  --ui-header-height: 112px;
+  --painted-sheet: rgb(255 255 255 / 0.5);
+  --painted-header-sheet: rgb(255 255 255 / 0.5);
+  --painted-backdrop-opacity: 0.8;
+  --painted-wordmark-size: 44px;
+  /* Fire, hot to cool: every step is a saturated hue, so no blend between neighbors goes muddy. */
+  --painted-ink-yellow: #ffc800;
+  --painted-ink-amber: #ff9500;
+  --painted-ink-orange: #ff6a00;
+  --painted-ink-flame: #f53000;
+  --painted-ink-red: #eb1000;
+  --painted-ink-dark-red: #b00c00;
+  /* Glows up from under the last "e"/"n": a small yellow core (so "gen" stays orange against the brush strokes'
+     yellow), then fast through orange and red to dark red at the far "M". */
+  --painted-wordmark-gradient: radial-gradient(ellipse farthest-corner at 80% 92%, var(--painted-ink-yellow) 8%, var(--painted-ink-amber) 20%, var(--painted-ink-orange) 32%, var(--painted-ink-flame) 48%, var(--painted-ink-red) 62%, var(--painted-ink-dark-red) 88%);
+  /* Cool counter-light welling up under the "M", painted over the fire gradient: a steel blue core darkening to
+     slate, then thinning into the fire. */
+  --painted-wordmark-cool-light: radial-gradient(ellipse 46% 50% at 17% 100%, #4675c7 45%, #4d4e8b 56%, rgb(220 30 40 / 0) 120%);
+  --painted-wash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='1100' viewBox='0 -220 1600 1100'%3E%3Cdefs%3E%3Cfilter id='paint' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.008 .018' numOctaves='3' seed='12' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='95'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23paint)' fill='none' stroke-linecap='round'%3E%3Cpath d='M-160 260 Q350 -70 780 70 T1750 100' stroke='%23d8f2f5' stroke-width='360'/%3E%3Cpath d='M-130 630 Q280 330 770 390 T1720 260' stroke='%23fce1e4' stroke-width='230'/%3E%3Cpath d='M-100 1030 Q350 690 790 770 T1720 920' stroke='%23e0f3f4' stroke-width='330'/%3E%3Cpath d='M-90 810 Q340 580 610 640 M1080 110 Q1350 -10 1720 50' stroke='%23fff0bf' stroke-width='55'/%3E%3Cpath d='M-130 480 Q260 130 590 240 M960 1000 Q1220 760 1700 720' stroke='%23fbdde9' stroke-width='24'/%3E%3Cpath d='M-80 870 Q180 680 340 710 M1220 210 Q1490 10 1650 100' stroke='%23cff3eb' stroke-width='38'/%3E%3C/g%3E%3C/svg%3E");
+  --painted-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' opacity='.055' filter='url(%23grain)' d='M0 0h180v180H0z'/%3E%3C/svg%3E");
+  --painted-brand-paint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 150'%3E%3Cdefs%3E%3Cfilter id='brush' x='-20%25' y='-30%25' width='140%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.025 .08' numOctaves='3' seed='7' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='18'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23brush)' fill='none' stroke-linecap='square'%3E%3Cpath d='M22 88 Q80 36 153 58 T289 42 T435 51' stroke='%237ddce8' stroke-width='39'/%3E%3Cpath d='M25 111 Q160 74 237 86 T425 65' stroke='%23ffb7cf' stroke-width='32'/%3E%3Cpath d='M52 124 Q198 114 281 91 T432 98' stroke='%23ffe078' stroke-width='17'/%3E%3Cpath d='M9 62 Q128 19 220 40 M278 133 L449 75' stroke='%23c4f0e3' stroke-width='10'/%3E%3Cpath d='M73 29 L179 17 M326 26 L435 12' stroke='%23f8b6e5' stroke-width='7'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ---- backdrop: the wash and paper grain stay put while the page scrolls over them ------------------------- */
+
+:root[data-skin="painted"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--painted-grain), var(--painted-wash);
+  background-position: 0 0, center;
+  background-size: auto, cover;
+  background-repeat: repeat, no-repeat;
+  opacity: var(--painted-backdrop-opacity);
+}
+
+/* ---- header: tall and clear over the wash; frosted once content scrolls under it ------------------------- */
+
+:root[data-skin="painted"] .ui-header {
+  padding-inline: var(--spectrum-spacing-500, 32px);
+  background-color: var(--painted-header-sheet);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+}
+@supports (animation-timeline: scroll()) {
+  :root[data-skin="painted"] .ui-header {
+    background-color: var(--ui-color-header-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    animation: painted-header-scrolled linear both;
+    animation-timeline: scroll(root block);
+    animation-range: 0 48px;
+  }
+}
+@keyframes painted-header-scrolled {
+  to {
+    background-color: var(--painted-header-sheet);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    backdrop-filter: blur(24px) saturate(1.4);
+  }
+}
+
+/* Painted ink on a swatch of brush strokes, lit from below at both ends: a cool light under the "M" (steel blue at
+   its feet, darkening to slate and thinning out, reaching the left side of the first "e") over the fire gradient
+   (yellow welling up under the end of the word, dark red toward the "M"), and the paper grain shows through. Clips are per layer:
+   grain and both gradients fill the glyphs, the brush strokes (`--painted-brand-paint`) fill the whole box behind
+   them. The padding gives the strokes room around the letters (about the SVG's 3:1 shape) and keeps the "g"
+   descender inside the painted box. */
+:root[data-skin="painted"] .ui-wordmark {
+  padding: 0.3em 0.55em 0.36em;
+  font-family: Radlush, "Archivo Variable", "Archivo", var(--ui-font-family);
+  font-size: var(--painted-wordmark-size);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  background-image: var(--painted-grain), var(--painted-wordmark-cool-light), var(--painted-wordmark-gradient),
+    var(--painted-brand-paint);
+  background-position: 0 0, center, center, center;
+  background-size: auto, auto, auto, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  -webkit-background-clip: text, text, text, border-box;
+  background-clip: text, text, text, border-box;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+/* The sign-in card's wordmark (the only one in a panel) stands alone, so it is 30% larger than the header's. */
+:root[data-skin="painted"] .ui-panel .ui-wordmark {
+  font-size: calc(var(--painted-wordmark-size) * 1.3);
+}
+
+/* ---- content: translucent white sheets that let the wash through ---------------------------------------- */
+
+/* The content area and panels (sign-in card, dev tools, editor and template panels) share one sheet, replacing
+   Spectrum's opaque gray panel fill. Inset panels keep Spectrum's light gray so they still read as nested. */
+:root[data-skin="painted"] .ui-main,
+:root[data-skin="painted"] .ui-panel {
+  background: var(--painted-sheet);
+}
+:root[data-skin="painted"] .ui-panel--inset {
+  background-color: var(--spectrum-gray-75);
+}
+
+/* ---- buttons: black pills with white labels (Spectrum's light fills vanish on the white sheets) ------------ */
+
+/* Secondary and primary alike; quiet stays chromeless and danger stays red. Spectrum's pressed and toned-toggle
+   rules are more specific, so pressed buttons and upvote/favorite keep their states. */
+:root[data-skin="painted"] :is(.ui-button--secondary, .ui-button--primary) {
+  --ui-button-bg: var(--spectrum-gray-900);
+  --ui-button-fg: var(--spectrum-white);
+  --ui-button-hover-bg: var(--spectrum-gray-800);
+}
+
+@media (max-width: 760px) {
+  :root[data-skin="painted"] {
+    --ui-header-height: 72px;
+    --painted-wordmark-size: 32px;
+  }
+  :root[data-skin="painted"] .ui-header {
+    padding-inline: var(--spectrum-spacing-300, 16px);
+  }
+}

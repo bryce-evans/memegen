@@ -10,11 +10,15 @@
  * Type: Spectrum's typeface is Adobe Clean, which is licensed through Adobe Fonts only and can't be bundled.
  * The stack uses it when installed (e.g. with Creative Cloud) and otherwise Adobe's open-source Source Sans 3
  * (OFL, bundled from `@fontsource-variable/source-sans-3`), Spectrum's documented fallback.
+ *
+ * Every rule here also applies to the `painted` skin (Spectrum 2 light; `spectrum spectrum--light spectrum--medium`):
+ * the tokens resolve to their light values there, and `painted.css`, loaded after this file at the same
+ * specificity, overrides what differs (page backdrop, header, content sheet, wordmark).
  */
 @import "@spectrum-css/tokens";
 @import "@fontsource-variable/source-sans-3";
 
-:root[data-skin="spectrum"] {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) {
   color-scheme: dark;
 
   /* ---- color roles (Spectrum 2 dark) ---- */
@@ -124,47 +128,47 @@
 
 /* ---- shell: nav rail on the page, content on a raised, rounded sheet (Firefly) ---------------------------- */
 
-:root[data-skin="spectrum"] body {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) body {
   -webkit-font-smoothing: antialiased;
 }
-:root[data-skin="spectrum"] .ui-header {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-header {
   border-bottom-color: transparent;
 }
-:root[data-skin="spectrum"] .ui-wordmark {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-wordmark {
   color: var(--spectrum-gray-900);
   font-size: 18px;
   letter-spacing: 0;
 }
-:root[data-skin="spectrum"] .ui-shell {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-shell {
   gap: var(--spectrum-spacing-300);
   padding: 0 var(--spectrum-spacing-300) var(--spectrum-spacing-300) var(--spectrum-spacing-200);
 }
-:root[data-skin="spectrum"] .ui-main {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-main {
   padding: var(--spectrum-spacing-400);
   border-radius: var(--spectrum-corner-radius-800);
   background: var(--spectrum-background-layer-2-color);
 }
-:root[data-skin="spectrum"] .ui-page-title {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-page-title {
   letter-spacing: -0.01em;
 }
 
 /* Nav rail: icon + label rows, gray hover, white indicator bar on the current page. */
-:root[data-skin="spectrum"] .ui-sidebar-heading {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-sidebar-heading {
   margin-left: var(--spectrum-spacing-100);
   font-weight: var(--spectrum-medium-font-weight);
 }
-:root[data-skin="spectrum"] .ui-nav-item {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-nav-item {
   min-height: var(--spectrum-component-height-100);
   border-radius: var(--spectrum-corner-radius-100);
   color: var(--spectrum-gray-800);
   font-weight: var(--spectrum-medium-font-weight);
 }
-:root[data-skin="spectrum"] .ui-nav-item:hover {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-nav-item:hover {
   background-color: var(--spectrum-gray-200);
   color: var(--spectrum-gray-900);
 }
-:root[data-skin="spectrum"] .ui-nav-item.is-active,
-:root[data-skin="spectrum"] .ui-nav-item[aria-current="page"] {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-nav-item.is-active,
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-nav-item[aria-current="page"] {
   background-color: var(--spectrum-gray-200);
   box-shadow: inset 2px 0 0 var(--spectrum-gray-900);
   color: var(--spectrum-gray-900);
@@ -174,7 +178,7 @@
 /* ---- buttons: Spectrum 2 pills -------------------------------------------------------------------------- */
 
 /* Fills are read here, at skin specificity, so app tweaks keep losing to them exactly as before the variables. */
-:root[data-skin="spectrum"] .ui-button {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button {
   --ui-button-bg: var(--spectrum-gray-200);
   --ui-button-fg: var(--spectrum-gray-900);
   --ui-button-hover-bg: var(--spectrum-gray-300);
@@ -182,130 +186,130 @@
   background-color: var(--ui-button-bg);
   color: var(--ui-button-fg);
 }
-:root[data-skin="spectrum"] .ui-button:hover:not(:disabled, .is-disabled) {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button:hover:not(:disabled, .is-disabled) {
   background-color: var(--ui-button-hover-bg);
 }
 /* Spectrum 2 "primary" is the neutral, inverted fill (Firefly's white "Generate"). */
-:root[data-skin="spectrum"] .ui-button--primary {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button--primary {
   --ui-button-bg: var(--spectrum-neutral-background-color-default);
   --ui-button-fg: var(--spectrum-gray-50);
   --ui-button-hover-bg: var(--spectrum-neutral-background-color-hover);
 }
-:root[data-skin="spectrum"] .ui-button--quiet {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button--quiet {
   --ui-button-bg: transparent;
   --ui-button-fg: var(--spectrum-gray-800);
   --ui-button-hover-bg: var(--spectrum-gray-200);
 }
-:root[data-skin="spectrum"] .ui-button--danger {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button--danger {
   --ui-button-bg: var(--spectrum-negative-visual-color);
   --ui-button-fg: var(--spectrum-white);
 }
-:root[data-skin="spectrum"] .ui-button[aria-pressed="true"] {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button[aria-pressed="true"] {
   --ui-button-bg: var(--spectrum-gray-800);
   --ui-button-fg: var(--spectrum-gray-50);
 }
 /* Toned toggles (upvote, favorite) keep their color over the pressed style above. */
-:root[data-skin="spectrum"] .ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] {
   --ui-button-bg: color-mix(in srgb, var(--ui-button-tone) 22%, transparent);
   --ui-button-fg: var(--ui-button-tone);
 }
-:root[data-skin="spectrum"] .ui-icon-button {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-icon-button {
   border: none;
 }
 
 /* Segmented controls: Spectrum 2 action group, selected = inverted fill. */
-:root[data-skin="spectrum"] .ui-segmented:not(.ui-segmented--vertical) {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-segmented:not(.ui-segmented--vertical) {
   gap: var(--spectrum-spacing-75, 4px);
   padding: 2px;
   border: none;
   border-radius: var(--ui-radius-pill);
   background-color: var(--spectrum-gray-100);
 }
-:root[data-skin="spectrum"] .ui-segmented-option {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-segmented-option {
   border: none;
   border-radius: var(--ui-radius-pill);
   font-weight: var(--spectrum-medium-font-weight);
 }
-:root[data-skin="spectrum"] .ui-segmented-option[aria-pressed="true"] {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-segmented-option[aria-pressed="true"] {
   background-color: var(--spectrum-gray-800);
   color: var(--spectrum-gray-50);
   font-weight: var(--spectrum-bold-font-weight);
 }
-:root[data-skin="spectrum"] .ui-segmented--vertical .ui-segmented-option {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-segmented--vertical .ui-segmented-option {
   border-radius: var(--spectrum-corner-radius-100);
 }
 
 /* ---- fields: 8px corners, 2px borders that brighten on hover ---------------------------------------------- */
 
-:root[data-skin="spectrum"] .ui-input,
-:root[data-skin="spectrum"] .ui-select-control,
-:root[data-skin="spectrum"] .ui-textarea {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-input,
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-select-control,
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-textarea {
   border-width: 2px;
   border-color: var(--spectrum-gray-300);
 }
-:root[data-skin="spectrum"] :is(.ui-input, .ui-select-control, .ui-textarea):hover:not(:disabled, :focus) {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) :is(.ui-input, .ui-select-control, .ui-textarea):hover:not(:disabled, :focus) {
   border-color: var(--spectrum-gray-400);
 }
-:root[data-skin="spectrum"] :is(.ui-input, .ui-select-control, .ui-textarea):focus {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) :is(.ui-input, .ui-select-control, .ui-textarea):focus {
   border-color: var(--spectrum-gray-800);
 }
-:root[data-skin="spectrum"] .ui-field-label {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-field-label {
   color: var(--spectrum-neutral-subdued-content-color-default);
   font-weight: var(--spectrum-regular-font-weight);
 }
 
 /* ---- tags, badges ---------------------------------------------------------------------------------------- */
 
-:root[data-skin="spectrum"] .ui-chip {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-chip {
   border: none;
   background-color: var(--spectrum-gray-200);
   color: var(--spectrum-gray-800);
   font-weight: var(--spectrum-medium-font-weight);
 }
-:root[data-skin="spectrum"] a.ui-chip:hover {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) a.ui-chip:hover {
   background-color: var(--spectrum-gray-300);
   color: var(--spectrum-gray-900);
 }
-:root[data-skin="spectrum"] .ui-chip--suggest {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-chip--suggest {
   border: 1px dashed var(--spectrum-gray-500);
   background-color: transparent;
 }
-:root[data-skin="spectrum"] .ui-badge {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-badge {
   border-radius: var(--spectrum-corner-radius-75);
   font-weight: var(--spectrum-bold-font-weight);
 }
 
 /* ---- surfaces: cards, panels, dialogs, empty states -------------------------------------------------------- */
 
-:root[data-skin="spectrum"] .ui-card {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-card {
   border: none;
   background-color: var(--spectrum-gray-100);
 }
-:root[data-skin="spectrum"] .ui-card--borderless {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-card--borderless {
   background-color: transparent;
 }
-:root[data-skin="spectrum"] .ui-card-title {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-card-title {
   font-weight: var(--spectrum-bold-font-weight);
 }
-:root[data-skin="spectrum"] .ui-panel {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-panel {
   border: none;
   border-radius: var(--spectrum-corner-radius-800);
   background-color: var(--spectrum-gray-100);
 }
-:root[data-skin="spectrum"] .ui-panel--inset {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-panel--inset {
   border-radius: var(--spectrum-corner-radius-100);
   background-color: var(--spectrum-gray-75);
 }
-:root[data-skin="spectrum"] .ui-dialog {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-dialog {
   border: none;
   border-radius: var(--spectrum-corner-radius-800);
   background-color: var(--spectrum-gray-100);
 }
-:root[data-skin="spectrum"] .ui-empty {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-empty {
   border-color: var(--spectrum-gray-300);
   border-radius: var(--spectrum-corner-radius-800);
 }
-:root[data-skin="spectrum"] .ui-alert {
+:root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-alert {
   border: none;
   border-radius: var(--spectrum-corner-radius-100);
 }

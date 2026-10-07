@@ -77,6 +77,12 @@ for (const skin of [
     layout: { filters: "header" },
     rootClassName: "spectrum spectrum--dark spectrum--medium",
   },
+  {
+    id: "painted",
+    label: "Painted",
+    layout: { filters: "header" },
+    rootClassName: "spectrum spectrum--light spectrum--medium",
+  },
 ] satisfies Skin[]) {
   registerSkin(skin);
 }

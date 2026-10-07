@@ -17,6 +17,7 @@
     "react-dom": "^19.2.8"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource-variable/source-sans-3": "^5.3.0",
     "@spectrum-css/tokens": "^16.0.2"
   }

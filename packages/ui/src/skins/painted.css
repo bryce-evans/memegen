@@ -142,6 +142,12 @@
 :root[data-skin="painted"] .ui-button--quiet {
   --ui-button-hover-bg: var(--painted-fill);
 }
+/* Pressed (selected) buttons are Spectrum's dark fill with light text; without this, a pressed quiet button
+   (the editor's selected layer) would take the white hover fill above and its text would vanish. Toned toggles
+   (upvote, favorite) keep Spectrum's tinted pressed style. */
+:root[data-skin="painted"] .ui-button[aria-pressed="true"]:not(.ui-button--tone-warning, .ui-button--tone-info) {
+  --ui-button-hover-bg: var(--spectrum-gray-700);
+}
 /* Dialogs float over the dimmed page, so they stay nearly opaque and blur what is behind them. */
 :root[data-skin="painted"] .ui-dialog {
   background-color: var(--painted-fill-strong);

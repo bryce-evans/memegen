@@ -1,3 +1,4 @@
+import { ANCHOR_Y_MIN } from "./section.ts";
 import type { Keyframe, Layer } from "./types.ts";
 
 export interface LayerState {
@@ -48,18 +49,25 @@ export function upsertKeyframe(keyframes: readonly Keyframe[], kf: Keyframe, eps
   return [...rest, kf].sort((a, b) => a.t - b.t);
 }
 
-/** Keep anchors near the media; the schema accepts -1..2. */
-export function clampAnchor(v: number): number {
-  return Math.min(1.5, Math.max(-0.5, v));
+/**
+ * Keep anchors near their area: half an area past each edge, plus `above` (canvas above the area, in area heights:
+ * the top section's band for anything drawn on the media) so a layer can reach the top of the canvas. Never past the
+ * schema's bounds.
+ */
+export function clampAnchor(v: number, above = 0): number {
+  return Math.min(1.5, Math.max(-0.5 - above, ANCHOR_Y_MIN, v));
 }
 
 export type Placement = Partial<Pick<Keyframe, "x" | "y" | "opacity">>;
 
-/** Move/fade a layer at time `t`: static layers change their anchor, animated ones get a keyframe at `t`. */
-export function placeAt<L extends AnimatedLayer>(layer: L, t: number, patch: Placement): L {
+/**
+ * Move/fade a layer at time `t`: static layers change their anchor, animated ones get a keyframe at `t`. `above` is
+ * how much canvas sits above the layer's area, in area heights (see `layerAbove`).
+ */
+export function placeAt<L extends AnimatedLayer>(layer: L, t: number, patch: Placement, above = 0): L {
   const state = layerStateAt(layer, t);
   const x = patch.x === undefined ? state.x : clampAnchor(patch.x);
-  const y = patch.y === undefined ? state.y : clampAnchor(patch.y);
+  const y = patch.y === undefined ? state.y : clampAnchor(patch.y, above);
   const opacity = patch.opacity ?? state.opacity;
   if (layer.keyframes.length === 0) return { ...layer, x, y, opacity };
   return { ...layer, keyframes: upsertKeyframe(layer.keyframes, { t, x, y, opacity }) };

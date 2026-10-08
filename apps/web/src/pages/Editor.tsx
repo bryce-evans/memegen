@@ -13,6 +13,7 @@ import {
 } from "@memegen/render";
 import {
   LAYER_NAME_MAX_LENGTH,
+  layerAbove,
   newImageLayer,
   newTextLayer,
   newTopSectionLayer,
@@ -21,6 +22,7 @@ import {
   topSectionLayer,
   type Asset,
   type Layer,
+  type Placement,
   type Sticker,
 } from "@memegen/shared";
 import { Alert, PageHeader, Spinner } from "@memegen/ui";
@@ -132,6 +134,12 @@ function Workspace({ session }: { session: MediaSession }) {
   const updateLayer = useCallback((id: string, update: (layer: Layer) => Layer) => {
     setLayers((ls) => ls.map((l) => (l.id === id ? update(l) : l)));
   }, []);
+
+  /** Move/fade a layer at the current frame; layers on the media can be placed up into the top section's band. */
+  const composedHeight = canvasHeight(layers, media.width, media.height);
+  function placeLayer(id: string, patch: Placement) {
+    updateLayer(id, (l) => placeAt(l, t, patch, layerAbove(l, media.width, composedHeight, composedHeight - media.height)));
+  }
 
   const seek = useCallback((f: number) => {
     setPlaying(false);
@@ -253,7 +261,7 @@ function Workspace({ session }: { session: MediaSession }) {
             selectedId={selectedId}
             fontsVersion={fontsVersion}
             onSelect={setSelectedId}
-            onMove={(id, x, y) => updateLayer(id, (l) => placeAt(l, t, { x, y }))}
+            onMove={(id, x, y) => placeLayer(id, { x, y })}
           />
           {fontError && (
             <Alert tone="danger" data-testid="editor-error">
@@ -293,6 +301,7 @@ function Workspace({ session }: { session: MediaSession }) {
             onRemove={removeLayer}
             onMoveOrder={moveLayer}
             onUpdate={updateLayer}
+            onPlace={placeLayer}
             onSeek={seek}
             onFontUploaded={fontUploaded}
           />

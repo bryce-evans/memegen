@@ -5,7 +5,6 @@ import {
   layerLabel,
   layerStateAt,
   LAYER_NAME_MAX_LENGTH,
-  placeAt,
   TEXT_ALIGNS,
   TEXT_MAX_LENGTH,
   TEXT_STYLES,
@@ -16,6 +15,7 @@ import {
   type Sticker,
   type ImageLayer,
   type Layer,
+  type Placement,
   type TextLayer,
   type TextStyle,
 } from "@memegen/shared";
@@ -67,6 +67,8 @@ export interface LayerPanelProps {
   onTopSection: (on: boolean) => void;
   /** Replace a layer by applying `update` to its latest state. */
   onUpdate: (id: string, update: LayerUpdate) => void;
+  /** Move/fade a layer at the current frame (the editor clamps, allowing for the top section's band). */
+  onPlace: (id: string, patch: Placement) => void;
   onSeek: (frame: number) => void;
   onFontUploaded: (layerId: string, font: Asset) => void;
 }
@@ -74,7 +76,7 @@ export interface LayerPanelProps {
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
 export function LayerPanel(props: LayerPanelProps) {
-  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onSeek, onFontUploaded } =
+  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onPlace, onSeek, onFontUploaded } =
     props;
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickingSticker, setPickingSticker] = useState(false);
@@ -235,11 +237,19 @@ export function LayerPanel(props: LayerPanelProps) {
                         frame={frame}
                         fonts={fonts}
                         onChange={(update) => onUpdate(layer.id, update)}
+                        onPlace={(patch) => onPlace(layer.id, patch)}
                         onSeek={onSeek}
                         onFontUploaded={(font) => onFontUploaded(layer.id, font)}
                       />
                     ) : (
-                      <ImageLayerSettings layer={layer} media={media} frame={frame} onChange={(update) => onUpdate(layer.id, update)} onSeek={onSeek} />
+                      <ImageLayerSettings
+                        layer={layer}
+                        media={media}
+                        frame={frame}
+                        onChange={(update) => onUpdate(layer.id, update)}
+                        onPlace={(patch) => onPlace(layer.id, patch)}
+                        onSeek={onSeek}
+                      />
                     )}
                   </div>
                 )}
@@ -258,11 +268,12 @@ interface SettingsProps<L extends Layer> {
   media: DecodedMedia;
   frame: number;
   onChange: (update: LayerUpdate) => void;
+  onPlace: (patch: Placement) => void;
   onSeek: (frame: number) => void;
 }
 
 /** What every layer kind shares: rotation, placement, and (animated media) the visibility window and keyframes. */
-function CommonSettings({ layer, media, frame, onChange, onSeek }: SettingsProps<Layer>) {
+function CommonSettings({ layer, media, frame, onChange, onPlace, onSeek }: SettingsProps<Layer>) {
   const t = media.times[frame] ?? 0;
   return (
     <>
@@ -277,7 +288,7 @@ function CommonSettings({ layer, media, frame, onChange, onSeek }: SettingsProps
           onChange((l) => ({ ...l, angle }));
         }}
       />
-      <PlacementFields state={layerStateAt(layer, t)} animated={layer.keyframes.length > 0} onPlace={(patch) => onChange((l) => placeAt(l, t, patch))} />
+      <PlacementFields state={layerStateAt(layer, t)} animated={layer.keyframes.length > 0} onPlace={onPlace} />
       {media.kind !== "image" && <AnimationPanel layer={layer} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />}
     </>
   );

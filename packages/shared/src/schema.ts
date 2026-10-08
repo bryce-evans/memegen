@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { COMMENT_MAX_LENGTH, LAYER_NAME_MAX_LENGTH, MAX_PACK_IMAGES, MAX_PANELS, MAX_TAGS, TEXT_MAX_LENGTH } from "./limits.ts";
 import { PANEL_FONT_SIZE_DEFAULT, PANEL_FONT_SIZE_MAX, PANEL_FONT_SIZE_MIN } from "./panels.ts";
-import { TOP_SECTION_HEIGHT_MAX, TOP_SECTION_HEIGHT_MIN } from "./section.ts";
+import { ANCHOR_Y_MIN, TOP_SECTION_HEIGHT_MAX, TOP_SECTION_HEIGHT_MIN } from "./section.ts";
 import {
   GALLERY_SORTS,
   LEADERBOARD_SORTS,
@@ -40,6 +40,8 @@ export const tagListSchema = z
   });
 
 const unit = z.number().min(-1).max(2);
+/** Anchor y also reaches into the top section's band above the media. */
+const anchorY = z.number().min(ANCHOR_Y_MIN).max(2);
 const time = z.number().min(0);
 const color = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/);
 
@@ -48,7 +50,7 @@ export const keyframeSchema = z.object({
   t: time,
   /** Anchor (box center) as a fraction of media width/height. */
   x: unit,
-  y: unit,
+  y: anchorY,
   /** 0..1 */
   opacity: z.number().min(0).max(1),
 });
@@ -62,7 +64,7 @@ const layerFields = {
   angle: z.number().min(-360).max(360),
   /** Static anchor (box center, fractions of media width/height) and opacity, used when `keyframes` is empty. */
   x: unit,
-  y: unit,
+  y: anchorY,
   opacity: z.number().min(0).max(1),
   /** Visibility window in seconds; null = unbounded. */
   start: time.nullable(),

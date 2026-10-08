@@ -1,6 +1,6 @@
 import type { Meme, TextLayer } from "@memegen/shared";
 import { expect, scoped, test } from "./test.ts";
-import { apiGet, download, editFixture, memeIdFromUrl, pngSize, stagePixels } from "./helpers.ts";
+import { apiGet, download, dragLayer, editFixture, memeIdFromUrl, pngSize, stagePixels } from "./helpers.ts";
 
 /** Stage canvas height / width (the width itself follows the aspect, so compare ratios). */
 const stageAspect = (page: import("@playwright/test").Page) =>
@@ -67,4 +67,25 @@ test("top section: the toggle adds a white band with its own text as layer 0; it
   await expect(items).toHaveCount(2);
   await expect(page.locator('[data-top-section="true"]')).toHaveCount(0);
   await expect.poll(() => stageAspect(page)).toBeCloseTo(480 / 640, 2);
+});
+
+test("top section: a layer on the media drags all the way up through a band taller than half the media", async ({ page, request }) => {
+  await editFixture(page, request, scoped("bandDragger"), "still.png"); // 640x480
+  const items = page.getByTestId("layer-item");
+  await page.getByTestId("top-section-toggle").click();
+  await items.first().getByTestId("layer-settings-toggle").click();
+  await items.first().getByTestId("top-section-height").fill("100"); // ≥ 640px band (its text may wrap): ≥ 1.33 media heights
+  await expect.poll(() => stageAspect(page)).toBeGreaterThanOrEqual((480 + 640) / 640 - 0.01);
+
+  // Layer 1 is the media's top text; drag its center to the canvas's top edge (the old -0.5 floor stopped it 400px of
+  // canvas below that).
+  const canvas = (await page.getByTestId("stage-canvas").boundingBox())!;
+  const box = (await page.getByTestId("layer-box").nth(1).boundingBox())!;
+  await dragLayer(page, 1, 0, canvas.y - (box.y + box.height / 2));
+  await expect
+    .poll(async () => {
+      const moved = (await page.getByTestId("layer-box").nth(1).boundingBox())!;
+      return moved.y + moved.height / 2 - canvas.y;
+    })
+    .toBeLessThan(2);
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addKeyframeAt, clearAnimation, placeAt, removeKeyframe, setWindow } from "./animation.ts";
 import { newTextLayer } from "./defaults.ts";
+import { ANCHOR_Y_MIN } from "./section.ts";
 import { textLayerSchema } from "./schema.ts";
 
 const kf = (t: number, x: number, y = 0.5, opacity = 1) => ({ t, x, y, opacity });
@@ -11,6 +12,14 @@ test("placeAt clamps anchors so typed or dragged positions stay schema-valid", (
   assert.equal(moved.x, 1.5);
   assert.equal(moved.y, -0.5);
   assert.equal(textLayerSchema.safeParse(moved).success, true);
+});
+
+test("placeAt lets a layer on the media reach the top of a top-section band, within the schema", () => {
+  // Band 1.5 media heights tall: the anchor may go to -0.5 - 1.5 = -2, past the old -0.5 floor.
+  const moved = placeAt(newTextLayer({ x: 0.5, y: 0.5 }), 0, { y: -5 }, 1.5);
+  assert.equal(moved.y, -2);
+  assert.equal(textLayerSchema.safeParse(moved).success, true);
+  assert.equal(placeAt(moved, 0, { y: -50 }, 100).y, ANCHOR_Y_MIN);
 });
 
 test("placeAt on an animated layer upserts a keyframe at t from the interpolated state, leaving static fields", () => {

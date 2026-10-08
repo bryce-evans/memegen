@@ -20,6 +20,12 @@ export const TOP_SECTION_HEIGHT_MAX = 1;
 export const TOP_SECTION_FONT_SIZE_DEFAULT = 0.15;
 export const TOP_SECTION_BACKGROUND = "#ffffff";
 
+/**
+ * Lowest anchor y. A layer on the media may sit in the band above it, which is `band / mediaHeight` media heights
+ * tall: up to the media's aspect ratio for a one-line band of full width, plus any extra lines.
+ */
+export const ANCHOR_Y_MIN = -10;
+
 /** The top section's text layer, or null when the meme has no top section. */
 export function topSectionLayer(layers: readonly Layer[]): TextLayer | null {
   return layers.find((l): l is TextLayer => l.type === "text" && l.topSection !== undefined) ?? null;
@@ -60,4 +66,10 @@ export interface LayerArea {
 export function layerArea(layer: Layer, width: number, height: number, bandPx: number): LayerArea {
   if (layer.type === "text" && layer.topSection) return { top: 0, width, height: bandPx };
   return { top: bandPx, width, height: height - bandPx };
+}
+
+/** Canvas above a layer's area, in heights of that area: the band for layers on the media, 0 for the band's text. */
+export function layerAbove(layer: Layer, width: number, height: number, bandPx: number): number {
+  const area = layerArea(layer, width, height, bandPx);
+  return area.height > 0 ? area.top / area.height : 0;
 }

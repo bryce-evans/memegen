@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { COMMENT_MAX_LENGTH, LAYER_NAME_MAX_LENGTH, MAX_PACK_IMAGES, MAX_PANELS, MAX_TAGS, TEXT_MAX_LENGTH } from "./limits.ts";
+import {
+  COMMENT_MAX_LENGTH,
+  IMAGE_WIDTH_MAX,
+  LAYER_NAME_MAX_LENGTH,
+  MAX_PACK_IMAGES,
+  MAX_PANELS,
+  MAX_TAGS,
+  TEXT_MAX_LENGTH,
+} from "./limits.ts";
 import { PANEL_FONT_SIZE_DEFAULT, PANEL_FONT_SIZE_MAX, PANEL_FONT_SIZE_MIN } from "./panels.ts";
 import { ANCHOR_Y_MIN, TOP_SECTION_HEIGHT_MAX, TOP_SECTION_HEIGHT_MIN } from "./section.ts";
 import {
@@ -104,7 +112,7 @@ export const imageLayerSchema = z.object({
   /** A still image asset. */
   assetId: z.uuid(),
   /** Drawn width as a fraction of media width; the height follows the image's aspect ratio. */
-  width: z.number().gt(0).max(2),
+  width: z.number().gt(0).max(IMAGE_WIDTH_MAX),
 });
 
 export const layerSchema = z

@@ -18,6 +18,8 @@ import {
   newTextLayer,
   newTopSectionLayer,
   placeAt,
+  resizeImage,
+  rotateTo,
   stillExportSize,
   topSectionLayer,
   type Asset,
@@ -87,6 +89,8 @@ function Workspace({ session }: { session: MediaSession }) {
   const [layerImages, setLayerImages] = useState<LayerImages>(() => new Map());
   const [addingImage, setAddingImage] = useState(false);
   const [imageError, setImageError] = useState<unknown>(null);
+  /** Set by pressing a text box on the stage; the Layers panel focuses that layer's text field. */
+  const [editText, setEditText] = useState<{ id: string } | null>(null);
   const animated = media.kind !== "image";
   const t = media.times[frame] ?? 0;
   const selectedLayer = layers.find((l) => l.id === selectedId) ?? null;
@@ -262,6 +266,9 @@ function Workspace({ session }: { session: MediaSession }) {
             fontsVersion={fontsVersion}
             onSelect={setSelectedId}
             onMove={(id, x, y) => placeLayer(id, { x, y })}
+            onResize={(id, width) => updateLayer(id, (l) => (l.type === "image" ? resizeImage(l, width) : l))}
+            onRotate={(id, angle) => updateLayer(id, (l) => rotateTo(l, angle))}
+            onEditText={(id) => setEditText({ id })}
           />
           {fontError && (
             <Alert tone="danger" data-testid="editor-error">
@@ -293,6 +300,7 @@ function Workspace({ session }: { session: MediaSession }) {
             frame={frame}
             fonts={fonts}
             addingImage={addingImage}
+            editText={editText}
             onSelect={setSelectedId}
             onAddImage={(file) => void addImageFile(file)}
             onAddSticker={addSticker}

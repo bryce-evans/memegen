@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DecodedMedia } from "@memegen/render";
 import {
   IMAGE_ACCEPT,
+  IMAGE_WIDTH_MAX,
+  IMAGE_WIDTH_MIN,
   layerLabel,
   layerStateAt,
   LAYER_NAME_MAX_LENGTH,
+  resizeImage,
   TEXT_ALIGNS,
   TEXT_MAX_LENGTH,
   TEXT_STYLES,
@@ -71,16 +74,27 @@ export interface LayerPanelProps {
   onPlace: (id: string, patch: Placement) => void;
   onSeek: (frame: number) => void;
   onFontUploaded: (layerId: string, font: Asset) => void;
+  /** Focus this text layer's text field, caret at the end (its stage box was pressed); each request is a new object. */
+  editText: { id: string } | null;
 }
 
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
 export function LayerPanel(props: LayerPanelProps) {
-  const { nameable, media, layers, selectedId, frame, fonts, addingImage, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onPlace, onSeek, onFontUploaded } =
+  const { nameable, media, layers, selectedId, frame, fonts, addingImage, editText, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onPlace, onSeek, onFontUploaded } =
     props;
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickingSticker, setPickingSticker] = useState(false);
+  const textFields = useRef(new Map<string, HTMLTextAreaElement>());
   const topSection = topSectionLayer(layers);
+
+  useEffect(() => {
+    const field = editText && textFields.current.get(editText.id);
+    if (!field) return;
+    // No scroll: the press may be the start of a stage drag, and typing scrolls the caret into view anyway.
+    field.focus({ preventScroll: true });
+    field.setSelectionRange(field.value.length, field.value.length);
+  }, [editText]);
 
   return (
     <Panel heading="Layers" className="layer-panel">
@@ -208,6 +222,10 @@ export function LayerPanel(props: LayerPanelProps) {
                     rows={1}
                     className="layer-row-text"
                     data-testid="layer-text"
+                    ref={(el) => {
+                      if (el) textFields.current.set(layer.id, el);
+                      else textFields.current.delete(layer.id);
+                    }}
                     value={layer.text}
                     maxLength={TEXT_MAX_LENGTH}
                     onFocus={() => onSelect(layer.id)}
@@ -283,6 +301,7 @@ function CommonSettings({ layer, media, frame, onChange, onPlace, onSeek }: Sett
         max={180}
         step={1}
         value={layer.angle}
+        data-testid="layer-angle"
         onChange={(e) => {
           const angle = Number(e.target.value);
           onChange((l) => ({ ...l, angle }));
@@ -402,14 +421,14 @@ function ImageLayerSettings(props: SettingsProps<ImageLayer>) {
     <div className="layer-settings-fields">
       <Slider
         label={`Width ${Math.round(layer.width * 100)}% of the media`}
-        min={2}
-        max={200}
+        min={IMAGE_WIDTH_MIN * 100}
+        max={IMAGE_WIDTH_MAX * 100}
         step={1}
         value={Math.round(layer.width * 100)}
         data-testid="image-layer-width"
         onChange={(e) => {
           const width = Number(e.target.value) / 100;
-          onChange((l) => (l.type === "image" ? { ...l, width } : l));
+          onChange((l) => (l.type === "image" ? resizeImage(l, width) : l));
         }}
       />
       <CommonSettings {...props} />

@@ -1,5 +1,6 @@
+import { IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN } from "./limits.ts";
 import { ANCHOR_Y_MIN } from "./section.ts";
-import type { Keyframe, Layer } from "./types.ts";
+import type { ImageLayer, Keyframe, Layer } from "./types.ts";
 
 export interface LayerState {
   x: number;
@@ -71,6 +72,16 @@ export function placeAt<L extends AnimatedLayer>(layer: L, t: number, patch: Pla
   const opacity = patch.opacity ?? state.opacity;
   if (layer.keyframes.length === 0) return { ...layer, x, y, opacity };
   return { ...layer, keyframes: upsertKeyframe(layer.keyframes, { t, x, y, opacity }) };
+}
+
+/** Resize an image layer to `width` (fraction of the media width), kept within IMAGE_WIDTH_MIN..IMAGE_WIDTH_MAX. */
+export function resizeImage(layer: ImageLayer, width: number): ImageLayer {
+  return { ...layer, width: Math.min(IMAGE_WIDTH_MAX, Math.max(IMAGE_WIDTH_MIN, width)) };
+}
+
+/** Rotate a layer to `angle` degrees clockwise, normalized to -180..<180 (the rotation slider's range). */
+export function rotateTo<L extends Pick<Layer, "angle">>(layer: L, angle: number): L {
+  return { ...layer, angle: ((((angle + 180) % 360) + 360) % 360) - 180 };
 }
 
 /** Keyframe the layer's current state at `t`. */

@@ -22,6 +22,25 @@ test("image layers: upload one, paste another, resize, save; both draw on the ex
   await uploaded.getByTestId("image-layer-width").fill("25");
   await expect.poll(() => stagePixels(page)).not.toBe(shown);
 
+  // The selected image's corner handles scale it around its center (dragging a corner twice as far out doubles the
+  // width) and the handle above it rotates it; the Layers panel shows both.
+  const box = (await page.getByTestId("layer-box").nth(2).boundingBox())!;
+  const mid = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const corner = (await page.getByTestId("layer-scale-handle").and(page.locator('[data-corner="se"]')).boundingBox())!;
+  const from = { x: corner.x + corner.width / 2, y: corner.y + corner.height / 2 };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(mid.x + 2 * (from.x - mid.x), mid.y + 2 * (from.y - mid.y), { steps: 5 });
+  await page.mouse.up();
+  await expect(uploaded.getByTestId("image-layer-width")).toHaveValue("50");
+
+  const knob = (await page.getByTestId("layer-rotate-handle").boundingBox())!;
+  await page.mouse.move(knob.x + knob.width / 2, knob.y + knob.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(mid.x + 150, mid.y, { steps: 5 }); // from straight above the center to its right: +90°
+  await page.mouse.up();
+  await expect.poll(async () => Math.abs(Number(await uploaded.getByTestId("layer-angle").inputValue()) - 90)).toBeLessThanOrEqual(1);
+
   // Pasting an image anywhere in the editor adds another layer (clipboard paste, as from a screenshot).
   shown = await stagePixels(page);
   const bytes = [...readFileSync(fixture("panel-b.jpg"))];
@@ -45,7 +64,8 @@ test("image layers: upload one, paste another, resize, save; both draw on the ex
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.layers.map((l) => l.type)).toEqual(["text", "text", "image", "image"]);
   const [first, second] = meme.layers.slice(2) as ImageLayer[];
-  expect(first!.width).toBeCloseTo(0.25);
+  expect(first!.width).toBeCloseTo(0.5);
+  expect(Math.abs(first!.angle - 90)).toBeLessThanOrEqual(1);
   expect(first!.assetId).not.toBe(second!.assetId);
 
   // The pasted image (solid blue, centered, on top) is in the exported file itself, not only the editor preview.

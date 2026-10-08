@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addKeyframeAt, clearAnimation, placeAt, removeKeyframe, setWindow } from "./animation.ts";
-import { newTextLayer } from "./defaults.ts";
+import { addKeyframeAt, clearAnimation, placeAt, removeKeyframe, resizeImage, rotateTo, setWindow } from "./animation.ts";
+import { newImageLayer, newTextLayer } from "./defaults.ts";
+import { IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN } from "./limits.ts";
 import { ANCHOR_Y_MIN } from "./section.ts";
-import { textLayerSchema } from "./schema.ts";
+import { imageLayerSchema, textLayerSchema } from "./schema.ts";
 
 const kf = (t: number, x: number, y = 0.5, opacity = 1) => ({ t, x, y, opacity });
 
@@ -20,6 +21,20 @@ test("placeAt lets a layer on the media reach the top of a top-section band, wit
   assert.equal(moved.y, -2);
   assert.equal(textLayerSchema.safeParse(moved).success, true);
   assert.equal(placeAt(moved, 0, { y: -50 }, 100).y, ANCHOR_Y_MIN);
+});
+
+test("resizeImage keeps the width within its bounds, so handle drags stay schema-valid", () => {
+  const layer = newImageLayer(crypto.randomUUID());
+  assert.equal(resizeImage(layer, 0.6).width, 0.6);
+  assert.equal(resizeImage(layer, 0).width, IMAGE_WIDTH_MIN);
+  const huge = resizeImage(layer, 9);
+  assert.equal(huge.width, IMAGE_WIDTH_MAX);
+  assert.equal(imageLayerSchema.safeParse(huge).success, true);
+});
+
+test("rotateTo wraps any angle into -180..<180, the slider's range", () => {
+  const layer = newImageLayer(crypto.randomUUID());
+  assert.deepEqual([90, 179, 180, 190, -190, 540, -720].map((a) => rotateTo(layer, a).angle), [90, 179, -180, -170, 170, -180, 0]);
 });
 
 test("placeAt on an animated layer upserts a keyframe at t from the interpolated state, leaving static fields", () => {

@@ -18,6 +18,13 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   await layer.getByTestId("layer-style").selectOption("mock");
   await dragLayer(page, 0, 0, 120);
 
+  // Clicking a text box on the stage focuses its text field, caret at the end, so typing edits it.
+  const bottom = page.getByTestId("layer-item").nth(1);
+  await page.getByTestId("layer-box").nth(1).click();
+  await expect(bottom.getByTestId("layer-text")).toBeFocused();
+  await page.keyboard.type(" for real");
+  await expect(bottom.getByTestId("layer-text")).toHaveValue("BOTTOM TEXT for real");
+
   await page.getByTestId("meme-title").fill("E2E still");
   await page.getByTestId("meme-tags").fill("Movie");
   await page.getByTestId("meme-tags").press("Enter");
@@ -31,6 +38,7 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   // 640×480 template, exported upscaled to the 1200px minimum edge.
   expect(meme.outputAsset).toMatchObject({ kind: "image", width: 1200, height: 900 });
   expect(meme.layers[0]).toMatchObject({ text: "when the e2e passes", textStyle: "mock" });
+  expect(meme.layers[1]).toMatchObject({ text: "BOTTOM TEXT for real" });
   expect(meme.layers[0]!.y).toBeGreaterThan(0.15); // dragged down from the default top position
   expect(meme.tags).toEqual(["movie"]);
   const [source, output] = await Promise.all([download(request, meme.sourceAsset), download(request, meme.outputAsset)]);

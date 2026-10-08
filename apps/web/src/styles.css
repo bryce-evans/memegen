@@ -554,6 +554,53 @@
 .handle.overflow {
   border-color: var(--ui-color-danger);
 }
+/* Scale (corners) and rotate (above the top edge) handles on the selected image layer; they turn with its box. */
+.transform-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ui-color-primary);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-surface);
+  touch-action: none;
+}
+.transform-handle.nw {
+  top: -7px;
+  left: -7px;
+  cursor: nwse-resize;
+}
+.transform-handle.ne {
+  top: -7px;
+  right: -7px;
+  cursor: nesw-resize;
+}
+.transform-handle.se {
+  bottom: -7px;
+  right: -7px;
+  cursor: nwse-resize;
+}
+.transform-handle.sw {
+  bottom: -7px;
+  left: -7px;
+  cursor: nesw-resize;
+}
+.transform-handle.rotate {
+  top: -30px;
+  left: 50%;
+  translate: -50% 0;
+  border-radius: 50%;
+  cursor: grab;
+}
+.transform-handle.rotate::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 2px;
+  height: 16px;
+  translate: -50% 0;
+  background: var(--ui-color-primary);
+}
 
 /* Multi-panel editor: panels are selected, never dragged (pack images are not moved or resized). */
 .panel-handle {

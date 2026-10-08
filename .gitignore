@@ -3,6 +3,7 @@ node_modules
 dist
 config/*.env
 !config/dev.env
+!config/starter.env
 *.log
 test-results
 playwright-report

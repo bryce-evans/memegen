@@ -20,7 +20,7 @@ The editor and gallery are routes of one Vite app. Meme rendering (text overlay,
 
 - [Bun](https://bun.sh) ≥ 1.3: installs packages, runs scripts, builds
 - Node.js ≥ 24.2: runs the servers (`.ts` executed directly via type stripping)
-- PostgreSQL 14+
+- PostgreSQL 14+, with the client tools (`psql`, `createdb`, and for snapshots `pg_dump`/`pg_restore`, at least as new as the server)
 - A Chromium-based browser, Safari 17+, or Firefox 130+ (WebCodecs) to export video memes. Images and GIFs work everywhere.
 
 ## Quick start
@@ -62,8 +62,10 @@ The sign-in page depends on the config's `MODE`:
 |---|---|
 | `setup` | `bun install`, create the database(s) if missing, run migrations |
 | `migrate` | apply pending migrations |
-| `seed` | import templates if `SEED_TEMPLATES_FROM` is set, then the sample dataset if `SEED_SAMPLE=true`, then dev test stickers from `SEED_STICKERS_FROM` |
+| `seed` | import templates if `SEED_TEMPLATES_FROM` is set, then the sample dataset if `SEED_SAMPLE=true`, the starter content if `SEED_STARTER=true`, then dev test stickers from `SEED_STICKERS_FROM` |
 | `reset` | drop the database schema and wipe local storage, then `seed` *(dev only)* |
+| `snapshot save [out.zip] [--label name]` | back up the whole database and every asset into one zip (default `.data/snapshots/memegen-<label>-<time>.zip`); read-only |
+| `snapshot load <in.zip> [--replace]` | load a snapshot into a clean system, then migrate it forward; `--replace` wipes the database and local storage first *(dev only)* |
 | `dev` | migrate, then storage + API + Vite dev server with reload *(dev only)* |
 | `build` | production build of the web app (`apps/web/dist`) |
 | `start` | build, migrate, then run storage + API + `scripts/serve-web.ts`, which serves `dist` and proxies `/api` and `/storage` |
@@ -75,7 +77,8 @@ The sign-in page depends on the config's `MODE`:
 Configs are plain `KEY=value` files:
 
 - **`config/dev.env`** (committed): local Postgres, local file storage, sample data on, all test commands allowed.
-- **`config/prod.env`** (gitignored; copy from `config/prod.env.example`): real user data. `MODE=prod` enables guards. `run.sh` refuses sample seeding, `dev`, `reset`, `test`, and `e2e`, and requires a strong `INTERNAL_TOKEN` and a real `DATABASE_URL`.
+- **`config/prod.env`** (gitignored; copy from `config/prod.env.example`): real user data. `MODE=prod` enables guards. `run.sh` refuses sample seeding, `dev`, `reset`, `test`, `e2e`, and `snapshot load --replace`, and requires a strong `INTERNAL_TOKEN` and a real `DATABASE_URL`.
+- **`config/starter.env`** (committed): builds the starter snapshot in its own `memegen_starter` database and `.data/starter-storage` (see "Snapshots").
 
 ```sh
 cp config/prod.env.example config/prod.env   # then edit: DATABASE_URL, INTERNAL_TOKEN, S3_*
@@ -112,11 +115,49 @@ docker run -d --name memegen-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust 
   Only data is committed. During `seed`, each meme's image is rendered from its template by the same client renderer the editor uses (`@memegen/render`, in Playwright's headless Chromium) and stored like any upload. Seeding is offline and a no-op once `dana` exists. To start over (e.g. after changing the dataset): `./run.sh config/dev.env reset`.
 - **Test stickers** (`SEED_STICKERS_FROM=demo/stickers`, dev only): every PNG (≤ 512×512) in that local, gitignored folder becomes a built-in sticker, named after its file (`deal-with-it.png` → "Deal With It"). Re-runs are safe; a missing folder is skipped.
 - **Mock data** (e2e only): `scripts/mock/data.ts`, a small dataset with generated gradient media and hand-written expectations. The e2e setup loads it into `memegen_e2e`; it is never seeded into dev.
+- **Starter content** (`SEED_STARTER=true`): `scripts/starter/data.ts`, a handful of work-appropriate example memes posted by `memegen` and tagged `getting-started`, with no other users. Rendered like the sample data; a no-op once `memegen` has posted. Build it with `config/starter.env` and ship it as a snapshot (below).
+
+### Snapshots
+
+A snapshot is one zip with the whole database and every image, GIF, video, and font. It can be loaded into a clean system. It covers three workflows:
+
+```sh
+# Backups of real data (read-only; safe while the app runs)
+./run.sh config/prod.env snapshot save                        # .data/snapshots/memegen-backup-<time>.zip
+
+# Dev: keep the sample data and get back to it in seconds instead of re-rendering
+./run.sh config/dev.env snapshot save .data/snapshots/sample.zip --label sample
+./run.sh config/dev.env snapshot load .data/snapshots/sample.zip --replace
+
+# Starter content for a new deployment, published by @memegen
+./run.sh config/starter.env setup
+./run.sh config/starter.env reset                              # templates + starter memes (needs demo/jacebrowning-memegen)
+./run.sh config/starter.env snapshot save .data/snapshots/starter.zip --label starter
+./run.sh config/prod.env setup && ./run.sh config/prod.env snapshot load starter.zip
+```
+
+Unzipped, a snapshot is plain files:
+
+```
+manifest.json                 label, source, migrations, row counts, every file's sha256
+db/memegen.dump               the database (pg_dump custom format; what load restores)
+db/schema.sql                 the schema as readable SQL
+assets/templates/             template images, GIFs, videos, multi-panel covers and pack images
+assets/memes/                 finished memes, named <owner>-<title>--<id>.png|jpg|gif|mp4
+assets/stickers/              sticker PNGs
+assets/uploads/               image layers and uploads nothing uses
+assets/fonts/                 fonts
+```
+
+- **Old snapshots keep working.** A load restores the schema the snapshot was saved with, then applies newer migrations. A snapshot from newer code than yours is refused.
+- **Loads never touch real data.** The target must be clean: an empty database, or one that only has the schema with no users or assets yet (e.g. right after `setup`). Anything else is refused; in dev, `--replace` wipes it first. Asset bytes go to the target's `STORAGE_PROVIDER`, so a local snapshot loads into S3 and back.
+- **Saves are complete or nothing.** Every file is checked against its sha256 on save and on load; a missing or corrupt asset fails the save (listing every one) or the load (before anything is written).
+- **Keep snapshots out of git.** They carry media and, for backups, all user data. `.data/` is gitignored.
 
 ## Tests
 
 ```sh
-./run.sh config/dev.env test                       # unit/integration: shared logic, storage caps, API rules (memegen_test DB, wiped)
+./run.sh config/dev.env test                       # unit/integration: shared logic, storage caps, API rules, snapshots (memegen_test + memegen_snapshot_test DBs, wiped)
 ./run.sh config/dev.env e2e                        # Playwright browser flows (memegen_e2e DB, wiped)
 ./run.sh config/dev.env e2e nav.spec.ts            # one spec; any Playwright args pass through
 bun run test:e2e:ui                                # Playwright UI mode

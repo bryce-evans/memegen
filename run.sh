@@ -5,8 +5,10 @@
 #
 #   setup    install deps, create the database if missing, run migrations
 #   migrate  apply pending migrations
-#   seed     import templates from SEED_TEMPLATES_FROM, then the SEED_SAMPLE dataset and SEED_STICKERS_FROM stickers
+#   seed     import templates from SEED_TEMPLATES_FROM, then the SEED_SAMPLE dataset, SEED_STARTER content, and SEED_STICKERS_FROM stickers
 #   reset    wipe the database and local storage, then seed (dev only)
+#   snapshot save [out.zip] [--label <name>]   back up the database and every asset into one zip
+#   snapshot load <in.zip> [--replace]         load a snapshot into a clean system (--replace wipes first; dev only)
 #   dev      storage + api + Vite dev server with reload (dev only)
 #   build    production build of the web app
 #   start    build, then run storage + api + web server (apps/web/dist)
@@ -96,6 +98,15 @@ migrate() {
   node packages/server-kit/src/migrate.ts
 }
 
+# Drop every table and wipe local storage (dev only; callers check).
+wipe() {
+  [[ "${STORAGE_PROVIDER:-local}" == local ]] || die "'$COMMAND' only wipes local storage (STORAGE_PROVIDER=${STORAGE_PROVIDER})"
+  PGOPTIONS='-c client_min_messages=warning' psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 \
+    -c 'drop schema if exists public cascade' -c 'create schema public'
+  rm -rf "${LOCAL_STORAGE_DIR:-.data/storage}"
+  mkdir -p "${LOCAL_STORAGE_DIR:-.data/storage}"
+}
+
 # Templates first: the sample memes are made from them.
 seed() {
   migrate
@@ -110,6 +121,10 @@ seed() {
     node scripts/sample/seed.ts
     seeded=true
   fi
+  if [[ "${SEED_STARTER:-false}" == true ]]; then
+    node scripts/starter/seed.ts
+    seeded=true
+  fi
   # Local test stickers (gitignored like demo/), so a missing folder is skipped rather than fatal.
   if [[ -n "${SEED_STICKERS_FROM:-}" ]]; then
     if [[ -d "$SEED_STICKERS_FROM" ]]; then
@@ -119,7 +134,7 @@ seed() {
       echo "SEED_STICKERS_FROM=$SEED_STICKERS_FROM not found; no stickers seeded"
     fi
   fi
-  [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_TEMPLATES_FROM or SEED_SAMPLE=true in $CONFIG)"
+  [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_TEMPLATES_FROM, SEED_SAMPLE=true, or SEED_STARTER=true in $CONFIG)"
 }
 
 check_prod
@@ -132,6 +147,7 @@ case "$COMMAND" in
     if [[ "$MODE" == dev ]]; then
       [[ -z "${TEST_DATABASE_URL:-}" ]] || ensure_db "$TEST_DATABASE_URL"
       [[ -z "${E2E_DATABASE_URL:-}" ]] || ensure_db "$E2E_DATABASE_URL"
+      [[ -z "${SNAPSHOT_TEST_DATABASE_URL:-}" ]] || ensure_db "$SNAPSHOT_TEST_DATABASE_URL"
     fi
     [[ "${STORAGE_PROVIDER:-local}" != local ]] || mkdir -p "${LOCAL_STORAGE_DIR:-.data/storage}"
     migrate
@@ -145,12 +161,27 @@ case "$COMMAND" in
     ;;
   reset)
     dev_only
-    [[ "${STORAGE_PROVIDER:-local}" == local ]] || die "reset only wipes local storage (STORAGE_PROVIDER=${STORAGE_PROVIDER})"
-    PGOPTIONS='-c client_min_messages=warning' psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 \
-      -c 'drop schema if exists public cascade' -c 'create schema public'
-    rm -rf "${LOCAL_STORAGE_DIR:-.data/storage}"
-    mkdir -p "${LOCAL_STORAGE_DIR:-.data/storage}"
+    wipe
     seed "$@"
+    ;;
+  snapshot)
+    need pg_dump "PostgreSQL client"
+    need pg_restore "PostgreSQL client"
+    case "${1:-}" in
+      save) node scripts/snapshot.ts "$@" ;;
+      load)
+        args=()
+        replace=false
+        for arg in "$@"; do
+          if [[ "$arg" == --replace ]]; then replace=true; else args+=("$arg"); fi
+        done
+        [[ "$replace" == false ]] || dev_only
+        ensure_db "$DATABASE_URL"
+        [[ "$replace" == false ]] || wipe
+        node scripts/snapshot.ts "${args[@]}"
+        ;;
+      *) die "usage: ./run.sh <config> snapshot save [out.zip] [--label <name>] | snapshot load <in.zip> [--replace]" ;;
+    esac
     ;;
   dev)
     dev_only

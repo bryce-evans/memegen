@@ -266,7 +266,10 @@ function Workspace({ session }: { session: MediaSession }) {
             fontsVersion={fontsVersion}
             onSelect={setSelectedId}
             onMove={(id, x, y) => placeLayer(id, { x, y })}
-            onResize={(id, width) => updateLayer(id, (l) => (l.type === "image" ? resizeImage(l, width) : l))}
+            onResize={(id, width, x, y) => {
+              updateLayer(id, (l) => (l.type === "image" ? resizeImage(l, width) : l));
+              placeLayer(id, { x, y });
+            }}
             onRotate={(id, angle) => updateLayer(id, (l) => rotateTo(l, angle))}
             onEditText={(id) => setEditText({ id })}
           />

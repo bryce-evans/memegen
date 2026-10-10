@@ -22,18 +22,24 @@ test("image layers: upload one, paste another, resize, save; both draw on the ex
   await uploaded.getByTestId("image-layer-width").fill("25");
   await expect.poll(() => stagePixels(page)).not.toBe(shown);
 
-  // The selected image's corner handles scale it around its center (dragging a corner twice as far out doubles the
-  // width) and the handle above it rotates it; the Layers panel shows both.
-  const box = (await page.getByTestId("layer-box").nth(2).boundingBox())!;
-  const mid = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  // The selected image's corner handles scale it about the opposite corner, which stays put (dragging a corner twice
+  // as far from it doubles the width), and the handle above it rotates it; the Layers panel shows both.
+  const layerBox = page.getByTestId("layer-box").nth(2);
+  const before = (await layerBox.boundingBox())!;
+  const fixed = { x: before.x, y: before.y }; // nw, opposite the dragged se handle
   const corner = (await page.getByTestId("layer-scale-handle").and(page.locator('[data-corner="se"]')).boundingBox())!;
   const from = { x: corner.x + corner.width / 2, y: corner.y + corner.height / 2 };
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(mid.x + 2 * (from.x - mid.x), mid.y + 2 * (from.y - mid.y), { steps: 5 });
+  await page.mouse.move(fixed.x + 2 * (from.x - fixed.x), fixed.y + 2 * (from.y - fixed.y), { steps: 5 });
   await page.mouse.up();
   await expect(uploaded.getByTestId("image-layer-width")).toHaveValue("50");
+  const after = (await layerBox.boundingBox())!;
+  expect(Math.abs(after.x - fixed.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.y - fixed.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.width - 2 * before.width)).toBeLessThanOrEqual(2);
 
+  const mid = { x: after.x + after.width / 2, y: after.y + after.height / 2 };
   const knob = (await page.getByTestId("layer-rotate-handle").boundingBox())!;
   await page.mouse.move(knob.x + knob.width / 2, knob.y + knob.height / 2);
   await page.mouse.down();

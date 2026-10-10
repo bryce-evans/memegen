@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { canvasHeight, composeFrame, type DecodedMedia, type LayerBox, type LayerImages } from "@memegen/render";
-import { layerArea, layerLabel, layerStateAt, type ImageLayer, type Layer } from "@memegen/shared";
+import { layerArea, layerLabel, layerStateAt, resizeImage, type ImageLayer, type Layer } from "@memegen/shared";
 import { Alert } from "@memegen/ui";
 
 export interface StageProps {
@@ -15,22 +15,30 @@ export interface StageProps {
   onSelect: (id: string | null) => void;
   /** Move a layer to (x, y) fractions at the current frame; the caller clamps. */
   onMove: (id: string, x: number, y: number) => void;
-  /** Resize an image layer to `width` (fraction of the media width; the height follows the image); the caller clamps. */
-  onResize: (id: string, width: number) => void;
+  /**
+   * Resize an image layer to `width` (fraction of the media width; the height follows the image) with its center at
+   * (x, y) fractions, so the corner opposite the dragged one stays put; the caller clamps.
+   */
+  onResize: (id: string, width: number, x: number, y: number) => void;
   /** Rotate a layer to `angle` degrees clockwise; the caller normalizes. */
   onRotate: (id: string, angle: number) => void;
   /** A text layer's box was pressed: focus its text field so typing edits it. */
   onEditText: (id: string) => void;
 }
 
-/** A pointer gesture on a layer: move its anchor, or scale/rotate it around its center (client px). */
+/**
+ * A pointer gesture on a layer: move its anchor (client px); scale it about the corner opposite the dragged handle
+ * (canvas px: `ox,oy` that fixed corner, `dx,dy` the diagonal from it to the dragged corner at the start, `p0` the
+ * start pointer's projection on that diagonal); or rotate it around its center (client px).
+ */
 type Drag = { id: string; pointerId: number } & (
   | { kind: "move"; startX: number; startY: number; x0: number; y0: number }
-  | { kind: "scale"; cx: number; cy: number; d0: number; width0: number }
+  | { kind: "scale"; ox: number; oy: number; dx: number; dy: number; p0: number; width0: number }
   | { kind: "rotate"; cx: number; cy: number; a0: number; angle0: number }
 );
 
-const CORNERS = ["nw", "ne", "se", "sw"] as const;
+type Corner = "nw" | "ne" | "se" | "sw";
+const CORNERS: readonly Corner[] = ["nw", "ne", "se", "sw"];
 /** Shift-rotate snaps to this many degrees. */
 const ROTATE_SNAP = 15;
 
@@ -100,21 +108,51 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  /** Start scaling (corner handles; distance from the center sets the width) or rotating (the handle above the box). */
-  function startTransform(e: PointerEvent<HTMLDivElement>, layer: ImageLayer, box: LayerBox, kind: "scale" | "rotate") {
+  /** Pointer position in canvas px. */
+  function canvasPoint(e: PointerEvent<HTMLDivElement>): { x: number; y: number } | null {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect || boxScale <= 0) return null;
+    return { x: (e.clientX - rect.left) / boxScale, y: (e.clientY - rect.top) / boxScale };
+  }
+
+  /** Start scaling from a corner handle; the opposite corner stays fixed and the aspect ratio is kept. */
+  function startScale(e: PointerEvent<HTMLDivElement>, layer: ImageLayer, box: LayerBox, corner: Corner) {
+    e.stopPropagation();
+    e.preventDefault();
+    const p = canvasPoint(e);
+    if (!p) return;
+    // The dragged corner's offset from the center in the layer's own frame, then rotated onto the canvas (clockwise).
+    const hx = ((corner === "ne" || corner === "se" ? 1 : -1) * box.width) / 2;
+    const hy = ((corner === "se" || corner === "sw" ? 1 : -1) * box.height) / 2;
+    const rad = (box.angle * Math.PI) / 180;
+    const rx = hx * Math.cos(rad) - hy * Math.sin(rad);
+    const ry = hx * Math.sin(rad) + hy * Math.cos(rad);
+    const ox = box.cx - rx;
+    const oy = box.cy - ry;
+    const dx = 2 * rx;
+    const dy = 2 * ry;
+    const p0 = Math.max(1, (p.x - ox) * dx + (p.y - oy) * dy);
+    drag.current = { kind: "scale", id: layer.id, pointerId: e.pointerId, ox, oy, dx, dy, p0, width0: layer.width };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  /** Start rotating (the handle above the box) around the layer's center. */
+  function startRotate(e: PointerEvent<HTMLDivElement>, layer: ImageLayer, box: LayerBox) {
     e.stopPropagation();
     e.preventDefault();
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const cx = rect.left + box.cx * boxScale;
     const cy = rect.top + box.cy * boxScale;
-    const dx = e.clientX - cx;
-    const dy = e.clientY - cy;
-    const base = { id: layer.id, pointerId: e.pointerId, cx, cy };
-    drag.current =
-      kind === "scale"
-        ? { ...base, kind, d0: Math.max(1, Math.hypot(dx, dy)), width0: layer.width }
-        : { ...base, kind, a0: Math.atan2(dy, dx), angle0: layer.angle };
+    drag.current = {
+      kind: "rotate",
+      id: layer.id,
+      pointerId: e.pointerId,
+      cx,
+      cy,
+      a0: Math.atan2(e.clientY - cy, e.clientX - cx),
+      angle0: layer.angle,
+    };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
@@ -122,8 +160,19 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
     const d = drag.current;
     const layer = d && layers.find((l) => l.id === d.id);
     if (!d || !layer || d.pointerId !== e.pointerId || displayWidth <= 0) return;
+    // Fractions of the layer's own area: the band for the top section's text, else the media.
+    const area = layerArea(layer, pixelWidth, pixelHeight, pixelHeight - mediaPixelHeight);
     if (d.kind === "scale") {
-      onResize(d.id, (d.width0 * Math.hypot(e.clientX - d.cx, e.clientY - d.cy)) / d.d0);
+      const p = canvasPoint(e);
+      if (!p || layer.type !== "image") return;
+      // Scale by the pointer's progress along the diagonal, clamped like the width; the center slides along the
+      // diagonal so the fixed corner keeps its place.
+      const along = ((p.x - d.ox) * d.dx + (p.y - d.oy) * d.dy) / d.p0;
+      const width = resizeImage(layer, d.width0 * along).width;
+      const k = width / d.width0;
+      const cx = d.ox + (k * d.dx) / 2;
+      const cy = d.oy + (k * d.dy) / 2;
+      onResize(d.id, width, cx / area.width, (cy - area.top) / area.height);
       return;
     }
     if (d.kind === "rotate") {
@@ -132,8 +181,6 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
       onRotate(d.id, e.shiftKey ? Math.round(angle / ROTATE_SNAP) * ROTATE_SNAP : Math.round(angle));
       return;
     }
-    // Fractions of the layer's own area: the band for the top section's text, else the media.
-    const area = layerArea(layer, pixelWidth, pixelHeight, pixelHeight - mediaPixelHeight);
     onMove(d.id, d.x0 + (e.clientX - d.startX) / (area.width * boxScale), d.y0 + (e.clientY - d.startY) / (area.height * boxScale));
   }
 
@@ -192,14 +239,14 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
                       data-testid="layer-scale-handle"
                       data-corner={corner}
                       title="Drag to resize"
-                      onPointerDown={(e) => startTransform(e, layer, box, "scale")}
+                      onPointerDown={(e) => startScale(e, layer, box, corner)}
                     />
                   ))}
                   <div
                     className="transform-handle rotate"
                     data-testid="layer-rotate-handle"
                     title="Drag to rotate (Shift snaps to 15°)"
-                    onPointerDown={(e) => startTransform(e, layer, box, "rotate")}
+                    onPointerDown={(e) => startRotate(e, layer, box)}
                   />
                 </>
               )}

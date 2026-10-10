@@ -340,7 +340,7 @@ function Workspace({ session }: { session: MediaSession }) {
               canSave={isOwnMeme}
               target={source.kind === "meme" ? { editing: source.meme } : { templateId: source.template.id }}
               defaultTitle={source.kind === "template" ? source.template.name : ""}
-              suggestedTags={source.kind === "template" ? source.template.tags : []}
+              templateTags={source.kind === "template" ? source.template.tags : []}
             />
           )}
         </div>

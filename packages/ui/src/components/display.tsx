@@ -62,18 +62,20 @@ export type ChipOwnProps = {
   /** Accessible name of the remove button. */
   removeLabel?: string;
   removeDisabled?: boolean;
+  /** `data-testid` of the remove button. */
+  removeTestId?: string;
   className?: string;
   children?: ReactNode;
 };
 export type ChipProps = LoosePolymorphicProps<ChipOwnProps>;
 
 /** Compact tag; `as={Link}` makes it a link, `as="button"` an action (default `span`). */
-function ChipBase({ as: As = "span", variant = "default", onRemove, removeLabel = "Remove", removeDisabled, className, children, ...rest }: ChipProps) {
+function ChipBase({ as: As = "span", variant = "default", onRemove, removeLabel = "Remove", removeDisabled, removeTestId, className, children, ...rest }: ChipProps) {
   return (
     <As className={cx("ui-chip", variant === "suggest" && "ui-chip--suggest", onRemove && "ui-chip--removable", className)} {...rest}>
       {children}
       {onRemove && (
-        <button type="button" className="ui-chip-remove" aria-label={removeLabel} disabled={removeDisabled} onClick={onRemove}>
+        <button type="button" className="ui-chip-remove" aria-label={removeLabel} disabled={removeDisabled} onClick={onRemove} data-testid={removeTestId}>
           <Icon name="close" />
         </button>
       )}

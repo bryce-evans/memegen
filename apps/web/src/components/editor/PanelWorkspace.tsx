@@ -175,7 +175,7 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
               canSave={source.kind !== "meme" || source.meme.owner.id === user.id}
               target={source.kind === "meme" ? { editing: source.meme } : { templateId: source.template.id }}
               defaultTitle={source.kind === "template" ? source.template.name : ""}
-              suggestedTags={source.kind === "template" ? source.template.tags : []}
+              templateTags={source.kind === "template" ? source.template.tags : []}
             />
           )}
         </div>

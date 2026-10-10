@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExportAbortedError, type ExportResult } from "@memegen/render";
-import { limitViolations, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
+import { limitViolations, MAX_TAGS, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
 import { ApiError, createMeme, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { downloadBlob, fileSlug } from "../../media.ts";
@@ -22,8 +22,8 @@ export interface SavePanelProps {
   /** Re-editing an existing meme (PATCH), or creating a new one from a template. */
   target: { editing: Meme } | { templateId: string };
   defaultTitle: string;
-  /** Offered as one-click tags (e.g. the template's); never applied automatically. */
-  suggestedTags: string[];
+  /** The template's tags: pre-filled on a new meme (the user may remove them) and offered as one-click tags. */
+  templateTags: string[];
 }
 
 interface Progress {
@@ -33,12 +33,12 @@ interface Progress {
 }
 
 export function SavePanel(props: SavePanelProps) {
-  const { render: renderMeme, content, limits, canSave, target, defaultTitle, suggestedTags } = props;
+  const { render: renderMeme, content, limits, canSave, target, defaultTitle, templateTags } = props;
   const editingMeme = "editing" in target ? target.editing : null;
   const navigate = useNavigate();
   const [title, setTitle] = useState(editingMeme?.title ?? defaultTitle);
   const [visibility, setVisibility] = useState<Visibility>(editingMeme?.visibility ?? "public");
-  const [tags, setTags] = useState<string[]>(editingMeme?.tags ?? []);
+  const [tags, setTags] = useState<string[]>(editingMeme?.tags ?? templateTags.slice(0, MAX_TAGS));
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -134,7 +134,7 @@ export function SavePanel(props: SavePanelProps) {
             <option value="public">Public</option>
             <option value="private">Private (only you)</option>
           </SelectField>
-          <TagField value={tags} onChange={setTags} suggestions={suggestedTags} testId="meme-tags" disabled={busy} allowCreate />
+          <TagField value={tags} onChange={setTags} suggestions={templateTags} testId="meme-tags" disabled={busy} allowCreate />
         </>
       )}
       <Inline className="save-actions">

@@ -36,3 +36,18 @@ test("search: the header box finds memes by template name, template tag, title, 
   await search(scoped("no such meme anywhere"));
   await expect(page.getByTestId("meme-card")).toHaveCount(0);
 });
+
+test("a new meme starts with its template's tags, and any of them can be removed", async ({ page, request }) => {
+  const user = await apiUser(request, scoped("tagcarrier"));
+  const template = await apiTemplate(request, user, { name: scoped("Tag carrier"), tags: ["movie", scoped("carried")] });
+  await page.goto(`/create?template=${template.id}`);
+  await signIn(page, user.username);
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+
+  const chips = page.getByTestId("tag-input-chip");
+  await expect(chips).toHaveCount(template.tags.length);
+  for (const slug of template.tags) await expect(chips.and(page.locator(`[data-tag="${slug}"]`))).toBeVisible();
+  await chips.and(page.locator('[data-tag="movie"]')).getByTestId("tag-input-chip-remove").click();
+  await expect(chips).toHaveCount(template.tags.length - 1);
+  await expect(chips.and(page.locator('[data-tag="movie"]'))).toHaveCount(0);
+});

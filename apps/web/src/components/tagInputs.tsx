@@ -60,6 +60,7 @@ export function TagInput(props: {
               data-tag={slug}
               removeLabel={`Remove ${slug}`}
               removeDisabled={disabled}
+              removeTestId="tag-input-chip-remove"
               onRemove={() => onChange(value.filter((t) => t !== slug))}
             >
               #{slug}

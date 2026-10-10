@@ -691,9 +691,10 @@ test("tags: normalized, inherited from templates (and variations), filter templa
   assert.equal((await call("POST", `/api/templates/${plain.id}/tags`, null, { tags: ["x"] })).status, 401);
 });
 
-test("comments: one level of replies on posted public memes, author-only delete with placeholders", async () => {
+test("comments: one level of replies on posted public memes, author or meme owner deletes, with placeholders", async () => {
   const alice = await signIn("alice");
   const bob = await signIn("bob");
+  const carol = await signIn("carol");
   const meme = await makeMeme(alice);
   const post = (u: User | null, body: Record<string, unknown>, memeId = meme.id) =>
     call<Comment>("POST", `/api/memes/${memeId}/comments`, u, body);
@@ -721,9 +722,11 @@ test("comments: one level of replies on posted public memes, author-only delete 
   );
   assert.equal(await commentCount(), 3);
 
-  assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, alice)).status, 403);
-  // It has a reply, so it stays as a placeholder.
-  assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, bob)).status, 204);
+  // Neither author nor meme owner.
+  assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, carol)).status, 403);
+  assert.equal((await call("DELETE", `/api/comments/${reply.body.id}`, bob)).status, 403);
+  // The meme's owner may delete bob's comment; it has a reply, so it stays as a placeholder.
+  assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, alice)).status, 204);
   const [placeholder] = await list();
   assert.deepEqual(
     [placeholder!.id, placeholder!.deleted, placeholder!.body, placeholder!.replies.map((r) => r.id)],

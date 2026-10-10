@@ -56,7 +56,7 @@ export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (
       <ol className="comment-list">
         {list.items.map((c) => (
           <li key={c.id}>
-            <CommentItem comment={c} canReply={open} onPosted={added} onDelete={remove} />
+            <CommentItem comment={c} canReply={open} memeOwnerId={meme.owner.id} onPosted={added} onDelete={remove} />
           </li>
         ))}
       </ol>
@@ -70,34 +70,36 @@ export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (
 function CommentItem(props: {
   comment: Comment;
   canReply: boolean;
+  /** The meme's owner may delete any comment on it, besides each author their own. */
+  memeOwnerId: string;
   onPosted: (comment: Comment) => void;
   onDelete: (comment: Comment) => Promise<void>;
 }) {
-  const { comment, canReply, onPosted, onDelete } = props;
+  const { comment, canReply, memeOwnerId, onPosted, onDelete } = props;
   const user = useUser();
   const [replying, setReplying] = useState(false);
   const { busy, error, run } = useAction();
   const isReply = comment.parentId !== null;
+  const canDelete = user.id === comment.author.id || user.id === memeOwnerId;
 
   function remove() {
     if (window.confirm("Delete this comment?")) void run(() => onDelete(comment));
   }
 
   return (
-    <article className="comment" data-testid="comment" data-comment-id={comment.id}>
-      <Text size="sm" tone="muted" className="comment-meta">
-        {comment.deleted ? (
-          <span data-testid="comment-author">[deleted]</span>
-        ) : (
+    <article className="comment" data-testid="comment" data-comment-id={comment.id} data-deleted={comment.deleted || undefined}>
+      {/* A deleted comment kept for its replies shows only "deleted": no author, time, or actions. */}
+      {!comment.deleted && (
+        <Text size="sm" tone="muted" className="comment-meta">
           <Link to={`/u/${comment.author.username}`} data-testid="comment-author">
             @{comment.author.username}
           </Link>
-        )}
-        {" · "}
-        <TimeAgo iso={comment.createdAt} />
-      </Text>
+          {" · "}
+          <TimeAgo iso={comment.createdAt} />
+        </Text>
+      )}
       <Text tone={comment.deleted ? "muted" : "default"} className="comment-body" data-testid="comment-body">
-        {comment.deleted ? "This comment was deleted." : comment.body}
+        {comment.deleted ? <em data-testid="comment-deleted">deleted</em> : comment.body}
       </Text>
       {!comment.deleted && (
         <div className="comment-actions">
@@ -106,7 +108,7 @@ function CommentItem(props: {
               Reply
             </Button>
           )}
-          {user.id === comment.author.id && (
+          {canDelete && (
             <Button size="sm" variant="quiet" disabled={busy} onClick={remove} data-testid="comment-delete">
               Delete
             </Button>
@@ -128,7 +130,7 @@ function CommentItem(props: {
         <ol className="comment-replies">
           {comment.replies.map((r) => (
             <li key={r.id}>
-              <CommentItem comment={r} canReply={false} onPosted={onPosted} onDelete={onDelete} />
+              <CommentItem comment={r} canReply={false} memeOwnerId={memeOwnerId} onPosted={onPosted} onDelete={onDelete} />
             </li>
           ))}
         </ol>

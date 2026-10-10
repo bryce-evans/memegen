@@ -41,17 +41,21 @@ export function register(app: ApiApp, sql: Sql): void {
   });
 
   /**
-   * Author only. A comment with replies becomes a placeholder (soft delete); otherwise it is removed,
-   * along with its soft-deleted parent once that has no replies left.
+   * The comment's author or the meme's owner. A comment with replies becomes a placeholder (soft delete); otherwise
+   * it is removed, along with its soft-deleted parent once that has no replies left.
    */
   app.delete("/api/comments/:id", async (c) => {
     const user = requireUser(c);
     const { id } = parse(idParam, c.req.param());
     await sql.begin(async (tx) => {
-      const [row] = await tx<{ author_id: string; parent_id: string | null }[]>`
-        select author_id, parent_id from comments where id = ${id} for update`;
+      const [row] = await tx<{ author_id: string; parent_id: string | null; meme_owner_id: string }[]>`
+        select c.author_id, c.parent_id, m.owner_id as meme_owner_id
+        from comments c join memes m on m.id = c.meme_id
+        where c.id = ${id} for update of c`;
       if (!row) throw new HttpError(404, "comment not found");
-      if (row.author_id !== user.id) throw new HttpError(403, "only the author can delete this comment");
+      if (row.author_id !== user.id && row.meme_owner_id !== user.id) {
+        throw new HttpError(403, "only the author or the meme's owner can delete this comment");
+      }
       // Lock the parent so concurrent reply deletions agree on whether it still has replies.
       if (row.parent_id) await tx`select 1 from comments where id = ${row.parent_id} for update`;
       const [hasReplies] = await tx`select 1 from comments where parent_id = ${id} limit 1`;

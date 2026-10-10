@@ -1,4 +1,4 @@
-import type { Meme } from "@memegen/shared";
+import type { Comment, Meme } from "@memegen/shared";
 import { apiGet, apiMeme, apiPost, apiUser, memeCard, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
@@ -37,9 +37,12 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   await expect(page).toHaveURL(new RegExp(`/m/${meme.id}#comments$`));
   await expect(reply.getByTestId("comment-body")).toHaveText("a reply");
 
-  // Deleting a comment that has replies leaves a placeholder; deleting the last reply removes both.
+  // Deleting a comment that has replies leaves an italic "deleted" placeholder; deleting the last reply removes both.
   await parent.getByTestId("comment-delete").first().click();
-  await expect(parent.getByTestId("comment-body").first()).not.toHaveText("first!");
+  await expect(parent).toHaveAttribute("data-deleted", "true");
+  await expect(parent.getByTestId("comment-body").first()).toHaveText("deleted");
+  await expect(parent.getByTestId("comment-deleted")).toHaveCSS("font-style", "italic");
+  await expect(parent.getByTestId("comment-author")).toHaveCount(1); // only the reply's
   await expect(reply).toHaveCount(1);
   expect((await apiGet<Meme>(request, `/api/memes/${meme.id}`)).commentCount).toBe(1);
 
@@ -48,18 +51,31 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   expect((await apiGet<Meme>(request, `/api/memes/${meme.id}`)).commentCount).toBe(0);
 });
 
-test("comments: only the author can delete; drafts note that posting opens the discussion", async ({ page, request }) => {
+test("comments: the author or the meme's owner can delete; drafts note that posting opens the discussion", async ({ page, request }) => {
   const author = await apiUser(request, scoped("op2"));
   const meme = await apiMeme(request, author, { title: scoped("Hands off") });
   const writer = await apiUser(request, scoped("writer"));
-  await apiPost(request, `/api/memes/${meme.id}/comments`, writer, { body: "mine" });
+  const top = await apiPost<Comment>(request, `/api/memes/${meme.id}/comments`, writer, { body: "mine" });
+  await apiPost(request, `/api/memes/${meme.id}/comments`, author, { body: "my reply", parentId: top.id });
+  page.on("dialog", (dialog) => void dialog.accept());
 
+  // A bystander can reply but delete nothing.
   await page.goto(`/m/${meme.id}`);
+  await signIn(page, scoped("bystander"));
+  const comments = page.getByTestId("comments");
+  const parent = page.locator(`[data-testid="comment"][data-comment-id="${top.id}"]`);
+  await expect(parent.getByTestId("comment-body").first()).toHaveText("mine");
+  await expect(comments.getByTestId("comment-delete")).toHaveCount(0);
+  await expect(parent.getByTestId("comment-reply")).toBeVisible();
+
+  // The meme's owner can delete someone else's comment; its reply keeps it as a placeholder.
+  await page.getByTestId("sign-out").click();
   await signIn(page, author.username);
-  const comment = page.getByTestId("comments").getByTestId("comment");
-  await expect(comment.getByTestId("comment-body")).toHaveText("mine");
-  await expect(comment.getByTestId("comment-delete")).toHaveCount(0);
-  await expect(comment.getByTestId("comment-reply")).toBeVisible();
+  await expect(comments.getByTestId("comment-delete")).toHaveCount(2);
+  await parent.getByTestId("comment-delete").first().click();
+  await expect(parent.getByTestId("comment-body").first()).toHaveText("deleted");
+  await expect(parent.locator('[data-testid="comment"]').getByTestId("comment-body")).toHaveText("my reply");
+  expect((await apiGet<Meme>(request, `/api/memes/${meme.id}`)).commentCount).toBe(1);
 
   const draft = await apiMeme(request, author, { title: scoped("Draft talk"), post: false });
   await page.goto(`/m/${draft.id}`);

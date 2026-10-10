@@ -250,6 +250,8 @@ export const galleryQuerySchema = pageQuerySchema().extend({
   period: z.enum(PERIODS).default("week"),
   sort: z.enum(GALLERY_SORTS).default("best"),
   tag: tagSlugSchema.optional(),
+  /** Search: matches a meme's title, its template's (or parent template's) name, its tags (template tags included), or its author. */
+  q: z.string().trim().max(100).default(""),
 });
 
 export const hotTemplatesQuerySchema = z.object({

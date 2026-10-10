@@ -1,4 +1,5 @@
-import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   AppShell,
   Button,
@@ -12,6 +13,7 @@ import {
   SidebarSection,
   SkinProvider,
   Text,
+  TextField,
   Wordmark,
   useSkinFavicon,
 } from "@memegen/ui";
@@ -20,7 +22,7 @@ import { GalleryFilters, feedKindFor } from "./components/feed.tsx";
 import { TagSidebar } from "./components/tagNav.tsx";
 import { DEV_MODE } from "./mode.ts";
 import { Editor } from "./pages/Editor.tsx";
-import { Popular, Recent } from "./pages/Gallery.tsx";
+import { Popular, Recent, Search } from "./pages/Gallery.tsx";
 import { Leaderboard } from "./pages/Leaderboard.tsx";
 import { MemeDetail } from "./pages/MemeDetail.tsx";
 import { Profile } from "./pages/Profile.tsx";
@@ -30,6 +32,36 @@ import { TagPage } from "./pages/TagPage.tsx";
 const BRAND = "memegen";
 /** Prod pins this skin (`?skin=` and stored choices ignored); dev lets the sign-in page's dev tools switch it. */
 const SKIN = "default";
+
+/** Meme search in the header: submitting opens `/search?q=`; on that page the box shows the current query. */
+function SiteSearch() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [params] = useSearchParams();
+  const current = pathname === "/search" ? (params.get("q") ?? "") : "";
+  const [value, setValue] = useState(current);
+  useEffect(() => setValue(current), [current]);
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const q = value.trim();
+    if (q) navigate(`/search?${new URLSearchParams({ q })}`);
+  }
+
+  return (
+    <form role="search" className="site-search" onSubmit={submit}>
+      <TextField
+        type="search"
+        size="sm"
+        placeholder="Search memes by tag, name, or user…"
+        aria-label="Search memes"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        data-testid="meme-search"
+      />
+    </form>
+  );
+}
 
 function SiteHeader() {
   const user = useUser();
@@ -41,6 +73,7 @@ function SiteHeader() {
           <Wordmark text={BRAND} />
         </Link>
       }
+      center={<SiteSearch />}
     >
       <Text as="span" size="sm">
         Signed in as{" "}
@@ -109,6 +142,7 @@ function Root() {
         <Route path="/u/:username" element={<Profile />} />
         <Route path="/create" element={<Editor />} />
         <Route path="/t/:slug" element={<TagPage />} />
+        <Route path="/search" element={<Search />} />
         <Route path="*" element={<EmptyState icon={<Icon name="search" />} title="Page not found." />} />
       </Routes>
     </AppShell>

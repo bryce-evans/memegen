@@ -113,9 +113,10 @@ async function makeTemplate(
 /** A meme by `owner` (posted and public by default), from `templateId` or else a new template of theirs. */
 async function makeMeme(
   owner: User,
-  opts: { templateId?: string; post?: boolean; visibility?: "public" | "private"; tags?: string[]; panels?: PanelSet } = {},
+  opts: { templateId?: string; title?: string; post?: boolean; visibility?: "public" | "private"; tags?: string[]; panels?: PanelSet } = {},
 ): Promise<Meme> {
   const res = await call<Meme>("POST", "/api/memes", owner, {
+    title: opts.title,
     templateId: opts.templateId ?? (await makeTemplate(owner)).id,
     outputAssetId: await upload(owner, "o.png"),
     layers: opts.panels ? [] : [newTextLayer()],
@@ -689,6 +690,31 @@ test("tags: normalized, inherited from templates (and variations), filter templa
   assert.deepEqual([again.tags, again.baseTags], [added.body.tags, added.body.baseTags]);
   assert.equal((await call("POST", `/api/templates/${plain.id}/tags`, bob, { tags: ["!!!"] })).status, 400);
   assert.equal((await call("POST", `/api/templates/${plain.id}/tags`, null, { tags: ["x"] })).status, 401);
+});
+
+test("gallery search: title, template or parent template name, own or template tags, author; listed memes only", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const base = await makeTemplate(alice, { name: "Distracted Boyfriend" });
+  const tweak = await makeTemplate(alice, { name: "Scene", parentId: base.id, tags: ["Movie"] });
+  const fromBase = await makeMeme(alice, { templateId: base.id, title: "monday" });
+  const fromTweak = await makeMeme(bob, { templateId: tweak.id, title: "tuesday", tags: ["work-life"] });
+  await makeMeme(alice, { templateId: base.id, title: "hidden", visibility: "private" });
+  await makeMeme(alice, { templateId: base.id, title: "draft", post: false });
+
+  const search = async (q: string) =>
+    (await call<Page<Meme>>("GET", `/api/gallery?period=all&sort=new&q=${encodeURIComponent(q)}`, null)).body.items
+      .map((m) => m.id)
+      .sort();
+  const both = [fromBase.id, fromTweak.id].sort();
+  assert.deepEqual(await search("distracted"), both); // the variation's meme matches its parent's name
+  assert.deepEqual(await search("scene"), [fromTweak.id]);
+  assert.deepEqual(await search("MONDAY"), [fromBase.id]);
+  assert.deepEqual(await search("movie"), [fromTweak.id]); // template tag, not on the meme itself
+  assert.deepEqual(await search("work life"), [fromTweak.id]); // own tag, matched by slug
+  assert.deepEqual(await search("bob"), [fromTweak.id]);
+  assert.deepEqual(await search("100%"), []); // LIKE wildcards are literal
+  assert.deepEqual(await search("nothing-matches"), []);
 });
 
 test("comments: one level of replies on posted public memes, author or meme owner deletes, with placeholders", async () => {

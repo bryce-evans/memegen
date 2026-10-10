@@ -271,8 +271,8 @@ export const deleteMeme = (id: string) => request<void>(`/api/memes/${id}`, { me
 export const voteMeme = (id: string, value: -1 | 0 | 1) =>
   request<Meme>(`/api/memes/${id}/vote`, { method: "PUT", json: { value } });
 
-export const getGallery = ({ period, sort, tag, offset = 0, limit = 24 }: PageParams & { period: Period; sort: GallerySort; tag?: string }) =>
-  request<Page<Meme>>(`/api/gallery${qs({ period, sort, tag, offset, limit })}`);
+export const getGallery = ({ period, sort, tag, q, offset = 0, limit = 24 }: PageParams & { period: Period; sort: GallerySort; tag?: string; q?: string }) =>
+  request<Page<Meme>>(`/api/gallery${qs({ period, sort, tag, q, offset, limit })}`);
 
 export const getLeaderboard = (by: LeaderboardSort, limit = 50) =>
   request<LeaderboardEntry[]>(`/api/leaderboard${qs({ by, limit })}`);

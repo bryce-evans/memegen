@@ -15,8 +15,8 @@ export const PERIOD_LABELS: Record<Period, string> = {
 
 const SORT_LABELS: Record<GallerySort, string> = { best: "Best", new: "New" };
 
-/** `popular` = `/`, `recent` = `/recent`, `tag` = the memes on `/t/:slug`. */
-export type FeedKind = "popular" | "recent" | "tag";
+/** `popular` = `/`, `recent` = `/recent`, `tag` = the memes on `/t/:slug`, `search` = `/search?q=`. */
+export type FeedKind = "popular" | "recent" | "tag" | "search";
 
 interface FeedConfig {
   /** Default (or fixed, without its control) period and sort. */
@@ -30,6 +30,7 @@ const FEEDS: Record<FeedKind, FeedConfig> = {
   popular: { period: "week", sort: "best", periodControl: true, sortControl: false },
   recent: { period: "all", sort: "new", periodControl: false, sortControl: false },
   tag: { period: "all", sort: "best", periodControl: true, sortControl: true },
+  search: { period: "all", sort: "best", periodControl: true, sortControl: true },
 };
 
 /** Which feed (if any) a pathname shows, so the side column can host its filters. */
@@ -37,6 +38,7 @@ export function feedKindFor(pathname: string): FeedKind | null {
   if (pathname === "/") return "popular";
   if (pathname === "/recent") return "recent";
   if (pathname.startsWith("/t/")) return "tag";
+  if (pathname === "/search") return "search";
   return null;
 }
 
@@ -112,10 +114,10 @@ export function GalleryFilters({ kind, placement }: { kind: FeedKind; placement:
   );
 }
 
-/** Paged meme grid for one feed kind, optionally limited to a tag. */
-export function GalleryFeed({ kind, tag, title }: { kind: FeedKind; tag?: string; title: string }) {
+/** Paged meme grid for one feed kind, optionally limited to a tag or a search query. */
+export function GalleryFeed({ kind, tag, q, title }: { kind: FeedKind; tag?: string; q?: string; title: string }) {
   const { config, period, sort } = useFeedFilters(kind);
-  const list = usePaged<Meme>(`${period}:${sort}:${tag ?? ""}`, (offset) => getGallery({ period, sort, tag, offset }));
+  const list = usePaged<Meme>(`${period}:${sort}:${tag ?? ""}:${q ?? ""}`, (offset) => getGallery({ period, sort, tag, q, offset }));
   // Filters beside the title show the choice; elsewhere the title names it.
   const filtersHere = useFiltersAt(kind, "header");
   const subtitle = [config.sortControl && SORT_LABELS[sort], config.periodControl && PERIOD_LABELS[period]].filter(Boolean);

@@ -93,9 +93,9 @@ Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `me
 
 ### Multi-panel templates
 
-- An image pack plus default panels instead of one media file. `Template.panels = {layout, grid, fontSize, pack, defaultPanels}`. A meme stores `Meme.panels = {layout, grid, fontSize, panels}` with `layers: []`. Each panel is `{id, assetId, text}` referencing a pack image.
-- Layouts: `vertical` (rows of caption | image) or `horizontal` (columns of caption over image), with 1..`MAX_PANELS` (12) panels. Memes may change the layout and add, remove, reorder, or re-point panels.
-- Pack images are never cropped or resized, only scaled to a shared width (vertical) or height (horizontal). Captions are uniform per set: `grid` and `fontSize` apply to all panels.
+- An image pack plus default panels instead of one media file. `Template.panels = {layout, grid, mirror, fontSize, pack, defaultPanels}`. A meme stores `Meme.panels = {layout, grid, mirror, fontSize, panels}` with `layers: []`. Each panel is `{id, assetId, text}` referencing a pack image.
+- Layouts: `vertical` (rows of caption | image) or `horizontal` (columns of caption over image), with 1..`MAX_PANELS` (12) panels. `mirror` swaps each caption and image (image | caption, image over caption) without changing the size. Memes may change the layout and add, remove, reorder, or re-point panels.
+- Pack images are never cropped or resized, only scaled to a shared width (vertical) or height (horizontal). Captions are uniform per set: `grid`, `mirror`, and `fontSize` apply to all panels. The grid is inner dividers only (`panelRules`: between captions and images and between panels, never the outer edge). Migration 014 stored `mirror: false` on earlier panels.
 - Geometry (`packages/shared/src/panels.ts`) and drawing (`composePanels`/`exportPanels`) are shared by stage and export. Exports are JPEG at `PANEL_EXPORT_UNIT` (600) px per image, shrunk under the image cap.
 - The template's `asset` is a client-rendered cover, so everything that shows a template image needs no special case. Editing the defaults replaces the cover.
 - `template_pack_assets` holds the pack. Packs only grow: memes reference pack images by id, so `PATCH` rejects removals. The API checks each meme panel against its template's pack.
@@ -218,9 +218,9 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | GET | `/api/templates/hot?period=&limit=` | `HotTemplate[]`: most-used top-level templates in the period |
 | GET | `/api/templates/:id/usage?period=` | `TemplateUsage`: zero-filled series (day→hourly, week/month→daily, year/all→monthly) |
 | GET | `/api/templates/:id` | `Template` (+ variations, `useCount`) |
-| POST | `/api/templates` | `{name, assetId, parentId?, defaultLayers?, panels?, isPublic?, tags?}`; `tags` become base tags; `panels` = `{layout, packAssetIds, defaultPanels}` makes a multi-panel template (still-image pack, `assetId` its rendered cover, no `defaultLayers`) |
+| POST | `/api/templates` | `{name, assetId, parentId?, defaultLayers?, panels?, isPublic?, tags?}`; `tags` become base tags; `panels` = `{layout, grid?, mirror?, fontSize?, packAssetIds, defaultPanels}` makes a multi-panel template (still-image pack, `assetId` its rendered cover, no `defaultLayers`) |
 | PATCH/DELETE | `/api/templates/:id` | owner only; PATCH `{name?, defaultLayers?, isPublic?, panels?+assetId?}` (multi-panel: new defaults with their re-rendered cover; pack images can be added, not removed); DELETE → 409 while memes use it (or one of its variations) |
-| POST | `/api/memes` | `{title, templateId, outputAssetId, layers, panels?, visibility, post, tags?}`; every meme is made from a template; `panels` (`{layout, panels}`, images from the template's pack) is required for multi-panel templates and rejected otherwise |
+| POST | `/api/memes` | `{title, templateId, outputAssetId, layers, panels?, visibility, post, tags?}`; every meme is made from a template; `panels` (`{layout, grid?, mirror?, fontSize?, panels}`, images from the template's pack) is required for multi-panel templates and rejected otherwise |
 | GET | `/api/memes/:id` | `Meme` (private → owner only) |
 | PATCH | `/api/memes/:id` | `{title?, visibility?, tags?, layers+outputAssetId(+panels)?}` owner only |
 | POST | `/api/memes/:id/post` | sets `posted_at` |

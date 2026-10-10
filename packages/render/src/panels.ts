@@ -1,4 +1,15 @@
-import { drawText, layoutText, PANEL_RULE_WIDTH, panelGrid, panelTextLayer, type PanelGrid, type PanelRect, type PanelSet, type TextContext } from "@memegen/shared";
+import {
+  drawText,
+  layoutText,
+  PANEL_RULE_WIDTH,
+  panelGrid,
+  panelRules,
+  panelTextLayer,
+  type PanelGrid,
+  type PanelRect,
+  type PanelSet,
+  type TextContext,
+} from "@memegen/shared";
 import { context2d, createCanvas, type Ctx2D } from "./canvas.ts";
 import type { ExportResult } from "./export.ts";
 
@@ -20,6 +31,7 @@ export interface PanelBox {
 export function panelSetGrid(set: PanelSet, images: PackImages): PanelGrid {
   return panelGrid(
     set.layout,
+    set.mirror,
     set.panels.map((p) => {
       const image = images.get(p.assetId);
       return image ? image.height / image.width : 1;
@@ -32,7 +44,7 @@ const px = (r: PanelRect, unit: number): PanelRect => ({ x: r.x * unit, y: r.y *
 /**
  * Draw a multi-panel meme at `width`×`height` (the grid's aspect; any scale): white background, each pack image
  * whole and uncropped in its cell, each caption fit to its cell with the shared text layout, and (unless `set.grid`
- * is off) black rules around cells.
+ * is off) black rules between captions, images, and panels, never around the outer edge.
  */
 export function composePanels(ctx: Ctx2D, set: PanelSet, images: PackImages, width: number, height: number): PanelBox[] {
   const grid = panelSetGrid(set, images);
@@ -65,13 +77,17 @@ export function composePanels(ctx: Ctx2D, set: PanelSet, images: PackImages, wid
       overflow: layout.overflow,
     });
   });
-  // Rules last so images never cover them; outer edges show half the width, inner edges the full width.
+  // Rules last so images never cover them.
   if (set.grid) {
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = Math.max(1, PANEL_RULE_WIDTH * unit);
-    for (const cell of grid.cells) {
-      for (const r of [px(cell.text, unit), px(cell.image, unit)]) ctx.strokeRect(r.x, r.y, r.width, r.height);
+    ctx.lineCap = "butt";
+    ctx.beginPath();
+    for (const rule of panelRules(grid)) {
+      ctx.moveTo(rule.x1 * unit, rule.y1 * unit);
+      ctx.lineTo(rule.x2 * unit, rule.y2 * unit);
     }
+    ctx.stroke();
   }
   ctx.restore();
   return boxes;

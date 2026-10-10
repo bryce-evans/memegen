@@ -155,7 +155,7 @@ export interface TemplateRow {
   asset: AssetRow;
   default_layers: Layer[];
   /** Pack lives in `template_pack_assets`, selected as `pack`. */
-  panels: { layout: PanelLayout; grid: boolean; fontSize: number; defaultPanels: Panel[] } | null;
+  panels: { layout: PanelLayout; grid: boolean; mirror: boolean; fontSize: number; defaultPanels: Panel[] } | null;
   /** Pack assets in order; null for single-media templates. */
   pack: AssetRow[] | null;
   is_public: boolean;
@@ -198,6 +198,7 @@ export function toTemplate(r: TemplateRow, variations: Template[] = []): Templat
       ? {
           layout: r.panels.layout,
           grid: r.panels.grid,
+          mirror: r.panels.mirror,
           fontSize: r.panels.fontSize,
           pack: (r.pack ?? []).map(toAsset),
           defaultPanels: r.panels.defaultPanels,

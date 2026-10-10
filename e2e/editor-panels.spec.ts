@@ -57,9 +57,12 @@ test("multi-panel: build a template from an image pack, make a meme with more pa
   await expect(third.getByTestId("panel-image").nth(1)).toHaveAttribute("aria-pressed", "true");
   await third.getByTestId("panel-text").fill("galaxy brain");
   await page.getByTestId("layout-horizontal").click();
-  // Hiding the grid and shrinking the captions both redraw the stage and are saved with the meme.
+  // Hiding the grid, mirroring, and shrinking the captions each redraw the stage and are saved with the meme.
   let shown = await stagePixels(page);
-  await page.getByTestId("grid-hide").click();
+  await page.getByTestId("panel-grid").click();
+  await expect.poll(() => stagePixels(page)).not.toBe(shown);
+  shown = await stagePixels(page);
+  await page.getByTestId("panel-mirror").click();
   await expect.poll(() => stagePixels(page)).not.toBe(shown);
   shown = await stagePixels(page);
   await page.getByTestId("panel-font-size").fill("5");
@@ -70,7 +73,7 @@ test("multi-panel: build a template from an image pack, make a meme with more pa
   const id = await memeIdFromUrl(page);
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.layers).toEqual([]);
-  expect(meme.panels).toMatchObject({ layout: "horizontal", grid: false, fontSize: 0.05 });
+  expect(meme.panels).toMatchObject({ layout: "horizontal", grid: false, mirror: true, fontSize: 0.05 });
   expect(meme.panels?.panels.map((p) => [p.assetId, p.text])).toEqual([
     [packA, "small brain"],
     [packB, "big brain"],
@@ -84,7 +87,8 @@ test("multi-panel: build a template from an image pack, make a meme with more pa
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expectPanelTexts(page, ["small brain", "big brain", "galaxy brain"]);
   await expect(page.getByTestId("layout-horizontal")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByTestId("grid-hide")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("panel-grid")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByTestId("panel-mirror")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("panel-font-size")).toHaveValue("5");
   await expect(page.getByTestId("pack-file")).toHaveCount(0); // the pack is only edited by template authors
 

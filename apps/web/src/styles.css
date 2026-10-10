@@ -609,7 +609,8 @@
 .panel-style {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ui-space-2);
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-4);
   margin-bottom: var(--ui-space-3);
 }
 .panel-images {

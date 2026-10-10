@@ -503,8 +503,9 @@ test("multi-panel templates: an ordered still-image pack; memes must fill panels
   const template = await makeTemplate(alice, { name: "Brain", panels: { layout: "vertical", packAssetIds: pack, defaultPanels } });
   assert.deepEqual(template.defaultLayers, []);
   assert.equal(template.panels?.layout, "vertical");
-  // Omitted style fields default to the grid on and the default caption size.
+  // Omitted style fields default to the grid on, unmirrored, and the default caption size.
   assert.equal(template.panels?.grid, true);
+  assert.equal(template.panels?.mirror, false);
   assert.equal(template.panels?.fontSize, PANEL_FONT_SIZE_DEFAULT);
   assert.deepEqual(template.panels?.pack.map((a) => a.id), pack);
   assert.deepEqual(template.panels?.defaultPanels, defaultPanels);
@@ -522,7 +523,13 @@ test("multi-panel templates: an ordered still-image pack; memes must fill panels
     assert.equal(bad.status, 400, JSON.stringify(bad.body));
   }
 
-  const panels: PanelSet = { layout: "horizontal", grid: false, fontSize: 0.2, panels: [newPanel(pack[1]!, "a"), newPanel(pack[1]!, "b")] };
+  const panels: PanelSet = {
+    layout: "horizontal",
+    grid: false,
+    mirror: true,
+    fontSize: 0.2,
+    panels: [newPanel(pack[1]!, "a"), newPanel(pack[1]!, "b")],
+  };
   const meme = await makeMeme(alice, { templateId: template.id, panels });
   assert.deepEqual(meme.panels, panels);
   assert.deepEqual(meme.layers, []);
@@ -540,7 +547,7 @@ test("multi-panel templates: an ordered still-image pack; memes must fill panels
     call<Meme>("PATCH", `/api/memes/${meme.id}`, alice, { layers: [], outputAssetId: meme.outputAsset.id, ...body });
   assert.equal((await edit({})).status, 400);
   assert.equal((await edit({ panels: { layout: "vertical", panels: [newPanel(stranger)] } })).status, 400);
-  const edited: PanelSet = { layout: "vertical", grid: true, fontSize: 0.05, panels: [newPanel(pack[2]!, "c")] };
+  const edited: PanelSet = { layout: "vertical", grid: true, mirror: false, fontSize: 0.05, panels: [newPanel(pack[2]!, "c")] };
   const patched = await edit({ panels: edited });
   assert.equal(patched.status, 200, JSON.stringify(patched.body));
   assert.deepEqual(patched.body.panels, edited);
@@ -562,12 +569,13 @@ test("multi-panel template edits: the pack grows and reorders but never loses im
   const defaultPanels = [newPanel(added, "new"), newPanel(pack[1]!, "old")];
   const grown = await patch(template.id, {
     assetId: cover,
-    panels: { layout: "horizontal", grid: false, fontSize: 0.25, packAssetIds: [added, pack[1], pack[0]], defaultPanels },
+    panels: { layout: "horizontal", grid: false, mirror: true, fontSize: 0.25, packAssetIds: [added, pack[1], pack[0]], defaultPanels },
   });
   assert.equal(grown.status, 200, JSON.stringify(grown.body));
   assert.equal(grown.body.asset.id, cover);
   assert.equal(grown.body.panels?.layout, "horizontal");
   assert.equal(grown.body.panels?.grid, false);
+  assert.equal(grown.body.panels?.mirror, true);
   assert.equal(grown.body.panels?.fontSize, 0.25);
   assert.deepEqual(grown.body.panels?.pack.map((a) => a.id), [added, pack[1], pack[0]]);
   assert.deepEqual(grown.body.panels?.defaultPanels, defaultPanels);

@@ -198,7 +198,7 @@ test("a snapshot from older code loads and is migrated forward", async () => {
   assert.equal(manifest.migrations.at(-1), "012_stickers.sql");
 
   const result = await loadSnapshot(target, { databaseUrl: TARGET_URL, providers: targetProviders, file });
-  assert.deepEqual(result.migrated, ["013_sticker_uses.sql"]);
+  assert.deepEqual(result.migrated, ["013_sticker_uses.sql", "014_panel_mirror.sql"]);
   // 013's backfill ran over the restored meme.
   const uses = await target<{ kind: string }[]>`select kind from sticker_uses where meme_id = ${memeId} order by kind`;
   assert.deepEqual(uses.map((u) => u.kind), ["created", "posted"]);

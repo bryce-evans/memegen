@@ -64,8 +64,10 @@ export type PanelSet = z.output<typeof panelSetSchema>;
 /** What makes a template multi-panel: its image pack and the panels the editor starts with. */
 export interface PanelTemplate {
   layout: PanelLayout;
-  /** Whether the default panels show the black grid rules (`PanelSet.grid`). */
+  /** Whether the default panels show the black rules between captions, images, and panels (`PanelSet.grid`). */
   grid: boolean;
+  /** Whether the default panels put each image before its caption (`PanelSet.mirror`). */
+  mirror: boolean;
   /** Default max caption font size (`PanelSet.fontSize`). */
   fontSize: number;
   /** Still images in pack order; panels pick from these. */

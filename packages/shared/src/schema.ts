@@ -134,8 +134,10 @@ export const panelSchema = z.object({
 
 export const panelSetSchema = z.object({
   layout: z.enum(PANEL_LAYOUTS),
-  /** Black rules around every caption and image; false draws the panels without them. */
+  /** Black rules between captions and images and between panels (never around the edges); false omits them. */
   grid: z.boolean().default(true),
+  /** Swap caption and image: image left of the caption (vertical) or above it (horizontal). */
+  mirror: z.boolean().default(false),
   /** Max caption font size for every panel, in units (`panelTextLayer`). */
   fontSize: z.number().min(PANEL_FONT_SIZE_MIN).max(PANEL_FONT_SIZE_MAX).default(PANEL_FONT_SIZE_DEFAULT),
   panels: z.array(panelSchema).min(1).max(MAX_PANELS),
@@ -146,6 +148,7 @@ export const panelTemplateInputSchema = z
   .object({
     layout: z.enum(PANEL_LAYOUTS),
     grid: z.boolean().default(true),
+    mirror: z.boolean().default(false),
     fontSize: z.number().min(PANEL_FONT_SIZE_MIN).max(PANEL_FONT_SIZE_MAX).default(PANEL_FONT_SIZE_DEFAULT),
     packAssetIds: z
       .array(z.uuid())

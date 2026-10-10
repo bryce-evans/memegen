@@ -7,6 +7,7 @@ import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { layerSchema, layersSchema, sessionSchema } from "./schema.ts";
 import { composedHeight, layerArea, layoutTopSection, topSectionPx } from "./section.ts";
 import { badgesFor } from "./badges.ts";
+import { panelGrid, panelRules } from "./panels.ts";
 import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
 
 const kf = (t: number, x: number, opacity = 1) => ({ t, x, y: 0.5, opacity });
@@ -116,6 +117,24 @@ test("badges: only the highest reached tier per stat shows, at exact thresholds"
 test("sessionSchema rejects the reserved system username in any case", () => {
   assert.equal(sessionSchema.safeParse({ username: "MemeGen" }).success, false);
   assert.equal(sessionSchema.safeParse({ username: "memegen2" }).success, true);
+});
+
+test("panelGrid mirror swaps each caption and image without changing the grid's size", () => {
+  const vertical = panelGrid("vertical", true, [1, 0.5]);
+  assert.deepEqual([vertical.width, vertical.height], [2, 1.5]);
+  assert.deepEqual(vertical.cells[1], { text: { x: 1, y: 1, width: 1, height: 0.5 }, image: { x: 0, y: 1, width: 1, height: 0.5 } });
+  const horizontal = panelGrid("horizontal", true, [1, 0.5]);
+  assert.deepEqual([horizontal.width, horizontal.height], [3, 1.5]);
+  assert.deepEqual(horizontal.cells[1], { text: { x: 1, y: 1, width: 2, height: 0.5 }, image: { x: 1, y: 0, width: 2, height: 1 } });
+});
+
+test("panelRules draws only inner dividers: caption | image and between panels, never the outer border", () => {
+  // Vertical, two rows: the caption/image divider (one per row) and one rule across between the rows.
+  assert.deepEqual(new Set(panelRules(panelGrid("vertical", false, [1, 0.5])).map((r) => `${r.x1},${r.y1}-${r.x2},${r.y2}`)), new Set(["1,0-1,1", "1,1-1,1.5", "0,1-1,1", "1,1-2,1"]));
+  // Horizontal, mirrored: images on top, one rule under them per column, and one between the columns (both halves).
+  assert.deepEqual(new Set(panelRules(panelGrid("horizontal", true, [1, 1])).map((r) => `${r.x1},${r.y1}-${r.x2},${r.y2}`)), new Set(["0,1-1,1", "1,1-2,1", "1,1-1,1.5", "1,0-1,1"]));
+  // A single panel's only rule is its caption/image divider.
+  assert.deepEqual(panelRules(panelGrid("vertical", false, [1])), [{ x1: 1, y1: 0, x2: 1, y2: 1 }]);
 });
 
 test("stillExportSize upscales small stills to the minimum edge, keeps larger ones, never passes the cap", () => {

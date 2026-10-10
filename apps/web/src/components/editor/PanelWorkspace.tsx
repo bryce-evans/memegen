@@ -17,11 +17,18 @@ import { TemplateSavePanel } from "./TemplateSavePanel.tsx";
 
 /** What a template stores for `set` with `pack`; also compared to detect unsaved template edits. */
 function templateInputOf(set: PanelSet, pack: Asset[]): PanelTemplateInput {
-  return { layout: set.layout, grid: set.grid, fontSize: set.fontSize, packAssetIds: pack.map((a) => a.id), defaultPanels: set.panels };
+  return {
+    layout: set.layout,
+    grid: set.grid,
+    mirror: set.mirror,
+    fontSize: set.fontSize,
+    packAssetIds: pack.map((a) => a.id),
+    defaultPanels: set.panels,
+  };
 }
 
 /**
- * The multi-panel editor: pick a layout, grid, and caption size, add panels, and give each one a pack image and a
+ * The multi-panel editor: pick a layout, grid, mirroring, and caption size, add panels, and give each one a pack image and a
  * caption. Authoring a template (`?newPanels`, `?editTemplate=`) also manages the image pack; its setup becomes the
  * defaults.
  */
@@ -99,7 +106,7 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
     return uploadAsset(cover.blob, `${fileSlug(name)}${cover.extension}`);
   }
 
-  const packNote = "The image pack, layout, grid, caption size, and panels with their images and captions";
+  const packNote = "The image pack, layout, grid, mirroring, caption size, and panels with their images and captions";
   return (
     <>
       {source.kind === "new-panels" && <PageHeader title="Multi-panel Template Editor" titleProps={{ "data-testid": "editor-title" }} />}
@@ -129,6 +136,7 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
             heading={authoring ? "Default Setup" : "Panels"}
             layout={set.layout}
             grid={set.grid}
+            mirror={set.mirror}
             fontSize={set.fontSize}
             panels={panels}
             pack={pack}

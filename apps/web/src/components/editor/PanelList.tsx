@@ -8,7 +8,7 @@ import {
   type PanelLayout,
   type PanelSet,
 } from "@memegen/shared";
-import { Button, cx, Icon, IconButton, Panel, SegmentedControl, Slider, TextArea } from "@memegen/ui";
+import { Button, cx, Icon, IconButton, Inline, Panel, SegmentedControl, Slider, TextArea } from "@memegen/ui";
 import { contentUrl } from "../../api.ts";
 
 export interface PanelListProps {
@@ -16,13 +16,14 @@ export interface PanelListProps {
   heading: string;
   layout: PanelLayout;
   grid: boolean;
+  mirror: boolean;
   /** Max caption size in units (`PanelSet.fontSize`). */
   fontSize: number;
   panels: MemePanel[];
   pack: Asset[];
   selectedId: string | null;
-  /** Change the layout, grid, or caption size of the whole set. */
-  onStyle: (changes: Partial<Pick<PanelSet, "layout" | "grid" | "fontSize">>) => void;
+  /** Change the layout, grid, mirroring, or caption size of the whole set. */
+  onStyle: (changes: Partial<Pick<PanelSet, "layout" | "grid" | "mirror" | "fontSize">>) => void;
   onSelect: (id: string) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
@@ -35,43 +36,22 @@ const LAYOUT_OPTIONS = [
   { value: "horizontal", label: "Horizontal", testId: "layout-horizontal" },
 ] as const;
 
-const GRID_OPTIONS = [
-  { value: "on", label: "Grid", testId: "grid-show" },
-  { value: "off", label: "No grid", testId: "grid-hide" },
-] as const;
-
 /**
- * Multi-panel side panel: the layout, grid, and caption size, then one card per panel with its caption and which pack
- * image it shows. Picking an image only changes the panel's reference to it; the image itself is never edited.
+ * Multi-panel side panel: the layout, grid, mirroring, and caption size, then one card per panel with its caption and
+ * which pack image it shows. Picking an image only changes the panel's reference to it; the image itself is never edited.
  */
 export function PanelList(props: PanelListProps) {
-  const { heading, layout, grid, fontSize, panels, pack, selectedId, onStyle, onSelect, onAdd, onRemove, onMove, onUpdate } = props;
+  const { heading, layout, grid, mirror, fontSize, panels, pack, selectedId, onStyle, onSelect, onAdd, onRemove, onMove, onUpdate } = props;
   return (
-    <Panel
-      heading={heading}
-      className="layer-panel"
-      headingActions={
-        <Button
-          size="sm"
-          icon={<Icon name="plus" />}
-          data-testid="add-panel"
-          disabled={pack.length === 0 || panels.length >= MAX_PANELS}
-          title={panels.length >= MAX_PANELS ? `At most ${MAX_PANELS} panels` : undefined}
-          onClick={onAdd}
-        >
-          Add panel
-        </Button>
-      }
-    >
+    <Panel heading={heading} className="layer-panel">
       <div className="panel-style">
         <SegmentedControl<PanelLayout> aria-label="Layout" size="sm" options={LAYOUT_OPTIONS} value={layout} onChange={(v) => onStyle({ layout: v })} />
-        <SegmentedControl<"on" | "off">
-          aria-label="Grid"
-          size="sm"
-          options={GRID_OPTIONS}
-          value={grid ? "on" : "off"}
-          onChange={(v) => onStyle({ grid: v === "on" })}
-        />
+        <Button size="sm" tone="info" icon={<Icon name="grid" />} pressed={grid} onClick={() => onStyle({ grid: !grid })} data-testid="panel-grid">
+          Grid
+        </Button>
+        <Button size="sm" tone="info" icon={<Icon name="swap" />} pressed={mirror} onClick={() => onStyle({ mirror: !mirror })} data-testid="panel-mirror">
+          Mirror
+        </Button>
       </div>
       <Slider
         label={`Text size ${Math.round(fontSize * 100)}%`}
@@ -144,6 +124,18 @@ export function PanelList(props: PanelListProps) {
           );
         })}
       </ol>
+      <Inline justify="end">
+        <Button
+          size="sm"
+          icon={<Icon name="plus" />}
+          data-testid="add-panel"
+          disabled={pack.length === 0 || panels.length >= MAX_PANELS}
+          title={panels.length >= MAX_PANELS ? `At most ${MAX_PANELS} panels` : undefined}
+          onClick={onAdd}
+        >
+          Add panel
+        </Button>
+      </Inline>
     </Panel>
   );
 }

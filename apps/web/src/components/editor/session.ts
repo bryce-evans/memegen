@@ -110,14 +110,14 @@ function initialLayers(source: Source, fontId: string | null): Layer[] {
 /** Pack and starting panel set for a multi-panel source. */
 function initialPanels(source: PanelSource): { pack: Asset[]; set: PanelSet } {
   if (source.kind === "new-panels") {
-    return { pack: [], set: { layout: "vertical", grid: true, fontSize: PANEL_FONT_SIZE_DEFAULT, panels: [] } };
+    return { pack: [], set: { layout: "vertical", grid: true, mirror: false, fontSize: PANEL_FONT_SIZE_DEFAULT, panels: [] } };
   }
   const spec = source.template.panels;
   if (!spec) throw new Error("this template has no image pack");
   if (source.kind === "meme") return { pack: spec.pack, set: source.meme.panels! };
   // Editing works on the stored defaults (ids kept); using the template gives its panels fresh ids.
   const panels = source.kind === "edit-template" ? spec.defaultPanels : spec.defaultPanels.map((p) => ({ ...p, id: crypto.randomUUID() }));
-  return { pack: spec.pack, set: { layout: spec.layout, grid: spec.grid, fontSize: spec.fontSize, panels } };
+  return { pack: spec.pack, set: { layout: spec.layout, grid: spec.grid, mirror: spec.mirror, fontSize: spec.fontSize, panels } };
 }
 
 export async function decodePackImage(asset: Asset, signal?: AbortSignal): Promise<ImageBitmap> {

@@ -201,6 +201,7 @@ export interface CreateTemplateInput {
 export interface PanelTemplateInput {
   layout: PanelLayout;
   grid: boolean;
+  mirror: boolean;
   fontSize: number;
   packAssetIds: string[];
   defaultPanels: Panel[];

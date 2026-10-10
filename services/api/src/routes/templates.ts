@@ -129,6 +129,7 @@ export function register(app: ApiApp, sql: Sql): void {
             ? tx.json({
                 layout: body.panels.layout,
                 grid: body.panels.grid,
+                mirror: body.panels.mirror,
                 fontSize: body.panels.fontSize,
                 defaultPanels: body.panels.defaultPanels,
               } as never)
@@ -172,6 +173,7 @@ export function register(app: ApiApp, sql: Sql): void {
       changes.panels = sql.json({
         layout: panels.layout,
         grid: panels.grid,
+        mirror: panels.mirror,
         fontSize: panels.fontSize,
         defaultPanels: panels.defaultPanels,
       } as never);

@@ -574,8 +574,10 @@
   border: var(--ui-border-width) solid var(--ui-color-border);
   border-radius: var(--ui-radius-card);
 }
+/* As wide as the column allows, but never taller than 68vh; `--stage-aspect` (width / height) is set by the stage. */
 .stage-inner {
   position: relative;
+  width: min(100%, calc(68vh * var(--stage-aspect, 1)));
   line-height: 0;
   touch-action: none;
 }
@@ -695,8 +697,8 @@
   padding: var(--ui-space-3) var(--ui-space-4);
   border-bottom: var(--ui-border-width) solid var(--ui-color-separator);
 }
-/* Frames and layer tracks share this scroller and its origin; the cell geometry (--thumb-border, --frame-gap) is
-   set from Timeline.tsx, which uses the same numbers to place the tracks on the cells. */
+/* Frames and layer tracks share this scroller and its origin; the cell geometry (--ui-frame-thumb-border,
+   --frame-gap) is set from Timeline.tsx, which uses the same numbers to place the tracks on the cells. */
 .strip {
   position: relative;
   padding: 6px;
@@ -706,46 +708,6 @@
   display: flex;
   gap: var(--frame-gap);
   width: max-content;
-}
-.thumb {
-  position: relative;
-  flex: 0 0 auto;
-  padding: 0;
-  border: var(--thumb-border) solid transparent;
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-color-media-bg);
-  line-height: 0;
-  cursor: pointer;
-}
-.thumb canvas {
-  display: block;
-  border-radius: calc(var(--ui-radius-sm) - 2px);
-}
-.thumb.current {
-  border-color: var(--ui-color-primary);
-}
-.thumb.outside canvas {
-  opacity: 0.3;
-}
-.thumb.keyframe {
-  border-bottom-color: var(--ui-color-warning);
-}
-.thumb.current.keyframe {
-  border-color: var(--ui-color-primary);
-  border-bottom-color: var(--ui-color-warning);
-}
-.thumb:focus-visible {
-  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
-  outline-offset: 1px;
-}
-.kf-mark {
-  position: absolute;
-  top: 1px;
-  right: 2px;
-  font-size: 10px;
-  line-height: 1;
-  color: var(--ui-color-warning);
-  text-shadow: 0 0 2px var(--ui-color-overlay);
 }
 /* One track per layer under the frames, on the same cells: the bar spans the frames the layer shows on and carries
    its text (clipped); the handles at its ends sit on cell edges. The strip's padding keeps the edge handles inside
@@ -914,13 +876,6 @@
 }
 .window-frame {
   width: 4.5rem;
-}
-.keyframes-head {
-  margin: var(--ui-space-4) 0 var(--ui-space-2);
-}
-.keyframes-title {
-  margin: 0;
-  font-size: var(--ui-font-size-sm);
 }
 .keyframes {
   margin: 0 0 var(--ui-space-3);

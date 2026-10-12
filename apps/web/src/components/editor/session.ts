@@ -9,8 +9,10 @@ import {
   type Template,
   type Layer,
   type UploadLimits,
+  type User,
 } from "@memegen/shared";
 import { assetUrl, fetchAssetBlob, getAsset, getLimits, getMeme, getTemplate, listFonts } from "../../api.ts";
+import type { SavePanelProps } from "./SavePanel.tsx";
 
 /**
  * What the editor opens, from the query string (`?meme=`, `?template=`, `?newTemplate=`, `?editTemplate=`,
@@ -74,6 +76,25 @@ export function sourceRef(params: URLSearchParams): SourceRef | null {
 
 export function defaultFontId(fonts: Asset[]): string | null {
   return (fonts.find((f) => f.name.toLowerCase() === "impact") ?? fonts[0])?.id ?? null;
+}
+
+/** Editor page titles: shown while a source loads, and as the header of the template-authoring editors. */
+export const EDITOR_TITLES: Record<SourceRef["kind"], string> = {
+  meme: "Edit meme",
+  template: "Loading template",
+  "new-template": "Template Editor",
+  "edit-template": "Edit template",
+  "new-panels": "Multi-panel Template Editor",
+};
+
+/** SavePanel's target and defaults for a meme made from a template, or re-edited (saved only by its owner). */
+export function memeSaveProps(
+  source: { kind: "template"; template: Template } | { kind: "meme"; meme: Meme },
+  user: User,
+): Pick<SavePanelProps, "canSave" | "target" | "defaultTitle" | "templateTags"> {
+  return source.kind === "meme"
+    ? { canSave: source.meme.owner.id === user.id, target: { editing: source.meme }, defaultTitle: "", templateTags: [] }
+    : { canSave: true, target: { templateId: source.template.id }, defaultTitle: source.template.name, templateTags: source.template.tags };
 }
 
 async function loadSource({ kind, id }: SourceRef): Promise<Source | { kind: "new-panels" }> {

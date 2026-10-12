@@ -1,8 +1,8 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from "react";
 import type { DecodedMedia } from "@memegen/render";
-import { layerLabel, type Layer, type WindowEdge } from "@memegen/shared";
+import { layerLabels, type Layer, type WindowEdge } from "@memegen/shared";
 import { cx } from "@memegen/ui";
-import { clampEdgeFrame, setEdgeFrame, windowFrames } from "./windowFrames.ts";
+import { moveEdge, windowFrames } from "./windowFrames.ts";
 
 export interface LayerTracksProps {
   media: DecodedMedia;
@@ -37,10 +37,10 @@ export function LayerTracks({ media, layers, frame, selectedId, cellWidth, pitch
 
   /** Move one edge to frame `index` (clamped so the window can't invert), then show that frame. */
   function setEdge(layer: Layer, edge: WindowEdge, index: number): number {
-    const i = clampEdgeFrame(layer, edge, index, times);
-    onUpdate(layer.id, (l) => setEdgeFrame(l, edge, i, times));
-    onSeek(i);
-    return i;
+    const moved = moveEdge(layer, edge, index, times);
+    onUpdate(layer.id, moved.update);
+    onSeek(moved.index);
+    return moved.index;
   }
 
   function startDrag(e: PointerEvent<HTMLDivElement>, layer: Layer, edge: WindowEdge) {
@@ -74,10 +74,11 @@ export function LayerTracks({ media, layers, frame, selectedId, cellWidth, pitch
     setEdge(layer, edge, next);
   }
 
+  const labels = layerLabels(layers);
   return (
     <div className="layer-tracks" data-testid="layer-tracks">
       {layers.map((layer, n) => {
-        const label = layerLabel(layer, n);
+        const label = labels[n]!;
         const { start: s, end: e } = windowFrames(layer, times);
         const left = s * pitch;
         const right = e * pitch + cellWidth;

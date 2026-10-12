@@ -11,6 +11,7 @@ import type {
   ChipProps,
   DialogProps,
   EmptyStateProps,
+  FrameThumbProps,
   MediaGridProps,
   PanelProps,
   ProgressBarProps,
@@ -56,6 +57,7 @@ export interface ComponentOverrides {
   EmptyState: ComponentType<EmptyStateProps>;
   Field: ComponentType<FieldProps>;
   FileButton: ComponentType<FileButtonProps>;
+  FrameThumb: ComponentType<FrameThumbProps>;
   Header: ComponentType<HeaderProps>;
   Icon: ComponentType<IconProps>;
   IconButton: ComponentType<IconButtonProps>;

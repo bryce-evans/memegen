@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { frameIndexAt, type DecodedMedia } from "@memegen/render";
 import { isVisibleAt, type Layer } from "@memegen/shared";
-import { Icon, IconButton, Panel, Text } from "@memegen/ui";
+import { FrameThumb, Icon, IconButton, Panel, Text } from "@memegen/ui";
 import { LayerTracks } from "./LayerTracks.tsx";
 
 const THUMB_HEIGHT = 48;
@@ -94,7 +94,7 @@ export function Timeline({ media, frame, playing, selectedLayer, layers, onSeek,
         ref={stripRef}
         data-testid="timeline"
         data-complete={complete ? "true" : undefined}
-        style={{ "--frame-gap": `${FRAME_GAP}px`, "--thumb-border": `${THUMB_BORDER}px` } as CSSProperties}
+        style={{ "--frame-gap": `${FRAME_GAP}px`, "--ui-frame-thumb-border": `${THUMB_BORDER}px` } as CSSProperties}
       >
         <div className="strip-frames">
           {media.times.map((time, i) => (
@@ -144,11 +144,11 @@ interface ThumbProps {
 
 /** Memoized so playback only re-renders the two cells whose `current` flag flips. */
 const Thumb = memo(function Thumb({ index, time, width, height, current, keyframe, outside, onSeek, canvases }: ThumbProps) {
-  const className = ["thumb", current ? "current" : "", keyframe ? "keyframe" : "", outside ? "outside" : ""].join(" ");
   return (
-    <button
-      type="button"
-      className={className}
+    <FrameThumb
+      current={current}
+      keyframe={keyframe}
+      dimmed={outside}
       data-testid="timeline-frame"
       data-index={index}
       onClick={() => onSeek(index)}
@@ -161,7 +161,6 @@ const Thumb = memo(function Thumb({ index, time, width, height, current, keyfram
           canvases.current[index] = el;
         }}
       />
-      {keyframe && <span className="kf-mark" aria-label="keyframe">◆</span>}
-    </button>
+    </FrameThumb>
   );
 });

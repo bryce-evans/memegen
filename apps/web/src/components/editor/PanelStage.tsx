@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { composePanels, panelSetGrid, type AssetImages, type PanelBox } from "@memegen/render";
 import type { PanelSet } from "@memegen/shared";
 import { Alert, cx, EmptyState } from "@memegen/ui";
+import { useCanvasScale } from "./useCanvasScale.ts";
 
 export interface PanelStageProps {
   set: PanelSet;
@@ -17,25 +18,13 @@ export interface PanelStageProps {
 export function PanelStage({ set, images, selectedId, onSelect }: PanelStageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [boxes, setBoxes] = useState<PanelBox[]>([]);
-  const [displayWidth, setDisplayWidth] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const empty = set.panels.length === 0;
   const grid = empty ? null : panelSetGrid(set, images);
   const aspect = grid ? grid.width / grid.height : 1;
-  const dpr = window.devicePixelRatio || 1;
-  const pixelWidth = displayWidth > 0 ? Math.round(displayWidth * dpr) : 800;
+  const { pixelWidth, boxScale } = useCanvasScale(canvasRef, 800, !empty);
   const pixelHeight = Math.max(1, Math.round(pixelWidth / aspect));
-  const boxScale = displayWidth > 0 ? displayWidth / pixelWidth : 0;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const observer = new ResizeObserver(() => setDisplayWidth(canvas.clientWidth));
-    observer.observe(canvas);
-    setDisplayWidth(canvas.clientWidth);
-    return () => observer.disconnect();
-  }, [empty]);
 
   useEffect(() => {
     const ctx = canvasRef.current?.getContext("2d");
@@ -59,7 +48,7 @@ export function PanelStage({ set, images, selectedId, onSelect }: PanelStageProp
 
   return (
     <div className="stage">
-      <div className="stage-inner" style={{ width: `min(100%, calc(68vh * ${aspect}))` }} onPointerDown={() => onSelect(null)}>
+      <div className="stage-inner" style={{ "--stage-aspect": aspect } as CSSProperties} onPointerDown={() => onSelect(null)}>
         <canvas
           ref={canvasRef}
           width={pixelWidth}

@@ -73,3 +73,27 @@ export function layerAbove(layer: Layer, width: number, height: number, bandPx: 
   const area = layerArea(layer, width, height, bandPx);
   return area.height > 0 ? area.top / area.height : 0;
 }
+
+/** `list` with item `id` swapped with its neighbor `delta` away; `list` itself when there is no such neighbor. */
+export function moveById<T extends { id: string }>(list: T[], id: string, delta: -1 | 1): T[] {
+  const i = list.findIndex((item) => item.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= list.length) return list;
+  const next = [...list];
+  [next[i], next[j]] = [next[j]!, next[i]!];
+  return next;
+}
+
+/** Whether layer `id` can move `delta` places: the top section's text is pinned as layer 0, so it never moves and nothing moves above it. */
+export function canMoveLayer(layers: readonly Layer[], id: string, delta: -1 | 1): boolean {
+  const i = layers.findIndex((l) => l.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= layers.length) return false;
+  const section = topSectionLayer(layers);
+  return layers[i] !== section && layers[j] !== section;
+}
+
+/** `layers` with layer `id` moved `delta` places (later layers draw on top), when `canMoveLayer` allows it. */
+export function moveLayer(layers: Layer[], id: string, delta: -1 | 1): Layer[] {
+  return canMoveLayer(layers, id, delta) ? moveById(layers, id, delta) : layers;
+}

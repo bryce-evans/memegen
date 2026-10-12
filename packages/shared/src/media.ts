@@ -24,15 +24,14 @@ export const SUPPORTED_TYPES: readonly SupportedType[] = [
 ];
 
 const MEDIA_TYPES = SUPPORTED_TYPES.filter((t) => t.kind !== "font");
+const IMAGE_TYPES = SUPPORTED_TYPES.filter((t) => t.kind === "image");
 const FONT_TYPES = SUPPORTED_TYPES.filter((t) => t.kind === "font");
 
 /** `<input type=file accept>` values: mime types plus extensions (some browsers report no type for .mov/.ttf). */
 export const MEDIA_ACCEPT = [...MEDIA_TYPES.map((t) => t.mime), ...MEDIA_TYPES.map((t) => t.ext)].join(",");
 export const FONT_ACCEPT = [...FONT_TYPES.map((t) => t.mime), ...FONT_TYPES.map((t) => t.ext)].join(",");
-/** Still images only (multi-panel template packs). */
-export const IMAGE_ACCEPT = SUPPORTED_TYPES.filter((t) => t.kind === "image")
-  .flatMap((t) => [t.mime, t.ext])
-  .join(",");
+/** Still images only (image layers, multi-panel template packs). */
+export const IMAGE_ACCEPT = IMAGE_TYPES.flatMap((t) => [t.mime, t.ext]).join(",");
 /** Stickers: PNG only. */
 export const STICKER_ACCEPT = SUPPORTED_TYPES.filter((t) => t.mime === STICKER_MIME)
   .flatMap((t) => [t.mime, t.ext])
@@ -48,10 +47,12 @@ export function supportedTypeForFile(name: string, mime: string): SupportedType 
   return SUPPORTED_TYPES.find((t) => t.mime === mime || lower.endsWith(t.ext));
 }
 
-/** "png/jpg/webp/gif/mp4/mov"; without a group, media and fonts joined by "or". */
-export function supportedTypesLabel(group?: "media" | "font"): string {
+const GROUP_TYPES = { media: MEDIA_TYPES, image: IMAGE_TYPES, font: FONT_TYPES };
+
+/** "png/jpg/webp/gif/mp4/mov" for a group (`image`: stills only); without one, media and fonts joined by "or". */
+export function supportedTypesLabel(group?: keyof typeof GROUP_TYPES): string {
   const label = (types: readonly SupportedType[]) => types.map((t) => t.ext.slice(1)).join("/");
-  if (group) return label(group === "font" ? FONT_TYPES : MEDIA_TYPES);
+  if (group) return label(GROUP_TYPES[group]);
   return `${label(MEDIA_TYPES)} or ${label(FONT_TYPES)}`;
 }
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { TEMPLATE_NAME_MAX_LENGTH, type Template } from "@memegen/shared";
 import { Alert, Button, Inline, LinkButton, Panel, Text, TextField } from "@memegen/ui";
+import { useUser } from "../../auth.tsx";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
 
@@ -10,7 +11,6 @@ const snapshot = (name: string, content: unknown) => JSON.stringify({ name: name
 
 export interface TemplateEditPanelProps {
   template: Template;
-  canEdit: boolean;
   /** The defaults as stored when the editor opened, and as currently edited (compared for "Unsaved changes"). */
   initialContent: unknown;
   content: unknown;
@@ -26,7 +26,8 @@ export interface TemplateEditPanelProps {
  * Side panel for editing an existing template (`?editTemplate=`): its name and defaults. Only the author can save;
  * memes already made from it keep their own content.
  */
-export function TemplateEditPanel({ template, canEdit, initialContent, content, note, ready, save: write }: TemplateEditPanelProps) {
+export function TemplateEditPanel({ template, initialContent, content, note, ready, save: write }: TemplateEditPanelProps) {
+  const canEdit = template.owner.id === useUser().id;
   const [name, setName] = useState(template.name);
   const [saved, setSaved] = useState(() => snapshot(template.name, initialContent));
   const { busy, error, run } = useAction();

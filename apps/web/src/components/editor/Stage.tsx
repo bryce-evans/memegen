@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { composedSize, composeFrame, type AssetImages, type DecodedMedia, type LayerBox } from "@memegen/render";
-import { layerArea, layerLabel, layerStateAt, resizeImage, type ImageLayer, type Layer } from "@memegen/shared";
-import { Alert } from "@memegen/ui";
+import { layerArea, layerLabels, layerStateAt, resizeImage, type ImageLayer, type Layer } from "@memegen/shared";
+import { Alert, cx } from "@memegen/ui";
+import { useCanvasScale } from "./useCanvasScale.ts";
 
 export interface StageProps {
   media: DecodedMedia;
@@ -47,29 +48,15 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
   const frameCache = useRef<{ index: number; image: CanvasImageSource } | null>(null);
   const drag = useRef<Drag | null>(null);
   const [boxes, setBoxes] = useState<LayerBox[]>([]);
-  const [displayWidth, setDisplayWidth] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const t = media.times[frame] ?? 0;
-  // Backing store at displayed size × device pixels, so text is rasterized at screen resolution instead of at the
-  // media's (often small) native size and then stretched. Layout is in fractions, so the result matches the export.
-  // A top section adds its band (sized by its text) above the media.
-  const dpr = window.devicePixelRatio || 1;
-  const pixelWidth = displayWidth > 0 ? Math.round(displayWidth * dpr) : media.width;
+  // Drawn at displayed size × device pixels; layout is in fractions, so the result matches the export. A top section
+  // adds its band (sized by its text) above the media.
+  const { displayWidth, pixelWidth, boxScale } = useCanvasScale(canvasRef, media.width);
   const { height: pixelHeight, mediaHeight: mediaPixelHeight } = composedSize(layers, media, pixelWidth);
   const native = composedSize(layers, media, media.width);
   const aspect = native.width / native.height;
-  /** CSS px per canvas px, for placing the selection handles. */
-  const boxScale = displayWidth > 0 ? displayWidth / pixelWidth : 0;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const observer = new ResizeObserver(() => setDisplayWidth(canvas.clientWidth));
-    observer.observe(canvas);
-    setDisplayWidth(canvas.clientWidth);
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     frameCache.current = null;
@@ -188,13 +175,10 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
     if (drag.current?.pointerId === e.pointerId) drag.current = null;
   }
 
+  const labels = layerLabels(layers);
   return (
     <div className="stage">
-      <div
-        className="stage-inner"
-        style={{ width: `min(100%, calc(68vh * ${aspect}))` }}
-        onPointerDown={() => onSelect(null)}
-      >
+      <div className="stage-inner" style={{ "--stage-aspect": aspect } as CSSProperties} onPointerDown={() => onSelect(null)}>
         <canvas
           ref={canvasRef}
           width={pixelWidth}
@@ -212,12 +196,8 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
               key={box.layerId}
               data-testid="layer-box"
               data-layer-id={box.layerId}
-              className={[
-                "handle",
-                box.layerId === selectedId ? "selected" : "",
-                box.overflow ? "overflow" : "",
-              ].join(" ")}
-              title={box.overflow ? "Text does not fit the box at the minimum size" : layer.type === "text" ? layer.text : layerLabel(layer, index)}
+              className={cx("handle", box.layerId === selectedId && "selected", box.overflow && "overflow")}
+              title={box.overflow ? "Text does not fit the box at the minimum size" : layer.type === "text" ? layer.text : labels[index]}
               style={{
                 left: (box.cx - box.width / 2) * boxScale,
                 top: (box.cy - box.height / 2) * boxScale,
@@ -235,7 +215,7 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
                   {CORNERS.map((corner) => (
                     <div
                       key={corner}
-                      className={`transform-handle scale ${corner}`}
+                      className={cx("transform-handle", "scale", corner)}
                       data-testid="layer-scale-handle"
                       data-corner={corner}
                       title="Drag to resize"

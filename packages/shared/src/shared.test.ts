@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
-import { newImageLayer, newTextLayer, newTopSectionLayer } from "./defaults.ts";
+import { layerLabels, layerPosition, newImageLayer, newTextLayer, newTopSectionLayer } from "./defaults.ts";
 import { DEFAULT_LIMITS, IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
 import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { layerSchema, layersSchema, sessionSchema } from "./schema.ts";
-import { composedHeight, layerArea, layoutTopSection, topSectionPx } from "./section.ts";
+import { canMoveLayer, composedHeight, layerArea, layoutTopSection, moveById, moveLayer, topSectionPx } from "./section.ts";
 import { badgesFor } from "./badges.ts";
 import { panelGrid, panelRules } from "./panels.ts";
 import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
@@ -195,4 +195,33 @@ test("top section: the band is its one-line height plus every extra line of text
   assert.equal(layersSchema.safeParse(layers).success, true);
   assert.equal(layersSchema.safeParse([section, { ...section, id: "second" }]).success, false);
   assert.equal(layersSchema.safeParse([{ ...section, topSection: { height: 0.05 } }]).success, false);
+});
+
+test("layer order: the top section's text stays layer 0, nothing moves above it, and moves stop at the ends", () => {
+  const [section, a, b] = [newTopSectionLayer(), newTextLayer(), newImageLayer("asset")];
+  const layers = [section, a, b];
+  assert.equal(canMoveLayer(layers, section.id, 1), false);
+  assert.equal(canMoveLayer(layers, a.id, -1), false);
+  assert.equal(canMoveLayer(layers, b.id, 1), false);
+  assert.equal(canMoveLayer(layers, "missing", 1), false);
+  assert.equal(moveLayer(layers, a.id, -1), layers);
+  assert.deepEqual(moveLayer(layers, a.id, 1), [section, b, a]);
+  assert.deepEqual(moveLayer(layers, b.id, -1), [section, b, a]);
+
+  // Without a top section the first layer moves like any other.
+  assert.deepEqual(moveLayer([a, b], b.id, -1), [b, a]);
+  // The swap itself is generic (panels use it) and leaves its input alone.
+  const list = [{ id: "x" }, { id: "y" }];
+  assert.deepEqual(moveById(list, "x", 1), [{ id: "y" }, { id: "x" }]);
+  assert.deepEqual(list, [{ id: "x" }, { id: "y" }]);
+  assert.equal(moveById(list, "x", -1), list);
+});
+
+test("unnamed layers keep their numbers when the top section is switched on", () => {
+  const [text, image] = [newTextLayer({ name: "" }), newImageLayer("asset", { name: "" })];
+  assert.deepEqual(layerLabels([text, image]), ["Text 1", "Image 2"]);
+  const withBand = [newTopSectionLayer(), text, image];
+  assert.deepEqual(layerLabels(withBand), ["Top section", "Text 1", "Image 2"]);
+  assert.equal(layerPosition(withBand, 2), 1);
+  assert.deepEqual(layerLabels([{ ...text, name: "Caption" }]), ["Caption"]);
 });

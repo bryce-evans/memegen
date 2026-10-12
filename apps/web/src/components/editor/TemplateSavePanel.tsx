@@ -6,15 +6,6 @@ import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
 
-/** "distracted-boyfriend_v2.jpg" → "distracted boyfriend v2". */
-export function nameFromFile(filename: string): string {
-  return filename
-    .replace(/\.[^.]+$/, "")
-    .replace(/[-_]+/g, " ")
-    .trim()
-    .slice(0, TEMPLATE_NAME_MAX_LENGTH);
-}
-
 export interface TemplateSavePanelProps {
   defaultName: string;
   /** What the template holds, for the confirm dialog ("2 text boxes", "3 panels"). */

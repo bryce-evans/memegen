@@ -116,6 +116,39 @@ function ProgressBarBase({ value, className, ...rest }: ProgressBarProps) {
 
 export const ProgressBar = skinnable("ProgressBar", ProgressBarBase);
 
+export interface FrameThumbProps extends ComponentPropsWithRef<"button"> {
+  /** The frame being shown (`aria-current`). */
+  current?: boolean;
+  /** Marks a keyframe on this frame. */
+  keyframe?: boolean;
+  /** Fades the picture (e.g. outside the selected layer's visibility window). */
+  dimmed?: boolean;
+}
+
+/**
+ * A clickable frame thumbnail for a timeline strip; children are the picture (a canvas or image). The border width
+ * (`--ui-frame-thumb-border`) is part of the cell's size, so a strip that lines other content up with the cells sets it.
+ */
+function FrameThumbBase({ current, keyframe, dimmed, type = "button", className, children, ...rest }: FrameThumbProps) {
+  return (
+    <button
+      type={type}
+      aria-current={current || undefined}
+      className={cx("ui-frame-thumb", current && "ui-frame-thumb--current", keyframe && "ui-frame-thumb--keyframe", dimmed && "ui-frame-thumb--dimmed", className)}
+      {...rest}
+    >
+      {children}
+      {keyframe && (
+        <span className="ui-frame-thumb-mark" aria-label="keyframe">
+          ◆
+        </span>
+      )}
+    </button>
+  );
+}
+
+export const FrameThumb = skinnable("FrameThumb", FrameThumbBase);
+
 export interface AlertProps extends ComponentPropsWithRef<"div"> {
   tone?: Extract<Tone, "danger" | "info">;
 }

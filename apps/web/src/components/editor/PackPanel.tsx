@@ -1,7 +1,7 @@
 import { IMAGE_ACCEPT, MAX_PACK_IMAGES, type Asset, type UploadLimits } from "@memegen/shared";
 import { FileButton, Icon, IconButton, Panel, Text } from "@memegen/ui";
 import { contentUrl, uploadAsset } from "../../api.ts";
-import { precheckMedia } from "../../media.ts";
+import { precheckStillImage } from "../../media.ts";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
 
@@ -26,10 +26,7 @@ export function PackPanel({ pack, limits, locked, onAdded, onRemove }: PackPanel
     void run(async () => {
       const assets: Asset[] = [];
       for (const file of files.slice(0, room)) {
-        const media = await precheckMedia(file, limits);
-        const kind = media.kind;
-        media.dispose();
-        if (kind !== "image") throw new Error(`${file.name}: pack images must be still images (JPEG, PNG, or WebP)`);
+        await precheckStillImage(file, limits);
         assets.push(await uploadAsset(file, file.name));
       }
       await onAdded(assets);

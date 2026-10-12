@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { DecodedMedia } from "@memegen/render";
 import {
+  canMoveLayer,
   IMAGE_ACCEPT,
   IMAGE_WIDTH_MAX,
   IMAGE_WIDTH_MIN,
   layerLabel,
+  layerLabels,
+  layerPosition,
   layerStateAt,
   LAYER_NAME_MAX_LENGTH,
   resizeImage,
@@ -87,6 +90,7 @@ export function LayerPanel(props: LayerPanelProps) {
   const [pickingSticker, setPickingSticker] = useState(false);
   const textFields = useRef(new Map<string, HTMLTextAreaElement>());
   const topSection = topSectionLayer(layers);
+  const labels = layerLabels(layers);
 
   useEffect(() => {
     const field = editText && textFields.current.get(editText.id);
@@ -139,12 +143,9 @@ export function LayerPanel(props: LayerPanelProps) {
         {layers.map((layer, i) => {
           const open = layer.id === openId;
           const settingsId = `layer-settings-${layer.id}`;
-          // The top section's text is pinned as layer 0: it can't move, and nothing moves above it. Unnamed layers
-          // keep their "Text N" numbers when it is switched on, so it doesn't count.
+          // The top section's text is pinned as layer 0 (`canMoveLayer`).
           const pinned = layer === topSection;
-          const belowPinned = i > 0 && layers[i - 1] === topSection;
-          const position = topSection && !pinned ? i - 1 : i;
-          const name = layerLabel(layer, position);
+          const name = labels[i]!;
           return (
             <li
               key={layer.id}
@@ -166,7 +167,7 @@ export function LayerPanel(props: LayerPanelProps) {
                         className="layer-name-input"
                         data-testid="layer-name-input"
                         value={layer.name ?? ""}
-                        placeholder={layerLabel({ type: layer.type }, position)}
+                        placeholder={layerLabel({ type: layer.type }, layerPosition(layers, i))}
                         maxLength={LAYER_NAME_MAX_LENGTH}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -194,7 +195,7 @@ export function LayerPanel(props: LayerPanelProps) {
                         size="sm"
                         variant="quiet"
                         onClick={() => onMoveOrder(layer.id, -1)}
-                        disabled={i === 0 || pinned || belowPinned}
+                        disabled={!canMoveLayer(layers, layer.id, -1)}
                         label="Move back (drawn behind)"
                       >
                         <Icon name="up" />
@@ -203,7 +204,7 @@ export function LayerPanel(props: LayerPanelProps) {
                         size="sm"
                         variant="quiet"
                         onClick={() => onMoveOrder(layer.id, 1)}
-                        disabled={i === layers.length - 1 || pinned}
+                        disabled={!canMoveLayer(layers, layer.id, 1)}
                         label="Move forward (drawn on top)"
                       >
                         <Icon name="down" />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { exportPanels, loadAssetImages, panelSetGrid } from "@memegen/render";
-import { MAX_PANELS, newPanel, panelExportSize, type Asset, type Panel, type PanelSet, type PanelTemplateInput } from "@memegen/shared";
+import { MAX_PANELS, moveById, newPanel, panelExportSize, type Asset, type Panel, type PanelSet, type PanelTemplateInput } from "@memegen/shared";
 import { PageHeader } from "@memegen/ui";
 import { assetUrl, createTemplate, updateTemplate, uploadAsset } from "../../api.ts";
 import { useUser } from "../../auth.tsx";
@@ -11,7 +11,7 @@ import { PackPanel } from "./PackPanel.tsx";
 import { PanelList } from "./PanelList.tsx";
 import { PanelStage } from "./PanelStage.tsx";
 import { SavePanel } from "./SavePanel.tsx";
-import type { PanelSession } from "./session.ts";
+import { EDITOR_TITLES, memeSaveProps, type PanelSession } from "./session.ts";
 import { TemplateEditPanel } from "./TemplateEditPanel.tsx";
 import { TemplateSavePanel } from "./TemplateSavePanel.tsx";
 
@@ -69,17 +69,6 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
     setSelectedId(panel.id);
   }
 
-  function movePanel(id: string, delta: -1 | 1) {
-    setPanels((ps) => {
-      const i = ps.findIndex((p) => p.id === id);
-      const j = i + delta;
-      if (i < 0 || j < 0 || j >= ps.length) return ps;
-      const next = [...ps];
-      [next[i], next[j]] = [next[j]!, next[i]!];
-      return next;
-    });
-  }
-
   function removePanel(id: string) {
     setPanels((ps) => ps.filter((p) => p.id !== id));
     if (selectedId === id) setSelectedId(null);
@@ -96,8 +85,7 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
   const packNote = "The image pack, layout, grid, mirroring, caption size, and panels with their images and captions";
   return (
     <>
-      {source.kind === "new-panels" && <PageHeader title="Multi-panel Template Editor" titleProps={{ "data-testid": "editor-title" }} />}
-      {source.kind === "edit-template" && <PageHeader title="Edit template" titleProps={{ "data-testid": "editor-title" }} />}
+      {authoring && <PageHeader title={EDITOR_TITLES[source.kind]} titleProps={{ "data-testid": "editor-title" }} />}
       <section className="editor">
         <div className="editor-main">
           <PanelStage set={set} images={images} selectedId={selectedId} onSelect={setSelectedId} />
@@ -132,7 +120,7 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
             onSelect={setSelectedId}
             onAdd={addPanel}
             onRemove={removePanel}
-            onMove={movePanel}
+            onMove={(id, delta) => setPanels((ps) => moveById(ps, id, delta))}
             onUpdate={(id, changes) => setPanels((ps) => ps.map((p) => (p.id === id ? { ...p, ...changes } : p)))}
           />
           {source.kind === "new-panels" ? (
@@ -149,7 +137,6 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
           ) : source.kind === "edit-template" ? (
             <TemplateEditPanel
               template={source.template}
-              canEdit={source.template.owner.id === user.id}
               initialContent={templateInputOf(session.set, session.pack)}
               content={templateInput}
               note={`${packNote} are the template's defaults. Saved pack images stay; memes already made from it keep their own panels.`}
@@ -167,10 +154,7 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
               }}
               content={{ layers: [], panels: set }}
               limits={limits}
-              canSave={source.kind !== "meme" || source.meme.owner.id === user.id}
-              target={source.kind === "meme" ? { editing: source.meme } : { templateId: source.template.id }}
-              defaultTitle={source.kind === "template" ? source.template.name : ""}
-              templateTags={source.kind === "template" ? source.template.tags : []}
+              {...memeSaveProps(source, user)}
             />
           )}
         </div>

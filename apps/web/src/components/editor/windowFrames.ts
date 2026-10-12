@@ -13,14 +13,19 @@ export function windowFrames(layer: Pick<Layer, "start" | "end">, times: readonl
   };
 }
 
-/** Clamp a frame index for one edge so the window can't invert (start ≤ end) or leave the clip. */
-export function clampEdgeFrame(layer: Pick<Layer, "start" | "end">, edge: WindowEdge, index: number, times: readonly number[]): number {
+/**
+ * Move one edge of `layer`'s window to frame `index`: clamped so the window can't invert (start ≤ end) or leave the
+ * clip, and stored as that frame's start time, or null on the clip's first/last frame ("from the start"/"until the
+ * end"). Returns the clamped frame (to show it) and the update to apply to the layer's latest state.
+ */
+export function moveEdge(
+  layer: Pick<Layer, "start" | "end">,
+  edge: WindowEdge,
+  index: number,
+  times: readonly number[],
+): { index: number; update: (layer: Layer) => Layer } {
   const { start, end } = windowFrames(layer, times);
-  return edge === "start" ? Math.min(Math.max(index, 0), end) : Math.min(Math.max(index, start), times.length - 1);
-}
-
-/** Put one edge on frame `index` (already clamped); the clip's first/last frame stores null ("from the start"/"until the end"). */
-export function setEdgeFrame<L extends Layer>(layer: L, edge: WindowEdge, index: number, times: readonly number[]): L {
-  const unbounded = edge === "start" ? index === 0 : index === times.length - 1;
-  return setWindow(layer, edge, unbounded ? null : times[index]!);
+  const i = edge === "start" ? Math.min(Math.max(index, 0), end) : Math.min(Math.max(index, start), times.length - 1);
+  const unbounded = edge === "start" ? i === 0 : i === times.length - 1;
+  return { index: i, update: (l) => setWindow(l, edge, unbounded ? null : times[i]!) };
 }

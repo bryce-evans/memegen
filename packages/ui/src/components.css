@@ -878,6 +878,44 @@ button.ui-chip {
   }
 }
 
+/* Timeline frame thumbnail: primary border on the current frame, a warning bottom edge and mark on keyframes. */
+.ui-frame-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0;
+  border: var(--ui-frame-thumb-border, 2px) solid transparent;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-media-bg);
+  line-height: 0;
+  cursor: pointer;
+}
+.ui-frame-thumb > :not(.ui-frame-thumb-mark) {
+  display: block;
+  border-radius: calc(var(--ui-radius-sm) - 2px);
+}
+.ui-frame-thumb--current {
+  border-color: var(--ui-color-primary);
+}
+.ui-frame-thumb--dimmed > :not(.ui-frame-thumb-mark) {
+  opacity: 0.3;
+}
+.ui-frame-thumb--keyframe {
+  border-bottom-color: var(--ui-color-warning);
+}
+.ui-frame-thumb:focus-visible {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: 1px;
+}
+.ui-frame-thumb-mark {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ui-color-warning);
+  text-shadow: 0 0 2px var(--ui-color-overlay);
+}
+
 .ui-alert {
   margin: var(--ui-space-4) 0;
   padding: 0.6rem 0.8rem;

@@ -1,4 +1,4 @@
-import { TOP_SECTION_FONT_SIZE_DEFAULT, TOP_SECTION_HEIGHT_DEFAULT } from "./section.ts";
+import { TOP_SECTION_FONT_SIZE_DEFAULT, TOP_SECTION_HEIGHT_DEFAULT, topSectionLayer } from "./section.ts";
 import type { ImageLayer, Layer, TextLayer } from "./types.ts";
 
 export function newTextLayer(partial: Partial<Omit<TextLayer, "type">> = {}): TextLayer {
@@ -75,4 +75,18 @@ export function topBottomLayers(top = "TOP TEXT", bottom = "BOTTOM TEXT", fontAs
 /** A layer's editor label: its name, or "Text N"/"Image N" by position (1-based) for layers stored before names. */
 export function layerLabel(layer: Pick<Layer, "name"> & { type?: Layer["type"] }, index: number): string {
   return layer.name || `${layer.type === "image" ? "Image" : "Text"} ${index + 1}`;
+}
+
+/**
+ * The position `layerLabel` numbers layer `index` by: its index without the top section's text (which is always
+ * named and pinned first), so unnamed layers keep their numbers when the band is switched on or off.
+ */
+export function layerPosition(layers: readonly Layer[], index: number): number {
+  const section = topSectionLayer(layers);
+  return section && layers[index] !== section ? index - 1 : index;
+}
+
+/** Every layer's editor label, in order: the Layers panel, timeline tracks, and stage all name layers with these. */
+export function layerLabels(layers: readonly Layer[]): string[] {
+  return layers.map((layer, i) => layerLabel(layer, layerPosition(layers, i)));
 }

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExportAbortedError, type ExportResult } from "@memegen/render";
 import { limitViolations, MAX_TAGS, MEME_TITLE_MAX_LENGTH, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
 import { ApiError, createMeme, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { downloadBlob, fileSlug } from "../../media.ts";
+import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
 
@@ -40,41 +41,15 @@ export function SavePanel(props: SavePanelProps) {
   const [visibility, setVisibility] = useState<Visibility>(editingMeme?.visibility ?? "public");
   const [tags, setTags] = useState<string[]>(editingMeme?.tags ?? templateTags.slice(0, MAX_TAGS));
   const [progress, setProgress] = useState<Progress | null>(null);
-  const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const busy = progress !== null;
-
-  // Leaving the editor cancels an export/upload in flight; a save that still finishes must not navigate away from
+  // Leaving the editor aborts an export/upload in flight, so a save that still finishes doesn't navigate away from
   // wherever the user went.
-  const left = useRef(false);
-  useEffect(() => {
-    left.current = false;
-    return () => {
-      left.current = true;
-      abortRef.current?.abort();
-    };
-  }, []);
-
-  async function run(task: (signal: AbortSignal) => Promise<void>) {
-    const ac = new AbortController();
-    abortRef.current = ac;
-    setError(null);
-    setNotice(null);
-    try {
-      await task(ac.signal);
-    } catch (err) {
-      const aborted = err instanceof ExportAbortedError || (err instanceof DOMException && err.name === "AbortError");
-      if (aborted) setNotice("Canceled.");
-      else setError(err);
-    } finally {
-      abortRef.current = null;
-      setProgress(null);
-    }
-  }
+  const { busy, error, run, cancel } = useAction();
 
   /** Render the meme in the browser, reporting progress. */
   async function render(signal: AbortSignal) {
+    setNotice(null);
+    setProgress(null);
     const out = await renderMeme(signal, (step, value) => setProgress({ step, value }));
     if (signal.aborted) throw new ExportAbortedError();
     return out;
@@ -106,7 +81,7 @@ export function SavePanel(props: SavePanelProps) {
       } else {
         meme = await createMeme({ ...common, templateId: target.templateId, post });
       }
-      if (!left.current) navigate(`/m/${meme.id}`);
+      if (!signal.aborted) navigate(`/m/${meme.id}`);
     });
 
   const alreadyPosted = editingMeme !== null && editingMeme.postedAt !== null;
@@ -158,14 +133,21 @@ export function SavePanel(props: SavePanelProps) {
           ))}
       </Inline>
 
-      {progress && (
+      {busy && progress && (
         <div className="export-progress" data-testid="export-progress">
           <Text as="span" size="sm" numeric>
             {progress.step}
             {progress.value !== null && ` ${Math.round(progress.value * 100)}%`}…
           </Text>
           <ProgressBar value={progress.value} aria-label={progress.step} />
-          <Button size="sm" variant="quiet" onClick={() => abortRef.current?.abort()}>
+          <Button
+            size="sm"
+            variant="quiet"
+            onClick={() => {
+              cancel();
+              setNotice("Canceled.");
+            }}
+          >
             Cancel
           </Button>
         </div>

@@ -6,6 +6,7 @@ import {
   stickerViolations,
   supportedTypeForFile,
   supportedTypesLabel,
+  TEMPLATE_NAME_MAX_LENGTH,
   type UploadLimits,
 } from "@memegen/shared";
 import { ApiError } from "./api.ts";
@@ -33,6 +34,20 @@ export async function precheckMedia(file: File, limits: UploadLimits): Promise<D
 }
 
 /**
+ * `precheckMedia` for a still image (image layers, pack images): other types are refused, before decoding, with the
+ * accepted image types. Returns the image's pixel size.
+ */
+export async function precheckStillImage(file: File, limits: UploadLimits): Promise<{ width: number; height: number }> {
+  if (supportedTypeForFile(file.name, file.type)?.kind !== "image") {
+    throw new Error(`${file.name || file.type}: only still images (${supportedTypesLabel("image")}) can be used here`);
+  }
+  const media = await precheckMedia(file, limits);
+  const { width, height } = media;
+  media.dispose();
+  return { width, height };
+}
+
+/**
  * The checks `POST /api/stickers` applies (PNG, ≤ `STICKER_MAX_DIMENSION` each edge) plus the image caps, before
  * uploading. Violations throw an `ApiError` shaped like the API's 422.
  */
@@ -56,6 +71,15 @@ export function fileSlug(title: string): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 60) || "meme"
   );
+}
+
+/** A display name from an upload's filename, capped like a template name: "distracted-boyfriend_v2.jpg" → "distracted boyfriend v2". */
+export function nameFromFile(filename: string): string {
+  return filename
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim()
+    .slice(0, TEMPLATE_NAME_MAX_LENGTH);
 }
 
 /** File extension (with dot) for a stored asset: from its filename, else its mime type. */

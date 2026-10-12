@@ -69,6 +69,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `Chip`, `ChipGroup` | tag chip (`as`, default `span`) | `variant` (`default`/`suggest`), `onRemove`, `removeLabel` |
 | `Badge` | status pill | `tone` (`neutral`/`primary`/`info`/`success`/`warning`/`danger`) |
 | `ProgressBar` | native `<progress>` | `value` (0..1, `null` = indeterminate) |
+| `FrameThumb` | timeline frame `<button>` around its picture (canvas/img) | `current` → `aria-current`, `keyframe` (mark), `dimmed`; border width `--ui-frame-thumb-border` (part of the cell size) |
 | `Alert` | `role=alert` (danger) / `status` (info) box | `tone` (`danger`/`info`) |
 | `Callout` | tinted box with an accent edge (not a live region) | `tone` (as `Badge`) |
 | `Table` | `<table>` with ruled rows, muted headers (`aria-sort` marks the sorted column), tabular figures | table props |

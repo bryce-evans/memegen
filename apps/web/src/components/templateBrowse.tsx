@@ -3,13 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { formatMB, MEDIA_ACCEPT, PERIODS, STICKER_ACCEPT, STICKER_MAX_DIMENSION, type Period, type Sticker, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
 import { EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
 import { createSticker, getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
-import { precheckMedia, precheckSticker } from "../media.ts";
+import { nameFromFile, precheckMedia, precheckSticker } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { usePaged } from "../usePaged.ts";
 import { ErrorView, MediaView } from "./common.tsx";
-import { nameFromFile } from "./editor/TemplateSavePanel.tsx";
 import { PERIOD_LABELS } from "../format.ts";
 import { TemplateGrid } from "./templates.tsx";
 

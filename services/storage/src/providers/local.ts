@@ -28,14 +28,13 @@ export class LocalStorageProvider implements StorageProvider {
 
   async get(key: string, range?: ByteRange): Promise<StoredObject> {
     const full = this.path(key);
-    let size: number;
     try {
-      size = (await stat(full)).size;
+      await stat(full);
     } catch {
       throw new ObjectNotFoundError(key);
     }
     const stream = createReadStream(full, range ? { start: range.start, end: range.end } : {});
-    return { body: Readable.toWeb(stream) as ReadableStream<Uint8Array>, size };
+    return { body: Readable.toWeb(stream) as ReadableStream<Uint8Array> };
   }
 
   async delete(key: string): Promise<void> {

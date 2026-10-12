@@ -58,8 +58,7 @@ export class S3StorageProvider implements StorageProvider {
           Range: range ? `bytes=${range.start}-${range.end}` : undefined,
         }),
       );
-      const total = res.ContentRange ? Number(res.ContentRange.split("/")[1]) : Number(res.ContentLength);
-      return { body: res.Body!.transformToWebStream() as ReadableStream<Uint8Array>, size: total };
+      return { body: res.Body!.transformToWebStream() as ReadableStream<Uint8Array> };
     } catch (err) {
       if (err instanceof NoSuchKey || err instanceof NotFound) throw new ObjectNotFoundError(key);
       throw err;

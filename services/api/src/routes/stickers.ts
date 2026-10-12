@@ -1,6 +1,6 @@
 import { createStickerSchema, stickersQuerySchema, stickerViolations } from "@memegen/shared";
-import { findAssetRow, HttpError, page, parse, parseJson, type Sql } from "@memegen/server-kit";
-import { requireUser, type ApiApp } from "../access.ts";
+import { HttpError, page, pageSql, parse, parseJson, type Sql } from "@memegen/server-kit";
+import { requireOwnAsset, requireUser, type ApiApp } from "../access.ts";
 import { stickerSelect, toSticker, type StickerRow } from "../rows.ts";
 
 /** The sticker library: small PNGs anyone can add to a meme as image layers. */
@@ -11,18 +11,15 @@ export function register(app: ApiApp, sql: Sql): void {
     const rows = await sql<StickerRow[]>`
       select * from (${stickerSelect(sql)}) s
       order by s.use_count desc, s.saved_count desc, s.created_at desc, s.id
-      offset ${offset} limit ${limit + 1}`;
-    const { items, nextOffset } = page(rows, offset, limit);
-    return c.json({ items: items.map(toSticker), nextOffset });
+      ${pageSql(sql, offset, limit)}`;
+    return c.json(page(rows.map(toSticker), offset, limit));
   });
 
   /** An uploaded PNG of the caller's, at most `STICKER_MAX_DIMENSION` on each edge, becomes a sticker. */
   app.post("/api/stickers", async (c) => {
     const user = requireUser(c);
     const body = await parseJson(c, createStickerSchema);
-    const asset = await findAssetRow(sql, body.assetId);
-    if (!asset) throw new HttpError(400, "assetId does not exist");
-    if (asset.owner_id !== user.id) throw new HttpError(403, "assetId must be uploaded by you");
+    const asset = await requireOwnAsset(sql, body.assetId, "assetId", user);
     const violations = stickerViolations(asset);
     if (violations.length) throw new HttpError(422, "file can't be a sticker", violations);
     const [row] = await sql<{ id: string }[]>`

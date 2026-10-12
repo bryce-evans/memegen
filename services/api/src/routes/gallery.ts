@@ -1,5 +1,5 @@
 import { galleryQuerySchema } from "@memegen/shared";
-import { page, parse, type Sql } from "@memegen/server-kit";
+import { page, pageSql, parse, type Sql } from "@memegen/server-kit";
 import type { ApiApp } from "../access.ts";
 import { containsPattern, memeListed, memeSelect, periodStart, tagMatches, toMeme, type MemeRow } from "../rows.ts";
 
@@ -30,7 +30,7 @@ export function register(app: ApiApp, sql: Sql): void {
         where x.meme_id = m.id and g.slug = ${tag})` : sql``}
       ${q ? searchFilter(sql, q) : sql``}
       order by ${order}, m.id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(sql, offset, limit)}`;
     return c.json(page(rows.map(toMeme), offset, limit));
   });
 }

@@ -1,5 +1,5 @@
 import { isListed } from "@memegen/shared";
-import type { Comment, Layer, Meme, Panel, PanelLayout, PanelSet, Period, Sticker, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
+import type { Comment, Layer, Meme, PanelSet, PanelTemplate, Period, Sticker, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
 import { tagSlug } from "@memegen/shared";
 import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
 
@@ -157,6 +157,15 @@ export async function replaceMemeTags(sql: Sql, memeId: string, slugs: readonly 
 
 // ---- templates ---------------------------------------------------------------------
 
+/** `templates.panels` as stored: the panel template minus its pack, which lives in `template_pack_assets`. */
+export type StoredPanels = Omit<PanelTemplate, "pack">;
+
+/** The stored JSON for a panel template as written (`packAssetIds` goes to `template_pack_assets`). */
+export function storedPanels(p: StoredPanels & { packAssetIds: string[] }): StoredPanels {
+  const { packAssetIds: _, ...stored } = p;
+  return stored;
+}
+
 export interface TemplateRow {
   id: string;
   name: string;
@@ -167,7 +176,7 @@ export interface TemplateRow {
   asset: AssetRow;
   default_layers: Layer[];
   /** Pack lives in `template_pack_assets`, selected as `pack`. */
-  panels: { layout: PanelLayout; grid: boolean; mirror: boolean; fontSize: number; defaultPanels: Panel[] } | null;
+  panels: StoredPanels | null;
   /** Pack assets in order; null for single-media templates. */
   pack: AssetRow[] | null;
   is_public: boolean;

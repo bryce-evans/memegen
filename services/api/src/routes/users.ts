@@ -1,8 +1,7 @@
 import { leaderboardQuerySchema, sessionSchema, userPageQuerySchema, type User, type UserProfile } from "@memegen/shared";
-import { page, parse, parseJson, requireInternal, toUser, type Sql, type UserRow } from "@memegen/server-kit";
+import { page, pageSql, parse, parseJson, requireInternal, toUser, type Sql, type UserRow } from "@memegen/server-kit";
 import { findUserByName, requireUser, type ApiApp } from "../access.ts";
 import {
-  memeListed,
   memeSelect,
   memeVisibleTo,
   templateSelect,
@@ -50,12 +49,11 @@ export function register(app: ApiApp, sql: Sql): void {
   app.get("/api/users/:username/memes", async (c) => {
     const owner = await findUserByName(sql, c.req.param("username"));
     const { offset, limit } = parse(userPageQuerySchema, c.req.query());
-    const viewer = c.get("user");
-    const rows = await sql<MemeRow[]>`${memeSelect(sql, viewer?.id ?? null)}
-      where m.owner_id = ${owner.id}
-      ${viewer?.id === owner.id ? sql`` : sql`and ${memeListed(sql)}`}
+    const viewerId = c.get("user")?.id ?? null;
+    const rows = await sql<MemeRow[]>`${memeSelect(sql, viewerId)}
+      where m.owner_id = ${owner.id} and ${memeVisibleTo(sql, viewerId)}
       order by coalesce(m.posted_at, m.created_at) desc, m.id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(sql, offset, limit)}`;
     return c.json(page(rows.map(toMeme), offset, limit));
   });
 
@@ -67,7 +65,7 @@ export function register(app: ApiApp, sql: Sql): void {
     const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
       where t.owner_id = ${owner.id} and ${templateVisibleTo(sql, viewerId)}
       order by t.created_at desc, t.id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(sql, offset, limit)}`;
     const { items, nextOffset } = page(rows, offset, limit);
     return c.json({ items: await withVariations(sql, items, viewerId), nextOffset });
   });
@@ -90,7 +88,7 @@ export function register(app: ApiApp, sql: Sql): void {
     const rows = await sql<MemeRow[]>`${memeSelect(sql, user.id)}
       where v.user_id is not null and ${memeVisibleTo(sql, user.id)}
       order by v.created_at desc, m.id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(sql, offset, limit)}`;
     return c.json(page(rows.map(toMeme), offset, limit));
   });
 
@@ -102,7 +100,7 @@ export function register(app: ApiApp, sql: Sql): void {
       join favorites f on f.meme_id = m.id and f.user_id = ${user.id}
       where ${memeVisibleTo(sql, user.id)}
       order by f.created_at desc, m.id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(sql, offset, limit)}`;
     return c.json(page(rows.map(toMeme), offset, limit));
   });
 }

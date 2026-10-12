@@ -2,11 +2,17 @@ import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { Page } from "@memegen/shared";
 import { config } from "./config.ts";
+import type { Sql } from "./db.ts";
 
 /** Route params `{ id }` for `/:id` paths. */
 export const idParam = z.object({ id: z.uuid() });
 
-/** One page from rows fetched with `limit + 1`: the extra row only signals that another page exists. */
+/** `offset … limit …` for one page: fetches `limit + 1` rows so `page()` can tell whether another page exists. */
+export function pageSql(sql: Sql, offset: number, limit: number) {
+  return sql`offset ${offset} limit ${limit + 1}`;
+}
+
+/** One page from rows fetched with `pageSql`: the extra row only signals that another page exists. */
 export function page<T>(rows: T[], offset: number, limit: number): Page<T> {
   return { items: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null };
 }

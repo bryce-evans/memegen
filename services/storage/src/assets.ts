@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { limitViolations, supportedTypesLabel, type Asset, type AssetKind, type Page, type UploadLimits } from "@memegen/shared";
-import { HttpError, page, toAsset, uploadLimitsFromEnv, type AssetRow, type Sql } from "@memegen/server-kit";
+import { HttpError, page, pageSql, toAsset, uploadLimitsFromEnv, type AssetRow, type Sql } from "@memegen/server-kit";
 import { probe, ProbeError } from "./probe.ts";
 import { createProviders, type Providers } from "./providers/registry.ts";
 import { ObjectNotFoundError, type ByteRange, type StoredObject } from "./providers/types.ts";
@@ -78,7 +78,7 @@ export class AssetStore {
       select * from assets
       ${kind ? this.sql`where kind = ${kind}` : this.sql``}
       order by ${kind === "font" ? this.sql`lower(name)` : this.sql`created_at desc`}, id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(this.sql, offset, limit)}`;
     return page(rows.map(toAsset), offset, limit);
   }
 

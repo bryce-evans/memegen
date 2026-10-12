@@ -9,12 +9,22 @@ import {
   type Period,
   type TemplateUsage,
 } from "@memegen/shared";
-import { HttpError, idParam, page, parse, parseJson, type Sql } from "@memegen/server-kit";
-import { loadTemplate, ownTemplate, requireLayerImages, requireMediaAsset, requirePackImages, requireUser, type ApiApp } from "../access.ts";
+import { HttpError, idParam, page, pageSql, parse, parseJson, type Sql } from "@memegen/server-kit";
+import {
+  loadTemplate,
+  loadTemplatePack,
+  ownTemplate,
+  requireLayerImages,
+  requireMediaAsset,
+  requirePackImages,
+  requireUser,
+  type ApiApp,
+} from "../access.ts";
 import {
   addTemplateTags,
   containsPattern,
   periodStart,
+  storedPanels,
   templateSelect,
   templateVisibleTo,
   withVariations,
@@ -42,7 +52,7 @@ export function register(app: ApiApp, sql: Sql): void {
       ${tag ? sql`and exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
         where x.template_id = t.id and g.slug = ${tag})` : sql``}
       order by lower(t.name), t.id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(sql, offset, limit)}`;
     const { items, nextOffset } = page(rows, offset, limit);
     return c.json({ items: await withVariations(sql, items, viewerId), nextOffset });
   });
@@ -125,15 +135,7 @@ export function register(app: ApiApp, sql: Sql): void {
           parent_id: body.parentId ?? null,
           owner_id: user.id,
           default_layers: tx.json(body.defaultLayers as never),
-          panels: body.panels
-            ? tx.json({
-                layout: body.panels.layout,
-                grid: body.panels.grid,
-                mirror: body.panels.mirror,
-                fontSize: body.panels.fontSize,
-                defaultPanels: body.panels.defaultPanels,
-              } as never)
-            : null,
+          panels: body.panels ? tx.json(storedPanels(body.panels) as never) : null,
           is_public: body.isPublic,
         })} returning id`;
       if (body.panels) {
@@ -149,11 +151,8 @@ export function register(app: ApiApp, sql: Sql): void {
   app.patch("/api/templates/:id", async (c) => {
     const { user, id } = await ownTemplate(sql, c);
     const body = await parseJson(c, updateTemplateSchema);
-    const [current] = await sql<{ multi: boolean; pack: string[] }[]>`
-      select t.panels is not null as multi,
-        array(select tp.asset_id from template_pack_assets tp where tp.template_id = t.id) as pack
-      from templates t where t.id = ${id}`;
-    if (current!.multi && body.defaultLayers?.length) throw new HttpError(400, "multi-panel templates have no text layers");
+    const pack = await loadTemplatePack(sql, id);
+    if (pack && body.defaultLayers?.length) throw new HttpError(400, "multi-panel templates have no text layers");
     const changes: Record<string, unknown> = {};
     if (body.name !== undefined) changes.name = body.name;
     if (body.isPublic !== undefined) changes.is_public = body.isPublic;
@@ -163,20 +162,14 @@ export function register(app: ApiApp, sql: Sql): void {
     }
     const panels = body.panels;
     if (panels && body.assetId) {
-      if (!current!.multi) throw new HttpError(400, "only multi-panel templates have panels");
+      if (!pack) throw new HttpError(400, "only multi-panel templates have panels");
       // Memes keep using the pack images they picked, so the pack only grows.
-      if (!current!.pack.every((assetId) => panels.packAssetIds.includes(assetId))) {
+      if (!pack.every((assetId) => panels.packAssetIds.includes(assetId))) {
         throw new HttpError(400, "pack images can't be removed once added");
       }
-      await requirePackImages(sql, panels.packAssetIds.filter((assetId) => !current!.pack.includes(assetId)));
+      await requirePackImages(sql, panels.packAssetIds.filter((assetId) => !pack.includes(assetId)));
       await requireMediaAsset(sql, body.assetId, "assetId");
-      changes.panels = sql.json({
-        layout: panels.layout,
-        grid: panels.grid,
-        mirror: panels.mirror,
-        fontSize: panels.fontSize,
-        defaultPanels: panels.defaultPanels,
-      } as never);
+      changes.panels = sql.json(storedPanels(panels) as never);
       changes.asset_id = body.assetId;
     }
     if (Object.keys(changes).length || panels) {

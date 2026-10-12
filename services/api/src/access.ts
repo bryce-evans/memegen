@@ -63,44 +63,63 @@ export async function requireMediaAsset(sql: Sql, id: string, field: string): Pr
   return asset;
 }
 
+/** Every id names an existing still image (one query); else 400 with `message`. */
+async function requireStillImages(sql: Sql, ids: readonly string[], message: string): Promise<void> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return;
+  const [row] = await sql<{ count: number }[]>`
+    select count(*)::int as count from assets where id in ${sql(unique)} and kind = 'image'`;
+  if (row!.count !== unique.length) throw new HttpError(400, message);
+}
+
 /** Pack images for a multi-panel template: existing still images (panels are drawn from one frame). */
 export async function requirePackImages(sql: Sql, ids: readonly string[]): Promise<void> {
-  if (!ids.length) return;
-  const rows = await sql<{ kind: AssetRow["kind"] }[]>`select kind from assets where id in ${sql(ids as string[])}`;
-  if (rows.length !== ids.length) throw new HttpError(400, "a pack image does not exist");
-  if (rows.some((r) => r.kind !== "image")) throw new HttpError(400, "pack images must be still images");
+  await requireStillImages(sql, ids, "pack images must be existing still images");
 }
 
-/** Image layers draw existing still images (one frame, like pack images). One query for all of them. */
+/** Image layers draw existing still images (one frame, like pack images). */
 export async function requireLayerImages(sql: Sql, layers: readonly Layer[] | undefined): Promise<void> {
-  const ids = [...new Set((layers ?? []).flatMap((l) => (l.type === "image" ? [l.assetId] : [])))];
-  if (!ids.length) return;
-  const [row] = await sql<{ count: number }[]>`
-    select count(*)::int as count from assets where id in ${sql(ids)} and kind = 'image'`;
-  if (row!.count !== ids.length) throw new HttpError(400, "image layers need an existing still image");
+  const ids = (layers ?? []).flatMap((l) => (l.type === "image" ? [l.assetId] : []));
+  await requireStillImages(sql, ids, "image layers need an existing still image");
 }
 
-/** A meme's panels checked against its template: required (from the pack) for multi-panel templates, else absent. */
-export async function requireMemePanels(sql: Sql, templateId: string, panels: PanelSet | null | undefined): Promise<PanelSet | null> {
+/** A template's pack asset ids in order, or null for a single-media template. */
+export async function loadTemplatePack(sql: Sql, templateId: string): Promise<string[] | null> {
   const [template] = await sql<{ multi: boolean; pack: string[] }[]>`
     select t.panels is not null as multi,
-      array(select tp.asset_id from template_pack_assets tp where tp.template_id = t.id) as pack
+      array(select tp.asset_id from template_pack_assets tp where tp.template_id = t.id order by tp.position) as pack
     from templates t where t.id = ${templateId}`;
   if (!template) throw new HttpError(404, "template not found");
-  if (!template.multi) {
+  return template.multi ? template.pack : null;
+}
+
+/**
+ * A meme's panels checked against its template's pack (`loadTemplatePack`): required and drawn from the pack for
+ * multi-panel templates, else absent.
+ */
+export function requireMemePanels(pack: readonly string[] | null, panels: PanelSet | null | undefined): PanelSet | null {
+  if (!pack) {
     if (panels) throw new HttpError(400, "this template has no panels");
     return null;
   }
   if (!panels) throw new HttpError(400, "multi-panel templates need panels");
-  if (!panels.panels.every((p) => template.pack.includes(p.assetId))) {
+  if (!panels.panels.every((p) => pack.includes(p.assetId))) {
     throw new HttpError(400, "panels must use images from the template's pack");
   }
   return panels;
 }
 
+/** An existing asset `user` uploaded themselves; `field` names the request field in errors. */
+export async function requireOwnAsset(sql: Sql, id: string, field: string, user: User): Promise<AssetRow> {
+  const asset = await findAssetRow(sql, id);
+  if (!asset) throw new HttpError(400, `${field} does not exist`);
+  if (asset.owner_id !== user.id) throw new HttpError(403, `${field} must be uploaded by you`);
+  return asset;
+}
+
 /** A meme's rendered output: media the author uploaded themselves. */
 export async function requireOwnOutput(sql: Sql, id: string, user: User): Promise<AssetRow> {
-  const output = await requireMediaAsset(sql, id, "outputAssetId");
-  if (output.owner_id !== user.id) throw new HttpError(403, "outputAssetId must be uploaded by you");
+  const output = await requireOwnAsset(sql, id, "outputAssetId", user);
+  if (output.kind === "font") throw new HttpError(400, "outputAssetId must be an image, gif, or video");
   return output;
 }

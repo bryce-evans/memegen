@@ -1,5 +1,5 @@
 import { commentsQuerySchema, createCommentSchema } from "@memegen/shared";
-import { HttpError, idParam, page, parse, parseJson, type Sql } from "@memegen/server-kit";
+import { HttpError, idParam, page, pageSql, parse, parseJson, type Sql } from "@memegen/server-kit";
 import { loadMeme, requireUser, type ApiApp } from "../access.ts";
 import { commentSelect, nest, requireListed, toComment, type CommentRow } from "../rows.ts";
 
@@ -12,7 +12,7 @@ export function register(app: ApiApp, sql: Sql): void {
     const rows = await sql<CommentRow[]>`${commentSelect(sql)}
       where c.meme_id = ${id} and c.parent_id is null
       order by c.created_at, c.id
-      offset ${offset} limit ${limit + 1}`;
+      ${pageSql(sql, offset, limit)}`;
     const { items: top, nextOffset } = page(rows, offset, limit);
     const replies = top.length
       ? await sql<CommentRow[]>`${commentSelect(sql)}

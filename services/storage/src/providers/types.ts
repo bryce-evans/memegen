@@ -6,8 +6,6 @@ export interface ByteRange {
 
 export interface StoredObject {
   body: ReadableStream<Uint8Array>;
-  /** Total object size, independent of the requested range. */
-  size: number;
 }
 
 /** A place bytes live. Keys are provider-relative, '/'-separated, and never start with '/'. */

@@ -85,11 +85,9 @@ export function MemeDetail() {
           >
             Download
           </LinkButton>
-          {meme.templateId && (
-            <LinkButton as={Link} variant="quiet" to={`/create?template=${meme.templateId}`} icon={<Icon name="image" />}>
-              Make one with this template
-            </LinkButton>
-          )}
+          <LinkButton as={Link} variant="quiet" to={`/create?template=${meme.templateId}`} icon={<Icon name="image" />}>
+            Make one with this template
+          </LinkButton>
         </Inline>
         {isOwner && (
           <Inline className="detail-actions">

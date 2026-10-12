@@ -4,7 +4,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./skin-ids": "./src/skin-ids.ts",
     "./styles.css": "./src/styles.css"
   },
   "peerDependencies": {

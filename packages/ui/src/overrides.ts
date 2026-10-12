@@ -3,6 +3,7 @@ import type { ButtonProps, FileButtonProps, IconButtonProps, LinkButtonProps, Se
 import type {
   AlertProps,
   BadgeProps,
+  CalloutProps,
   CardMetaProps,
   CardProps,
   CardTitleProps,
@@ -14,6 +15,9 @@ import type {
   PanelProps,
   ProgressBarProps,
   SpinnerProps,
+  StatGroupProps,
+  StatProps,
+  TableProps,
   TextProps,
   WordmarkProps,
 } from "./components/display.tsx";
@@ -41,6 +45,7 @@ export interface ComponentOverrides {
   AppShell: ComponentType<AppShellProps>;
   Badge: ComponentType<BadgeProps>;
   Button: ComponentType<ButtonProps>;
+  Callout: ComponentType<CalloutProps>;
   Card: ComponentType<CardProps>;
   CardMeta: ComponentType<CardMetaProps>;
   CardTitle: ComponentType<CardTitleProps>;
@@ -70,6 +75,9 @@ export interface ComponentOverrides {
   Slider: ComponentType<SliderProps>;
   Spinner: ComponentType<SpinnerProps>;
   Stack: ComponentType<StackProps>;
+  Stat: ComponentType<StatProps>;
+  StatGroup: ComponentType<StatGroupProps>;
+  Table: ComponentType<TableProps>;
   Text: ComponentType<TextProps>;
   TextArea: ComponentType<TextAreaProps>;
   TextField: ComponentType<TextFieldProps>;

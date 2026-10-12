@@ -403,6 +403,10 @@ textarea {
   --ui-button-hover-bg: var(--ui-button-bg);
   --ui-button-hover-border: var(--ui-button-tone);
 }
+/* A pressed toned toggle fills its icon (an outlined star becomes a solid one). */
+.ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] .ui-icon {
+  fill: currentColor;
+}
 .ui-button-icon {
   display: inline-flex;
   align-items: center;
@@ -894,6 +898,76 @@ button.ui-chip {
 }
 .ui-alert p {
   margin: 0 0 var(--ui-space-3);
+}
+
+.ui-callout {
+  --ui-callout-accent: var(--ui-color-border);
+  padding: var(--ui-space-4) var(--ui-space-5);
+  border-left: 4px solid var(--ui-callout-accent);
+  border-radius: var(--ui-radius-md);
+  background: color-mix(in srgb, var(--ui-callout-accent) 8%, transparent);
+}
+.ui-callout--primary {
+  --ui-callout-accent: var(--ui-color-primary);
+}
+.ui-callout--info {
+  --ui-callout-accent: var(--ui-color-info);
+}
+.ui-callout--success {
+  --ui-callout-accent: var(--ui-color-success);
+}
+.ui-callout--warning {
+  --ui-callout-accent: var(--ui-color-warning);
+}
+.ui-callout--danger {
+  --ui-callout-accent: var(--ui-color-danger);
+}
+
+/* ---- data: tables and stats ------------------------------------------------ */
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.ui-table th,
+.ui-table td {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-bottom: var(--ui-border-width) solid var(--ui-color-separator);
+  text-align: start;
+}
+.ui-table th {
+  font-size: var(--ui-font-size-sm);
+  font-weight: var(--ui-font-weight-semibold);
+  color: var(--ui-color-text-muted);
+}
+.ui-table th[aria-sort] {
+  color: var(--ui-color-text);
+}
+
+.ui-stat-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-5);
+  margin: 0;
+}
+.ui-stat {
+  min-width: 7rem;
+  padding: var(--ui-space-3) var(--ui-space-5);
+  border: var(--ui-border-width) solid var(--ui-color-border);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-surface);
+  box-shadow: var(--ui-shadow-1);
+}
+.ui-stat-label {
+  font-size: var(--ui-font-size-xs);
+  color: var(--ui-color-text-muted);
+}
+.ui-stat-value {
+  margin: 0;
+  font-size: var(--ui-font-size-xl);
+  font-weight: var(--ui-font-weight-bold);
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-spinner {

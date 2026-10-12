@@ -1,45 +1,9 @@
-import { useEffect, useRef, useState, type ComponentPropsWithoutRef, type FormEvent } from "react";
+import { useEffect, useRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import type { Asset } from "@memegen/shared";
-import { Alert, Button, TextField } from "@memegen/ui";
+import { Alert, Button, Spinner } from "@memegen/ui";
 import { ApiError, contentUrl } from "../api.ts";
-import { useAuth } from "../auth.tsx";
 import { timeAgo } from "../time.ts";
-import { useAction } from "../useAction.ts";
-
-/** The sign-in page's form (dev login: any username). */
-export function LoginForm() {
-  const { signIn } = useAuth();
-  const [username, setUsername] = useState("");
-  const { busy, error, run } = useAction();
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!username.trim()) return;
-    void run(async () => {
-      await signIn(username.trim());
-      setUsername("");
-    });
-  }
-
-  return (
-    <form className="login" onSubmit={submit}>
-      <TextField
-        size="md"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="username"
-        aria-label="Username"
-        autoComplete="username"
-        autoFocus
-        data-testid="login-username"
-      />
-      <Button type="submit" variant="primary" size="md" disabled={busy || !username.trim()} data-testid="login-submit">
-        Sign in
-      </Button>
-      {error !== null && <ErrorView error={error} />}
-    </form>
-  );
-}
+import type { Paged } from "../usePaged.ts";
 
 /**
  * Renders any thrown value, listing `details[]`. A 401 needs no special case: `api.ts` signs out on one, which swaps
@@ -125,4 +89,39 @@ export function LoadMoreSentinel({ hasMore, loading, onLoadMore }: LoadMoreProps
 
   if (!hasMore) return null;
   return <div ref={ref} className="load-more-sentinel" data-testid="load-more-sentinel" aria-hidden />;
+}
+
+/**
+ * The shell every paged list shares: its error, `empty` once a load found nothing (never beside an error), the
+ * items (always rendered, so a list's container and its `data-*` state exist while empty), a spinner while loading,
+ * and the paging control (`LoadMoreButton` with `moreLabel`/`moreTestId`, or `LoadMoreSentinel`).
+ */
+export function PagedList<T extends { id: string }>({
+  list,
+  empty,
+  paging,
+  moreLabel,
+  moreTestId,
+  children,
+}: {
+  list: Paged<T>;
+  empty: ReactNode;
+  paging: "button" | "sentinel";
+  moreLabel?: string;
+  moreTestId?: string;
+  children: (items: T[]) => ReactNode;
+}) {
+  return (
+    <>
+      {list.error !== null && <ErrorView error={list.error} />}
+      {!list.loading && list.items.length === 0 && list.error === null && empty}
+      {children(list.items)}
+      {list.loading && <Spinner label="Loading…" />}
+      {paging === "button" ? (
+        <LoadMoreButton hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} label={moreLabel} testId={moreTestId} />
+      ) : (
+        <LoadMoreSentinel hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} />
+      )}
+    </>
+  );
 }

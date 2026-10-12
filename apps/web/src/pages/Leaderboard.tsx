@@ -1,11 +1,10 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { LEADERBOARD_SORTS, badgesFor, type LeaderboardSort } from "@memegen/shared";
-import { EmptyState, Icon, PageHeader, SegmentedControl, Spinner } from "@memegen/ui";
+import { LEADERBOARD_SORTS, type LeaderboardSort } from "@memegen/shared";
+import { EmptyState, Icon, PageHeader, SegmentedControl, Spinner, Table } from "@memegen/ui";
 import { getLeaderboard } from "../api.ts";
 import { ErrorView } from "../components/common.tsx";
+import { STAT_HINTS, STAT_LABELS, UserBadges } from "../components/users.tsx";
 import { useAsync } from "../useAsync.ts";
-
-const SORT_LABELS: Record<LeaderboardSort, string> = { hScore: "h-score", highScore: "High score", memeCount: "Memes" };
 
 export function Leaderboard() {
   const [params, setParams] = useSearchParams();
@@ -23,7 +22,7 @@ export function Leaderboard() {
             size="sm"
             value={by}
             onChange={(next) => setParams({ by: next }, { replace: true })}
-            options={LEADERBOARD_SORTS.map((s) => ({ value: s, label: SORT_LABELS[s], testId: `leaderboard-by-${s}` }))}
+            options={LEADERBOARD_SORTS.map((s) => ({ value: s, label: STAT_LABELS[s], testId: `leaderboard-by-${s}` }))}
           />
         }
       />
@@ -32,19 +31,19 @@ export function Leaderboard() {
         {loading && <Spinner label="Loading…" />}
         {entries?.length === 0 && <EmptyState icon={<Icon name="chart" />} title="Nobody has posted a meme yet." />}
         {entries && entries.length > 0 && (
-          <table className="leaderboard">
+          <Table className="leaderboard">
             <thead>
               <tr>
                 <th scope="col">#</th>
                 <th scope="col">User</th>
                 <th scope="col" aria-sort={by === "memeCount" ? "descending" : undefined}>
-                  Memes
+                  {STAT_LABELS.memeCount}
                 </th>
                 <th scope="col" aria-sort={by === "highScore" ? "descending" : undefined}>
-                  High score
+                  {STAT_LABELS.highScore}
                 </th>
-                <th scope="col" aria-sort={by === "hScore" ? "descending" : undefined} title="h memes with a score of at least h">
-                  h-score
+                <th scope="col" aria-sort={by === "hScore" ? "descending" : undefined} title={STAT_HINTS.hScore}>
+                  {STAT_LABELS.hScore}
                 </th>
               </tr>
             </thead>
@@ -54,11 +53,7 @@ export function Leaderboard() {
                   <td data-testid="leaderboard-rank">{rank}</td>
                   <td>
                     <Link to={`/u/${user.username}`} data-testid="lb-username">@{user.username}</Link>
-                    {badgesFor(stats).map((b) => (
-                      <span key={b.id} className="leaderboard-badge" role="img" aria-label={b.label} title={`${b.label}: ${b.description}`}>
-                        {b.icon}
-                      </span>
-                    ))}
+                    <UserBadges stats={stats} compact />
                   </td>
                   <td data-testid="lb-meme-count">{stats.memeCount}</td>
                   <td data-testid="lb-high-score">{stats.highScore}</td>
@@ -66,7 +61,7 @@ export function Leaderboard() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </div>
     </section>

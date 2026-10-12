@@ -55,7 +55,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `NavList`, `NavItem` | vertical nav; item (`as`, default `a`) | `active`, `icon`, `trailing` (NavLink's `aria-current="page"` also marks active) |
 | `PageHeader` | `h1`/`h2` + controls row | `title`, `level`, `actions`, `titleProps` |
 | `Stack`, `Inline` | flex column / row | `gap`, `align`, `justify`, `wrap` |
-| `Button` | `<button type=button>` | `variant` (`primary`/`secondary`/`quiet`/`danger`), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin), `icon` |
+| `Button` | `<button type=button>` | `variant` (`primary`/`secondary`/`quiet`/`danger`), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin; a pressed toned button also fills its `Icon`), `icon` |
 | `IconButton` | icon-only `<button>` | `label` (aria-label + tooltip) |
 | `LinkButton` | button-looking link (`as`, default `a`) | `variant`, `size`, `icon` |
 | `FileButton` | `<label>` styled as a button around a hidden native `<input type=file>` | all input props (incl. `data-testid`) go to the input; `variant`, `size`, `icon` |
@@ -70,6 +70,9 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `Badge` | status pill | `tone` (`neutral`/`primary`/`info`/`success`/`warning`/`danger`) |
 | `ProgressBar` | native `<progress>` | `value` (0..1, `null` = indeterminate) |
 | `Alert` | `role=alert` (danger) / `status` (info) box | `tone` (`danger`/`info`) |
+| `Callout` | tinted box with an accent edge (not a live region) | `tone` (as `Badge`) |
+| `Table` | `<table>` with ruled rows, muted headers (`aria-sort` marks the sorted column), tabular figures | table props |
+| `StatGroup`, `Stat` | `<dl>` row of stat tiles; one labelled figure | `label`, `value`, `hint` (label tooltip), `valueProps` (on the `<dd>`) |
 | `Spinner`, `EmptyState` | loading row; empty placeholder | `label`; `title`, `description`, `action`, `icon` |
 | `Panel` | titled surface (`section`) | `heading`, `headingActions`, `variant` (`default`/`inset`/`flush`: the surface only, no padding or margin) |
 | `Dialog` | modal native `<dialog>` (`showModal`: inert page, focus kept inside, Escape closes) | `open`, `onClose` (Escape, close button, backdrop), `heading`, `closeLabel` |

@@ -1,0 +1,35 @@
+import { badgesFor, type UserStats } from "@memegen/shared";
+import { Badge } from "@memegen/ui";
+
+/** Names of the public user stats (leaderboard columns and sorts, profile tiles). */
+export const STAT_LABELS: Record<keyof UserStats, string> = { memeCount: "Memes", highScore: "High score", hScore: "h-score" };
+
+/** Tooltips for stats whose name needs explaining. */
+export const STAT_HINTS: Partial<Record<keyof UserStats, string>> = { hScore: "h memes with a score of at least h" };
+
+/**
+ * The badges a user's stats earn: `compact` as bare icons after a name (leaderboard rows; label and description in
+ * the tooltip), otherwise as a labelled list (profile).
+ */
+export function UserBadges({ stats, compact = false }: { stats: UserStats; compact?: boolean }) {
+  const badges = badgesFor(stats);
+  if (badges.length === 0) return null;
+  if (compact) {
+    return badges.map((b) => (
+      <span key={b.id} className="user-badge-icon" role="img" aria-label={b.label} title={`${b.label}: ${b.description}`}>
+        {b.icon}
+      </span>
+    ));
+  }
+  return (
+    <ul className="user-badges" aria-label="Badges">
+      {badges.map((b) => (
+        <li key={b.id}>
+          <Badge tone="warning" title={b.description} data-testid="profile-badge" data-badge={b.id}>
+            <span aria-hidden>{b.icon}</span> {b.label}
+          </Badge>
+        </li>
+      ))}
+    </ul>
+  );
+}

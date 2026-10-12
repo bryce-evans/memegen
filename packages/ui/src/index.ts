@@ -1,7 +1,4 @@
 export {
-  DEFAULT_LAYOUT,
-  SKIN_IDS,
-  SKIN_STORAGE_KEY,
   SkinProvider,
   getSkin,
   registerSkin,

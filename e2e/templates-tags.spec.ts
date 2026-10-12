@@ -66,7 +66,7 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   const card = page.getByTestId("template-card").filter({ hasText: base });
   await expect(card).toHaveCount(1);
   await expect(card.getByTestId("template-author")).toContainText(`@${curator}`);
-  await expect(card.getByTestId("template-use-count")).toHaveText("0🔥");
+  await expect(card.getByTestId("template-use-count")).toHaveText("0");
   await expect(card.getByTestId("template-use-count")).toHaveAttribute("aria-label", "used 0 times");
   // The gallery card is just the template and Use: tags, usage and variations live in the editor.
   await expect(card.getByTestId("tag-chip")).toHaveCount(0);
@@ -128,7 +128,7 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await page.getByTestId("nav-create").click();
   await expect(page.getByTestId("hot-template").first()).toBeVisible();
   await page.getByTestId("template-search").fill(base);
-  await expect(card.getByTestId("template-use-count")).toHaveText("1🔥");
+  await expect(card.getByTestId("template-use-count")).toHaveText("1");
 });
 
 test("templates: another user can add tags but the author's base tags stay marked", async ({ page, request }) => {

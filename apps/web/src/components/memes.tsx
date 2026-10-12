@@ -1,13 +1,13 @@
 import { useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type CSSProperties, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import { isListed, type Asset, type Meme } from "@memegen/shared";
-import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, MediaGrid, Spinner, Text } from "@memegen/ui";
+import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, Text } from "@memegen/ui";
 import { favoriteMeme, voteMeme } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { plural } from "../format.ts";
 import { useAction } from "../useAction.ts";
 import type { Paged } from "../usePaged.ts";
-import { ErrorView, LoadMoreButton, MediaView, TimeAgo } from "./common.tsx";
+import { ErrorView, MediaView, PagedList, TimeAgo } from "./common.tsx";
 
 /** 👍/👎 with up/down counts (downvotes shown negative); clicking your current vote clears it. */
 export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
@@ -55,7 +55,7 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
   );
 }
 
-/** ☆/★ toggle that saves someone else's posted public meme to your Favorites; hidden on your own and unposted memes. */
+/** Star toggle (filled when pressed) that saves someone else's posted public meme to your Favorites; hidden on your own and unposted memes. */
 export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
   const user = useUser();
   const { busy, error, run } = useAction();
@@ -78,9 +78,8 @@ export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme
         aria-label={label}
         title={label}
         data-testid="favorite"
-      >
-        <span aria-hidden>{meme.favorited ? "★" : "☆"}</span>
-      </Button>
+        icon={<Icon name="star" />}
+      />
       {error !== null && <ErrorView error={error} />}
     </>
   );
@@ -176,7 +175,7 @@ function useRowBox(ref: RefObject<HTMLDivElement | null>, mounted: boolean): Row
   return box;
 }
 
-export function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (meme: Meme) => void; height?: number }) {
+function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (meme: Meme) => void; height?: number }) {
   // Until the grid is measured, cards sit at the CSS default row height.
   const style = { "--meme-aspect": aspect(meme.outputAsset), "--meme-height": height ? `${height}px` : undefined } as CSSProperties;
   return (
@@ -219,33 +218,30 @@ export function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (me
 }
 
 /** Memes flow in justified rows at their native aspect: one height per row, widths vary, nothing cropped. */
-export function MemeGrid({ memes, onChange }: { memes: Meme[]; onChange: (meme: Meme) => void }) {
+function MemeGrid({ memes, onChange }: { memes: Meme[]; onChange: (meme: Meme) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const box = useRowBox(ref, memes.length > 0);
-  if (memes.length === 0) return <EmptyState icon={<Icon name="image" />} title="No memes yet." />;
+  if (memes.length === 0) return null;
   const heights = box && box.width > 0 ? justifyRows(memes.map((m) => aspect(m.outputAsset)), box.width, box.gap, box.target) : null;
   return (
-    <MediaGrid ref={ref} className="meme-grid">
+    <div ref={ref} className="meme-grid">
       {memes.map((m, i) => (
         <MemeCard key={m.id} meme={m} onChange={onChange} height={heights?.[i]} />
       ))}
-    </MediaGrid>
+    </div>
   );
 }
 
 /**
- * A paged meme list: its error, the grid (cards update in place after votes/favorites), and "Load more".
- * Extra props, e.g. `data-*` naming the query, go on the `meme-feed` box.
+ * A paged meme list: its error or "No memes yet.", the grid (cards update in place after votes/favorites), and
+ * "Load more". Extra props, e.g. `data-*` naming the query, go on the `meme-feed` box.
  */
 export function MemeFeed({ list, ...rest }: { list: Paged<Meme> } & ComponentPropsWithoutRef<"div">) {
   return (
-    <>
-      {list.error !== null && <ErrorView error={list.error} />}
-      <div className="meme-feed" data-testid="meme-feed" aria-busy={list.loading} {...rest}>
-        {!(list.loading && list.items.length === 0) && <MemeGrid memes={list.items} onChange={list.replace} />}
-        {list.loading && <Spinner label="Loading…" />}
-        <LoadMoreButton hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} testId="load-more" />
-      </div>
-    </>
+    <div className="meme-feed" data-testid="meme-feed" aria-busy={list.loading} {...rest}>
+      <PagedList list={list} empty={<EmptyState icon={<Icon name="image" />} title="No memes yet." />} paging="button" moreTestId="load-more">
+        {(memes) => <MemeGrid memes={memes} onChange={list.replace} />}
+      </PagedList>
+    </div>
   );
 }

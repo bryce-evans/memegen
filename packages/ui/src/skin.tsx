@@ -13,9 +13,6 @@ import {
 } from "react";
 import type { LoosePolymorphicProps, Polymorphic } from "./cx.ts";
 import type { ComponentOverrides } from "./overrides.ts";
-import type { BuiltinSkinId } from "./skin-ids.ts";
-
-export { SKIN_IDS, type BuiltinSkinId } from "./skin-ids.ts";
 
 /**
  * Augment to add skin ids beyond the built-ins:
@@ -43,10 +40,10 @@ export interface Skin {
   rootClassName?: string;
 }
 
-export const DEFAULT_LAYOUT: SkinLayout = { filters: "sidebar" };
+const DEFAULT_LAYOUT: SkinLayout = { filters: "sidebar" };
 
 /** `localStorage` key holding the chosen skin id. */
-export const SKIN_STORAGE_KEY = "memegen.skin";
+const SKIN_STORAGE_KEY = "memegen.skin";
 const SKIN_PARAM = "skin";
 
 const registry = new Map<SkinId, Skin>();
@@ -65,26 +62,29 @@ export function getSkin(id: SkinId): Skin | undefined {
   return registry.get(id);
 }
 
-for (const skin of [
-  { id: "default", label: "Default" },
-  { id: "apple", label: "Apple", layout: { filters: "header" } },
-  { id: "matte", label: "Matte" },
-  { id: "google", label: "Google", layout: { filters: "header" } },
-  { id: "studio", label: "Studio", layout: { filters: "header" } },
-  {
-    id: "spectrum",
+/** Built-in skins, registered (and so listed in the switcher) in this order. */
+const BUILTIN_SKINS = {
+  default: { label: "Default" },
+  apple: { label: "Apple", layout: { filters: "header" } },
+  matte: { label: "Matte" },
+  google: { label: "Google", layout: { filters: "header" } },
+  studio: { label: "Studio", layout: { filters: "header" } },
+  spectrum: {
     label: "Spectrum",
     layout: { filters: "header" },
     rootClassName: "spectrum spectrum--dark spectrum--medium",
   },
-  {
-    id: "painted",
+  painted: {
     label: "Painted",
     layout: { filters: "header" },
     rootClassName: "spectrum spectrum--light spectrum--medium",
   },
-] satisfies Skin[]) {
-  registerSkin(skin);
+} satisfies Record<string, Omit<Skin, "id">>;
+
+export type BuiltinSkinId = keyof typeof BUILTIN_SKINS;
+
+for (const [id, skin] of Object.entries(BUILTIN_SKINS)) {
+  registerSkin({ id: id as BuiltinSkinId, ...skin });
 }
 
 function subscribe(listener: () => void): () => void {

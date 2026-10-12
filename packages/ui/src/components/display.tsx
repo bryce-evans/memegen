@@ -127,6 +127,60 @@ function AlertBase({ tone = "info", className, ...rest }: AlertProps) {
 
 export const Alert = skinnable("Alert", AlertBase);
 
+export interface CalloutProps extends ComponentPropsWithRef<"div"> {
+  tone?: Tone;
+}
+
+/** Tinted, accent-edged box that sets a block apart (a team tag's header). Not a live region, unlike `Alert`. */
+function CalloutBase({ tone = "neutral", className, ...rest }: CalloutProps) {
+  return <div className={cx("ui-callout", `ui-callout--${tone}`, className)} {...rest} />;
+}
+
+export const Callout = skinnable("Callout", CalloutBase);
+
+export interface TableProps extends ComponentPropsWithRef<"table"> {}
+
+/** Data table: ruled rows, muted header cells (`aria-sort` marks the sorted column), tabular figures. */
+function TableBase({ className, ...rest }: TableProps) {
+  return <table className={cx("ui-table", className)} {...rest} />;
+}
+
+export const Table = skinnable("Table", TableBase);
+
+export interface StatGroupProps extends ComponentPropsWithRef<"dl"> {}
+
+/** A row of `Stat` tiles (a `<dl>`). */
+function StatGroupBase({ className, ...rest }: StatGroupProps) {
+  return <dl className={cx("ui-stat-group", className)} {...rest} />;
+}
+
+export const StatGroup = skinnable("StatGroup", StatGroupBase);
+
+export interface StatProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
+  label: ReactNode;
+  value: ReactNode;
+  /** Tooltip on the label explaining the figure. */
+  hint?: string;
+  /** Props for the value's `<dd>` (e.g. its `data-testid`). */
+  valueProps?: ComponentPropsWithRef<"dd"> & { [data: `data-${string}`]: string | undefined };
+}
+
+/** One labelled figure inside a `StatGroup`. */
+function StatBase({ label, value, hint, valueProps, className, ...rest }: StatProps) {
+  return (
+    <div className={cx("ui-stat", className)} {...rest}>
+      <dt className="ui-stat-label" title={hint}>
+        {label}
+      </dt>
+      <dd {...valueProps} className={cx("ui-stat-value", valueProps?.className)}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+export const Stat = skinnable("Stat", StatBase);
+
 export interface SpinnerProps extends ComponentPropsWithRef<"span"> {
   /** Visible text next to the spinner; without it the spinner is labelled "Loading". */
   label?: ReactNode;

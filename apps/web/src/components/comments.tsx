@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { COMMENT_MAX_LENGTH, isListed, type Comment, type Meme } from "@memegen/shared";
-import { Button, PageHeader, Spinner, Text, TextArea } from "@memegen/ui";
+import { Button, PageHeader, Text, TextArea } from "@memegen/ui";
 import { createComment, deleteComment, listComments } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { useAction } from "../useAction.ts";
 import { usePaged } from "../usePaged.ts";
-import { ErrorView, LoadMoreButton, TimeAgo } from "./common.tsx";
+import { ErrorView, PagedList, TimeAgo } from "./common.tsx";
 
 /**
  * Mirrors the server's delete rule: a comment with replies stays as a placeholder; otherwise it goes, and a
@@ -49,19 +49,22 @@ export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (
     <section id="comments" className="comments" data-testid="comments" aria-busy={list.loading}>
       <PageHeader level={2} title={`Discussion (${meme.commentCount})`} />
       {!open && <Text tone="muted">Posting this meme publicly opens the discussion.</Text>}
-      {list.error !== null && <ErrorView error={list.error} />}
-      {!list.loading && list.items.length === 0 && list.error === null && open && (
-        <Text tone="muted">No comments yet. Start the discussion!</Text>
-      )}
-      <ol className="comment-list">
-        {list.items.map((c) => (
-          <li key={c.id}>
-            <CommentItem comment={c} canReply={open} memeOwnerId={meme.owner.id} onPosted={added} onDelete={remove} />
-          </li>
-        ))}
-      </ol>
-      {list.loading && <Spinner label="Loading…" />}
-      <LoadMoreButton hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} label="More comments" />
+      <PagedList
+        list={list}
+        empty={open && <Text tone="muted">No comments yet. Start the discussion!</Text>}
+        paging="button"
+        moreLabel="More comments"
+      >
+        {(comments) => (
+          <ol className="comment-list">
+            {comments.map((c) => (
+              <li key={c.id}>
+                <CommentItem comment={c} canReply={open} memeOwnerId={meme.owner.id} onPosted={added} onDelete={remove} />
+              </li>
+            ))}
+          </ol>
+        )}
+      </PagedList>
       {open && <CommentForm memeId={meme.id} parentId={null} onPosted={added} />}
     </section>
   );

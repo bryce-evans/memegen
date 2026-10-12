@@ -8,7 +8,7 @@ import { useDebounced } from "../useDebounced.ts";
 import { ErrorView } from "./common.tsx";
 
 /** Debounced `/api/tags?q=` lookup; an empty query (or a failed lookup) → no suggestions. */
-export function useTagSuggestions(query: string, limit = 8): Tag[] {
+function useTagSuggestions(query: string, limit = 8): Tag[] {
   const q = query.trim();
   const debounced = useDebounced(q, 200);
   // Clearing the field drops the suggestions at once instead of after the debounce.
@@ -21,7 +21,7 @@ export function useTagSuggestions(query: string, limit = 8): Tag[] {
  * Chip input for tag slugs: Enter/comma (or leaving the field) commits typed names, normalized with `tagSlug`.
  * `suggestions` are offered as one-click additions, never applied automatically.
  */
-export function TagInput(props: {
+function TagInput(props: {
   value: string[];
   onChange: (tags: string[]) => void;
   suggestions?: readonly string[];
@@ -136,7 +136,7 @@ export function TagField(props: {
 }
 
 /** Create a tag (e.g. a team) and hand back its slug; an existing tag of that name is just handed back. */
-export function NewTagForm({ disabled, onCreated }: { disabled: boolean; onCreated: (slug: string) => void }) {
+function NewTagForm({ disabled, onCreated }: { disabled: boolean; onCreated: (slug: string) => void }) {
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TagKind>("team");
   const { busy, error, run } = useAction();

@@ -8,9 +8,9 @@ import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { usePaged } from "../usePaged.ts";
-import { ErrorView, LoadMoreSentinel, MediaView } from "./common.tsx";
+import { ErrorView, MediaView } from "./common.tsx";
 import { nameFromFile } from "./editor/TemplateSavePanel.tsx";
-import { PERIOD_LABELS } from "./feed.tsx";
+import { PERIOD_LABELS } from "../format.ts";
 import { TemplateGrid } from "./templates.tsx";
 
 type KindFilter = TemplateKind | "all";
@@ -53,11 +53,11 @@ export function TemplateBrowser({ search, onSearchChange }: { search: string; on
       <TemplateGrid
         list={list}
         empty={<EmptyState icon={<Icon name="search" />} title="No templates found." />}
+        paging="sentinel"
         data-testid="template-grid"
         data-query={q}
         data-kind={kind}
       />
-      <LoadMoreSentinel hasMore={list.hasMore} loading={list.loading} onLoadMore={list.loadMore} />
     </section>
   );
 }

@@ -2,21 +2,14 @@ import { useSearchParams } from "react-router-dom";
 import { GALLERY_SORTS, PERIODS, type GallerySort, type Meme, type Period } from "@memegen/shared";
 import { PageHeader, SegmentedControl, SidebarSection, useSkin } from "@memegen/ui";
 import { getGallery } from "../api.ts";
+import { PERIOD_LABELS } from "../format.ts";
 import { usePaged } from "../usePaged.ts";
 import { MemeFeed } from "./memes.tsx";
-
-export const PERIOD_LABELS: Record<Period, string> = {
-  day: "Today",
-  week: "This week",
-  month: "This month",
-  year: "This year",
-  all: "All time",
-};
 
 const SORT_LABELS: Record<GallerySort, string> = { best: "Best", new: "New" };
 
 /** `popular` = `/`, `recent` = `/recent`, `tag` = the memes on `/t/:slug`, `search` = `/search?q=`. */
-export type FeedKind = "popular" | "recent" | "tag" | "search";
+type FeedKind = "popular" | "recent" | "tag" | "search";
 
 interface FeedConfig {
   /** Default (or fixed, without its control) period and sort. */

@@ -191,12 +191,6 @@
   font-weight: var(--ui-font-weight-regular);
   color: var(--ui-color-text-muted);
 }
-.tag-page.team .tag-head {
-  padding: var(--ui-space-4) var(--ui-space-5);
-  border-left: 4px solid var(--ui-color-success);
-  border-radius: var(--ui-radius-md);
-  background: color-mix(in srgb, var(--ui-color-success) 8%, transparent);
-}
 
 /* ---- votes ---------------------------------------------------------------- */
 
@@ -241,16 +235,19 @@
   white-space: nowrap;
 }
 
-/* Meme feeds flow in justified rows instead of a grid: native aspect, never cropped, widths vary. MemeGrid
-   (justifyRows in memes.tsx) gives each card a row height (--meme-height) so every row fills the line at close to
-   the target --meme-row-height, which the code reads, so keep it a plain px/rem length; skins may override it
-   (Spectrum: 270px). Widths are --meme-aspect × that height. Before the first measurement cards sit at the target
-   height. The card shrinks to its image so the hover overlay covers exactly the meme. */
-.ui-media-grid.meme-grid {
+/* Meme feeds flow in justified rows instead of a grid: native aspect, never cropped, widths vary. The container is
+   the app's own div, not ui MediaGrid, because the app computes this layout (skins may restyle MediaGrid, e.g.
+   Studio's masonry). MemeGrid (justifyRows in memes.tsx) gives each card a row height (--meme-height) so every row
+   fills the line at close to the target --meme-row-height, which the code reads, so keep it a plain px/rem length;
+   a per-skin override (scoped like the skins' own rules) may change it. Widths are --meme-aspect × that height.
+   Before the first measurement cards sit at the target height. The card shrinks to its image so the hover overlay
+   covers exactly the meme. */
+.meme-grid {
   --meme-row-height: 250px;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
+  gap: var(--ui-grid-gap);
 }
 .meme-grid .meme-card.ui-card.ui-card--borderless {
   position: relative;
@@ -367,31 +364,15 @@
 
 /* ---- leaderboard ---------------------------------------------------------- */
 
-.leaderboard {
-  width: 100%;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-}
-.leaderboard th,
-.leaderboard td {
-  padding: var(--ui-space-2) var(--ui-space-3);
-  border-bottom: var(--ui-border-width) solid var(--ui-color-separator);
+/* Rank and figures sit right; the user column takes the slack. */
+.leaderboard :is(th, td) {
   text-align: right;
 }
-.leaderboard th:nth-child(2),
-.leaderboard td:nth-child(2) {
+.leaderboard :is(th, td):nth-child(2) {
   width: 100%;
   text-align: left;
 }
-.leaderboard th {
-  font-size: var(--ui-font-size-sm);
-  font-weight: var(--ui-font-weight-semibold);
-  color: var(--ui-color-text-muted);
-}
-.leaderboard th[aria-sort] {
-  color: var(--ui-color-text);
-}
-.leaderboard-badge {
+.user-badge-icon {
   margin-left: var(--ui-space-1);
 }
 
@@ -551,7 +532,7 @@
 .profile-head .ui-page-header {
   margin-bottom: var(--ui-space-3);
 }
-.profile-badges {
+.user-badges {
   display: flex;
   flex-wrap: wrap;
   gap: var(--ui-space-2);
@@ -562,29 +543,8 @@
 .profile-tabs {
   margin-bottom: var(--ui-space-5);
 }
-.stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ui-space-5);
+.profile-stats {
   margin: var(--ui-space-3) 0;
-}
-.stats div {
-  min-width: 7rem;
-  padding: 0.6rem var(--ui-space-5);
-  border: var(--ui-border-width) solid var(--ui-color-border);
-  border-radius: var(--ui-radius-card);
-  background: var(--ui-color-surface);
-  box-shadow: var(--ui-shadow-1);
-}
-.stats dt {
-  font-size: 0.8rem;
-  color: var(--ui-color-text-muted);
-}
-.stats dd {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: var(--ui-font-weight-bold);
-  font-variant-numeric: tabular-nums;
 }
 
 /* ---- editor --------------------------------------------------------------- */

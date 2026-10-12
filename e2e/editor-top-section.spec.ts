@@ -1,6 +1,6 @@
 import type { Meme, TextLayer } from "@memegen/shared";
 import { expect, scoped, test } from "./test.ts";
-import { apiGet, download, dragLayer, editFixture, memeIdFromUrl, pngSize, stagePixels } from "./helpers.ts";
+import { apiGet, download, dragLayer, editFixture, memeIdFromUrl, outputPixel, pngSize, stagePixels } from "./helpers.ts";
 
 /** Stage canvas height / width (the width itself follows the aspect, so compare ratios). */
 const stageAspect = (page: import("@playwright/test").Page) =>
@@ -48,13 +48,7 @@ test("top section: the toggle adds a white band with its own text as layer 0; it
   const output = await download(request, meme.outputAsset);
   const size = pngSize(output);
   expect(size.height / size.width).toBeCloseTo((480 + 192) / 640, 2);
-  const corner = await page.evaluate(async (url) => {
-    const bitmap = await createImageBitmap(await (await fetch(url)).blob());
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(bitmap, 0, 0);
-    return [...ctx.getImageData(2, 2, 1, 1).data];
-  }, `/storage${meme.outputAsset.contentPath}`);
+  const corner = await outputPixel(page, meme.outputAsset, { x: 2, y: 2 });
   expect(corner).toEqual([255, 255, 255, 255]);
 
   // Re-editing restores it; switching it off removes the band and its text.
@@ -65,7 +59,7 @@ test("top section: the toggle adds a white band with its own text as layer 0; it
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await expect(items).toHaveCount(2);
-  await expect(page.locator('[data-top-section="true"]')).toHaveCount(0);
+  await expect(items.and(page.locator('[data-top-section="true"]'))).toHaveCount(0);
   await expect.poll(() => stageAspect(page)).toBeCloseTo(480 / 640, 2);
 });
 

@@ -9,7 +9,7 @@ test("sign-in intro: every meme sprite loads, the burst plays through, and the l
   await expect(intro).toHaveAttribute("data-ready", "true");
   await expect(intro).toHaveAttribute("data-done", "true");
 
-  const widths = await intro.locator("img").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).naturalWidth));
+  const widths = await intro.getByTestId("intro-image").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).naturalWidth));
   expect(widths).toHaveLength(7);
   for (const width of widths) expect(width).toBeGreaterThan(0);
 

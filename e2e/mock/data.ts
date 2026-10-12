@@ -1,6 +1,6 @@
 /**
- * Deterministic mock dataset for development and e2e tests. Pure data: specs import the
- * expectations below without touching the database; `seed.ts` writes it.
+ * Deterministic mock dataset for e2e tests. Pure data: specs import the expectations below without
+ * touching the database; `seed-data.ts` writes it during e2e global setup.
  */
 import type { Visibility } from "@memegen/shared";
 

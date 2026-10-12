@@ -64,6 +64,10 @@ export async function apiMeme(
 export const memeCard = (scope: Page | Locator, id: string) => scope.locator(`[data-testid="meme-card"][data-meme-id="${id}"]`);
 export const tagChip = (scope: Page | Locator, slug: string) => scope.locator(`[data-testid="tag-chip"][data-tag="${slug}"]`);
 export const timelineFrame = (page: Page, index: number) => page.locator(`[data-testid="timeline-frame"][data-index="${index}"]`);
+export const templateCard = (scope: Page | Locator, id: string) =>
+  scope.locator(`[data-testid="template-card"][data-template-id="${id}"]`);
+export const inputTagChip = (scope: Page | Locator, slug: string) => scope.locator(`[data-testid="tag-input-chip"][data-tag="${slug}"]`);
+export const commentById = (scope: Page | Locator, id: string) => scope.locator(`[data-testid="comment"][data-comment-id="${id}"]`);
 
 /** Add community tags through a template's details ("+ tags", type each, save). */
 export async function addCommunityTags(scope: Page | Locator, tags: string[]): Promise<void> {
@@ -123,6 +127,21 @@ export async function download(request: APIRequestContext, asset: Asset): Promis
   const res = await request.get(`/storage${asset.contentPath}`);
   expect(res.ok()).toBeTruthy();
   return res.body();
+}
+
+/** RGBA of one pixel of a stored image asset, decoded in the page: its center, or (x, y) in image pixels. */
+export async function outputPixel(page: Page, asset: Asset, at: "center" | { x: number; y: number }): Promise<number[]> {
+  return page.evaluate(
+    async ({ url, at }) => {
+      const bitmap = await createImageBitmap(await (await fetch(url)).blob());
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(bitmap, 0, 0);
+      const { x, y } = at === "center" ? { x: bitmap.width / 2, y: bitmap.height / 2 } : at;
+      return [...ctx.getImageData(x, y, 1, 1).data];
+    },
+    { url: `/storage${asset.contentPath}`, at },
+  );
 }
 
 /** Sign in as `username`, add `file` as their template (through the API), and open it in the editor once the stage is ready. */

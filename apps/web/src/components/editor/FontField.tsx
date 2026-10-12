@@ -40,7 +40,7 @@ export function FontField({ value, fonts, onChange, onUploaded, fallbackLabel = 
           >
             <option value="">{fallbackLabel}</option>
             {fonts.map((f) => (
-              <option key={f.id} value={f.id}>
+              <option key={f.id} value={f.id} data-testid="font-option">
                 {f.name}
               </option>
             ))}

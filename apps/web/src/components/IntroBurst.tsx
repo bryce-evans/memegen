@@ -63,6 +63,7 @@ export function IntroBurst() {
         <img
           key={s.name}
           className="intro-sprite"
+          data-testid="intro-image"
           src={s.src}
           alt=""
           style={landingStyle(s)}
@@ -72,9 +73,9 @@ export function IntroBurst() {
       ))}
       <div className="intro-sprite intro-dat-boi" style={landingStyle(DAT_BOI)}>
         <div className="intro-nyan">
-          <img src={nyanCat} alt="" onLoad={onSettle} onError={onSettle} onAnimationEnd={() => setDone(true)} />
+          <img src={nyanCat} alt="" data-testid="intro-image" onLoad={onSettle} onError={onSettle} onAnimationEnd={() => setDone(true)} />
         </div>
-        <img src={datBoi} alt="" onLoad={onSettle} onError={onSettle} />
+        <img src={datBoi} alt="" data-testid="intro-image" onLoad={onSettle} onError={onSettle} />
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 /**
- * Browser entry bundled by `seed.ts`: renders a meme with the same code path as the editor's export
- * (`ensureLayerFonts` + `ensureLayerImages` + `decodeMedia` + `exportMeme`), so seeded memes look exactly like user-made ones.
- * Assets are fetched from `/assets/<id>`, which the seed script serves from the asset store.
+ * Browser entry bundled and served by `renderAll` in `render-memes.ts`: renders a meme with the same code path as the
+ * editor's export (`ensureLayerFonts` + `ensureLayerImages` + `decodeMedia` + `exportMeme`), so seeded memes look exactly
+ * like user-made ones. Assets are fetched from `/assets/<id>`, which `renderAll` serves from the asset store.
  */
 import { canvasHeight, decodeMedia, ensureLayerFonts, ensureLayerImages, exportMeme } from "@memegen/render";
 import { stillExportSize, type Layer, type MediaKind, type UploadLimits } from "@memegen/shared";

@@ -1,5 +1,5 @@
 import type { Comment, Meme } from "@memegen/shared";
-import { apiGet, apiMeme, apiPost, apiUser, memeCard, signIn } from "./helpers.ts";
+import { apiGet, apiMeme, apiPost, apiUser, commentById, memeCard, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("comments: post, reply, see the count on the card, delete (placeholder while replies remain)", async ({ page, request }) => {
@@ -18,12 +18,12 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   await expect(top.getByTestId("comment-body")).toHaveText("first!");
   await expect(top.getByTestId("comment-author")).toHaveText(`@${commenter}`);
   const parentId = await top.getAttribute("data-comment-id");
-  const parent = page.locator(`[data-testid="comment"][data-comment-id="${parentId}"]`);
+  const parent = commentById(page, parentId!);
 
   await parent.getByTestId("comment-reply").click();
   await parent.getByTestId("reply-input").fill("a reply");
   await parent.getByTestId("reply-submit").click();
-  const reply = parent.locator('[data-testid="comment"]');
+  const reply = parent.getByTestId("comment");
   await expect(reply).toHaveCount(1);
   await expect(reply.getByTestId("comment-body")).toHaveText("a reply");
   await expect(reply.getByTestId("comment-reply")).toHaveCount(0); // one level of replies
@@ -63,7 +63,7 @@ test("comments: the author or the meme's owner can delete; drafts note that post
   await page.goto(`/m/${meme.id}`);
   await signIn(page, scoped("bystander"));
   const comments = page.getByTestId("comments");
-  const parent = page.locator(`[data-testid="comment"][data-comment-id="${top.id}"]`);
+  const parent = commentById(page, top.id);
   await expect(parent.getByTestId("comment-body").first()).toHaveText("mine");
   await expect(comments.getByTestId("comment-delete")).toHaveCount(0);
   await expect(parent.getByTestId("comment-reply")).toBeVisible();
@@ -74,7 +74,7 @@ test("comments: the author or the meme's owner can delete; drafts note that post
   await expect(comments.getByTestId("comment-delete")).toHaveCount(2);
   await parent.getByTestId("comment-delete").first().click();
   await expect(parent.getByTestId("comment-body").first()).toHaveText("deleted");
-  await expect(parent.locator('[data-testid="comment"]').getByTestId("comment-body")).toHaveText("my reply");
+  await expect(parent.getByTestId("comment").getByTestId("comment-body")).toHaveText("my reply");
   expect((await apiGet<Meme>(request, `/api/memes/${meme.id}`)).commentCount).toBe(1);
 
   const draft = await apiMeme(request, author, { title: scoped("Draft talk"), post: false });

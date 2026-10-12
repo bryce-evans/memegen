@@ -161,11 +161,11 @@ Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `me
 - `node --test`: pure shared logic plus storage/API behavior via `app.request()` against a fresh `memegen_test` schema.
 - Playwright: real servers on separate ports against a fresh `memegen_e2e`. Exports are checked with `ffprobe`. Runs in branded Chrome, because Playwright's Chromium lacks H.264/AAC for WebCodecs.
 - Datasets are committed as code, not DB dumps (dumps go stale with migrations and can't carry media):
-  - Mock (`scripts/mock/data.ts`): e2e only, with generated media. `MOCK_EXPECT` rankings and stats are hand-written as an independent oracle.
+  - Mock (`e2e/mock/data.ts`): e2e only, with generated media. `MOCK_EXPECT` rankings and stats are hand-written as an independent oracle.
   - Sample (`scripts/sample/data.ts`): the dev site, using the jacebrowning templates.
   - Starter (`scripts/starter/data.ts`): example memes owned by `memegen`, shipped as a snapshot.
 - Sample and starter memes are rendered at seed time by `@memegen/render` in headless Chromium, with assets served from the store via `page.route` (offline, no running services). Rendering finishes before any DB write.
-- Specs share one seeded DB: identities are scoped per project, and vote assertions are relative. They wait on state markers (`stage-canvas[data-ready]`, `timeline[data-complete]`), never sleeps.
+- Specs share one seeded DB (retries included): names they create go through `scoped()` and must be distinct across specs, and vote assertions are relative. They wait on state markers (`stage-canvas[data-ready]`, `timeline[data-complete]`), never sleeps.
 
 ## Snapshots
 

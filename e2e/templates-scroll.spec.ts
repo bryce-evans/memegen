@@ -21,17 +21,17 @@ test("templates: the create page loads more matches as the end of the list scrol
   const matches = page.getByTestId("template-card").filter({ hasText: prefix });
   await expect(matches.first()).toBeVisible();
 
+  // Each time the sentinel scrolls into view a page loads: wait for more cards and an idle grid, until it is gone.
+  const cards = page.getByTestId("template-card");
   const sentinel = page.getByTestId("load-more-sentinel");
-  await expect
-    .poll(
-      async () => {
-        if ((await sentinel.count()) > 0) await sentinel.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
-        return matches.count();
-      },
-      { timeout: 30_000 },
-    )
-    .toBe(total);
-  await expect(page.getByTestId("template-card")).toHaveCount(total);
+  while ((await sentinel.count()) > 0) {
+    const before = await cards.count();
+    await sentinel.scrollIntoViewIfNeeded();
+    await expect.poll(() => cards.count()).toBeGreaterThan(before);
+    await expect(grid).toHaveAttribute("aria-busy", "false");
+  }
+  await expect(matches).toHaveCount(total);
+  await expect(cards).toHaveCount(total);
   await expect(sentinel).toHaveCount(0);
   await expect(page.getByTestId("load-more")).toHaveCount(0);
 });

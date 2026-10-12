@@ -1,4 +1,4 @@
-import { apiMeme, apiTemplate, apiUser, loadAll, memeCard, signIn } from "./helpers.ts";
+import { apiMeme, apiTemplate, apiUser, inputTagChip, loadAll, memeCard, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("search: the header box finds memes by template name, template tag, title, or author", async ({ page, request }) => {
@@ -46,8 +46,8 @@ test("a new meme starts with its template's tags, and any of them can be removed
 
   const chips = page.getByTestId("tag-input-chip");
   await expect(chips).toHaveCount(template.tags.length);
-  for (const slug of template.tags) await expect(chips.and(page.locator(`[data-tag="${slug}"]`))).toBeVisible();
-  await chips.and(page.locator('[data-tag="movie"]')).getByTestId("tag-input-chip-remove").click();
+  for (const slug of template.tags) await expect(inputTagChip(page, slug)).toBeVisible();
+  await inputTagChip(page, "movie").getByTestId("tag-input-chip-remove").click();
   await expect(chips).toHaveCount(template.tags.length - 1);
-  await expect(chips.and(page.locator('[data-tag="movie"]'))).toHaveCount(0);
+  await expect(inputTagChip(page, "movie")).toHaveCount(0);
 });

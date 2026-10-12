@@ -1,6 +1,18 @@
 import { expect, scoped, test } from "./test.ts";
 import { tagSlug, type Meme, type Template, type TemplateUsage } from "@memegen/shared";
-import { addCommunityTags, apiGet, apiTemplate, apiUser, fixture, memeIdFromUrl, signIn, tagChip } from "./helpers.ts";
+import {
+  addCommunityTags,
+  apiGet,
+  apiTemplate,
+  apiUser,
+  fixture,
+  inputTagChip,
+  memeCard,
+  memeIdFromUrl,
+  signIn,
+  tagChip,
+  templateCard,
+} from "./helpers.ts";
 
 test("templates: add one, add a variation, add tags, use the variation with a new team tag, find it all by tag", async ({
   page,
@@ -90,7 +102,7 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await page.getByTestId("new-tag-name").fill(teamTag);
   await page.getByTestId("new-tag-kind").selectOption("team");
   await page.getByTestId("new-tag-submit").click();
-  await expect(page.locator(`[data-testid="tag-input-chip"][data-tag="${teamSlug}"]`)).toBeVisible();
+  await expect(inputTagChip(page, teamSlug)).toBeVisible();
   await page.getByTestId("post-meme").click();
   const id = await memeIdFromUrl(page);
 
@@ -102,15 +114,15 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await page.goto("/t/movie");
   await expect(page.getByTestId("tag-title")).toContainText(/movie/i);
   await expect(page.getByTestId("tag-templates")).toContainText(base);
-  await expect(page.getByTestId("tag-memes").locator(`[data-meme-id="${id}"]`)).toBeVisible();
+  await expect(memeCard(page.getByTestId("tag-memes"), id)).toBeVisible();
 
   // And under the new team tag.
   await page.goto(`/t/${teamSlug}`);
   await expect(page.getByTestId("tag-title")).toContainText(teamTag);
-  await expect(page.getByTestId("tag-memes").locator(`[data-meme-id="${id}"]`)).toBeVisible();
+  await expect(memeCard(page.getByTestId("tag-memes"), id)).toBeVisible();
 
   // The use counts toward the parent template (the variation rolls up). Checked on its own usage series: the Hot
-  // row only shows today's top 12, and the other skins' runs use plenty of templates today too.
+  // row only shows today's top 12, and other specs in the run use plenty of templates today too.
   const usage = await apiGet<TemplateUsage>(request, `/api/templates/${templateId}/usage?period=day`);
   expect(usage.points.reduce((n, p) => n + p.uses, 0)).toBe(1);
   await page.getByTestId("nav-create").click();
@@ -128,7 +140,7 @@ test("templates: another user can add tags but the author's base tags stay marke
   await page.goto("/create");
   await signIn(page, scoped("tag-helper"));
   await page.getByTestId("template-search").fill(name);
-  await page.locator(`[data-testid="template-card"][data-template-id="${template.id}"]`).getByTestId("use-template").click();
+  await templateCard(page, template.id).getByTestId("use-template").click();
   const details = page.getByTestId("template-details");
   await expect(tagChip(details, "oldschool")).toHaveAttribute("data-base", "true");
 

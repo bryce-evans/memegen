@@ -9,7 +9,7 @@ import { topBottomLayers } from "@memegen/shared";
 import type { Sql } from "@memegen/server-kit";
 import { encodePng } from "@memegen/server-kit/testing";
 import type { AssetStore } from "@memegen/storage";
-import { castVotes, insertMeme, insertTemplate, tagTemplate } from "../lib.ts";
+import { castVotes, insertMeme, insertTemplate, tagTemplate } from "../../scripts/lib.ts";
 import { MOCK_AUTHORS, MOCK_MEMES, MOCK_TEMPLATES, MOCK_VOTER_COUNT, mockVoter } from "./data.ts";
 
 const { applyPalette, GIFEncoder, quantize } = createRequire(import.meta.url)("gifenc") as typeof Gifenc;

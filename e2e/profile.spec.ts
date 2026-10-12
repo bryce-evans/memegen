@@ -1,6 +1,6 @@
 import { topBottomLayers, type Template } from "@memegen/shared";
-import { MOCK_EXPECT, MOCK_TEMPLATES } from "../scripts/mock/data.ts";
-import { apiGet, apiMeme, apiTemplate, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn } from "./helpers.ts";
+import { MOCK_EXPECT, MOCK_TEMPLATES } from "./mock/data.ts";
+import { apiGet, apiMeme, apiTemplate, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn, templateCard } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("profile: open an author from the gallery and see their stats, badges and public memes", async ({ page }) => {
@@ -8,7 +8,7 @@ test("profile: open an author from the gallery and see their stats, badges and p
   await signIn(page, scoped("visitor"));
   await openFeed(page, { feed: "popular", period: "week" });
   const card = page.getByTestId("meme-card").filter({ hasText: "Mock: Top of the Week" });
-  await card.getByRole("link", { name: "mock-alice" }).click();
+  await card.getByTestId("meme-author").click();
   await expect(page).toHaveURL(/\/u\/mock-alice$/);
 
   await expect(page.getByTestId("stat-meme-count")).toHaveText(String(MOCK_EXPECT.aliceStats.memeCount));
@@ -112,7 +112,6 @@ test("profile templates: everyone sees the tab; the author opens one, edits its 
   const name = scoped("Editable");
   const template = await apiTemplate(request, author, { name, defaultLayers: topBottomLayers("FIRST TOP", "FIRST BOTTOM") });
   const hidden = await apiTemplate(request, author, { name: scoped("Hidden draft"), assetId: template.asset.id, isPublic: false });
-  const card = (id: string) => page.locator(`[data-testid="template-card"][data-template-id="${id}"]`);
 
   // A visitor sees the public template with Use, not Edit, and never the private one.
   await page.goto(`/u/${author.username}?tab=templates`);
@@ -120,16 +119,16 @@ test("profile templates: everyone sees the tab; the author opens one, edits its 
   const grid = page.getByTestId("profile-templates");
   await expect(grid).toHaveAttribute("aria-busy", "false");
   await expect(page.getByTestId("profile-tab-templates")).toHaveAttribute("aria-pressed", "true");
-  await expect(card(template.id).getByTestId("use-template")).toBeVisible();
-  await expect(card(template.id).getByTestId("edit-template")).toHaveCount(0);
-  await expect(card(hidden.id)).toHaveCount(0);
+  await expect(templateCard(page, template.id).getByTestId("use-template")).toBeVisible();
+  await expect(templateCard(page, template.id).getByTestId("edit-template")).toHaveCount(0);
+  await expect(templateCard(page, hidden.id)).toHaveCount(0);
 
   // The author sees both, and Edit opens the template editor with its stored default text.
   await page.getByTestId("sign-out").click();
   await signIn(page, author.username);
   await expect(grid).toHaveAttribute("aria-busy", "false");
-  await expect(card(hidden.id)).toBeVisible();
-  await card(template.id).getByTestId("edit-template").click();
+  await expect(templateCard(page, hidden.id)).toBeVisible();
+  await templateCard(page, template.id).getByTestId("edit-template").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?editTemplate=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("editor-title")).toHaveText("Edit template");

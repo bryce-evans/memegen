@@ -1,5 +1,5 @@
 import type { Meme, Page as Paged } from "@memegen/shared";
-import { MOCK_EXPECT } from "../scripts/mock/data.ts";
+import { MOCK_EXPECT } from "./mock/data.ts";
 import { apiGet, expectInOrder, loadAll, mockTitles, openFeed, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
@@ -41,7 +41,7 @@ test("votes: upvote adds one; downvote then removes it and adds a downvote (-2 â
 
   const up = card.getByTestId("upvote-count");
   const down = card.getByTestId("downvote-count");
-  // Downvotes display as a negative number. Other skins' runs may have voted already,
+  // Downvotes display as a negative number. Other specs and retries share the seeded DB and may have voted already,
   // so assert relative to what is shown (the fresh dataset starts at 1 / -2).
   const up0 = Number(await up.textContent());
   const down0 = Number(await down.textContent());

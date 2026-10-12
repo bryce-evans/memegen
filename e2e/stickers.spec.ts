@@ -1,6 +1,6 @@
 import type { ImageLayer, Meme, Page, Sticker } from "@memegen/shared";
 import { expect, scoped, test } from "./test.ts";
-import { apiGet, apiTemplate, apiUser, fixture, memeIdFromUrl, signIn, stagePixels } from "./helpers.ts";
+import { apiGet, apiTemplate, apiUser, fixture, memeIdFromUrl, outputPixel, signIn, stagePixels } from "./helpers.ts";
 
 test("stickers: + Sticker on Create takes PNGs up to 512x512; Add sticker puts one on a meme and its export", async ({ page, request }) => {
   const username = scoped("stickerbook");
@@ -51,13 +51,7 @@ test("stickers: + Sticker on Create takes PNGs up to 512x512; Add sticker puts o
   expect([layer.type, layer.assetId, layer.name]).toEqual(["image", sticker.asset.id, "sticker"]);
 
   // The sticker (solid magenta, centered, on top) is in the exported file itself.
-  const center = await page.evaluate(async (url) => {
-    const bitmap = await createImageBitmap(await (await fetch(url)).blob());
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(bitmap, 0, 0);
-    return [...ctx.getImageData(bitmap.width / 2, bitmap.height / 2, 1, 1).data];
-  }, `/storage${meme.outputAsset.contentPath}`);
+  const center = await outputPixel(page, meme.outputAsset, "center");
   expect(center[0]).toBeGreaterThan(200);
   expect(center[1]).toBeLessThan(60);
   expect(center[2]).toBeGreaterThan(200);

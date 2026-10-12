@@ -24,7 +24,7 @@ test("custom font upload becomes selectable and changes the render", async ({ pa
     mimeType: "font/ttf",
     buffer: readFileSync(fixture("TitilliumWeb-Black.ttf")),
   });
-  const option = page.getByTestId("layer-font").locator("option", { hasText: fontName });
+  const option = page.getByTestId("layer-font").getByTestId("font-option").filter({ hasText: fontName });
   await expect(option).toHaveCount(1);
   // Baseline on the fallback family; the uploaded font must visibly change the text.
   await page.getByTestId("layer-font").selectOption("");

@@ -53,7 +53,7 @@ export function Leaderboard() {
                 <tr key={user.id} data-testid="leaderboard-row" data-username={user.username}>
                   <td data-testid="leaderboard-rank">{rank}</td>
                   <td>
-                    <Link to={`/u/${user.username}`}>@{user.username}</Link>
+                    <Link to={`/u/${user.username}`} data-testid="lb-username">@{user.username}</Link>
                     {badgesFor(stats).map((b) => (
                       <span key={b.id} className="leaderboard-badge" role="img" aria-label={b.label} title={`${b.label}: ${b.description}`}>
                         {b.icon}

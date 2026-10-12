@@ -1,7 +1,7 @@
 import { expect, scoped, test } from "./test.ts";
 import type { Meme, Template } from "@memegen/shared";
 import type { Page } from "@playwright/test";
-import { apiGet, apiUser, fixture, memeIdFromUrl, signIn, stagePixels } from "./helpers.ts";
+import { apiGet, apiUser, fixture, memeIdFromUrl, signIn, stagePixels, templateCard } from "./helpers.ts";
 
 async function expectPanelTexts(page: Page, texts: string[]): Promise<void> {
   await expect(page.getByTestId("panel-text")).toHaveCount(texts.length);
@@ -96,8 +96,8 @@ test("multi-panel: build a template from an image pack, make a meme with more pa
   await page.goto(`/create?editTemplate=${templateId}`);
   await expect(page.getByTestId("editor-title")).toHaveText("Edit template");
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
-  await expect(page.getByTestId("pack-item").getByRole("button")).toHaveCount(2);
-  for (const remove of await page.getByTestId("pack-item").getByRole("button").all()) await expect(remove).toBeDisabled();
+  await expect(page.getByTestId("pack-item-remove")).toHaveCount(2);
+  for (const remove of await page.getByTestId("pack-item-remove").all()) await expect(remove).toBeDisabled();
   await page.getByTestId("remove-panel").nth(1).click();
   await page.getByTestId("layout-horizontal").click();
   await page.getByTestId("template-update").click();
@@ -113,7 +113,7 @@ test("multi-panel: build a template from an image pack, make a meme with more pa
   await page.goto("/create");
   await page.getByTestId("template-search").fill(name);
   const grid = page.getByTestId("template-grid");
-  const card = page.locator(`[data-testid="template-card"][data-template-id="${templateId}"]`);
+  const card = templateCard(page, templateId);
   for (const [kind, shown] of [["multi", 1], ["single", 0], ["gif", 0], ["all", 1]] as const) {
     await page.getByTestId(`template-kind-${kind}`).click();
     await expect(grid).toHaveAttribute("data-kind", kind);

@@ -72,6 +72,7 @@ export function PackPanel({ pack, limits, locked, onAdded, onRemove }: PackPanel
                   size="sm"
                   variant="quiet"
                   className="danger-icon"
+                  data-testid="pack-item-remove"
                   label={reason ?? `Remove image ${i + 1}`}
                   disabled={reason !== null}
                   onClick={() => onRemove(asset)}

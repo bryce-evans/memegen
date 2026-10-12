@@ -1,6 +1,6 @@
 /**
- * SQL and helpers shared by the seed scripts (scripts/seed.ts, scripts/seed-stickers.ts, scripts/mock/seed-data.ts,
- * scripts/sample/seed.ts, scripts/starter/seed.ts) and file naming shared with scripts/snapshot.
+ * SQL and helpers shared by the seed scripts (scripts/seed.ts, scripts/seed-stickers.ts, scripts/sample/seed.ts,
+ * scripts/starter/seed.ts, and the e2e mock seed e2e/mock/seed-data.ts) and file naming shared with scripts/snapshot.
  */
 import type { Layer, TagKind, Visibility } from "@memegen/shared";
 import { createSql, migrate, type Sql } from "@memegen/server-kit";

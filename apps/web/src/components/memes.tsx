@@ -196,7 +196,7 @@ export function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (me
         {meme.title || "Untitled"}
       </CardTitle>
       <CardMeta>
-        <Link to={`/u/${meme.owner.username}`}>@{meme.owner.username}</Link>
+        <Link to={`/u/${meme.owner.username}`} data-testid="meme-author">@{meme.owner.username}</Link>
         <span aria-hidden> · </span>
         <MemeAge meme={meme} />
         <MemeBadges meme={meme} />

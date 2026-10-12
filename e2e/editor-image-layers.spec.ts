@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { ImageLayer, Meme } from "@memegen/shared";
 import { expect, scoped, test } from "./test.ts";
-import { apiGet, editFixture, fixture, memeIdFromUrl, stagePixels } from "./helpers.ts";
+import { apiGet, editFixture, fixture, memeIdFromUrl, outputPixel, stagePixels } from "./helpers.ts";
 
 test("image layers: upload one, paste another, resize, save; both draw on the export and reload with the meme", async ({ page, request }) => {
   const { user } = await editFixture(page, request, scoped("stickerfan"), "still.png");
@@ -75,13 +75,7 @@ test("image layers: upload one, paste another, resize, save; both draw on the ex
   expect(first!.assetId).not.toBe(second!.assetId);
 
   // The pasted image (solid blue, centered, on top) is in the exported file itself, not only the editor preview.
-  const center = await page.evaluate(async (url) => {
-    const bitmap = await createImageBitmap(await (await fetch(url)).blob());
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(bitmap, 0, 0);
-    return [...ctx.getImageData(bitmap.width / 2, bitmap.height / 2, 1, 1).data];
-  }, `/storage${meme.outputAsset.contentPath}`);
+  const center = await outputPixel(page, meme.outputAsset, "center");
   expect(center[2]).toBeGreaterThan(200);
   expect(center[0]! + center[1]!).toBeLessThan(80);
 

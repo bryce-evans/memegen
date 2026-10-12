@@ -1,5 +1,5 @@
 import type { Locator } from "@playwright/test";
-import { MOCK_EXPECT } from "../scripts/mock/data.ts";
+import { MOCK_EXPECT } from "./mock/data.ts";
 import { signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
@@ -31,6 +31,6 @@ test("leaderboard: ranks users by the chosen stat and links to profiles", async 
   await expect.poll(async () => descending(await numbers(rows.getByTestId("lb-meme-count")))).toBe(true);
   await expect(alice.getByTestId("lb-meme-count")).toHaveText(String(MOCK_EXPECT.aliceStats.memeCount));
 
-  await alice.getByRole("link", { name: "@mock-alice" }).click();
+  await alice.getByTestId("lb-username").click();
   await expect(page).toHaveURL(/\/u\/mock-alice$/);
 });

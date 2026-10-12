@@ -1,11 +1,11 @@
 /**
- * Resets the e2e database and storage, then seeds one font and the mock dataset (scripts/mock).
+ * Resets the e2e database and storage, then seeds one font and the mock dataset (e2e/mock).
  * Run by Playwright's global setup through Node (type stripping), never against the dev DB.
  */
 import { readFile, rm } from "node:fs/promises";
 import { createSql, migrate } from "@memegen/server-kit";
 import { assetStoreFromEnv } from "@memegen/storage";
-import { seedMockData } from "../scripts/mock/seed-data.ts";
+import { seedMockData } from "./mock/seed-data.ts";
 
 const url = process.env.DATABASE_URL ?? "";
 if (!url.includes("e2e")) throw new Error(`refusing to reset a non-e2e database: ${url}`);

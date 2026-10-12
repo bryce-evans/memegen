@@ -1,17 +1,17 @@
-import { assetContentPath } from "@memegen/shared";
+import { ASSETS_QUERY_MAX_LIMIT, assetContentPath } from "@memegen/shared";
 import type {
   Asset,
   Comment,
+  CreateMemeInput,
+  CreateStickerInput,
+  CreateTagInput,
+  CreateTemplateInput,
   GallerySort,
   HotTemplate,
   LeaderboardEntry,
   LeaderboardSort,
   Meme,
   Page,
-  Layer,
-  Panel,
-  PanelLayout,
-  PanelSet,
   Period,
   Sticker,
   Template,
@@ -19,10 +19,11 @@ import type {
   TemplateUsage,
   Tag,
   TagKind,
+  UpdateMemeInput,
+  UpdateTemplateInput,
   UploadLimits,
   User,
   UserProfile,
-  Visibility,
 } from "@memegen/shared";
 
 /** Cookie holding the signed-in user (JSON); a year, so the dev login survives restarts. Not a credential. */
@@ -141,7 +142,7 @@ export const assetUrl = (assetId: string) => contentUrl({ contentPath: assetCont
 
 export const getLimits = () => request<UploadLimits>("/storage/limits");
 
-export const listFonts = () => request<Page<Asset>>(`/storage/assets${qs({ kind: "font", limit: 200 })}`);
+export const listFonts = () => request<Page<Asset>>(`/storage/assets${qs({ kind: "font", limit: ASSETS_QUERY_MAX_LIMIT })}`);
 
 export const getAsset = (id: string) => request<Asset>(`/storage/assets/${encodeURIComponent(id)}`);
 
@@ -186,26 +187,8 @@ export const getHotTemplates = (period: Period, limit = 12) =>
 export const getTemplateUsage = (id: string, period: Period) =>
   request<TemplateUsage>(`/api/templates/${id}/usage${qs({ period })}`);
 
-export interface CreateTemplateInput {
-  name: string;
-  /** The media; for a multi-panel template, its rendered cover. */
-  assetId: string;
-  parentId?: string | null;
-  defaultLayers?: Layer[];
-  panels?: PanelTemplateInput | null;
-  isPublic?: boolean;
-  tags?: string[];
-}
-
-/** A multi-panel template as written: pack images by id, in order. */
-export interface PanelTemplateInput {
-  layout: PanelLayout;
-  grid: boolean;
-  mirror: boolean;
-  fontSize: number;
-  packAssetIds: string[];
-  defaultPanels: Panel[];
-}
+/** Fields that only change together: all of them, or none. */
+type Together<T, K extends keyof T> = Omit<T, K> & (Required<Pick<T, K>> | { [P in K]?: never });
 
 export const createTemplate = (input: CreateTemplateInput) =>
   request<Template>("/api/templates", { method: "POST", json: input });
@@ -214,10 +197,8 @@ export const createTemplate = (input: CreateTemplateInput) =>
  * Owner only: rename and/or replace the defaults (text boxes, or a multi-panel template's panels together with its
  * re-rendered cover; pack images can be added, never removed). Existing memes keep their own content.
  */
-export const updateTemplate = (
-  id: string,
-  changes: { name?: string; defaultLayers?: Layer[] } & ({ panels: PanelTemplateInput; assetId: string } | { panels?: never; assetId?: never }),
-) => request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
+export const updateTemplate = (id: string, changes: Together<UpdateTemplateInput, "panels" | "assetId">) =>
+  request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
 
 /** Adds (never removes) tags; the author's base tags always stay. */
 export const addTemplateTags = (id: string, tags: string[]) =>
@@ -228,7 +209,7 @@ export const listTags = ({ q, kind, limit = 100 }: { q?: string; kind?: TagKind;
 
 export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURIComponent(slug)}`);
 
-export const createTag = (input: { name: string; kind?: TagKind; description?: string }) =>
+export const createTag = (input: CreateTagInput) =>
   request<Tag>("/api/tags", { method: "POST", json: input });
 
 /** The sticker library, newest first. */
@@ -236,33 +217,14 @@ export const listStickers = ({ offset = 0, limit = 60 }: PageParams = {}) =>
   request<Page<Sticker>>(`/api/stickers${qs({ offset, limit })}`);
 
 /** An uploaded PNG (≤ `STICKER_MAX_DIMENSION` each edge) becomes a sticker. */
-export const createSticker = (input: { name: string; assetId: string }) =>
+export const createSticker = (input: CreateStickerInput) =>
   request<Sticker>("/api/stickers", { method: "POST", json: input });
-
-export interface CreateMemeInput {
-  title: string;
-  /** Every meme is made from an existing template. */
-  templateId: string;
-  outputAssetId: string;
-  layers: Layer[];
-  /** Required for multi-panel templates (with no layers). */
-  panels: PanelSet | null;
-  visibility: Visibility;
-  post: boolean;
-  tags?: string[];
-}
 
 export const createMeme = (input: CreateMemeInput) => request<Meme>("/api/memes", { method: "POST", json: input });
 
 export const getMeme = (id: string) => request<Meme>(`/api/memes/${id}`);
 
-export type UpdateMemeInput = {
-  title?: string;
-  visibility?: Visibility;
-  tags?: string[];
-} & ({ layers: Layer[]; panels: PanelSet | null; outputAssetId: string } | { layers?: never; panels?: never; outputAssetId?: never });
-
-export const updateMeme = (id: string, input: UpdateMemeInput) =>
+export const updateMeme = (id: string, input: Together<UpdateMemeInput, "layers" | "panels" | "outputAssetId">) =>
   request<Meme>(`/api/memes/${id}`, { method: "PATCH", json: input });
 
 export const postMeme = (id: string) => request<Meme>(`/api/memes/${id}/post`, { method: "POST" });

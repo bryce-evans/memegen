@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
 import { newImageLayer, newTextLayer, newTopSectionLayer } from "./defaults.ts";
-import { DEFAULT_LIMITS, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
+import { DEFAULT_LIMITS, IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
 import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { layerSchema, layersSchema, sessionSchema } from "./schema.ts";
 import { composedHeight, layerArea, layoutTopSection, topSectionPx } from "./section.ts";
@@ -101,6 +101,13 @@ test("layerSchema requires a known type and that type's fields", () => {
   assert.equal(layerSchema.safeParse({ ...text, type: undefined }).success, false);
   assert.equal(layerSchema.safeParse({ ...text, type: "image" }).success, false); // no assetId/width
   assert.equal(layerSchema.safeParse({ ...newImageLayer(crypto.randomUUID()), type: "video" }).success, false);
+});
+
+test("imageLayerSchema accepts widths from IMAGE_WIDTH_MIN to IMAGE_WIDTH_MAX, nothing outside", () => {
+  const image = newImageLayer(crypto.randomUUID());
+  const ok = (width: number) => layerSchema.safeParse({ ...image, width }).success;
+  assert.deepEqual([IMAGE_WIDTH_MIN, IMAGE_WIDTH_MAX].map(ok), [true, true]);
+  assert.deepEqual([IMAGE_WIDTH_MIN / 2, IMAGE_WIDTH_MAX + 0.01].map(ok), [false, false]);
 });
 
 test("badges: only the highest reached tier per stat shows, at exact thresholds", () => {

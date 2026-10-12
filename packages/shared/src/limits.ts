@@ -30,6 +30,12 @@ export const IMAGE_WIDTH_MIN = 0.02;
 export const IMAGE_WIDTH_MAX = 2;
 /** Characters in one comment. */
 export const COMMENT_MAX_LENGTH = 2000;
+/** Characters in a meme title. */
+export const MEME_TITLE_MAX_LENGTH = 200;
+/** Characters in a template name. */
+export const TEMPLATE_NAME_MAX_LENGTH = 120;
+/** Characters in a tag name (and a tag search). */
+export const TAG_NAME_MAX_LENGTH = 60;
 /** Tags on one meme or template. */
 export const MAX_TAGS = 20;
 /** Panels in one multi-panel meme or template default. */

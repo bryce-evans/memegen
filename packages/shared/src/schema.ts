@@ -2,15 +2,20 @@ import { z } from "zod";
 import {
   COMMENT_MAX_LENGTH,
   IMAGE_WIDTH_MAX,
+  IMAGE_WIDTH_MIN,
   LAYER_NAME_MAX_LENGTH,
   MAX_PACK_IMAGES,
   MAX_PANELS,
   MAX_TAGS,
+  MEME_TITLE_MAX_LENGTH,
+  TAG_NAME_MAX_LENGTH,
+  TEMPLATE_NAME_MAX_LENGTH,
   TEXT_MAX_LENGTH,
 } from "./limits.ts";
 import { PANEL_FONT_SIZE_DEFAULT, PANEL_FONT_SIZE_MAX, PANEL_FONT_SIZE_MIN } from "./panels.ts";
 import { ANCHOR_Y_MIN, TOP_SECTION_HEIGHT_MAX, TOP_SECTION_HEIGHT_MIN } from "./section.ts";
 import {
+  ASSET_KINDS,
   GALLERY_SORTS,
   LEADERBOARD_SORTS,
   PANEL_LAYOUTS,
@@ -39,7 +44,7 @@ export const tagSlugSchema = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).max(40
 
 /** Free-form tag names, normalized to unique slugs. */
 export const tagListSchema = z
-  .array(z.string().max(60))
+  .array(z.string().max(TAG_NAME_MAX_LENGTH))
   .max(MAX_TAGS)
   .transform((names, ctx) => {
     const slugs = [...new Set(names.map(tagSlug))];
@@ -112,7 +117,7 @@ export const imageLayerSchema = z.object({
   /** A still image asset. */
   assetId: z.uuid(),
   /** Drawn width as a fraction of media width; the height follows the image's aspect ratio. */
-  width: z.number().gt(0).max(IMAGE_WIDTH_MAX),
+  width: z.number().min(IMAGE_WIDTH_MIN).max(IMAGE_WIDTH_MAX),
 });
 
 export const layerSchema = z
@@ -164,7 +169,7 @@ export const visibilitySchema = z.enum(VISIBILITIES);
 /** Every meme is made from an existing template. */
 export const createMemeSchema = z
   .object({
-    title: z.string().trim().max(200).default(""),
+    title: z.string().trim().max(MEME_TITLE_MAX_LENGTH).default(""),
     templateId: z.uuid(),
     /** Client-rendered result, already uploaded to storage. */
     outputAssetId: z.uuid(),
@@ -179,7 +184,7 @@ export const createMemeSchema = z
 
 export const updateMemeSchema = z
   .object({
-    title: z.string().trim().max(200).optional(),
+    title: z.string().trim().max(MEME_TITLE_MAX_LENGTH).optional(),
     layers: layersSchema.optional(),
     panels: panelSetSchema.nullable().optional(),
     outputAssetId: z.uuid().optional(),
@@ -192,7 +197,7 @@ export const updateMemeSchema = z
 
 export const createTemplateSchema = z
   .object({
-    name: z.string().trim().min(1).max(120),
+    name: z.string().trim().min(1).max(TEMPLATE_NAME_MAX_LENGTH),
     /** The media; for a multi-panel template, its rendered cover. */
     assetId: z.uuid(),
     parentId: z.uuid().nullable().optional(),
@@ -205,7 +210,7 @@ export const createTemplateSchema = z
 
 export const updateTemplateSchema = z
   .object({
-    name: z.string().trim().min(1).max(120).optional(),
+    name: z.string().trim().min(1).max(TEMPLATE_NAME_MAX_LENGTH).optional(),
     defaultLayers: layersSchema.optional(),
     /** Multi-panel templates only; comes with `assetId`, the cover re-rendered from the new defaults. */
     panels: panelTemplateInputSchema.optional(),
@@ -241,6 +246,15 @@ export function pageQuerySchema(defaultLimit = 24, maxLimit = 100) {
   });
 }
 
+/** A user's memes, templates, activity, and favorites. */
+export const userPageQuerySchema = pageQuerySchema();
+
+/** Largest `limit` storage's `GET /assets` takes; the editor's font list asks for this many. */
+export const ASSETS_QUERY_MAX_LIMIT = 200;
+
+/** Storage's `GET /assets?kind=&offset=&limit=`. */
+export const assetsQuerySchema = pageQuerySchema(50, ASSETS_QUERY_MAX_LIMIT).extend({ kind: z.enum(ASSET_KINDS).optional() });
+
 export const templatesQuerySchema = pageQuerySchema().extend({
   q: z.string().trim().max(100).default(""),
   tag: tagSlugSchema.optional(),
@@ -269,13 +283,13 @@ export const templateUsageQuerySchema = z.object({
 export const setTagsSchema = z.object({ tags: tagListSchema });
 
 export const createTagSchema = z.object({
-  name: z.string().trim().min(1).max(60),
+  name: z.string().trim().min(1).max(TAG_NAME_MAX_LENGTH),
   kind: z.enum(TAG_KINDS).default("topic"),
   description: z.string().trim().max(300).default(""),
 });
 
 export const tagsQuerySchema = z.object({
-  q: z.string().trim().max(60).default(""),
+  q: z.string().trim().max(TAG_NAME_MAX_LENGTH).default(""),
   kind: z.enum(TAG_KINDS).optional(),
   limit: limitSchema(100, 200),
 });

@@ -1,6 +1,6 @@
 import { topBottomLayers, type Template } from "@memegen/shared";
 import { MOCK_EXPECT, MOCK_TEMPLATES } from "../scripts/mock/data.ts";
-import { apiGet, apiMeme, apiPost, apiUpload, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn } from "./helpers.ts";
+import { apiGet, apiMeme, apiTemplate, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("profile: open an author from the gallery and see their stats, badges and public memes", async ({ page }) => {
@@ -110,17 +110,8 @@ test("profile templates: everyone sees the tab; the author opens one, edits its 
 }) => {
   const author = await apiUser(request, scoped("template-author"));
   const name = scoped("Editable");
-  const asset = await apiUpload(request, author, "still.png");
-  const template = await apiPost<Template>(request, "/api/templates", author, {
-    name,
-    assetId: asset.id,
-    defaultLayers: topBottomLayers("FIRST TOP", "FIRST BOTTOM"),
-  });
-  const hidden = await apiPost<Template>(request, "/api/templates", author, {
-    name: scoped("Hidden draft"),
-    assetId: asset.id,
-    isPublic: false,
-  });
+  const template = await apiTemplate(request, author, { name, defaultLayers: topBottomLayers("FIRST TOP", "FIRST BOTTOM") });
+  const hidden = await apiTemplate(request, author, { name: scoped("Hidden draft"), assetId: template.asset.id, isPublic: false });
   const card = (id: string) => page.locator(`[data-testid="template-card"][data-template-id="${id}"]`);
 
   // A visitor sees the public template with Use, not Edit, and never the private one.

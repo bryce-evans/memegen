@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import type { Asset, Meme, Template, User } from "@memegen/shared";
+import type { Asset, CreateMemeInput, CreateTemplateInput, Meme, Period, Template, User } from "@memegen/shared";
 
 export const fixture = (name: string) => join(import.meta.dirname, "fixtures", name);
 
@@ -39,11 +39,11 @@ export async function apiUpload(request: APIRequestContext, user: User, file: st
   return apiPost<Asset>(request, "/storage/assets", user, form);
 }
 
-/** A public template added by `user` through the API: on `assetId`, else on a fresh upload of `file` (still.png). */
+/** A template (public unless `isPublic: false`) added by `user` through the API: on `assetId`, else on a fresh upload of `file` (still.png). */
 export async function apiTemplate(
   request: APIRequestContext,
   user: User,
-  opts: { file?: string; assetId?: string; name?: string; parentId?: string; tags?: string[] } = {},
+  opts: Partial<CreateTemplateInput> & { file?: string } = {},
 ): Promise<Template> {
   const { file = "still.png", name = file, ...body } = opts;
   const assetId = body.assetId ?? (await apiUpload(request, user, file)).id;
@@ -54,7 +54,7 @@ export async function apiTemplate(
 export async function apiMeme(
   request: APIRequestContext,
   user: User,
-  body: { title: string; visibility?: "public" | "private"; post?: boolean; tags?: string[]; templateId?: string },
+  body: { title: string } & Pick<CreateMemeInput, "visibility" | "post" | "tags"> & { templateId?: string },
 ): Promise<Meme> {
   const templateId = body.templateId ?? (await apiTemplate(request, user, { name: body.title })).id;
   const output = await apiUpload(request, user, "still.png");
@@ -158,7 +158,7 @@ export async function loadAll(page: Page): Promise<void> {
  * Open the Recent or Popular feed from the side nav (Popular optionally for a period) and wait until the feed
  * on screen is that query and has loaded. Navigations render in a transition, so the URL alone can run ahead.
  */
-export async function openFeed(page: Page, opts: { feed: "recent" | "popular"; period?: string }): Promise<void> {
+export async function openFeed(page: Page, opts: { feed: "recent" | "popular"; period?: Period }): Promise<void> {
   await page.getByTestId(`nav-${opts.feed}`).click();
   await expect.poll(() => new URL(page.url()).pathname).toBe(opts.feed === "recent" ? "/recent" : "/");
   if (opts.period) await page.getByTestId(`period-${opts.period}`).click();

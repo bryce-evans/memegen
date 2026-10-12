@@ -45,7 +45,7 @@ flowchart LR
 
 ## Layers
 
-- `Layer` is a zod discriminated union on `type`: `text` or `image`. Both share `id`, `name`, `angle`, anchor `x,y`, `opacity`, a visibility window, and keyframes, so placement, dragging, tracks, and every `animation.ts` rule apply to both. Types are `z.output` of the schemas, so the API and the editor can't drift. Migration 011 tagged pre-image layers as `text`.
+- `Layer` is a zod discriminated union on `type`: `text` or `image`. Both share `id`, `name`, `angle`, anchor `x,y`, `opacity`, a visibility window, and keyframes, so placement, dragging, tracks, and every `animation.ts` rule apply to both. Types are `z.output` of the schemas, and request bodies (`CreateMemeInput`, `CreateTemplateInput`, …) are their `z.input`, so the API, the web client, and e2e can't drift. Migration 011 tagged pre-image layers as `text`.
 - `TextLayer`: a box (center anchor + `maxWidth`/`maxHeight`, fractions of the media). `fontSize` is a max: text wraps at the box width and shrinks until it fits. `textStyle` is `upper | lower | none | mock`. Stroke width is a fraction of font size.
 - `ImageLayer`: a still image asset drawn whole at its own aspect ratio, `width` a fraction of the media width (0.02..2), never cropped or stretched. Size and angle are static. Only the anchor and opacity animate.
 - `name` labels a layer in the editor and is never drawn. Only the Template Editor renames layers, so a template's default names carry into its memes.

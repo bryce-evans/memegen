@@ -1,5 +1,18 @@
 import type { z } from "zod";
-import type { imageLayerSchema, keyframeSchema, panelSchema, panelSetSchema, textLayerSchema } from "./schema.ts";
+import type {
+  createMemeSchema,
+  createStickerSchema,
+  createTagSchema,
+  createTemplateSchema,
+  imageLayerSchema,
+  keyframeSchema,
+  panelSchema,
+  panelSetSchema,
+  panelTemplateInputSchema,
+  textLayerSchema,
+  updateMemeSchema,
+  updateTemplateSchema,
+} from "./schema.ts";
 
 export const ASSET_KINDS = ["image", "gif", "video", "font"] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];
@@ -249,3 +262,13 @@ export interface Page<T> {
   items: T[];
   nextOffset: number | null;
 }
+
+// Request bodies as callers write them (defaults still optional), derived from the schemas the API validates with.
+export type CreateTemplateInput = z.input<typeof createTemplateSchema>;
+/** A multi-panel template as written: pack images by id, in order. */
+export type PanelTemplateInput = z.input<typeof panelTemplateInputSchema>;
+export type UpdateTemplateInput = z.input<typeof updateTemplateSchema>;
+export type CreateMemeInput = z.input<typeof createMemeSchema>;
+export type UpdateMemeInput = z.input<typeof updateMemeSchema>;
+export type CreateTagInput = z.input<typeof createTagSchema>;
+export type CreateStickerInput = z.input<typeof createStickerSchema>;

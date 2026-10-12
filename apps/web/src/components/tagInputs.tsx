@@ -1,5 +1,5 @@
 import { useId, useState, type Dispatch, type FormEvent, type KeyboardEvent, type SetStateAction } from "react";
-import { MAX_TAGS, TAG_KINDS, tagSlug, type Tag, type TagKind } from "@memegen/shared";
+import { MAX_TAGS, TAG_KINDS, TAG_NAME_MAX_LENGTH, tagSlug, type Tag, type TagKind } from "@memegen/shared";
 import { Button, Chip, ChipGroup, Field, Icon, Inline, SelectField, Text, TextField } from "@memegen/ui";
 import { ApiError, createTag, listTags } from "../api.ts";
 import { useAction } from "../useAction.ts";
@@ -169,7 +169,7 @@ export function NewTagForm({ disabled, onCreated }: { disabled: boolean; onCreat
           onChange={(e) => setName(e.target.value)}
           placeholder="Tag name"
           aria-label="Tag name"
-          maxLength={60}
+          maxLength={TAG_NAME_MAX_LENGTH}
           disabled={off}
           data-testid="new-tag-name"
         />

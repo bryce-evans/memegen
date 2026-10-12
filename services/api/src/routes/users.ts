@@ -1,4 +1,4 @@
-import { leaderboardQuerySchema, pageQuerySchema, sessionSchema, type User, type UserProfile } from "@memegen/shared";
+import { leaderboardQuerySchema, sessionSchema, userPageQuerySchema, type User, type UserProfile } from "@memegen/shared";
 import { page, parse, parseJson, requireInternal, toUser, type Sql, type UserRow } from "@memegen/server-kit";
 import { findUserByName, requireUser, type ApiApp } from "../access.ts";
 import {
@@ -13,8 +13,6 @@ import {
   type TemplateRow,
 } from "../rows.ts";
 import { leaderboard, publicStats, userStats } from "../stats.ts";
-
-const pageQuery = pageQuerySchema();
 
 /** Public stats plus how many public templates (variations included) the user added. */
 async function profile(sql: Sql, user: User): Promise<UserProfile> {
@@ -51,7 +49,7 @@ export function register(app: ApiApp, sql: Sql): void {
 
   app.get("/api/users/:username/memes", async (c) => {
     const owner = await findUserByName(sql, c.req.param("username"));
-    const { offset, limit } = parse(pageQuery, c.req.query());
+    const { offset, limit } = parse(userPageQuerySchema, c.req.query());
     const viewer = c.get("user");
     const rows = await sql<MemeRow[]>`${memeSelect(sql, viewer?.id ?? null)}
       where m.owner_id = ${owner.id}
@@ -64,7 +62,7 @@ export function register(app: ApiApp, sql: Sql): void {
   /** Templates the user added (variations included), newest first; the owner also sees private ones. */
   app.get("/api/users/:username/templates", async (c) => {
     const owner = await findUserByName(sql, c.req.param("username"));
-    const { offset, limit } = parse(pageQuery, c.req.query());
+    const { offset, limit } = parse(userPageQuerySchema, c.req.query());
     const viewerId = c.get("user")?.id ?? null;
     const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
       where t.owner_id = ${owner.id} and ${templateVisibleTo(sql, viewerId)}
@@ -88,7 +86,7 @@ export function register(app: ApiApp, sql: Sql): void {
   /** Recent activity: every meme the signed-in user voted on (`myVote` says which way) that they can still see, newest vote first. */
   app.get("/api/me/activity", async (c) => {
     const user = requireUser(c);
-    const { offset, limit } = parse(pageQuery, c.req.query());
+    const { offset, limit } = parse(userPageQuerySchema, c.req.query());
     const rows = await sql<MemeRow[]>`${memeSelect(sql, user.id)}
       where v.user_id is not null and ${memeVisibleTo(sql, user.id)}
       order by v.created_at desc, m.id
@@ -99,7 +97,7 @@ export function register(app: ApiApp, sql: Sql): void {
   /** The signed-in user's starred memes that they can still see, most recently starred first. */
   app.get("/api/me/favorites", async (c) => {
     const user = requireUser(c);
-    const { offset, limit } = parse(pageQuery, c.req.query());
+    const { offset, limit } = parse(userPageQuerySchema, c.req.query());
     const rows = await sql<MemeRow[]>`${memeSelect(sql, user.id)}
       join favorites f on f.meme_id = m.id and f.user_id = ${user.id}
       where ${memeVisibleTo(sql, user.id)}

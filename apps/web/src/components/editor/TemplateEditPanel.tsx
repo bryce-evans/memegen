@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { Template } from "@memegen/shared";
+import { TEMPLATE_NAME_MAX_LENGTH, type Template } from "@memegen/shared";
 import { Alert, Button, Inline, LinkButton, Panel, Text, TextField } from "@memegen/ui";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
@@ -53,7 +53,7 @@ export function TemplateEditPanel({ template, canEdit, initialContent, content, 
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
-        maxLength={120}
+        maxLength={TEMPLATE_NAME_MAX_LENGTH}
         disabled={busy}
         data-testid="template-name"
       />

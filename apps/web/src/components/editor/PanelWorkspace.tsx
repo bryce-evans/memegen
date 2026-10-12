@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { exportPanels, panelSetGrid } from "@memegen/render";
-import { MAX_PANELS, newPanel, panelExportSize, type Asset, type Panel, type PanelSet } from "@memegen/shared";
+import { MAX_PANELS, newPanel, panelExportSize, type Asset, type Panel, type PanelSet, type PanelTemplateInput } from "@memegen/shared";
 import { PageHeader } from "@memegen/ui";
-import { createTemplate, updateTemplate, uploadAsset, type PanelTemplateInput } from "../../api.ts";
+import { createTemplate, updateTemplate, uploadAsset } from "../../api.ts";
 import { useUser } from "../../auth.tsx";
 import { plural } from "../../format.ts";
 import { fileSlug } from "../../media.ts";

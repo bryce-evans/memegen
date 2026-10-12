@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Template } from "@memegen/shared";
+import { TEMPLATE_NAME_MAX_LENGTH, type Template } from "@memegen/shared";
 import { Button, Dialog, Inline, Panel, Text, TextField } from "@memegen/ui";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
@@ -12,7 +12,7 @@ export function nameFromFile(filename: string): string {
     .replace(/\.[^.]+$/, "")
     .replace(/[-_]+/g, " ")
     .trim()
-    .slice(0, 120);
+    .slice(0, TEMPLATE_NAME_MAX_LENGTH);
 }
 
 export interface TemplateSavePanelProps {
@@ -51,7 +51,7 @@ export function TemplateSavePanel({ defaultName, what, note, ready, create: writ
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
-        maxLength={120}
+        maxLength={TEMPLATE_NAME_MAX_LENGTH}
         disabled={busy}
         data-testid="template-name"
       />

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { z } from "zod";
-import { ASSET_KINDS, pageQuerySchema } from "@memegen/shared";
+import { assetsQuerySchema } from "@memegen/shared";
 import {
   findAssetRow,
   HttpError,
@@ -14,8 +13,6 @@ import {
 } from "@memegen/server-kit";
 import type { AssetStore } from "./assets.ts";
 import type { ByteRange } from "./providers/types.ts";
-
-const listQuery = pageQuerySchema(50, 200).extend({ kind: z.enum(ASSET_KINDS).optional() });
 
 /** Multipart overhead allowance on top of the file cap for the early Content-Length check. */
 const MULTIPART_SLACK = 64 * 1024;
@@ -65,7 +62,7 @@ export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono {
   });
 
   app.get("/assets", async (c) => {
-    const q = parse(listQuery, c.req.query());
+    const q = parse(assetsQuerySchema, c.req.query());
     return c.json(await store.list(q.kind, q.offset, q.limit));
   });
 

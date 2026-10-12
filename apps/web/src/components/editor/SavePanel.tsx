@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExportAbortedError, type ExportResult } from "@memegen/render";
-import { limitViolations, MAX_TAGS, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
+import { limitViolations, MAX_TAGS, MEME_TITLE_MAX_LENGTH, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
 import { ApiError, createMeme, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { downloadBlob, fileSlug } from "../../media.ts";
@@ -116,7 +116,7 @@ export function SavePanel(props: SavePanelProps) {
       <TextField
         label="Title"
         value={title}
-        maxLength={200}
+        maxLength={MEME_TITLE_MAX_LENGTH}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Untitled"
         disabled={busy}

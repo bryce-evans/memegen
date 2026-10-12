@@ -687,6 +687,9 @@ test("tags: normalized, inherited from templates (and variations), filter templa
   assert.deepEqual([movie.templateCount, movie.memeCount], [1, 1]);
   const teamTags = await call<Tag[]>("GET", "/api/tags?kind=team", null);
   assert.deepEqual(teamTags.body.map((t) => t.slug), ["google-memes"]);
+  // A query with no letters or digits has an empty slug: it matches by name only, not every tag.
+  assert.deepEqual((await call<Tag[]>("GET", "/api/tags?q=!", null)).body.map((t) => t.slug), ["google-memes"]);
+  assert.deepEqual((await call<Tag[]>("GET", "/api/tags?q=!!", null)).body, []);
 
   // Creation tags are base tags; anyone signed in adds more on top, and base tags stay base.
   assert.deepEqual([variation.baseTags, plain.baseTags], [["brand-new", "movie"], []]);

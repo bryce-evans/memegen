@@ -1,7 +1,7 @@
-import { galleryQuerySchema, tagSlug } from "@memegen/shared";
+import { galleryQuerySchema } from "@memegen/shared";
 import { page, parse, type Sql } from "@memegen/server-kit";
 import type { ApiApp } from "../access.ts";
-import { containsPattern, memeListed, memeSelect, periodStart, toMeme, type MemeRow } from "../rows.ts";
+import { containsPattern, memeListed, memeSelect, periodStart, tagMatches, toMeme, type MemeRow } from "../rows.ts";
 
 /**
  * `q` matches the meme's title, its template's or parent template's name, any tag that matches it (own or the
@@ -9,15 +9,13 @@ import { containsPattern, memeListed, memeSelect, periodStart, toMeme, type Meme
  */
 function searchFilter(sql: Sql, q: string) {
   const text = containsPattern(q);
-  const slug = tagSlug(q);
-  const slugMatch = slug ? sql`g.slug like ${"%" + slug + "%"} or` : sql``;
   return sql`and (
     m.title ilike ${text}
     or u.username ilike ${text}
     or exists (select 1 from templates t left join templates p on p.id = t.parent_id
       where t.id = m.template_id and (t.name ilike ${text} or p.name ilike ${text}))
     or exists (select 1 from meme_tag_matches x join tags g on g.id = x.tag_id
-      where x.meme_id = m.id and (${slugMatch} g.name ilike ${text})))`;
+      where x.meme_id = m.id and ${tagMatches(sql, q, "g")}))`;
 }
 
 /** Listed memes by period and sort, optionally narrowed to a tag and/or a search. */

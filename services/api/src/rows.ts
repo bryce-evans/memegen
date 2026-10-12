@@ -1,5 +1,6 @@
 import { isListed } from "@memegen/shared";
 import type { Comment, Layer, Meme, Panel, PanelLayout, PanelSet, Period, Sticker, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
+import { tagSlug } from "@memegen/shared";
 import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
 
 // ---- shared SQL pieces -------------------------------------------------------------
@@ -36,6 +37,16 @@ export function requireListed(meme: MemeRow, action: string): void {
 /** `ilike` pattern matching `q` anywhere, with LIKE wildcards in `q` taken literally. */
 export function containsPattern(q: string): string {
   return "%" + q.replace(/[\\%_]/g, "\\$&") + "%";
+}
+
+/**
+ * Tag search on the tag alias `alias`: slug contains `q`'s slug, or name contains `q`. A query with no
+ * letters or digits has an empty slug, so it matches by name only (else `like '%%'` matches every tag).
+ */
+export function tagMatches(sql: Sql, q: string, alias: string) {
+  const name = sql`${sql(alias)}.name ilike ${containsPattern(q)}`;
+  const slug = tagSlug(q);
+  return slug ? sql`(${sql(alias)}.slug like ${"%" + slug + "%"} or ${name})` : sql`(${name})`;
 }
 
 const PERIOD_INTERVAL: Record<Exclude<Period, "all">, string> = {

@@ -1,7 +1,7 @@
 import { createTagSchema, tagSlug, tagSlugSchema, tagsQuerySchema } from "@memegen/shared";
 import { HttpError, parse, parseJson, type Sql } from "@memegen/server-kit";
 import { requireUser, type ApiApp } from "../access.ts";
-import { containsPattern, tagSelect, toTag, type TagRow } from "../rows.ts";
+import { tagMatches, tagSelect, toTag, type TagRow } from "../rows.ts";
 
 /** Tag search, lookup, and explicit creation. */
 export function register(app: ApiApp, sql: Sql): void {
@@ -11,7 +11,7 @@ export function register(app: ApiApp, sql: Sql): void {
     const rows = await sql<TagRow[]>`
       select * from (${tagSelect(sql, viewerId)}) s
       where true
-      ${q ? sql`and (s.slug like ${"%" + tagSlug(q) + "%"} or s.name ilike ${containsPattern(q)})` : sql``}
+      ${q ? sql`and ${tagMatches(sql, q, "s")}` : sql``}
       ${kind ? sql`and s.kind = ${kind}` : sql``}
       order by s.template_count + s.meme_count desc, s.slug
       limit ${limit}`;

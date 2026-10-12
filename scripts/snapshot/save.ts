@@ -9,9 +9,9 @@ import { pipeline } from "node:stream/promises";
 import { ZipFile } from "yazl";
 import { migrationFiles, MIGRATIONS_DIR, type Sql } from "@memegen/server-kit";
 import type { Providers } from "@memegen/storage";
+import { fileSlug } from "../lib.ts";
 import {
   DUMP_PATH,
-  fileSlug,
   hashStream,
   MANIFEST_PATH,
   runPgTool,

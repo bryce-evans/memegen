@@ -8,15 +8,16 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "@playwright/test";
-import type { MediaKind, TextLayer } from "@memegen/shared";
+import type { Asset, MediaKind, TextLayer } from "@memegen/shared";
 import { findAssetRow, type Sql } from "@memegen/server-kit";
 import type { AssetStore } from "@memegen/storage";
+import { fileSlug } from "../lib.ts";
 import type { RenderRequest, RenderResponse } from "./render-page.ts";
 
 /** Fake origin the page loads from; Playwright answers every request to it, so nothing leaves the machine. */
 const ORIGIN = "http://memegen-seed.localhost";
 
-export interface TemplateRow {
+interface TemplateRow {
   id: string;
   slug: string;
   asset_id: string;
@@ -25,7 +26,7 @@ export interface TemplateRow {
 }
 
 /** The templates with these slugs; fails naming any that are not imported. */
-export async function loadTemplates(sql: Sql, slugs: readonly string[]): Promise<Map<string, TemplateRow>> {
+async function loadTemplates(sql: Sql, slugs: readonly string[]): Promise<Map<string, TemplateRow>> {
   const wanted = [...new Set(slugs)];
   const rows = await sql<TemplateRow[]>`
     select t.id, t.slug, t.asset_id, a.kind, t.default_layers
@@ -43,7 +44,7 @@ export async function loadTemplates(sql: Sql, slugs: readonly string[]): Promise
 }
 
 /** The template's default text boxes with the meme's captions in them. */
-export function captionLayers(template: TemplateRow, captions: readonly string[]): TextLayer[] {
+function captionLayers(template: TemplateRow, captions: readonly string[]): TextLayer[] {
   if (captions.length > template.default_layers.length) {
     throw new Error(`${template.slug} has ${template.default_layers.length} text boxes, got ${captions.length} captions`);
   }
@@ -60,7 +61,7 @@ async function assetBytes(sql: Sql, store: AssetStore, id: string): Promise<{ bo
 }
 
 /** Renders every request with `render-page.ts`, in order; `titles` label the progress lines. */
-export async function renderAll(sql: Sql, store: AssetStore, requests: RenderRequest[], titles: readonly string[]): Promise<RenderResponse[]> {
+async function renderAll(sql: Sql, store: AssetStore, requests: RenderRequest[], titles: readonly string[]): Promise<RenderResponse[]> {
   const dir = await mkdtemp(join(tmpdir(), "memegen-render-"));
   const browser = await chromium.launch();
   try {
@@ -92,7 +93,40 @@ export async function renderAll(sql: Sql, store: AssetStore, requests: RenderReq
   }
 }
 
-/** A file name for a rendered meme: `Friday deploys` + `.png` → `friday-deploys.png`. */
-export function renderedFilename(title: string, extension: string): string {
-  return `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}${extension}`;
+export interface CaptionedMeme {
+  /** `templates.slug`. */
+  template: string;
+  /** One caption per default text box of the template, in order; missing boxes stay empty. */
+  captions: readonly string[];
+  title: string;
+}
+
+export interface RenderedMeme {
+  template: { id: string; assetId: string };
+  layers: TextLayer[];
+  image: RenderResponse;
+}
+
+/**
+ * Captions each meme's template and renders it, in order. Writes nothing, so a browser failure leaves the database
+ * untouched; store the images with `uploadRendered` afterwards.
+ */
+export async function renderCaptioned(sql: Sql, store: AssetStore, memes: readonly CaptionedMeme[]): Promise<RenderedMeme[]> {
+  const templates = await loadTemplates(sql, memes.map((m) => m.template));
+  const captioned = memes.map((m) => {
+    const t = templates.get(m.template)!;
+    return { t, layers: captionLayers(t, m.captions) };
+  });
+  const images = await renderAll(
+    sql,
+    store,
+    captioned.map(({ t, layers }) => ({ sourceAssetId: t.asset_id, kind: t.kind, layers, limits: store.limits })),
+    memes.map((m) => m.title),
+  );
+  return captioned.map(({ t, layers }, i) => ({ template: { id: t.id, assetId: t.asset_id }, layers, image: images[i]! }));
+}
+
+/** Stores a rendered image as `ownerId`'s upload, named after the meme: `Friday deploys` → `friday-deploys.png`. */
+export function uploadRendered(store: AssetStore, image: RenderResponse, title: string, ownerId: string): Promise<Asset> {
+  return store.upload({ data: Buffer.from(image.base64, "base64"), filename: `${fileSlug(title)}${image.extension}`, ownerId });
 }

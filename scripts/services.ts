@@ -4,6 +4,7 @@
  */
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { config } from "@memegen/server-kit";
 
 export interface Service {
   name: string;
@@ -24,17 +25,18 @@ export interface StackOptions {
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 export function services({ watch, web }: StackOptions, env: NodeJS.ProcessEnv = process.env): Service[] {
-  const server = (name: string, port: string): Service => ({
+  const server = (name: string, port: number): Service => ({
     name,
     command: "node",
     args: [...(watch ? ["--watch"] : []), `services/${name}/src/server.ts`],
     cwd: ROOT,
-    port: Number(port),
+    port,
   });
   const webPort = env.WEB_PORT || (web === "vite" ? "5173" : "8080");
   return [
-    server("storage", env.STORAGE_PORT || "4001"),
-    server("api", env.API_PORT || "4000"),
+    // `env` (e2e passes its own) wins over the config defaults read from process.env.
+    server("storage", Number(env.STORAGE_PORT) || config.storagePort),
+    server("api", Number(env.API_PORT) || config.apiPort),
     web === "vite"
       ? { name: "web", command: "bunx", args: ["vite", "--port", webPort, "--strictPort"], cwd: join(ROOT, "apps/web"), port: Number(webPort) }
       : { name: "web", command: "node", args: ["scripts/serve-web.ts"], cwd: ROOT, port: Number(webPort) },

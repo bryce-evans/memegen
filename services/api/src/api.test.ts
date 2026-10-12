@@ -3,7 +3,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, test } from "node:test";
-import { crc32, deflateSync } from "node:zlib";
 import {
   DEFAULT_LIMITS,
   newPanel,
@@ -26,7 +25,7 @@ import {
   type UserProfile,
 } from "@memegen/shared";
 import { config, findAssetRow, HeaderAuthProvider, HttpError, type Sql } from "@memegen/server-kit";
-import { freshTestDb } from "@memegen/server-kit/testing";
+import { encodePng, freshTestDb } from "@memegen/server-kit/testing";
 import { AssetStore, LocalStorageProvider, staticProviders } from "@memegen/storage";
 import { createApiApp, type ApiApp } from "./app.ts";
 
@@ -54,25 +53,7 @@ beforeEach(async () => {
 let pngCounter = 0;
 /** Unique PNG (4x4 unless sized) so each upload is a distinct file. */
 function png(width = 4, height = 4): Uint8Array {
-  const chunk = (type: string, data: Uint8Array) => {
-    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-    const out = Buffer.alloc(body.length + 8);
-    out.writeUInt32BE(data.length, 0);
-    body.copy(out, 4);
-    out.writeUInt32BE(crc32(body), body.length + 4);
-    return out;
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr.set([8, 0, 0, 0, 0], 8);
-  const raw = Buffer.alloc((width + 1) * height, ++pngCounter % 256);
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw)),
-    chunk("IEND", new Uint8Array()),
-  ]);
+  return encodePng(width, height, new Uint8Array(width * height * 3).fill(++pngCounter % 256));
 }
 
 async function call<T>(method: string, path: string, user: User | null, body?: unknown): Promise<{ status: number; body: T }> {

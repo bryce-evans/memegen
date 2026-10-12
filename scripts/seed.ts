@@ -1,7 +1,7 @@
 /**
  * Imports fonts and templates from a jacebrowning/memegen checkout.
  *
- *   bun run seed -- --from /path/to/jacebrowning-memegen [--limit 50]
+ *   ./run.sh config/dev.env seed [--limit 50]   (the checkout is SEED_TEMPLATES_FROM in the config)
  *
  * - Fonts: Impact (licensed by the project owner) plus the OFL fonts. Segoe UI, Tahoma
  *   and HG Mincho are proprietary and are skipped.
@@ -10,21 +10,20 @@
  *   variation. Text boxes from `config.yml` become `defaultLayers`.
  * - Idempotent: assets dedupe by sha256 and templates by slug.
  */
-import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { parse as parseYaml } from "yaml";
-import { newTextLayer, type Asset, type TextLayer, type TextStyle } from "@memegen/shared";
-import { createSql, findAssetRow, HttpError, migrate, toAsset, type Sql } from "@memegen/server-kit";
-import { assetStoreFromEnv, type AssetStore } from "@memegen/storage";
-import { insertTemplate, tagTemplate } from "./lib.ts";
+import { newTextLayer, type TextLayer, type TextStyle } from "@memegen/shared";
+import { createSql, HttpError, migrate, type Sql } from "@memegen/server-kit";
+import { assetStoreFromEnv } from "@memegen/storage";
+import { insertTemplate, tagTemplate, titleCase } from "./lib.ts";
 
 const { values } = parseArgs({
   options: { from: { type: "string" }, limit: { type: "string" } },
 });
 if (!values.from) {
-  console.error("usage: bun run seed -- --from <path to jacebrowning/memegen checkout> [--limit N]");
+  console.error("usage: node scripts/seed.ts --from <path to jacebrowning/memegen checkout> [--limit N]");
   process.exit(1);
 }
 const ROOT = values.from;
@@ -119,14 +118,6 @@ function toLayers(cfg: JbConfig, fontIds: Map<string, string>, durationSec: numb
   });
 }
 
-async function importFile(store: AssetStore, sql: Sql, path: string, name: string): Promise<Asset> {
-  const data = new Uint8Array(await readFile(path));
-  const sha = createHash("sha256").update(data).digest("hex");
-  const [existing] = await sql<{ id: string }[]>`select id from assets where sha256 = ${sha} limit 1`;
-  if (existing) return toAsset((await findAssetRow(sql, existing.id))!);
-  return store.upload({ data, filename: path.split("/").pop()!, name, ownerId: null });
-}
-
 async function upsertTemplate(
   sql: Sql,
   slug: string,
@@ -139,10 +130,6 @@ async function upsertTemplate(
 
 const MEDIA = /\.(png|jpe?g|gif|webp)$/i;
 
-function titleCase(stem: string): string {
-  return stem.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 async function main() {
   const sql = createSql();
   await migrate(sql);
@@ -150,7 +137,8 @@ async function main() {
 
   const fontIds = new Map<string, string>();
   for (const font of FONTS) {
-    const asset = await importFile(store, sql, join(ROOT, "fonts", font.file), font.name);
+    const data = new Uint8Array(await readFile(join(ROOT, "fonts", font.file)));
+    const asset = await store.uploadOnce({ data, filename: font.file, name: font.name, ownerId: null });
     for (const alias of font.aliases) fontIds.set(alias, asset.id);
     console.log(`font  ${font.name}`);
   }
@@ -178,7 +166,8 @@ async function main() {
       const stem = file.replace(/\.[^.]+$/, "");
       const label = isParent ? name : stem === "default" ? `${name} (animated)` : `${name} — ${titleCase(stem)}`;
       try {
-        const asset = await importFile(store, sql, join(folder, file), label);
+        const data = new Uint8Array(await readFile(join(folder, file)));
+        const asset = await store.uploadOnce({ data, filename: file, name: label, ownerId: null });
         const duration = asset.kind === "image" ? null : (asset.durationMs ?? 0) / 1000;
         const result = await upsertTemplate(sql, isParent ? `jb/${dir}` : `jb/${dir}/${file}`, {
           name: label,

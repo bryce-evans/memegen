@@ -7,7 +7,7 @@
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { config, createSql } from "@memegen/server-kit";
-import { createProviders } from "@memegen/storage";
+import { providersFromEnv } from "@memegen/storage";
 import { loadSnapshot } from "./snapshot/load.ts";
 import { saveSnapshot } from "./snapshot/save.ts";
 
@@ -20,7 +20,7 @@ const usage = "usage: snapshot save [out.zip] [--label <name>] | snapshot load <
 
 const sql = createSql();
 try {
-  const providers = createProviders(process.env.STORAGE_PROVIDER || "local");
+  const providers = providersFromEnv();
   const databaseUrl = config.databaseUrl;
   if (command === "save") {
     const stamp = new Date().toISOString().replace(/\.\d+Z$/, "Z").replace(/:/g, "-");

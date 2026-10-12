@@ -7,13 +7,13 @@
  * Idempotent: assets dedupe by sha256 and stickers by asset. Files that can't be stickers (over
  * `STICKER_MAX_DIMENSION`) are skipped with the reason.
  */
-import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { stickerViolations, type Asset } from "@memegen/shared";
-import { createSql, findAssetRow, migrate, toAsset, type Sql } from "@memegen/server-kit";
-import { assetStoreFromEnv, type AssetStore } from "@memegen/storage";
+import { stickerViolations } from "@memegen/shared";
+import { createSql, migrate } from "@memegen/server-kit";
+import { assetStoreFromEnv } from "@memegen/storage";
+import { titleCase } from "./lib.ts";
 
 const { values } = parseArgs({ options: { from: { type: "string" } } });
 if (!values.from) {
@@ -21,16 +21,6 @@ if (!values.from) {
   process.exit(1);
 }
 const ROOT = values.from;
-
-async function importFile(store: AssetStore, sql: Sql, path: string, name: string): Promise<Asset> {
-  const data = new Uint8Array(await readFile(path));
-  const sha = createHash("sha256").update(data).digest("hex");
-  const [existing] = await sql<{ id: string }[]>`select id from assets where sha256 = ${sha} limit 1`;
-  if (existing) return toAsset((await findAssetRow(sql, existing.id))!);
-  return store.upload({ data, filename: path.split("/").pop()!, name, ownerId: null });
-}
-
-const titleCase = (stem: string) => stem.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 async function main() {
   const sql = createSql();
@@ -40,7 +30,8 @@ async function main() {
   let created = 0;
   for (const file of files) {
     const name = titleCase(file.replace(/\.[^.]+$/, ""));
-    const asset = await importFile(store, sql, join(ROOT, file), name);
+    const data = new Uint8Array(await readFile(join(ROOT, file)));
+    const asset = await store.uploadOnce({ data, filename: file, name, ownerId: null });
     const violations = stickerViolations(asset);
     if (violations.length) {
       console.warn(`skip  ${file} — ${violations.join("; ")}`);

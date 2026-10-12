@@ -2,6 +2,7 @@
  * Deterministic mock dataset for development and e2e tests. Pure data: specs import the
  * expectations below without touching the database; `seed.ts` writes it.
  */
+import type { Visibility } from "@memegen/shared";
 
 export const MOCK_AUTHORS = ["mock-alice", "mock-bob", "mock-carol", "mock-dave"] as const;
 export type MockAuthor = (typeof MOCK_AUTHORS)[number];
@@ -37,7 +38,7 @@ export interface MockMeme {
   ageHours: number;
   up: number;
   down: number;
-  visibility?: "public" | "private";
+  visibility?: Visibility;
   draft?: boolean;
   top: string;
   bottom: string;

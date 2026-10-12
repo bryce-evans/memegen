@@ -66,16 +66,6 @@ export function parseManifest(json: unknown): Manifest {
   return parsed.data;
 }
 
-/** `Distracted Boyfriend!` → `distracted-boyfriend`, at most 60 characters. */
-export function fileSlug(label: string): string {
-  return label
-    .normalize("NFKD")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .slice(0, 60)
-    .replace(/^-+|-+$/g, "");
-}
-
 /** Reads a stream to its end, returning its sha256 and length. */
 export async function hashStream(stream: Readable | AsyncIterable<Uint8Array>): Promise<{ sha256: string; bytes: number }> {
   const hash = createHash("sha256");

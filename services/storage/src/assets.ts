@@ -73,6 +73,13 @@ export class AssetStore {
     }
   }
 
+  /** Content-addressed upload: returns the existing asset with the same bytes (by sha256), else uploads. */
+  async uploadOnce(input: UploadInput): Promise<Asset> {
+    const sha256 = createHash("sha256").update(input.data).digest("hex");
+    const [row] = await this.sql<AssetRow[]>`select * from assets where sha256 = ${sha256} limit 1`;
+    return row ? toAsset(row) : this.upload(input);
+  }
+
   async list(kind: AssetKind | undefined, offset: number, limit: number): Promise<Page<Asset>> {
     const rows = await this.sql<AssetRow[]>`
       select * from assets
@@ -110,7 +117,12 @@ export class AssetStore {
   }
 }
 
-/** The store the storage service and seed scripts use: `STORAGE_PROVIDER` (default local) plus env upload caps. */
+/** Storage providers with `STORAGE_PROVIDER` (default local) as the default for new uploads. */
+export function providersFromEnv(): Providers {
+  return createProviders(process.env.STORAGE_PROVIDER || "local");
+}
+
+/** The store the storage service and seed scripts use: `providersFromEnv` plus env upload caps. */
 export function assetStoreFromEnv(sql: Sql): AssetStore {
-  return new AssetStore(sql, createProviders(process.env.STORAGE_PROVIDER || "local"), uploadLimitsFromEnv());
+  return new AssetStore(sql, providersFromEnv(), uploadLimitsFromEnv());
 }

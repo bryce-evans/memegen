@@ -3,13 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { crc32, deflateSync } from "node:zlib";
 import { createRequire } from "node:module";
 import { DEFAULT_LIMITS, type Asset, type UploadLimits } from "@memegen/shared";
 import { HeaderAuthProvider, type Env, type Sql } from "@memegen/server-kit";
 import type * as Gifenc from "gifenc";
 import type { Hono } from "hono";
-import { freshTestDb } from "@memegen/server-kit/testing";
+import { encodePng, freshTestDb } from "@memegen/server-kit/testing";
 import { AssetStore } from "./assets.ts";
 import { createStorageApp } from "./app.ts";
 import { readGifInfo } from "./gif.ts";
@@ -17,28 +16,6 @@ import { LocalStorageProvider } from "./providers/local.ts";
 import { staticProviders } from "./providers/registry.ts";
 
 const { applyPalette, GIFEncoder, quantize } = createRequire(import.meta.url)("gifenc") as typeof Gifenc;
-
-function png(width: number, height: number): Uint8Array {
-  const chunk = (type: string, data: Uint8Array) => {
-    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-    const out = Buffer.alloc(body.length + 8);
-    out.writeUInt32BE(data.length, 0);
-    body.copy(out, 4);
-    out.writeUInt32BE(crc32(body), body.length + 4);
-    return out;
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr.set([8, 0, 0, 0, 0], 8); // 8-bit grayscale
-  const raw = Buffer.alloc((width + 1) * height);
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw)),
-    chunk("IEND", new Uint8Array()),
-  ]);
-}
 
 function gif(width: number, height: number, delaysMs: number[]): Uint8Array {
   const enc = GIFEncoder();
@@ -60,12 +37,13 @@ const limits: UploadLimits = {
 
 let sql: Sql;
 let dir: string;
+let store: AssetStore;
 let app: Hono<Env>;
 
 before(async () => {
   sql = await freshTestDb();
   dir = await mkdtemp(join(tmpdir(), "memegen-storage-"));
-  const store = new AssetStore(sql, staticProviders(new LocalStorageProvider(dir)), limits);
+  store = new AssetStore(sql, staticProviders(new LocalStorageProvider(dir)), limits);
   app = createStorageApp(store, new HeaderAuthProvider(sql));
 });
 
@@ -86,7 +64,7 @@ test("readGifInfo counts frames and treats sub-20ms delays as 100ms like browser
 });
 
 test("upload stores metadata from the bytes, ignoring the client filename extension", async () => {
-  const res = await upload(png(300, 120), "not-really.gif");
+  const res = await upload(encodePng(300, 120), "not-really.gif");
   assert.equal(res.status, 201);
   const asset = (await res.json()) as Asset;
   assert.equal(asset.kind, "image");
@@ -99,7 +77,7 @@ test("upload stores metadata from the bytes, ignoring the client filename extens
 });
 
 test("upload rejects media over the per-kind dimension and frame caps", async () => {
-  const tooWide = await upload(png(301, 10), "a.png");
+  const tooWide = await upload(encodePng(301, 10), "a.png");
   assert.equal(tooWide.status, 422);
   assert.match(((await tooWide.json()) as { details: string[] }).details[0]!, /longest edge max is 300px/);
 
@@ -116,7 +94,7 @@ test("upload rejects files over the byte cap and unknown types", async () => {
 });
 
 test("content supports byte ranges", async () => {
-  const asset = (await (await upload(png(10, 10), "r.png")).json()) as Asset;
+  const asset = (await (await upload(encodePng(10, 10), "r.png")).json()) as Asset;
   const res = await app.request(asset.contentPath, { headers: { range: "bytes=1-3" } });
   assert.equal(res.status, 206);
   assert.equal(res.headers.get("content-range"), `bytes 1-3/${asset.sizeBytes}`);
@@ -126,9 +104,17 @@ test("content supports byte ranges", async () => {
 });
 
 test("content is 404 when the row exists but its bytes are gone", async () => {
-  const asset = (await (await upload(png(10, 10), "gone.png")).json()) as Asset;
+  const asset = (await (await upload(encodePng(10, 10), "gone.png")).json()) as Asset;
   const [row] = await sql<{ storage_key: string }[]>`select storage_key from assets where id = ${asset.id}`;
   await rm(join(dir, row!.storage_key));
   assert.equal((await app.request(asset.contentPath)).status, 404);
   assert.equal((await app.request(`/assets/${crypto.randomUUID()}/content`)).status, 404);
+});
+
+test("uploadOnce reuses the asset with the same bytes and uploads new bytes", async () => {
+  const first = await store.uploadOnce({ data: encodePng(7, 3), filename: "a.png", ownerId: null });
+  const again = await store.uploadOnce({ data: encodePng(7, 3), filename: "b.png", ownerId: null });
+  assert.equal(again.id, first.id);
+  const other = await store.uploadOnce({ data: encodePng(3, 7), filename: "c.png", ownerId: null });
+  assert.notEqual(other.id, first.id);
 });

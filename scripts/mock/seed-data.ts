@@ -4,12 +4,12 @@
  * Used only by e2e global setup (fresh database); dev seeds the realistic dataset in scripts/sample.
  */
 import { createRequire } from "node:module";
-import { deflateSync, crc32 } from "node:zlib";
 import type * as Gifenc from "gifenc";
 import { topBottomLayers } from "@memegen/shared";
 import type { Sql } from "@memegen/server-kit";
+import { encodePng } from "@memegen/server-kit/testing";
 import type { AssetStore } from "@memegen/storage";
-import { insertTemplate, tagTemplate } from "../lib.ts";
+import { castVotes, insertMeme, insertTemplate, tagTemplate } from "../lib.ts";
 import { MOCK_AUTHORS, MOCK_MEMES, MOCK_TEMPLATES, MOCK_VOTER_COUNT, mockVoter } from "./data.ts";
 
 const { applyPalette, GIFEncoder, quantize } = createRequire(import.meta.url)("gifenc") as typeof Gifenc;
@@ -34,30 +34,6 @@ function pixels(width: number, height: number, hue: number, shift = 0): Uint8Arr
     }
   }
   return out;
-}
-
-function png(width: number, height: number, hue: number): Uint8Array {
-  const chunk = (type: string, data: Uint8Array) => {
-    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-    const out = Buffer.alloc(body.length + 8);
-    out.writeUInt32BE(data.length, 0);
-    body.copy(out, 4);
-    out.writeUInt32BE(crc32(body), body.length + 4);
-    return out;
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr.set([8, 2, 0, 0, 0], 8); // 8-bit RGB
-  const rgb = pixels(width, height, hue);
-  const raw = Buffer.alloc((width * 3 + 1) * height);
-  for (let y = 0; y < height; y++) raw.set(rgb.subarray(y * width * 3, (y + 1) * width * 3), y * (width * 3 + 1) + 1);
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw)),
-    chunk("IEND", new Uint8Array()),
-  ]);
 }
 
 function gif(width: number, height: number, hue: number, frames: number): Uint8Array {
@@ -87,7 +63,7 @@ export async function seedMockData(sql: Sql, store: AssetStore): Promise<void> {
   for (const t of MOCK_TEMPLATES) {
     const ownerId = t.owner ? userIds.get(t.owner)! : null;
     const asset = await store.upload({
-      data: t.gif ? gif(240, 180, t.hue, 10) : png(600, 450, t.hue),
+      data: t.gif ? gif(240, 180, t.hue, 10) : encodePng(600, 450, pixels(600, 450, t.hue)),
       filename: `${t.key}${t.gif ? ".gif" : ".png"}`,
       name: t.name,
       ownerId,
@@ -105,6 +81,7 @@ export async function seedMockData(sql: Sql, store: AssetStore): Promise<void> {
     await tagTemplate(sql, id, t.tags);
   }
 
+  const voterIds = Array.from({ length: MOCK_VOTER_COUNT }, (_, i) => userIds.get(mockVoter(i))!);
   let hue = 0;
   for (const m of MOCK_MEMES) {
     const template = templateIds.get(m.template)!;
@@ -114,25 +91,17 @@ export async function seedMockData(sql: Sql, store: AssetStore): Promise<void> {
     // Outputs stand in for a rendered meme: animated templates reuse their GIF, stills get a tinted image.
     const outputId = animated
       ? template.assetId
-      : (await store.upload({ data: png(600, 450, hue), filename: `${m.key}.png`, ownerId })).id;
-    const at = new Date(Date.now() - m.ageHours * 3_600_000);
-    const [row] = await sql<{ id: string }[]>`
-      insert into memes ${sql({
-        owner_id: ownerId,
-        template_id: template.id,
-        source_asset_id: template.assetId,
-        output_asset_id: outputId,
-        title: m.title,
-        layers: sql.json(topBottomLayers(m.top, m.bottom) as never),
-        visibility: m.visibility ?? "public",
-        posted_at: m.draft ? null : at,
-        created_at: at,
-        updated_at: at,
-      })} returning id`;
-    if (m.up + m.down > MOCK_VOTER_COUNT) throw new Error(`${m.key} needs more mock voters`);
-    for (let i = 0; i < m.up + m.down; i++) {
-      await sql`insert into votes (user_id, meme_id, value, created_at)
-        values (${userIds.get(mockVoter(i))!}, ${row!.id}, ${i < m.up ? 1 : -1}, ${at})`;
-    }
+      : (await store.upload({ data: encodePng(600, 450, pixels(600, 450, hue)), filename: `${m.key}.png`, ownerId })).id;
+    const { id, at } = await insertMeme(sql, {
+      ownerId,
+      template,
+      outputAssetId: outputId,
+      title: m.title,
+      layers: topBottomLayers(m.top, m.bottom),
+      visibility: m.visibility,
+      draft: m.draft,
+      ageHours: m.ageHours,
+    });
+    await castVotes(sql, id, voterIds, { up: m.up, down: m.down, at: () => at });
   }
 }

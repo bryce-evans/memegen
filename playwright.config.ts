@@ -3,7 +3,7 @@ import { services } from "./scripts/services.ts";
 
 /**
  * Browser end-to-end tests. Runs isolated servers on their own ports against the
- * `memegen_e2e` database and `.data/e2e-storage`, so a running `bun run dev` is untouched.
+ * `memegen_e2e` database and `.data/e2e-storage`, so a running `./run.sh config/dev.env dev` is untouched.
  */
 const API_PORT = 4100;
 const STORAGE_PORT = 4101;

@@ -4,6 +4,7 @@
  * committed: templates and fonts come from the local `SEED_TEMPLATES_FROM` checkout, and each meme's
  * image is rendered from its template by the client renderer during seeding.
  */
+import type { Visibility } from "@memegen/shared";
 
 export const SAMPLE_USERS = [
   "dana",
@@ -50,7 +51,7 @@ export interface SampleMeme {
   tags?: string[];
   favoritedBy?: SampleUser[];
   comments?: SampleComment[];
-  visibility?: "public" | "private";
+  visibility?: Visibility;
   draft?: boolean;
 }
 

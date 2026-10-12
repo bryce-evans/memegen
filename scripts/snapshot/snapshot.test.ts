@@ -5,12 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { afterEach, beforeEach, test } from "node:test";
-import { crc32, deflateSync } from "node:zlib";
 import { openPromise } from "yauzl";
 import { ZipFile } from "yazl";
 import { DEFAULT_LIMITS } from "@memegen/shared";
 import { createSql, migrate, migrationFiles, MIGRATIONS_DIR, type Sql } from "@memegen/server-kit";
-import { TEST_DATABASE_URL } from "@memegen/server-kit/testing";
+import { encodePng, TEST_DATABASE_URL } from "@memegen/server-kit/testing";
 import { AssetStore, LocalStorageProvider, staticProviders, type Providers } from "@memegen/storage";
 import { insertTemplate } from "../lib.ts";
 import { loadSnapshot } from "./load.ts";
@@ -27,27 +26,6 @@ let sourceProviders: Providers;
 let targetProviders: Providers;
 let sourceStorage: string;
 let targetStorage: string;
-
-function png(width: number, height: number): Uint8Array {
-  const chunk = (type: string, data: Uint8Array) => {
-    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-    const out = Buffer.alloc(body.length + 8);
-    out.writeUInt32BE(data.length, 0);
-    body.copy(out, 4);
-    out.writeUInt32BE(crc32(body), body.length + 4);
-    return out;
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr.set([8, 0, 0, 0, 0], 8);
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(Buffer.alloc((width + 1) * height))),
-    chunk("IEND", new Uint8Array()),
-  ]);
-}
 
 async function emptySchema(sql: Sql): Promise<void> {
   await sql`drop schema if exists public cascade`;
@@ -72,11 +50,11 @@ async function seedFixture(sql: Sql): Promise<Fixture> {
   const store = new AssetStore(sql, sourceProviders, DEFAULT_LIMITS);
   const [dana] = await sql<{ id: string }[]>`insert into users (username) values ('dana') returning id`;
   const [eli] = await sql<{ id: string }[]>`insert into users (username) values ('eli') returning id`;
-  const base = await store.upload({ data: png(40, 30), filename: "base.png", ownerId: null });
+  const base = await store.upload({ data: encodePng(40, 30), filename: "base.png", ownerId: null });
   const templateId = await insertTemplate(sql, { slug: "base", name: "Base Template", assetId: base.id, layers: [] });
-  const star = await store.upload({ data: png(8, 8), filename: "star.png", ownerId: dana!.id });
+  const star = await store.upload({ data: encodePng(8, 8), filename: "star.png", ownerId: dana!.id });
   await sql`insert into stickers (name, asset_id, owner_id) values ('Gold Star', ${star.id}, ${dana!.id})`;
-  const output = await store.upload({ data: png(41, 30), filename: "out.png", ownerId: dana!.id });
+  const output = await store.upload({ data: encodePng(41, 30), filename: "out.png", ownerId: dana!.id });
   const layers = [{ type: "image", id: "l1", assetId: star.id, x: 0.5, y: 0.5, width: 0.2, angle: 0, opacity: 1, start: null, end: null, keyframes: [] }];
   const [meme] = await sql<{ id: string }[]>`
     insert into memes ${sql({
@@ -90,7 +68,7 @@ async function seedFixture(sql: Sql): Promise<Fixture> {
     })} returning id`;
   await sql`insert into votes (user_id, meme_id, value) values (${eli!.id}, ${meme!.id}, 1)`;
   await sql`insert into comments (meme_id, author_id, body) values (${meme!.id}, ${eli!.id}, 'ship it')`;
-  await store.upload({ data: png(5, 5), filename: "pasted.png", ownerId: eli!.id });
+  await store.upload({ data: encodePng(5, 5), filename: "pasted.png", ownerId: eli!.id });
   return { stickerAsset: star.id, memeId: meme!.id };
 }
 

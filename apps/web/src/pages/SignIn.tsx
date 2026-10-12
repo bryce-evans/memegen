@@ -1,4 +1,5 @@
 import { Button, Panel, SkinSwitcher, Stack, Wordmark } from "@memegen/ui";
+import { IntroBurst } from "../components/IntroBurst.tsx";
 import { LoginForm } from "../components/common.tsx";
 import { DEV_MODE } from "../mode.ts";
 
@@ -6,6 +7,7 @@ import { DEV_MODE } from "../mode.ts";
 export function SignIn({ brand }: { brand: string }) {
   return (
     <main className="sign-in-page" data-testid="sign-in-page">
+      <IntroBurst />
       <Panel className="sign-in">
         <Stack gap="lg" align="center">
           <Wordmark text={brand} />

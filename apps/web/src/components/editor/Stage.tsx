@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { canvasHeight, composeFrame, type DecodedMedia, type LayerBox, type LayerImages } from "@memegen/render";
+import { composedSize, composeFrame, type AssetImages, type DecodedMedia, type LayerBox } from "@memegen/render";
 import { layerArea, layerLabel, layerStateAt, resizeImage, type ImageLayer, type Layer } from "@memegen/shared";
 import { Alert } from "@memegen/ui";
 
@@ -7,7 +7,7 @@ export interface StageProps {
   media: DecodedMedia;
   layers: Layer[];
   /** Decoded image-layer assets; a layer whose image is still loading draws nothing but stays selectable. */
-  images: LayerImages;
+  images: AssetImages;
   frame: number;
   selectedId: string | null;
   /** Bumped whenever a font finishes loading so text is re-measured. */
@@ -56,9 +56,9 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
   // A top section adds its band (sized by its text) above the media.
   const dpr = window.devicePixelRatio || 1;
   const pixelWidth = displayWidth > 0 ? Math.round(displayWidth * dpr) : media.width;
-  const mediaPixelHeight = Math.max(1, Math.round((pixelWidth * media.height) / media.width));
-  const pixelHeight = canvasHeight(layers, pixelWidth, mediaPixelHeight);
-  const aspect = media.width / canvasHeight(layers, media.width, media.height);
+  const { height: pixelHeight, mediaHeight: mediaPixelHeight } = composedSize(layers, media, pixelWidth);
+  const native = composedSize(layers, media, media.width);
+  const aspect = native.width / native.height;
   /** CSS px per canvas px, for placing the selection handles. */
   const boxScale = displayWidth > 0 ? displayWidth / pixelWidth : 0;
 

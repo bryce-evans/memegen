@@ -84,4 +84,12 @@ test("image layers: upload one, paste another, resize, save; both draw on the ex
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(items).toHaveCount(4);
   await expect(items.nth(2).getByTestId("layer-image")).toBeVisible();
+
+  // A layer image that fails to load says so, and removing that layer clears the alert.
+  await page.route(`**/assets/${first!.assetId}/content`, (route) => route.fulfill({ status: 500 }));
+  await page.goto(`/create?meme=${id}`);
+  await expect(page.getByTestId("image-load-error")).toBeVisible();
+  await items.nth(2).getByTestId("layer-remove").click();
+  await expect(items).toHaveCount(3);
+  await expect(page.getByTestId("image-load-error")).toHaveCount(0);
 });

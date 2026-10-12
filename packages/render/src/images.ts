@@ -1,12 +1,13 @@
 import type { Layer } from "@memegen/shared";
 
-/** Decoded image-layer assets by asset id, as `drawLayers` needs them. */
-export type LayerImages = ReadonlyMap<string, ImageBitmap>;
+/** Decoded still-image assets by asset id: image layers' images and multi-panel pack images. */
+export type AssetImages = ReadonlyMap<string, ImageBitmap>;
 
-// Asset content is immutable, so each image is fetched and decoded once per page.
+// Asset content is immutable, so each image is fetched and decoded once per page and shared by every editor and
+// export that draws it. The bitmaps live as long as the page: nobody closes them.
 const loaded = new Map<string, Promise<ImageBitmap>>();
 
-export function loadLayerImage(assetId: string, url: string): Promise<ImageBitmap> {
+function loadAssetImage(assetId: string, url: string): Promise<ImageBitmap> {
   let p = loaded.get(assetId);
   if (!p) {
     p = fetch(url)
@@ -22,14 +23,18 @@ export function loadLayerImage(assetId: string, url: string): Promise<ImageBitma
   return p;
 }
 
+/** Load the still images `ids` (cached per asset). */
+export async function loadAssetImages(ids: readonly string[], urlFor: (assetId: string) => string): Promise<AssetImages> {
+  const images = await Promise.all(ids.map((id) => loadAssetImage(id, urlFor(id))));
+  return new Map(ids.map((id, i) => [id, images[i]!]));
+}
+
 /** Distinct image assets the layers reference. */
 export function layerImageIds(layers: readonly Layer[]): string[] {
   return [...new Set(layers.flatMap((l) => (l.type === "image" ? [l.assetId] : [])))];
 }
 
 /** Load every image the layers reference. */
-export async function ensureLayerImages(layers: readonly Layer[], urlFor: (assetId: string) => string): Promise<LayerImages> {
-  const ids = layerImageIds(layers);
-  const images = await Promise.all(ids.map((id) => loadLayerImage(id, urlFor(id))));
-  return new Map(ids.map((id, i) => [id, images[i]!]));
+export function ensureLayerImages(layers: readonly Layer[], urlFor: (assetId: string) => string): Promise<AssetImages> {
+  return loadAssetImages(layerImageIds(layers), urlFor);
 }

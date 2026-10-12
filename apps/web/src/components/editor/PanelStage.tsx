@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { composePanels, panelSetGrid, type PackImages, type PanelBox } from "@memegen/render";
+import { composePanels, panelSetGrid, type AssetImages, type PanelBox } from "@memegen/render";
 import type { PanelSet } from "@memegen/shared";
 import { Alert, cx, EmptyState } from "@memegen/ui";
 
 export interface PanelStageProps {
   set: PanelSet;
-  images: PackImages;
+  images: AssetImages;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 }

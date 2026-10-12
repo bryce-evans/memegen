@@ -12,9 +12,7 @@ import {
 } from "@memegen/shared";
 import { context2d, createCanvas, type Ctx2D } from "./canvas.ts";
 import type { ExportResult } from "./export.ts";
-
-/** Pack images by asset id, decoded once (`createImageBitmap`). */
-export type PackImages = ReadonlyMap<string, ImageBitmap>;
+import type { AssetImages } from "./images.ts";
 
 /** Where a panel (caption + image) lands, in canvas pixels; the editor hit-tests with it. */
 export interface PanelBox {
@@ -28,7 +26,7 @@ export interface PanelBox {
 }
 
 /** The grid for `set`, each panel sized by its pack image's own aspect ratio (square while an image is missing). */
-export function panelSetGrid(set: PanelSet, images: PackImages): PanelGrid {
+export function panelSetGrid(set: PanelSet, images: AssetImages): PanelGrid {
   return panelGrid(
     set.layout,
     set.mirror,
@@ -46,7 +44,7 @@ const px = (r: PanelRect, unit: number): PanelRect => ({ x: r.x * unit, y: r.y *
  * whole and uncropped in its cell, each caption fit to its cell with the shared text layout, and (unless `set.grid`
  * is off) black rules between captions, images, and panels, never around the outer edge.
  */
-export function composePanels(ctx: Ctx2D, set: PanelSet, images: PackImages, width: number, height: number): PanelBox[] {
+export function composePanels(ctx: Ctx2D, set: PanelSet, images: AssetImages, width: number, height: number): PanelBox[] {
   const grid = panelSetGrid(set, images);
   const unit = Math.min(width / grid.width, height / grid.height);
   const textCtx = ctx as TextContext;
@@ -94,7 +92,7 @@ export function composePanels(ctx: Ctx2D, set: PanelSet, images: PackImages, wid
 }
 
 /** Render a multi-panel meme to JPEG at `size` (see `panelExportSize`). */
-export async function exportPanels(set: PanelSet, images: PackImages, size: { width: number; height: number }): Promise<ExportResult> {
+export async function exportPanels(set: PanelSet, images: AssetImages, size: { width: number; height: number }): Promise<ExportResult> {
   const canvas = createCanvas(size.width, size.height);
   composePanels(context2d(canvas), set, images, canvas.width, canvas.height);
   const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.92 });

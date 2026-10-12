@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { decodeMedia, type DecodedMedia } from "@memegen/render";
+import { decodeMedia, loadAssetImages, type AssetImages, type DecodedMedia } from "@memegen/render";
 import {
   PANEL_FONT_SIZE_DEFAULT,
   topBottomLayers,
@@ -10,7 +10,7 @@ import {
   type Layer,
   type UploadLimits,
 } from "@memegen/shared";
-import { fetchAssetBlob, getAsset, getLimits, getMeme, getTemplate, listFonts } from "../../api.ts";
+import { assetUrl, fetchAssetBlob, getAsset, getLimits, getMeme, getTemplate, listFonts } from "../../api.ts";
 
 /**
  * What the editor opens, from the query string (`?meme=`, `?template=`, `?newTemplate=`, `?editTemplate=`,
@@ -53,8 +53,8 @@ export interface PanelSession {
   pack: Asset[];
   /** Starting layout, style, and panels (empty for a new template until its pack has images). */
   set: PanelSet;
-  /** Decoded pack images by asset id; closed when the session goes away. */
-  images: ReadonlyMap<string, ImageBitmap>;
+  /** Decoded pack images by asset id, from render's per-page image cache (`loadAssetImages`). */
+  images: AssetImages;
   limits: UploadLimits;
 }
 
@@ -120,13 +120,9 @@ function initialPanels(source: PanelSource): { pack: Asset[]; set: PanelSet } {
   return { pack: spec.pack, set: { layout: spec.layout, grid: spec.grid, mirror: spec.mirror, fontSize: spec.fontSize, panels } };
 }
 
-export async function decodePackImage(asset: Asset, signal?: AbortSignal): Promise<ImageBitmap> {
-  return createImageBitmap(await fetchAssetBlob(asset, signal));
-}
-
 /**
  * Load fonts, limits and the source, then decode its media (or, for a multi-panel template, its pack images); the
- * decoded media and images are released when the session goes away.
+ * decoded media is released when the session goes away (pack images stay in render's per-page cache).
  */
 export function useEditorSession(ref: SourceRef): { session: Session | null; error: unknown } {
   const [session, setSession] = useState<Session | null>(null);
@@ -136,20 +132,13 @@ export function useEditorSession(ref: SourceRef): { session: Session | null; err
   useEffect(() => {
     let cancelled = false;
     let media: DecodedMedia | null = null;
-    const images: ImageBitmap[] = [];
     (async () => {
       const [fontPage, limits, loaded] = await Promise.all([listFonts(), getLimits(), loadSource({ kind, id })]);
       const panels = await panelSource(loaded);
       if (panels) {
         const start = initialPanels(panels);
-        const decoded = await Promise.all(
-          start.pack.map(async (asset) => {
-            const image = await decodePackImage(asset);
-            images.push(image);
-            return [asset.id, image] as const;
-          }),
-        );
-        if (!cancelled) setSession({ type: "panels", source: panels, ...start, images: new Map(decoded), limits });
+        const images = await loadAssetImages(start.pack.map((a) => a.id), assetUrl);
+        if (!cancelled) setSession({ type: "panels", source: panels, ...start, images, limits });
         return;
       }
       if (loaded.kind === "new-panels") throw new Error("unreachable: new-panels is always a panel source");
@@ -167,7 +156,6 @@ export function useEditorSession(ref: SourceRef): { session: Session | null; err
     return () => {
       cancelled = true;
       media?.dispose();
-      for (const image of images) image.close();
     };
   }, [kind, id]);
 

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
-  canvasHeight,
+  composedSize,
   ensureLayerFonts,
   ensureLayerImages,
   exportMeme,
   layerFontIds,
   layerImageIds,
+  loadAssetImages,
   loadFont,
-  loadLayerImage,
-  type LayerImages,
+  type AssetImages,
 } from "@memegen/render";
 import {
   LAYER_NAME_MAX_LENGTH,
@@ -20,7 +20,6 @@ import {
   placeAt,
   resizeImage,
   rotateTo,
-  stillExportSize,
   topSectionLayer,
   type Asset,
   type Layer,
@@ -86,8 +85,11 @@ function Workspace({ session }: { session: MediaSession }) {
   const [playing, setPlaying] = useState(false);
   const [fontsVersion, setFontsVersion] = useState(0);
   const [fontError, setFontError] = useState<string | null>(null);
-  const [layerImages, setLayerImages] = useState<LayerImages>(() => new Map());
+  const [layerImages, setLayerImages] = useState<AssetImages>(() => new Map());
+  /** A referenced layer image failed to load; cleared whenever the set of images changes. */
+  const [imageLoadError, setImageLoadError] = useState<unknown>(null);
   const [addingImage, setAddingImage] = useState(false);
+  /** Adding an image layer (upload or paste) failed. */
   const [imageError, setImageError] = useState<unknown>(null);
   /** Set by pressing a text box on the stage; the Layers panel focuses that layer's text field. */
   const [editText, setEditText] = useState<{ id: string } | null>(null);
@@ -116,11 +118,11 @@ function Workspace({ session }: { session: MediaSession }) {
   // Decode every referenced image (cached per asset); redraw once they are all ready.
   const imageKey = layerImageIds(layers).sort().join(",");
   useEffect(() => {
-    const ids = imageKey ? imageKey.split(",") : [];
+    setImageLoadError(null);
     let cancelled = false;
-    Promise.all(ids.map((id) => loadLayerImage(id, assetUrl(id)))).then(
-      (images) => !cancelled && setLayerImages(new Map(ids.map((id, i) => [id, images[i]!]))),
-      (err: unknown) => !cancelled && setImageError(err),
+    loadAssetImages(imageKey ? imageKey.split(",") : [], assetUrl).then(
+      (images) => !cancelled && setLayerImages(images),
+      (err: unknown) => !cancelled && setImageLoadError(err),
     );
     return () => {
       cancelled = true;
@@ -140,7 +142,7 @@ function Workspace({ session }: { session: MediaSession }) {
   }, []);
 
   /** Move/fade a layer at the current frame; layers on the media can be placed up into the top section's band. */
-  const composedHeight = canvasHeight(layers, media.width, media.height);
+  const composedHeight = composedSize(layers, media, media.width).height;
   function placeLayer(id: string, patch: Placement) {
     updateLayer(id, (l) => placeAt(l, t, patch, layerAbove(l, media.width, composedHeight, composedHeight - media.height)));
   }
@@ -243,11 +245,7 @@ function Workspace({ session }: { session: MediaSession }) {
     progress("Loading fonts and images", null);
     const [, images] = await Promise.all([ensureLayerFonts(layers, assetUrl), ensureLayerImages(layers, assetUrl)]);
     progress("Rendering", 0);
-    return exportMeme(media, layers, images, {
-      signal,
-      onProgress: (value) => progress("Rendering", value),
-      stillSize: stillExportSize(media.width, canvasHeight(layers, media.width, media.height), limits),
-    });
+    return exportMeme(media, layers, images, limits, { signal, onProgress: (value) => progress("Rendering", value) });
   }
 
   const boxes = plural(layers.length, "layer", "layers");
@@ -278,6 +276,7 @@ function Workspace({ session }: { session: MediaSession }) {
               {fontError}
             </Alert>
           )}
+          {imageLoadError !== null && <ErrorView error={imageLoadError} testId="image-load-error" />}
           {imageError !== null && <ErrorView error={imageError} testId="image-layer-error" />}
           {animated && (
             <Timeline

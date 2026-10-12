@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { exportPanels, panelSetGrid } from "@memegen/render";
+import { useState } from "react";
+import { exportPanels, loadAssetImages, panelSetGrid } from "@memegen/render";
 import { MAX_PANELS, newPanel, panelExportSize, type Asset, type Panel, type PanelSet, type PanelTemplateInput } from "@memegen/shared";
 import { PageHeader } from "@memegen/ui";
-import { createTemplate, updateTemplate, uploadAsset } from "../../api.ts";
+import { assetUrl, createTemplate, updateTemplate, uploadAsset } from "../../api.ts";
 import { useUser } from "../../auth.tsx";
 import { plural } from "../../format.ts";
 import { fileSlug } from "../../media.ts";
@@ -11,7 +11,7 @@ import { PackPanel } from "./PackPanel.tsx";
 import { PanelList } from "./PanelList.tsx";
 import { PanelStage } from "./PanelStage.tsx";
 import { SavePanel } from "./SavePanel.tsx";
-import { decodePackImage, type PanelSession } from "./session.ts";
+import type { PanelSession } from "./session.ts";
 import { TemplateEditPanel } from "./TemplateEditPanel.tsx";
 import { TemplateSavePanel } from "./TemplateSavePanel.tsx";
 
@@ -41,14 +41,6 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
   const [selectedId, setSelectedId] = useState<string | null>(session.set.panels[0]?.id ?? null);
   const panels = set.panels;
   const setPanels = (update: (ps: Panel[]) => Panel[]) => setSet((s) => ({ ...s, panels: update(s.panels) }));
-  // Images decoded here (new uploads) are closed on leaving; the session closes the ones it loaded.
-  const decoded = useRef<ImageBitmap[]>([]);
-  useEffect(
-    () => () => {
-      for (const image of decoded.current) image.close();
-    },
-    [],
-  );
 
   const authoring = source.kind === "new-panels" || source.kind === "edit-template";
   const storedPack = source.kind === "edit-template" ? (source.template.panels?.pack ?? []) : [];
@@ -56,13 +48,8 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
   const what = plural(panels.length, "panel", "panels");
 
   async function imagesAdded(assets: Asset[]) {
-    const bitmaps = await Promise.all(assets.map((a) => decodePackImage(a)));
-    decoded.current.push(...bitmaps);
-    setImages((prev) => {
-      const next = new Map(prev);
-      assets.forEach((a, i) => next.set(a.id, bitmaps[i]!));
-      return next;
-    });
+    const added = await loadAssetImages(assets.map((a) => a.id), assetUrl);
+    setImages((prev) => new Map([...prev, ...added]));
     setPack((p) => [...p, ...assets]);
     // A fresh template starts with one panel per image.
     if (panels.length === 0 && assets.length) {

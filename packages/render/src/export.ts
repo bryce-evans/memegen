@@ -9,21 +9,16 @@ import {
   Mp4OutputFormat,
   Output,
 } from "mediabunny";
-import type { Layer } from "@memegen/shared";
+import { stillExportSize, type Layer, type UploadLimits } from "@memegen/shared";
 import { context2d, createCanvas, yieldToEventLoop } from "./canvas.ts";
-import { canvasHeight, composeFrame, drawLayers, drawTopSection } from "./compose.ts";
+import { composedSize, composeFrame } from "./compose.ts";
 import type { DecodedMedia } from "./decode.ts";
-import type { LayerImages } from "./images.ts";
+import type { AssetImages } from "./images.ts";
 
 export interface ExportOptions {
   /** 0..1 */
   onProgress?: (progress: number) => void;
   signal?: AbortSignal;
-  /**
-   * Output size for stills, the whole canvas including any top section (default: the media's native width and
-   * `canvasHeight`); GIFs and videos always keep their own width.
-   */
-  stillSize?: { width: number; height: number };
 }
 
 export interface ExportResult {
@@ -40,17 +35,19 @@ export class ExportAbortedError extends Error {
 
 /**
  * Render layers onto the media and encode: still → PNG/JPEG, GIF → GIF, video → MP4 (audio kept). `images` holds the
- * image layers' decoded assets (`ensureLayerImages`). A top section makes the output taller by its band.
+ * image layers' decoded assets (`ensureLayerImages`). A top section makes the output taller by its band. Stills are
+ * sized by `stillSize` under `limits`; GIFs and videos keep the media's native width.
  */
 export async function exportMeme(
   media: DecodedMedia,
   layers: readonly Layer[],
-  images: LayerImages,
+  images: AssetImages,
+  limits: UploadLimits,
   opts: ExportOptions = {},
 ): Promise<ExportResult> {
   switch (media.kind) {
     case "image":
-      return exportImage(media, layers, images, opts.stillSize ?? { width: media.width, height: canvasHeight(layers, media.width, media.height) });
+      return exportImage(media, layers, images, stillSize(media, layers, limits));
     case "gif":
       return exportGif(media, layers, images, opts);
     case "video":
@@ -58,10 +55,23 @@ export async function exportMeme(
   }
 }
 
+/**
+ * A still's output canvas: the width that brings the whole canvas's long edge to `STILL_EXPORT_MIN_EDGE` (never
+ * downscaling, never past the image cap), with the media scaled to that width first and the band measured there, so
+ * the media is drawn at exactly its scaled size. Text can wrap differently at the new width, so a canvas that then
+ * passes the cap is shrunk to fit it.
+ */
+function stillSize(media: DecodedMedia, layers: readonly Layer[], limits: UploadLimits): { width: number; height: number } {
+  const native = composedSize(layers, media, media.width);
+  const size = composedSize(layers, media, stillExportSize(native.width, native.height, limits).width);
+  const over = Math.max(size.width, size.height) / limits.image.maxDimension;
+  return over > 1 ? composedSize(layers, media, Math.floor(size.width / over)) : size;
+}
+
 async function exportImage(
   media: DecodedMedia,
   layers: readonly Layer[],
-  images: LayerImages,
+  images: AssetImages,
   size: { width: number; height: number },
 ): Promise<ExportResult> {
   const canvas = createCanvas(size.width, size.height);
@@ -72,9 +82,8 @@ async function exportImage(
   return { blob, mime, extension: jpeg ? ".jpg" : ".png" };
 }
 
-async function exportGif(media: DecodedMedia, layers: readonly Layer[], images: LayerImages, opts: ExportOptions): Promise<ExportResult> {
-  const width = media.width;
-  const height = canvasHeight(layers, width, media.height);
+async function exportGif(media: DecodedMedia, layers: readonly Layer[], images: AssetImages, opts: ExportOptions): Promise<ExportResult> {
+  const { width, height } = composedSize(layers, media, media.width);
   const canvas = createCanvas(width, height);
   const ctx = context2d(canvas, { willReadFrequently: true });
   const gif = GIFEncoder();
@@ -96,9 +105,8 @@ async function exportGif(media: DecodedMedia, layers: readonly Layer[], images: 
   return { blob: new Blob([gif.bytes() as BlobPart], { type: "image/gif" }), mime: "image/gif", extension: ".gif" };
 }
 
-async function exportVideo(media: DecodedMedia, layers: readonly Layer[], images: LayerImages, opts: ExportOptions): Promise<ExportResult> {
-  const width = media.width;
-  const height = canvasHeight(layers, width, media.height);
+async function exportVideo(media: DecodedMedia, layers: readonly Layer[], images: AssetImages, opts: ExportOptions): Promise<ExportResult> {
+  const { width, height } = composedSize(layers, media, media.width);
   const codec = await getFirstEncodableVideoCodec(["avc", "vp9", "av1", "hevc"], { width, height });
   if (!codec) throw new Error("this browser cannot encode MP4 video (no WebCodecs encoder available)");
 
@@ -118,10 +126,7 @@ async function exportVideo(media: DecodedMedia, layers: readonly Layer[], images
         forceTranscode: true,
         process: (sample) => {
           firstTimestamp ??= sample.timestamp;
-          ctx.clearRect(0, 0, width, height);
-          const band = drawTopSection(ctx, layers, width);
-          sample.draw(ctx, 0, band, width, height - band);
-          drawLayers(ctx, layers, images, width, height, sample.timestamp - firstTimestamp);
+          composeFrame(ctx, (c, x, y, w, h) => sample.draw(c, x, y, w, h), layers, images, width, height, sample.timestamp - firstTimestamp);
           return canvas;
         },
         processedWidth: width,

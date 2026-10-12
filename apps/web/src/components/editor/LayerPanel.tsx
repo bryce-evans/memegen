@@ -208,7 +208,14 @@ export function LayerPanel(props: LayerPanelProps) {
                       >
                         <Icon name="down" />
                       </IconButton>
-                      <IconButton size="sm" variant="quiet" className="danger-icon" onClick={() => onRemove(layer.id)} label="Remove layer">
+                      <IconButton
+                        size="sm"
+                        variant="quiet"
+                        className="danger-icon"
+                        data-testid="layer-remove"
+                        onClick={() => onRemove(layer.id)}
+                        label="Remove layer"
+                      >
                         <Icon name="close" />
                       </IconButton>
                     </div>

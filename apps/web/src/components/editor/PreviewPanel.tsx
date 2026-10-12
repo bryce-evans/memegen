@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { canvasHeight, composeFrame, context2d, frameIndexAt, type DecodedMedia, type LayerImages } from "@memegen/render";
+import { composedSize, composeFrame, context2d, frameIndexAt, type AssetImages, type DecodedMedia } from "@memegen/render";
 import type { Layer } from "@memegen/shared";
 import { Button, Icon, Panel } from "@memegen/ui";
 
@@ -7,7 +7,7 @@ interface PreviewProps {
   media: DecodedMedia;
   layers: readonly Layer[];
   /** Decoded image-layer assets (`ensureLayerImages`). */
-  images: LayerImages;
+  images: AssetImages;
 }
 
 /** The "Preview" card (GIF/video): a button that plays the finished meme on a loop, exactly as it will export. */
@@ -51,7 +51,6 @@ function PreviewLoop({ media, layers, images }: PreviewProps) {
     // The canvas fills the card's width at the meme's aspect ratio (CSS); render at that size × devicePixelRatio.
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-    const mediaHeight = Math.max(1, Math.round((canvas.width * media.height) / media.width));
     const ctx = context2d(canvas);
     const start = performance.now();
     let cancelled = false;
@@ -65,7 +64,7 @@ function PreviewLoop({ media, layers, images }: PreviewProps) {
       if (cancelled) return;
       // Layers are read live, so a top section switched on, resized, or rewrapped mid-play changes the height (only
       // then: resizing clears).
-      const height = canvasHeight(layersRef.current.layers, canvas.width, mediaHeight);
+      const { height } = composedSize(layersRef.current.layers, media, canvas.width);
       if (canvas.height !== height) canvas.height = height;
       composeFrame(ctx, image, layersRef.current.layers, layersRef.current.images, canvas.width, canvas.height, media.times[index]!);
       canvas.dataset.frame = String(index);
@@ -86,7 +85,7 @@ function PreviewLoop({ media, layers, images }: PreviewProps) {
       ref={canvasRef}
       className="preview-canvas"
       data-testid="animation-preview"
-      style={{ aspectRatio: `${media.width} / ${canvasHeight(layers, media.width, media.height)}` }}
+      style={{ aspectRatio: `${media.width} / ${composedSize(layers, media, media.width).height}` }}
       aria-label="Meme preview"
     />
   );

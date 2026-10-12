@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { COMMENT_MAX_LENGTH, type Comment, type Meme } from "@memegen/shared";
+import { COMMENT_MAX_LENGTH, isListed, type Comment, type Meme } from "@memegen/shared";
 import { Button, PageHeader, Spinner, Text, TextArea } from "@memegen/ui";
 import { createComment, deleteComment, listComments } from "../api.ts";
 import { useUser } from "../auth.tsx";
@@ -28,7 +28,7 @@ function removeComment(items: Comment[], target: Comment): Comment[] {
 /** Discussion under a meme: top-level comments with one level of replies. `onCountChange` gets ±1 per post/delete. */
 export function Comments({ meme, onCountChange }: { meme: Meme; onCountChange: (delta: number) => void }) {
   const list = usePaged<Comment>(meme.id, (offset) => listComments(meme.id, { offset }));
-  const open = meme.postedAt !== null && meme.visibility === "public";
+  const open = isListed(meme);
 
   function added(comment: Comment) {
     onCountChange(1);

@@ -1,3 +1,4 @@
+import { isListed } from "@memegen/shared";
 import type { Comment, Layer, Meme, Panel, PanelLayout, PanelSet, Period, Sticker, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
 import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
 
@@ -25,9 +26,9 @@ export function templateVisibleTo(sql: Sql, viewerId: string | null) {
   return sql`(t.is_public or t.owner_id = ${viewerId})`;
 }
 
-/** JS twin of `memeListed` for a loaded row: only listed memes take votes, favorites, and comments. */
+/** `isListed` for a loaded row (JS twin of `memeListed`): only listed memes take votes, favorites, and comments. */
 export function requireListed(meme: MemeRow, action: string): void {
-  if (meme.visibility !== "public" || !meme.posted_at) {
+  if (!isListed({ postedAt: meme.posted_at, visibility: meme.visibility })) {
     throw new HttpError(400, `only posted public memes can be ${action}`);
   }
 }

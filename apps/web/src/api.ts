@@ -125,7 +125,7 @@ function qs(params: Record<string, string | number | null | undefined>): string 
   return s ? `?${s}` : "";
 }
 
-/** Offset paging for list calls; omitted fields take the defaults each call documents. */
+/** Offset paging for list calls; omitted fields take the server's defaults. */
 export interface PageParams {
   offset?: number;
   limit?: number;
@@ -169,20 +169,19 @@ export const getMe = () => request<UserProfile>("/api/me");
 
 export const getUser = (username: string) => request<UserProfile>(`/api/users/${encodeURIComponent(username)}`);
 
-export const getUserMemes = (username: string, { offset = 0, limit = 24 }: PageParams = {}) =>
+export const getUserMemes = (username: string, { offset, limit }: PageParams = {}) =>
   request<Page<Meme>>(`/api/users/${encodeURIComponent(username)}/memes${qs({ offset, limit })}`);
 
 /** Templates the user added (variations included), newest first; their owner also sees private ones. */
-export const getUserTemplates = (username: string, { offset = 0, limit = 24 }: PageParams = {}) =>
+export const getUserTemplates = (username: string, { offset, limit }: PageParams = {}) =>
   request<Page<Template>>(`/api/users/${encodeURIComponent(username)}/templates${qs({ offset, limit })}`);
 
-export const listTemplates = ({ q, tag, kind, offset = 0, limit = 24 }: PageParams & { q?: string; tag?: string; kind?: TemplateKind } = {}) =>
+export const listTemplates = ({ q, tag, kind, offset, limit }: PageParams & { q?: string; tag?: string; kind?: TemplateKind } = {}) =>
   request<Page<Template>>(`/api/templates${qs({ q, tag, kind, offset, limit })}`);
 
 export const getTemplate = (id: string) => request<Template>(`/api/templates/${id}`);
 
-export const getHotTemplates = (period: Period, limit = 12) =>
-  request<HotTemplate[]>(`/api/templates/hot${qs({ period, limit })}`);
+export const getHotTemplates = (period: Period) => request<HotTemplate[]>(`/api/templates/hot${qs({ period })}`);
 
 export const getTemplateUsage = (id: string, period: Period) =>
   request<TemplateUsage>(`/api/templates/${id}/usage${qs({ period })}`);
@@ -204,7 +203,7 @@ export const updateTemplate = (id: string, changes: Together<UpdateTemplateInput
 export const addTemplateTags = (id: string, tags: string[]) =>
   request<Template>(`/api/templates/${id}/tags`, { method: "POST", json: { tags } });
 
-export const listTags = ({ q, kind, limit = 100 }: { q?: string; kind?: TagKind; limit?: number } = {}) =>
+export const listTags = ({ q, kind, limit }: { q?: string; kind?: TagKind; limit?: number } = {}) =>
   request<Tag[]>(`/api/tags${qs({ q, kind, limit })}`);
 
 export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURIComponent(slug)}`);
@@ -212,8 +211,8 @@ export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURICompo
 export const createTag = (input: CreateTagInput) =>
   request<Tag>("/api/tags", { method: "POST", json: input });
 
-/** The sticker library, newest first. */
-export const listStickers = ({ offset = 0, limit = 60 }: PageParams = {}) =>
+/** The sticker library: most posted first, then most saved, then newest. */
+export const listStickers = ({ offset, limit }: PageParams = {}) =>
   request<Page<Sticker>>(`/api/stickers${qs({ offset, limit })}`);
 
 /** An uploaded PNG (≤ `STICKER_MAX_DIMENSION` each edge) becomes a sticker. */
@@ -234,24 +233,23 @@ export const deleteMeme = (id: string) => request<void>(`/api/memes/${id}`, { me
 export const voteMeme = (id: string, value: -1 | 0 | 1) =>
   request<Meme>(`/api/memes/${id}/vote`, { method: "PUT", json: { value } });
 
-export const getGallery = ({ period, sort, tag, q, offset = 0, limit = 24 }: PageParams & { period: Period; sort: GallerySort; tag?: string; q?: string }) =>
+export const getGallery = ({ period, sort, tag, q, offset, limit }: PageParams & { period: Period; sort: GallerySort; tag?: string; q?: string }) =>
   request<Page<Meme>>(`/api/gallery${qs({ period, sort, tag, q, offset, limit })}`);
 
-export const getLeaderboard = (by: LeaderboardSort, limit = 50) =>
-  request<LeaderboardEntry[]>(`/api/leaderboard${qs({ by, limit })}`);
+export const getLeaderboard = (by: LeaderboardSort) => request<LeaderboardEntry[]>(`/api/leaderboard${qs({ by })}`);
 
 /** Recent activity: memes the signed-in user voted on (either way), newest vote first. */
-export const getMyActivity = ({ offset = 0, limit = 24 }: PageParams = {}) =>
+export const getMyActivity = ({ offset, limit }: PageParams = {}) =>
   request<Page<Meme>>(`/api/me/activity${qs({ offset, limit })}`);
 
 /** Memes the signed-in user starred, most recently starred first. */
-export const getMyFavorites = ({ offset = 0, limit = 24 }: PageParams = {}) =>
+export const getMyFavorites = ({ offset, limit }: PageParams = {}) =>
   request<Page<Meme>>(`/api/me/favorites${qs({ offset, limit })}`);
 
 export const favoriteMeme = (id: string, favorite: boolean) =>
   request<Meme>(`/api/memes/${id}/favorite`, { method: "PUT", json: { favorite } });
 
-export const listComments = (memeId: string, { offset = 0, limit = 50 }: PageParams = {}) =>
+export const listComments = (memeId: string, { offset, limit }: PageParams = {}) =>
   request<Page<Comment>>(`/api/memes/${memeId}/comments${qs({ offset, limit })}`);
 
 export const createComment = (memeId: string, body: string, parentId: string | null = null) =>

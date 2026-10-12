@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MEDIA_ACCEPT, PERIODS, STICKER_ACCEPT, STICKER_MAX_DIMENSION, type Period, type Sticker, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
+import { formatMB, MEDIA_ACCEPT, PERIODS, STICKER_ACCEPT, STICKER_MAX_DIMENSION, type Period, type Sticker, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
 import { EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
 import { createSticker, getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
 import { precheckMedia, precheckSticker } from "../media.ts";
@@ -150,7 +150,7 @@ export function NewTemplateForm({ limits }: { limits: UploadLimits | null }) {
       </Text>
       {limits && (
         <Text size="sm" tone="muted">
-          Max {(limits.maxBytes / 1024 / 1024).toFixed(0)} MB · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
+          Max {formatMB(limits.maxBytes)} · images ≤ {limits.image.maxDimension}px · GIFs ≤{" "}
           {limits.gif.maxDimension}px / {limits.gif.maxFrames} frames · videos ≤ {limits.video.maxDimension}px /{" "}
           {limits.video.maxFrames} frames · stickers: PNG ≤ {STICKER_MAX_DIMENSION}×{STICKER_MAX_DIMENSION}px
         </Text>

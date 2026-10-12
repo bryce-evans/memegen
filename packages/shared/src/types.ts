@@ -47,7 +47,6 @@ export function assetContentPath(id: string): string {
 export type Keyframe = z.output<typeof keyframeSchema>;
 
 export const TEXT_ALIGNS = ["left", "center", "right"] as const;
-export type TextAlign = (typeof TEXT_ALIGNS)[number];
 export const TEXT_STYLES = ["upper", "lower", "none", "mock"] as const;
 export type TextStyle = (typeof TEXT_STYLES)[number];
 
@@ -251,6 +250,11 @@ export interface Meme {
   tags: string[];
   /** Non-deleted comments, replies included. */
   commentCount: number;
+}
+
+/** Listed = posted and public: only listed memes take votes, favorites, and comments (SQL twin: the API's `memeListed`). */
+export function isListed(meme: { postedAt: string | Date | null; visibility: Visibility }): boolean {
+  return meme.postedAt !== null && meme.visibility === "public";
 }
 
 export const PERIODS = ["day", "week", "month", "year", "all"] as const;

@@ -42,6 +42,12 @@ export function extensionForMime(mime: string): string | undefined {
   return SUPPORTED_TYPES.find((t) => t.mime === mime)?.ext;
 }
 
+/** Best client-side guess from a file's browser-reported type or its extension; the server sniffs the real type. */
+export function supportedTypeForFile(name: string, mime: string): SupportedType | undefined {
+  const lower = name.toLowerCase();
+  return SUPPORTED_TYPES.find((t) => t.mime === mime || lower.endsWith(t.ext));
+}
+
 /** "png/jpg/webp/gif/mp4/mov"; without a group, media and fonts joined by "or". */
 export function supportedTypesLabel(group?: "media" | "font"): string {
   const label = (types: readonly SupportedType[]) => types.map((t) => t.ext.slice(1)).join("/");

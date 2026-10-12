@@ -97,6 +97,7 @@ export function limitViolations(sizeBytes: number, media: MediaFacts | null, lim
   return errors;
 }
 
-function formatMB(bytes: number): string {
+/** Byte counts as shown to users ("20.0 MB"), in hints and violation messages alike. */
+export function formatMB(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

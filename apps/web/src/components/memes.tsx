@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type CSSProperties, type RefObject } from "react";
 import { Link } from "react-router-dom";
-import type { Asset, Meme } from "@memegen/shared";
+import { isListed, type Asset, type Meme } from "@memegen/shared";
 import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, MediaGrid, Spinner, Text } from "@memegen/ui";
 import { favoriteMeme, voteMeme } from "../api.ts";
 import { useUser } from "../auth.tsx";
@@ -12,7 +12,7 @@ import { ErrorView, LoadMoreButton, MediaView, TimeAgo } from "./common.tsx";
 /** 👍/👎 with up/down counts (downvotes shown negative); clicking your current vote clears it. */
 export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
   const { busy, error, run } = useAction();
-  const votable = meme.postedAt !== null && meme.visibility === "public";
+  const votable = isListed(meme);
 
   function vote(dir: -1 | 1) {
     void run(async () => onChange(await voteMeme(meme.id, meme.myVote === dir ? 0 : dir)));
@@ -59,7 +59,7 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
 export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
   const user = useUser();
   const { busy, error, run } = useAction();
-  if (user.id === meme.owner.id || meme.postedAt === null || meme.visibility !== "public") return null;
+  if (user.id === meme.owner.id || !isListed(meme)) return null;
 
   function toggle() {
     void run(async () => onChange(await favoriteMeme(meme.id, !meme.favorited)));

@@ -118,7 +118,7 @@ Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `me
 - Every meme is made from a template (`template_id not null`, `on delete restrict`). A meme stores its template, source asset, rendered output asset, and layers (or panels), so it can be re-edited.
 - Saved = row exists. Posted = `posted_at` set. `visibility` is `public` or `private`.
 - Listed (gallery, public profiles) = posted and public. Votes, favorites, and comments require listed. Opening by id requires public or owned.
-- These rules live once in `services/api/src/rows.ts` (`memeListed`, `memeVisibleTo`, `memeOpenTo`, `templateVisibleTo`, `requireListed`).
+- These rules live once in `services/api/src/rows.ts` (`memeListed`, `memeVisibleTo`, `memeOpenTo`, `templateVisibleTo`, `requireListed`). The JS form of listed is `isListed` in `packages/shared`, used by `requireListed` and the web app.
 - Search (`GET /api/gallery?q=`) matches case-insensitively, with LIKE wildcards taken literally, on meme title, template or parent name, tags (including inherited), and author.
 - Feeds lay memes out in justified rows (`justifyRows`) at native aspect, never cropped. This is JS because rows must both shrink and grow to fill the width.
 

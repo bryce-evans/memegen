@@ -6,7 +6,7 @@ import { after, before, test } from "node:test";
 import { crc32, deflateSync } from "node:zlib";
 import { createRequire } from "node:module";
 import { DEFAULT_LIMITS, type Asset, type UploadLimits } from "@memegen/shared";
-import { HeaderAuthProvider, type Sql } from "@memegen/server-kit";
+import { HeaderAuthProvider, type Env, type Sql } from "@memegen/server-kit";
 import type * as Gifenc from "gifenc";
 import type { Hono } from "hono";
 import { freshTestDb } from "@memegen/server-kit/testing";
@@ -60,7 +60,7 @@ const limits: UploadLimits = {
 
 let sql: Sql;
 let dir: string;
-let app: Hono;
+let app: Hono<Env>;
 
 before(async () => {
   sql = await freshTestDb();

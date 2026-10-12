@@ -139,7 +139,7 @@ Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `me
 ## Auth
 
 - Placeholder. `POST /api/session {username}` finds or creates a user, and the client sends `X-User-Id`. **Not secure**: anyone can act as anyone.
-- Routes get the user only through `AuthProvider` (`packages/server-kit/src/auth.ts`), so a real provider replaces `HeaderAuthProvider` without touching routes.
+- Routes get the user only through `AuthProvider` (`packages/server-kit/src/auth.ts`), so a real provider replaces `HeaderAuthProvider` without touching routes. Both services call `installAuth(app, auth)`, which resolves the user once per request; handlers read it with `c.get("user")`.
 - The web app is sign-in only: with no stored user, every URL renders the sign-in page, then the app at that same URL. Components can therefore assume a user. The API still serves anonymous reads. The gate is UI, not access control.
 - The client keeps the user in a `memegen.user` cookie (one year). The server never reads it. A 401 on a request that carried `X-User-Id` drops the cookie.
 - `MODE` is baked into the build (`__MEMEGEN_MODE__`). Anything but `MODE=dev` builds as prod, so the dev login never ships by accident. Prod shows a "Sign in with SSO" placeholder.

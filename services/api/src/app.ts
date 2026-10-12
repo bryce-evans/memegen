@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { installErrorHandler, type AuthProvider, type Sql } from "@memegen/server-kit";
-import type { ApiApp, Env } from "./access.ts";
+import { installAuth, installErrorHandler, type AuthProvider, type Env, type Sql } from "@memegen/server-kit";
+import type { ApiApp } from "./access.ts";
 import * as comments from "./routes/comments.ts";
 import * as gallery from "./routes/gallery.ts";
 import * as memes from "./routes/memes.ts";
@@ -14,11 +14,7 @@ export type { ApiApp } from "./access.ts";
 export function createApiApp(sql: Sql, auth: AuthProvider): ApiApp {
   const app = new Hono<Env>();
   installErrorHandler(app);
-
-  app.use("*", async (c, next) => {
-    c.set("user", await auth.resolve(c));
-    await next();
-  });
+  installAuth(app, auth);
 
   for (const routes of [users, templates, tags, memes, comments, gallery, stickers]) routes.register(app, sql);
 

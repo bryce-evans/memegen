@@ -1,16 +1,15 @@
 import type { Context, Hono } from "hono";
 import type { Layer, PanelSet, Template, User } from "@memegen/shared";
-import { findAssetRow, HttpError, idParam, parse, toUser, type AssetRow, type Sql, type UserRow } from "@memegen/server-kit";
+import { findAssetRow, HttpError, idParam, parse, toUser, type AssetRow, type Env, type Sql, type UserRow } from "@memegen/server-kit";
 import { memeOpenTo, memeSelect, templateSelect, templateVisibleTo, withVariations, type MemeRow, type TemplateRow } from "./rows.ts";
 
 /** Loaders and guards shared by the route modules: each finds a record the caller may use, or throws. */
 
-export type Env = { Variables: { user: User | null } };
 export type ApiApp = Hono<Env>;
 
 export function requireUser(c: Context<Env>): User {
   const user = c.get("user");
-  if (!user) throw new HttpError(401, "sign in first (X-User-Id)");
+  if (!user) throw new HttpError(401, "sign in first");
   return user;
 }
 

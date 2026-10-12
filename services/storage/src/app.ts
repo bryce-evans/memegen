@@ -4,12 +4,14 @@ import {
   findAssetRow,
   HttpError,
   idParam,
+  installAuth,
   installErrorHandler,
   isInternal,
   parse,
   toAsset,
   type AssetRow,
   type AuthProvider,
+  type Env,
 } from "@memegen/server-kit";
 import type { AssetStore } from "./assets.ts";
 import type { ByteRange } from "./providers/types.ts";
@@ -34,9 +36,10 @@ function parseRange(header: string | undefined, size: number): ByteRange | null 
   return start > end || start >= size ? "invalid" : { start, end };
 }
 
-export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono {
-  const app = new Hono();
+export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono<Env> {
+  const app = new Hono<Env>();
   installErrorHandler(app);
+  installAuth(app, auth);
 
   app.get("/health", (c) => c.json({ ok: true }));
   app.get("/limits", (c) => c.json(store.limits));
@@ -47,7 +50,7 @@ export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono {
     if (length > store.limits.maxBytes + MULTIPART_SLACK) {
       throw new HttpError(413, "file too large", [`max is ${store.limits.maxBytes} bytes`]);
     }
-    const user = await auth.resolve(c);
+    const user = c.get("user");
     const body = await c.req.parseBody();
     const file = body.file;
     if (!(file instanceof File)) throw new HttpError(400, "multipart field `file` is required");
@@ -106,7 +109,7 @@ export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono {
     const { id } = parse(idParam, c.req.param());
     const row = await loadRow(id);
     if (!isInternal(c)) {
-      const user = await auth.resolve(c);
+      const user = c.get("user");
       if (!user || user.id !== row.owner_id) throw new HttpError(403, "only the owner can delete this asset");
     }
     await store.delete(row);

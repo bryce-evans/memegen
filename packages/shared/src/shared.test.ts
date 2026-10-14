@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
 import { layerLabels, layerPosition, newImageLayer, newTextLayer, newTopSectionLayer } from "./defaults.ts";
 import { DEFAULT_LIMITS, IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
-import { layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
+import { growTextBox, layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { layerSchema, layersSchema, sessionSchema } from "./schema.ts";
 import { canMoveLayer, composedHeight, layerArea, layoutTopSection, moveById, moveLayer, topSectionPx } from "./section.ts";
 import { badgesFor } from "./badges.ts";
@@ -87,6 +87,23 @@ test("layoutText reports overflow when even the minimum size does not fit", () =
   const layout = layoutText(fakeCtx(), layer, 100, 100);
   assert.equal(layout.fontPx, MIN_FONT_PX);
   assert.equal(layout.overflow, true);
+});
+
+test("growTextBox makes the box just tall enough for the full max size, never shorter, at most the media height", () => {
+  const ctx = fakeCtx();
+  const layer = newTextLayer({ text: "one two three four five six", fontSize: 0.2, maxWidth: 1, maxHeight: 0.2, strokeWidth: 0 });
+  const grown = growTextBox(ctx, layer, 200, 200);
+  assert.ok(grown.maxHeight > layer.maxHeight);
+  assert.equal(layoutText(ctx, grown, 200, 200).fontPx, 40, "shown at the full max size");
+  assert.ok(layoutText(ctx, { ...grown, maxHeight: grown.maxHeight - 0.01 }, 200, 200).fontPx < 40, "no taller than needed");
+  // Already tall enough: unchanged. Too long for any box: capped at the media height.
+  assert.equal(growTextBox(ctx, { ...layer, maxHeight: 0.97 }, 200, 200).maxHeight, 0.97);
+  assert.equal(growTextBox(ctx, { ...layer, text: "word ".repeat(200) }, 200, 200).maxHeight, 1);
+
+  // A box at the top edge grows downward so it stays on the media, keyframes too; one already hanging off is left be.
+  const top = growTextBox(ctx, { ...layer, y: 0.1, keyframes: [{ t: 0, x: 0.5, y: 0.1, opacity: 1 }] }, 200, 200);
+  assert.deepEqual([top.y, top.keyframes[0]!.y], [top.maxHeight / 2, top.maxHeight / 2]);
+  assert.equal(growTextBox(ctx, { ...layer, y: 0.05 }, 200, 200).y, 0.05);
 });
 
 test("layerSchema sorts keyframes and rejects inverted windows, for text and image layers alike", () => {

@@ -46,7 +46,7 @@ flowchart LR
 ## Layers
 
 - `Layer` is a zod discriminated union on `type`: `text` or `image`. Both share `id`, `name`, `angle`, anchor `x,y`, `opacity`, a visibility window, and keyframes, so placement, dragging, tracks, and every `animation.ts` rule apply to both. Types are `z.output` of the schemas, and request bodies (`CreateMemeInput`, `CreateTemplateInput`, …) are their `z.input`, so the API, the web client, and e2e can't drift. Migration 011 tagged pre-image layers as `text`.
-- `TextLayer`: a box (center anchor + `maxWidth`/`maxHeight`, fractions of the media). `fontSize` is a max: text wraps at the box width and shrinks until it fits. `textStyle` is `upper | lower | none | mock`. Stroke width is a fraction of font size.
+- `TextLayer`: a box (center anchor + `maxWidth`/`maxHeight`, fractions of the media, 0.05..1). `fontSize` is a max: text wraps at the box width and shrinks until it fits. Raising the max size in the editor also grows the box height (`growTextBox`, never shrinks it; a box inside the media stays inside by moving its anchor) so the larger text actually shows; the selected box has corner handles that resize it about the opposite corner. `textStyle` is `upper | lower | none | mock`. Stroke width is a fraction of font size.
 - `ImageLayer`: a still image asset drawn whole at its own aspect ratio, `width` a fraction of the media width (0.02..2), never cropped or stretched. Size and angle are static. Only the anchor and opacity animate.
 - `name` labels a layer in the editor and is never drawn. Only the Template Editor renames layers, so a template's default names carry into its memes.
 - Image layers are added by upload or paste, pre-checked against the image caps (stills only). Layer images and multi-panel pack images go through one loader, render's `loadAssetImages` (`AssetImages` by asset id): asset content is immutable, so each is decoded once per page and kept for the page's lifetime, shared by every editor and export, never closed. The API rejects image layers whose asset is missing or not a still image, and storage refuses to delete a referenced asset (409).
@@ -125,6 +125,7 @@ Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `me
 ## Votes, stats, badges
 
 - `votes(user_id, meme_id, value ±1)`, one per user per meme. A trigger maintains `memes.upvotes/downvotes`, and `score` is generated.
+- Posting casts the author's upvote (Reddit-style), in the API only when the meme becomes listed (first post of a public meme), so a removed self-vote stays removed. Seeds write votes directly and get none.
 - Votes double as the owner-only activity feed (`GET /api/me/activity`). Favorites are a separate table.
 - Popular = listed memes posted in the period, by score then recency. Recent = all-time recency.
 - User stats over posted memes: `memeCount`, `highScore`, `hScore` (largest h with h memes scoring ≥ h). `negativeHScore` (h memes ≤ −h) is internal only, at `/internal/users/:username/stats` behind `X-Internal-Token`. The web proxy never forwards `/internal`.
@@ -214,16 +215,17 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | GET | `/api/users/:username` | `UserProfile` (public stats; `templateCount` = public templates the user added, variations included) |
 | GET | `/api/users/:username/memes` | `Page<Meme>`; the owner also sees drafts/private |
 | GET | `/api/users/:username/templates` | `Page<Template>` the user added, variations included (each top-level one with its visible variations nested), newest first; the owner also sees private ones |
-| GET | `/api/templates?q=&tag=&kind=&offset=&limit=` | `Page<Template>` (top-level, variations nested; `owner` always set, `baseTags ⊆ tags`); `kind` = `single`, `multi`, or `gif` (GIFs and videos) |
+| GET | `/api/templates?q=&tag=&kind=&offset=&limit=` | `Page<Template>` (top-level, variations nested; `owner` always set, `baseTags ⊆ tags`), newest first; `kind` = `single`, `multi`, or `gif` (GIFs and videos) |
+| GET | `/api/templates/count` | `TemplateCount` `{count}`: top-level templates the viewer can browse (the template search's placeholder) |
 | GET | `/api/templates/hot?period=&limit=` | `HotTemplate[]`: most-used top-level templates in the period |
 | GET | `/api/templates/:id/usage?period=` | `TemplateUsage`: zero-filled series (day→hourly, week/month→daily, year/all→monthly) |
 | GET | `/api/templates/:id` | `Template` (+ variations, `useCount`) |
 | POST | `/api/templates` | `{name, assetId, parentId?, defaultLayers?, panels?, isPublic?, tags?}`; `tags` become base tags; `panels` = `{layout, grid?, mirror?, fontSize?, packAssetIds, defaultPanels}` makes a multi-panel template (still-image pack, `assetId` its rendered cover, no `defaultLayers`) |
 | PATCH/DELETE | `/api/templates/:id` | owner only; PATCH `{name?, defaultLayers?, isPublic?, panels?+assetId?}` (multi-panel: new defaults with their re-rendered cover; pack images can be added, not removed); DELETE → 409 while memes use it (or one of its variations) |
-| POST | `/api/memes` | `{title, templateId, outputAssetId, layers, panels?, visibility, post, tags?}`; every meme is made from a template; `panels` (`{layout, grid?, mirror?, fontSize?, panels}`, images from the template's pack) is required for multi-panel templates and rejected otherwise |
+| POST | `/api/memes` | `{title, templateId, outputAssetId, layers, panels?, visibility, post, tags?}`; every meme is made from a template; `panels` (`{layout, grid?, mirror?, fontSize?, panels}`, images from the template's pack) is required for multi-panel templates and rejected otherwise; `post` on a public meme casts the author's upvote |
 | GET | `/api/memes/:id` | `Meme` (private → owner only) |
 | PATCH | `/api/memes/:id` | `{title?, visibility?, tags?, layers+outputAssetId(+panels)?}` owner only |
-| POST | `/api/memes/:id/post` | sets `posted_at` |
+| POST | `/api/memes/:id/post` | sets `posted_at`; the first post of a public meme casts the author's upvote (Reddit-style) |
 | DELETE | `/api/memes/:id` | owner only; cascades comments, votes, favorites, tags |
 | PUT | `/api/memes/:id/vote` | `{value: -1|0|1}` → `Meme` |
 | PUT | `/api/memes/:id/favorite` | `{favorite: boolean}` → `Meme`; posted public memes only; idempotent |

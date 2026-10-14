@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatMB, MEDIA_ACCEPT, PERIODS, STICKER_ACCEPT, STICKER_MAX_DIMENSION, type Period, type Sticker, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
 import { EmptyState, FileButton, Icon, Inline, LinkButton, PageHeader, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
-import { createSticker, getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
+import { countTemplates, createSticker, getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
 import { nameFromFile, precheckMedia, precheckSticker } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { usePaged } from "../usePaged.ts";
 import { ErrorView, MediaView } from "./common.tsx";
-import { PERIOD_LABELS } from "../format.ts";
+import { PERIOD_LABELS, plural } from "../format.ts";
 import { TemplateGrid } from "./templates.tsx";
 
 type KindFilter = TemplateKind | "all";
@@ -30,6 +30,7 @@ export function TemplateBrowser({ search, onSearchChange }: { search: string; on
   const q = useDebounced(search.trim(), 300);
   const filterKind = kind === "all" ? undefined : kind;
   const list = usePaged<Template>(`${kind}:${q}`, (offset) => listTemplates({ q, kind: filterKind, offset }));
+  const total = useAsync("template-count", countTemplates).data?.count;
 
   return (
     <section className="template-start">
@@ -42,7 +43,7 @@ export function TemplateBrowser({ search, onSearchChange }: { search: string; on
         />
         <TextField
           type="search"
-          placeholder="Search templates…"
+          placeholder={total === undefined ? "Search templates…" : `Search ${plural(total, "template")}`}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           aria-label="Search templates"

@@ -44,9 +44,12 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   const [source, output] = await Promise.all([download(request, meme.sourceAsset), download(request, meme.outputAsset)]);
   expect(output.equals(source)).toBe(false);
 
-  // Drafts never reach the gallery; posting publishes. Tags show on the meme's page, not on gallery cards.
+  // Drafts never reach the gallery; posting publishes, with the author's upvote already cast. Tags show on the meme's
+  // page, not on gallery cards.
   await page.getByTestId("post-meme").click();
   await expect(page.getByTestId("meme-status")).toContainText("posted");
+  await expect(page.getByTestId("vote-up")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("upvote-count")).toHaveText("1");
   await expect(tagChip(page, "movie")).toBeVisible();
 
   await openFeed(page, { feed: "recent" });

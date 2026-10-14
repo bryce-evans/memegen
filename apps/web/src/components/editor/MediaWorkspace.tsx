@@ -7,6 +7,7 @@ import {
   newTextLayer,
   placeAt,
   resizeImage,
+  resizeTextBox,
   rotateTo,
   type Asset,
   type Placement,
@@ -135,6 +136,10 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
             onMove={(id, x, y) => placeLayer(id, { x, y })}
             onResize={(id, width, x, y) => {
               updateLayer(id, (l) => (l.type === "image" ? resizeImage(l, width) : l));
+              placeLayer(id, { x, y });
+            }}
+            onResizeText={(id, maxWidth, maxHeight, x, y) => {
+              updateLayer(id, (l) => (l.type === "text" ? resizeTextBox(l, maxWidth, maxHeight) : l));
               placeLayer(id, { x, y });
             }}
             onRotate={(id, angle) => updateLayer(id, (l) => rotateTo(l, angle))}

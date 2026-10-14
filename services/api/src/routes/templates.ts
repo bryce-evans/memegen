@@ -7,6 +7,7 @@ import {
   updateTemplateSchema,
   type HotTemplate,
   type Period,
+  type TemplateCount,
   type TemplateUsage,
 } from "@memegen/shared";
 import { HttpError, idParam, page, pageSql, parse, parseJson, type Sql } from "@memegen/server-kit";
@@ -51,10 +52,18 @@ export function register(app: ApiApp, sql: Sql): void {
       ${kind ? sql`and t.kind = ${kind}` : sql``}
       ${tag ? sql`and exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
         where x.template_id = t.id and g.slug = ${tag})` : sql``}
-      order by lower(t.name), t.id
+      order by t.created_at desc, t.id
       ${pageSql(sql, offset, limit)}`;
     const { items, nextOffset } = page(rows, offset, limit);
     return c.json({ items: await withVariations(sql, items, viewerId), nextOffset });
+  });
+
+  /** How many templates the browser lists with no search or filter. */
+  app.get("/api/templates/count", async (c) => {
+    const viewerId = c.get("user")?.id ?? null;
+    const [row] = await sql<TemplateCount[]>`
+      select count(*)::int as count from templates t where t.parent_id is null and ${templateVisibleTo(sql, viewerId)}`;
+    return c.json(row!);
   });
 
   /** Most-used top-level templates in the period; variation uses roll up into their parent. */

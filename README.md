@@ -5,7 +5,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 ## Features
 
 - **Templates**: about 260 built-in templates with variations, plus your own uploads. Search, filter by kind, see what's hot, and check each template's usage chart.
-- **Editor**: text boxes that wrap and shrink to fit, custom fonts, image layers (upload or paste a screenshot), and a shared sticker library.
+- **Editor**: text boxes that wrap and shrink to fit (drag their corners to resize), custom fonts, image layers (upload or paste a screenshot), and a shared sticker library.
 - **Animation**: for GIFs and videos, a frame-by-frame timeline with per-layer visibility windows, keyframes, and a live loop preview. Exports are GIF or MP4, and MP4s keep their audio.
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
 - **Multi-panel templates**: expanding brain and similar formats, built from an image pack. Memes can add, remove, and reorder panels.

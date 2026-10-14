@@ -15,6 +15,7 @@ import type {
   Period,
   Sticker,
   Template,
+  TemplateCount,
   TemplateKind,
   TemplateUsage,
   Tag,
@@ -178,6 +179,8 @@ export const getUserTemplates = (username: string, { offset, limit }: PageParams
 
 export const listTemplates = ({ q, tag, kind, offset, limit }: PageParams & { q?: string; tag?: string; kind?: TemplateKind } = {}) =>
   request<Page<Template>>(`/api/templates${qs({ q, tag, kind, offset, limit })}`);
+
+export const countTemplates = () => request<TemplateCount>("/api/templates/count");
 
 export const getTemplate = (id: string) => request<Template>(`/api/templates/${id}`);
 

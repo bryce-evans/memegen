@@ -1,6 +1,7 @@
 import {
   composedHeight,
   drawText,
+  growTextBox,
   layerArea,
   layerStateAt,
   layoutText,
@@ -140,6 +141,11 @@ export function composeFrame(
 
 let measuring: OffscreenCanvasRenderingContext2D | null = null;
 
+function measuringContext(): TextContext {
+  measuring ??= new OffscreenCanvas(1, 1).getContext("2d")!;
+  return measuring as unknown as TextContext;
+}
+
 /**
  * Canvas size for `media` drawn `width` px wide: the media scaled to that width (`mediaHeight`) plus the top section's
  * band, whose height depends on how its text wraps at that width, so it is measured there (fonts must be loaded for an
@@ -150,7 +156,11 @@ export function composedSize(
   media: { width: number; height: number },
   width: number,
 ): { width: number; height: number; mediaHeight: number } {
-  measuring ??= new OffscreenCanvas(1, 1).getContext("2d")!;
   const mediaHeight = Math.max(1, Math.round((width * media.height) / media.width));
-  return { width, height: composedHeight(measuring as unknown as TextContext, layers, width, mediaHeight), mediaHeight };
+  return { width, height: composedHeight(measuringContext(), layers, width, mediaHeight), mediaHeight };
+}
+
+/** `growTextBox` on `media` (fonts must be loaded for an exact size): the box a raised max size needs to show. */
+export function fitTextBox(layer: TextLayer, media: { width: number; height: number }): TextLayer {
+  return growTextBox(measuringContext(), layer, media.width, media.height);
 }

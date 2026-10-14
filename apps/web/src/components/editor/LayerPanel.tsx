@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DecodedMedia } from "@memegen/render";
+import { fitTextBox, type DecodedMedia } from "@memegen/render";
 import {
   canMoveLayer,
   IMAGE_ACCEPT,
@@ -12,6 +12,8 @@ import {
   LAYER_NAME_MAX_LENGTH,
   resizeImage,
   TEXT_ALIGNS,
+  TEXT_BOX_MAX,
+  TEXT_BOX_MIN,
   TEXT_MAX_LENGTH,
   TEXT_STYLES,
   TOP_SECTION_HEIGHT_MAX,
@@ -323,7 +325,7 @@ function CommonSettings({ layer, media, frame, onChange, onPlace, onSeek }: Sett
 
 /** Everything about a text layer except its text: font, size, colors, layout, then the shared settings. */
 function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; onFontUploaded: (font: Asset) => void }) {
-  const { layer, fonts, onChange, onFontUploaded } = props;
+  const { layer, media, fonts, onChange, onFontUploaded } = props;
   const set = (patch: Partial<TextLayer>) => onChange((l) => (l.type === "text" ? { ...l, ...patch } : l));
   const section = layer.topSection;
 
@@ -348,13 +350,18 @@ function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; o
         onUploaded={onFontUploaded}
       />
 
+      {/* Text shrinks to fit its box, so raising the max size also grows the box tall enough to show it. */}
       <Slider
         label={`Max size ${(layer.fontSize * 100).toFixed(1)}% of ${section ? "the top section's height" : "height"}`}
         min={1}
         max={50}
         step={0.5}
         value={layer.fontSize * 100}
-        onChange={(e) => set({ fontSize: Number(e.target.value) / 100 })}
+        data-testid="layer-font-size"
+        onChange={(e) => {
+          const fontSize = Number(e.target.value) / 100;
+          onChange((l) => (l.type === "text" ? fitTextBox({ ...l, fontSize }, media) : l));
+        }}
       />
 
       <div className="field-row">
@@ -400,19 +407,21 @@ function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; o
         <Slider
           label={`Box width ${Math.round(layer.maxWidth * 100)}%`}
           className="grow"
-          min={5}
-          max={100}
+          min={Math.round(TEXT_BOX_MIN * 100)}
+          max={Math.round(TEXT_BOX_MAX * 100)}
           step={1}
           value={Math.round(layer.maxWidth * 100)}
+          data-testid="text-box-width"
           onChange={(e) => set({ maxWidth: Number(e.target.value) / 100 })}
         />
         <Slider
           label={`Box height ${Math.round(layer.maxHeight * 100)}%`}
           className="grow"
-          min={5}
-          max={100}
+          min={Math.round(TEXT_BOX_MIN * 100)}
+          max={Math.round(TEXT_BOX_MAX * 100)}
           step={1}
           value={Math.round(layer.maxHeight * 100)}
+          data-testid="text-box-height"
           onChange={(e) => set({ maxHeight: Number(e.target.value) / 100 })}
         />
       </div>

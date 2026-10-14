@@ -602,7 +602,18 @@
 .handle.overflow {
   border-color: var(--ui-color-danger);
 }
-/* Scale (corners) and rotate (above the top edge) handles on the selected image layer; they turn with its box. */
+/* The selected text layer's box (its text shrinks to fit inside); only its corner handles take the pointer, so the
+   text under it stays draggable. */
+.text-box-frame {
+  position: absolute;
+  border: 1px dashed var(--ui-color-primary);
+  pointer-events: none;
+}
+.text-box-frame .transform-handle {
+  pointer-events: auto;
+}
+/* Scale (corners) and rotate (above the top edge) handles on the selected image layer, and resize (corners) handles
+   on the selected text layer's box; they turn with the layer. */
 .transform-handle {
   position: absolute;
   width: 12px;

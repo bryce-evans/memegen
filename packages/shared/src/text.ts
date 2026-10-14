@@ -1,3 +1,4 @@
+import { TEXT_BOX_MAX } from "./limits.ts";
 import type { TextLayer, TextStyle } from "./types.ts";
 
 /**
@@ -138,6 +139,26 @@ export function layoutText(ctx: TextContext, layer: TextLayer, mediaW: number, m
     }
     fontPx = Math.max(MIN_FONT_PX, Math.floor(fontPx * 0.92));
   }
+}
+
+/**
+ * `layer` with its box grown taller (never shorter, at most the media's height) so its text shows at the full max size
+ * instead of being shrunk to fit; the box keeps its width, so the text wraps as before. A box that was inside the media
+ * stays inside: its anchor (and each keyframe's) moves away from the edge it would cross. The top section's text has no
+ * height limit, so it is returned as is.
+ */
+export function growTextBox(ctx: TextContext, layer: TextLayer, mediaW: number, mediaH: number): TextLayer {
+  if (layer.topSection) return layer;
+  const fontPx = Math.max(MIN_FONT_PX, Math.round(layer.fontSize * mediaH));
+  const needed = measure(ctx, layer, applyTextStyle(layer.text, layer.textStyle), fontPx, layer.maxWidth * mediaW).height / mediaH;
+  // Whole percent, rounded up: the box height slider shows percents, and the text must still fit after rounding.
+  const maxHeight = Math.min(TEXT_BOX_MAX, Math.max(layer.maxHeight, Math.ceil(needed * 100) / 100));
+  if (maxHeight === layer.maxHeight) return layer;
+  const was = layer.maxHeight / 2;
+  const half = maxHeight / 2;
+  const EPS = 1e-9;
+  const keepIn = (y: number) => (y - was >= -EPS && y + was <= 1 + EPS ? Math.min(1 - half, Math.max(half, y)) : y);
+  return { ...layer, maxHeight, y: keepIn(layer.y), keyframes: layer.keyframes.map((k) => ({ ...k, y: keepIn(k.y) })) };
 }
 
 /** Axis-aligned size of the layout box after rotation. */

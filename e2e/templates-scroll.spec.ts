@@ -1,7 +1,7 @@
 import { apiTemplate, apiUpload, apiUser, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
-test("templates: the create page loads more matches as the end of the list scrolls into view", async ({ page, request }) => {
+test("templates: the create page lists newest first and loads more matches as the end of the list scrolls into view", async ({ page, request }) => {
   // Unique per project and per run, so the search matches exactly these templates.
   const prefix = scoped(`Scroll ${Date.now().toString(36)}`);
   const total = 30; // more than one page (24)
@@ -13,13 +13,18 @@ test("templates: the create page loads more matches as the end of the list scrol
 
   await page.goto("/create");
   await signIn(page, scoped("scroll-viewer"));
-  await page.getByTestId("template-search").fill(prefix);
+  // The search box counts every template there is to search (other specs add theirs concurrently, so at least ours).
+  const search = page.getByTestId("template-search");
+  await expect(search).toHaveAttribute("placeholder", /^Search \d+ templates$/);
+  expect(Number(/\d+/.exec((await search.getAttribute("placeholder"))!)![0])).toBeGreaterThanOrEqual(total);
+  await search.fill(prefix);
   // The search is debounced; wait until the grid shows it, or the unfiltered list could satisfy the count.
   const grid = page.getByTestId("template-grid");
   await expect(grid).toHaveAttribute("data-query", prefix);
   await expect(grid).toHaveAttribute("aria-busy", "false");
   const matches = page.getByTestId("template-card").filter({ hasText: prefix });
   await expect(matches.first()).toBeVisible();
+  await expect(matches.first()).toContainText(`${prefix} ${total - 1}`); // the last added
 
   // Each time the sentinel scrolls into view a page loads: wait for more cards and an idle grid, until it is gone.
   const cards = page.getByTestId("template-card");

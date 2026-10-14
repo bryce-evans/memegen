@@ -20,6 +20,7 @@ import {
   type Sticker,
   type Template,
   type Tag,
+  type TemplateCount,
   type TemplateUsage,
   type User,
   type UserProfile,
@@ -229,6 +230,25 @@ test("templates allow exactly one level of variations", async () => {
   await assert.rejects(sql`update templates set parent_id = ${other.id} where id = ${parent.id}`, /has variations/);
 });
 
+test("template browsing: top-level templates newest first; the count matches what the viewer can browse", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const old = await makeTemplate(alice, { name: "Aardvark" });
+  const mid = await makeTemplate(alice, { name: "Zebra" });
+  await makeTemplate(alice, { name: "Tweak", parentId: old.id });
+  const hidden = await makeTemplate(alice, { name: "Mine", isPublic: false });
+  for (const [id, hours] of [[old.id, 3], [mid.id, 2], [hidden.id, 1]] as const) {
+    await sql`update templates set created_at = now() - ${hours + " hours"}::interval where id = ${id}`;
+  }
+
+  const names = async (viewer: User | null) =>
+    (await call<Page<Template>>("GET", "/api/templates", viewer)).body.items.map((t) => t.name);
+  const count = async (viewer: User | null) => (await call<TemplateCount>("GET", "/api/templates/count", viewer)).body.count;
+  assert.deepEqual(await names(alice), ["Mine", "Zebra", "Aardvark"]);
+  assert.deepEqual(await names(bob), ["Zebra", "Aardvark"]);
+  assert.deepEqual([await count(alice), await count(bob), await count(null)], [3, 2, 2]);
+});
+
 test("private memes and drafts are hidden from others but visible to the owner", async () => {
   const alice = await signIn("alice");
   const eve = await signIn("eve");
@@ -254,16 +274,37 @@ test("votes: one per user, switchable, removable; drafts can't be voted on", asy
   const meme = await makeMeme(alice);
   const vote = (u: User, value: number) => call<Meme>("PUT", `/api/memes/${meme.id}/vote`, u, { value });
 
-  assert.equal((await vote(bob, 1)).body.score, 1);
-  assert.equal((await vote(bob, 1)).body.score, 1);
+  assert.deepEqual([meme.score, meme.myVote], [1, 1]); // posting cast the author's upvote
+  assert.equal((await vote(bob, 1)).body.score, 2);
+  assert.equal((await vote(bob, 1)).body.score, 2);
   const switched = (await vote(bob, -1)).body;
-  assert.deepEqual([switched.upvotes, switched.downvotes, switched.myVote], [0, 1, -1]);
+  assert.deepEqual([switched.upvotes, switched.downvotes, switched.myVote], [1, 1, -1]);
   assert.equal((await vote(alice, -1)).body.score, -2);
   const cleared = (await vote(bob, 0)).body;
   assert.deepEqual([cleared.score, cleared.myVote], [-1, 0]);
 
   const draft = await makeMeme(alice, { post: false });
   assert.equal((await call("PUT", `/api/memes/${draft.id}/vote`, bob, { value: 1 })).status, 400);
+});
+
+test("posting casts the author's upvote once, only when the meme is listed", async () => {
+  const alice = await signIn("alice");
+  const draft = await makeMeme(alice, { post: false });
+  assert.deepEqual([draft.upvotes, draft.myVote], [0, 0]);
+
+  const post = (id: string) => call<Meme>("POST", `/api/memes/${id}/post`, alice);
+  const posted = (await post(draft.id)).body;
+  assert.deepEqual([posted.upvotes, posted.myVote], [1, 1]);
+  // Taking it back sticks: posting again changes nothing.
+  await call("PUT", `/api/memes/${draft.id}/vote`, alice, { value: 0 });
+  const again = (await post(draft.id)).body;
+  assert.deepEqual([again.upvotes, again.myVote], [0, 0]);
+
+  // A private meme isn't listed, so it takes no votes, the author's included: posted at creation or later.
+  const privateDraft = await makeMeme(alice, { visibility: "private", post: false });
+  for (const priv of [await makeMeme(alice, { visibility: "private" }), (await post(privateDraft.id)).body]) {
+    assert.deepEqual([priv.upvotes, priv.myVote], [0, 0]);
+  }
 });
 
 test("recent activity: liked and disliked memes together, newest vote first, only memes still visible", async () => {

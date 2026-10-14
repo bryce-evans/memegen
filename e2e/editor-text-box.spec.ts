@@ -1,0 +1,46 @@
+import type { Meme, TextLayer } from "@memegen/shared";
+import { expect, scoped, test } from "./test.ts";
+import { apiGet, editFixture, memeIdFromUrl } from "./helpers.ts";
+
+test("text boxes: raising the max size grows the box to show it; corner handles resize the box", async ({ page, request }) => {
+  const { user } = await editFixture(page, request, scoped("boxer"), "still.png");
+  const layer = page.getByTestId("layer-item").first();
+  const textBox = page.getByTestId("layer-box").first();
+  await layer.getByTestId("layer-settings-toggle").click();
+  const height = layer.getByTestId("text-box-height");
+  const width = layer.getByTestId("text-box-width");
+  await expect(height).toHaveValue("20");
+
+  // Text shrinks to fit its box, so a larger max size would change nothing unless the box grows with it.
+  const small = (await textBox.boundingBox())!;
+  await layer.getByTestId("layer-font-size").fill("20");
+  await expect.poll(async () => Number(await height.inputValue())).toBeGreaterThan(20);
+  await expect.poll(async () => (await textBox.boundingBox())!.height).toBeGreaterThan(small.height * 1.5);
+
+  // The selected text layer shows its box with corner handles; dragging one resizes the box about the opposite corner.
+  await textBox.click();
+  const frame = page.getByTestId("text-box-frame");
+  await expect(frame).toBeVisible();
+  const before = (await frame.boundingBox())!;
+  const handle = (await frame.getByTestId("text-box-handle").and(page.locator('[data-corner="se"]')).boundingBox())!;
+  const from = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x - before.width / 2, from.y + 40, { steps: 5 });
+  await page.mouse.up();
+  const after = (await frame.boundingBox())!;
+  expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1.5);
+  expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1.5);
+  expect(Math.abs(after.width - before.width / 2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(after.height - (before.height + 40))).toBeLessThanOrEqual(2);
+  expect(Math.abs(Number(await width.inputValue()) - 48)).toBeLessThanOrEqual(1); // about half of 96%
+  const boxHeight = Number(await height.inputValue()) / 100;
+
+  await page.getByTestId("meme-title").fill("E2E text box");
+  await page.getByTestId("save-draft").click();
+  const id = await memeIdFromUrl(page);
+  const saved = (await apiGet<Meme>(request, `/api/memes/${id}`, user)).layers[0] as TextLayer;
+  expect(saved.fontSize).toBe(0.2);
+  expect(saved.maxWidth).toBeCloseTo(0.48, 1);
+  expect(saved.maxHeight).toBeCloseTo(boxHeight, 1);
+});

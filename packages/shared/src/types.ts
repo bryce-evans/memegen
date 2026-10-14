@@ -206,6 +206,11 @@ export interface HotTemplate {
   posts: number;
 }
 
+/** `GET /api/templates/count`: top-level templates the viewer can browse (what "All templates" lists unfiltered). */
+export interface TemplateCount {
+  count: number;
+}
+
 export interface UsagePoint {
   /** Bucket start, ISO timestamp. */
   at: string;

@@ -28,6 +28,9 @@ export const LAYER_NAME_MAX_LENGTH = 40;
 /** An image layer's drawn width, as a fraction of the media width (the height follows the image). */
 export const IMAGE_WIDTH_MIN = 0.02;
 export const IMAGE_WIDTH_MAX = 2;
+/** A text layer's box (`maxWidth`, `maxHeight`), as a fraction of the media's width or height. */
+export const TEXT_BOX_MIN = 0.05;
+export const TEXT_BOX_MAX = 1;
 /** Characters in one comment. */
 export const COMMENT_MAX_LENGTH = 2000;
 /** Characters in a meme title. */

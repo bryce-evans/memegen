@@ -11,7 +11,15 @@ import {
   requireUser,
   type ApiApp,
 } from "../access.ts";
-import { replaceMemeTags, requireListed, toMeme } from "../rows.ts";
+import { memeListed, replaceMemeTags, requireListed, toMeme } from "../rows.ts";
+
+/** Reddit-style: posting casts the author's upvote, once the meme is listed (posting a private meme casts none). */
+async function authorUpvote(sql: Sql, memeId: string, authorId: string): Promise<void> {
+  await sql`
+    insert into votes (user_id, meme_id, value)
+    select ${authorId}, m.id, 1 from memes m where m.id = ${memeId} and ${memeListed(sql)}
+    on conflict (user_id, meme_id) do nothing`;
+}
 
 /** Meme authoring, posting, votes, and favorites. */
 export function register(app: ApiApp, sql: Sql): void {
@@ -35,6 +43,7 @@ export function register(app: ApiApp, sql: Sql): void {
         posted_at: body.post ? new Date() : null,
       })} returning id`;
     if (body.tags.length) await replaceMemeTags(sql, row!.id, body.tags, user.id);
+    if (body.post) await authorUpvote(sql, row!.id, user.id);
     return c.json(toMeme(await loadMeme(sql, row!.id, user)), 201);
   });
 
@@ -66,7 +75,9 @@ export function register(app: ApiApp, sql: Sql): void {
 
   app.post("/api/memes/:id/post", async (c) => {
     const { user, id } = await ownMeme(sql, c);
-    await sql`update memes set posted_at = coalesce(posted_at, now()), updated_at = now() where id = ${id}`;
+    const [posted] = await sql`
+      update memes set posted_at = now(), updated_at = now() where id = ${id} and posted_at is null returning id`;
+    if (posted) await authorUpvote(sql, id, user.id);
     return c.json(toMeme(await loadMeme(sql, id, user)));
   });
 

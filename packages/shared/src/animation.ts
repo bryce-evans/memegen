@@ -1,6 +1,6 @@
-import { IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN } from "./limits.ts";
+import { IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, TEXT_BOX_MAX, TEXT_BOX_MIN } from "./limits.ts";
 import { ANCHOR_Y_MIN } from "./section.ts";
-import type { ImageLayer, Keyframe, Layer } from "./types.ts";
+import type { ImageLayer, Keyframe, Layer, TextLayer } from "./types.ts";
 
 export interface LayerState {
   x: number;
@@ -77,6 +77,12 @@ export function placeAt<L extends AnimatedLayer>(layer: L, t: number, patch: Pla
 /** Resize an image layer to `width` (fraction of the media width), kept within IMAGE_WIDTH_MIN..IMAGE_WIDTH_MAX. */
 export function resizeImage(layer: ImageLayer, width: number): ImageLayer {
   return { ...layer, width: Math.min(IMAGE_WIDTH_MAX, Math.max(IMAGE_WIDTH_MIN, width)) };
+}
+
+/** Resize a text layer's box (fractions of the media's width and height), each kept within TEXT_BOX_MIN..TEXT_BOX_MAX. */
+export function resizeTextBox(layer: TextLayer, maxWidth: number, maxHeight: number): TextLayer {
+  const clamp = (v: number) => Math.min(TEXT_BOX_MAX, Math.max(TEXT_BOX_MIN, v));
+  return { ...layer, maxWidth: clamp(maxWidth), maxHeight: clamp(maxHeight) };
 }
 
 /** Rotate a layer to `angle` degrees clockwise, normalized to -180..<180 (the rotation slider's range). */

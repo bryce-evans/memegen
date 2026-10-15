@@ -97,7 +97,7 @@ function SideColumn() {
       <LinkButton
         as={NavLink}
         to="/create"
-        variant="primary"
+        variant="special"
         icon={<Icon name="plus" />}
         className="sidebar-action"
         data-testid="nav-create"

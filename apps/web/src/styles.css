@@ -178,6 +178,10 @@
   width: auto;
   flex: 1 1 9rem;
 }
+/* Sign in is the page's one standout action: roomier than other buttons. Matches skins' `.ui-button` specificity. */
+.sign-in .ui-button.ui-button--special {
+  padding-inline: var(--ui-space-7);
+}
 .login .ui-alert {
   flex-basis: 100%;
   margin: var(--ui-space-2) 0 0;
@@ -185,8 +189,10 @@
 
 /* ---- header / side column -------------------------------------------------- */
 
+/* Create: the app's standout action (special), a little larger than other buttons. */
 .sidebar-action {
   align-self: flex-start;
+  zoom: 1.15;
 }
 
 .tag-item.team,

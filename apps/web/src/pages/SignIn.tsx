@@ -54,7 +54,7 @@ function LoginForm() {
         autoFocus
         data-testid="login-username"
       />
-      <Button type="submit" variant="primary" size="md" disabled={busy || !username.trim()} data-testid="login-submit">
+      <Button type="submit" variant="special" size="md" disabled={busy} data-testid="login-submit">
         Sign in
       </Button>
       {error !== null && <ErrorView error={error} />}
@@ -66,7 +66,7 @@ function LoginForm() {
 function SsoPlaceholder() {
   return (
     <Button
-      variant="primary"
+      variant="special"
       size="md"
       onClick={() => alert("placeholder signin only, use dev mode")}
       data-testid="sso-sign-in"

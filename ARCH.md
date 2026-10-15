@@ -145,6 +145,14 @@ Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `me
 - The client keeps the user in a `memegen.user` cookie (one year). The server never reads it. A 401 on a request that carried `X-User-Id` drops the cookie.
 - `MODE` is baked into the build (`__MEMEGEN_MODE__`). Anything but `MODE=dev` builds as prod, so the dev login never ships by accident. Prod shows a "Sign in with SSO" placeholder.
 
+## AI images
+
+- `POST /api/ai/images` sends a prompt and a background image to an image model and returns the result's bytes. Nothing is stored: a result the user keeps is uploaded like any other new media (`/create?newTemplate=`), so caps, sniffing, and the template flow stay the same. Servers still never decode or encode: the API only checks magic bytes (`sniff`, shared with storage) on the way in and out.
+- Providers are adapters behind `AiImageProvider.edit` (`services/api/src/ai/`), one per id in `AI_PROVIDERS` (`packages/shared/src/ai.ts`): `openai` (`/images/edits`, GPT Image) and `gemini` (`generateContent`, Nano Banana). A new provider is one adapter, one registry entry, and one list entry.
+- Bring your own key: users save provider API keys under their profile's AI keys tab. Keys stay in that browser (`localStorage`, per memegen user) and go along in `X-AI-Key` on each request. The server forwards a key and never stores or logs it, so keys never reach the database or snapshots. Trade-off: keys don't follow a user to another browser. Real OAuth isn't offered: OpenAI and Gemini API keys have no end-user sign-in, and Adobe's Firefly API supports only org server-to-server credentials.
+- Provider errors never come back as 401, which the web client treats as its own session being rejected: a refused key or prompt is a 422 with the provider's reason, rate limits stay 429, and anything else is a 502.
+- Tests use `startAiStub` (`server-kit/testing`), a local server speaking both wire formats; e2e points `OPENAI_BASE_URL`/`GEMINI_BASE_URL` at it.
+
 ## UI and skins
 
 - All web UI comes from `@memegen/ui`: typed components over native controls, so a11y, automation, and platform behavior are identical in every skin. App CSS is layout-only and reads tokens.
@@ -239,4 +247,5 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | POST | `/api/templates/:id/tags` | `{tags: string[]}` adds non-base tags (any signed-in user) → `Template` |
 | GET | `/api/stickers?offset=&limit=` | `Page<Sticker>` `{id, name, owner, asset, createdAt, useCount, savedCount}`, most posted first, then most saved, then newest |
 | POST | `/api/stickers` | `{name, assetId}` → 201 `Sticker`; the asset must be the caller's PNG, ≤ 512×512 (422 with `details`); 409 if it already is a sticker |
+| POST | `/api/ai/images` | multipart `provider` (`openai`\|`gemini`), `prompt` (≤ 4000 chars), `image` (still png/jpg/webp within the byte cap); header `X-AI-Key` = the user's own provider key; signed-in only. 200 image bytes (`Content-Type` from magic bytes), nothing stored; 400 missing key/fields, 413 too large, 415 not a still image, 422 provider refused (bad key, content policy), 429 provider rate limit, 502 provider failure |
 | GET | `/internal/users/:username/stats` | `InternalUserStats`, `X-Internal-Token` |

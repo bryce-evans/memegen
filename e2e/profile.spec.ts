@@ -3,7 +3,7 @@ import { MOCK_EXPECT, MOCK_TEMPLATES } from "./mock/data.ts";
 import { apiGet, apiMeme, apiTemplate, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn, templateCard } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
-test("profile: open an author from the gallery and see their stats, badges and public memes", async ({ page }) => {
+test("profile: open an author from the gallery and see their stats and badges, then their public memes", async ({ page }) => {
   await page.goto("/recent");
   await signIn(page, scoped("visitor"));
   await openFeed(page, { feed: "popular", period: "week" });
@@ -24,8 +24,11 @@ test("profile: open an author from the gallery and see their stats, badges and p
   ]);
   await expect(badges.first()).toHaveAttribute("title", /\S/);
 
-  // Favorites and recent activity are the owner's own; visitors only get the memes.
+  // Visitors get Profile, Memes, and Templates: AI keys, Favorites, and Recent activity are the owner's own.
+  await expect(page.getByTestId("profile-tab-ai")).toHaveCount(0);
   await expect(page.getByTestId("profile-tab-favorites")).toHaveCount(0);
+  await page.getByTestId("profile-tab-memes").click();
+  await expect(page).toHaveURL(/\?tab=memes$/);
   await loadAll(page);
   const titles = await mockTitles(page);
   expect([...titles].sort()).toEqual([...MOCK_EXPECT.alicePublicTitles].sort());
@@ -64,15 +67,19 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   await expect(page.getByTestId("favorite")).toHaveCount(0);
 
   await page.getByTestId("nav-profile").click();
+  // Account tabs (Profile, AI keys) come first, apart from the content tabs.
   const tabs = page.locator('[data-testid^="profile-tab-"]');
-  await expect(tabs).toHaveCount(4);
+  await expect(tabs).toHaveCount(6);
   expect(await tabs.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")))).toEqual([
+    "profile-tab-profile",
+    "profile-tab-ai",
     "profile-tab-memes",
     "profile-tab-templates",
     "profile-tab-favorites",
     "profile-tab-activity",
   ]);
-  await expect(page.getByTestId("profile-tab-memes")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("profile-tab-profile")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("profile-overview")).toBeVisible();
 
   const feed = page.getByTestId("meme-feed");
   await page.getByTestId("profile-tab-favorites").click();
@@ -94,12 +101,14 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   await expect(memeCard(page, liked.id).getByTestId("vote-up")).toHaveAttribute("aria-pressed", "true");
   await expect(memeCard(page, disliked.id).getByTestId("vote-down")).toHaveAttribute("aria-pressed", "true");
 
-  // Someone else opening those tabs only sees the voter's memes.
+  // Someone else opening those tabs gets the voter's public profile; their memes are one tab away.
   await page.getByTestId("sign-out").click();
   await signIn(page, scoped("snoop"));
   await page.goto(`/u/${voter}?tab=favorites`);
-  await expect(feed).toHaveAttribute("aria-busy", "false");
   await expect(page.getByTestId("profile-tab-favorites")).toHaveCount(0);
+  await expect(page.getByTestId("profile-tab-profile")).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("profile-tab-memes").click();
+  await expect(feed).toHaveAttribute("aria-busy", "false");
   await expect(memeCard(page, starred.id)).toHaveCount(0);
   await expect(memeCard(page, own.id)).toBeVisible();
 });

@@ -1,5 +1,6 @@
-import { ASSETS_QUERY_MAX_LIMIT, assetContentPath } from "@memegen/shared";
+import { AI_KEY_HEADER, ASSETS_QUERY_MAX_LIMIT, assetContentPath } from "@memegen/shared";
 import type {
+  AiImageFields,
   Asset,
   Comment,
   CreateMemeInput,
@@ -79,11 +80,12 @@ interface RequestOptions {
   method?: string;
   json?: unknown;
   body?: BodyInit;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
 }
 
 async function send(url: string, opts: RequestOptions = {}): Promise<Response> {
-  const headers = new Headers();
+  const headers = new Headers(opts.headers);
   const user = storedUser();
   if (user) headers.set("X-User-Id", user.id);
   let body = opts.body;
@@ -259,3 +261,16 @@ export const createComment = (memeId: string, body: string, parentId: string | n
   request<Comment>(`/api/memes/${memeId}/comments`, { method: "POST", json: { body, parentId } });
 
 export const deleteComment = (id: string) => request<void>(`/api/comments/${id}`, { method: "DELETE" });
+
+/**
+ * The prompt and background image go to `provider` with the user's own `apiKey` (forwarded, never stored); resolves to
+ * the generated image. Nothing is saved until the caller uploads the result.
+ */
+export async function generateAiImage({ provider, prompt }: AiImageFields, image: Blob, apiKey: string, signal?: AbortSignal): Promise<Blob> {
+  const form = new FormData();
+  form.append("provider", provider);
+  form.append("prompt", prompt);
+  form.append("image", image, "background");
+  const res = await send("/api/ai/images", { method: "POST", body: form, headers: { [AI_KEY_HEADER]: apiKey }, signal });
+  return res.blob();
+}

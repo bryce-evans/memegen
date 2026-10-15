@@ -2,10 +2,11 @@ import { useState } from "react";
 import { PageHeader, Spinner } from "@memegen/ui";
 import { getLimits } from "../../api.ts";
 import { useAsync } from "../../useAsync.ts";
+import { AiImageForm } from "../ai.tsx";
 import { ErrorView } from "../common.tsx";
 import { HotTemplates, NewTemplateForm, TemplateBrowser } from "../templateBrowse.tsx";
 
-/** `/create` without a source: hot templates, upload a new template, or browse all templates. */
+/** `/create` without a source: hot templates, upload a new template or make one with AI, or browse all templates. */
 export function CreateStart() {
   const limits = useAsync("limits", getLimits);
   const [templateSearch, setTemplateSearch] = useState("");
@@ -17,6 +18,7 @@ export function CreateStart() {
         <HotTemplates />
         <div className="create-upload">
           <NewTemplateForm limits={limits.data} />
+          <AiImageForm limits={limits.data} />
         </div>
       </div>
       {limits.loading && <Spinner label="Loading…" />}

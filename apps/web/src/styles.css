@@ -485,6 +485,21 @@
 .upload-form > .ui-text {
   margin: 0 0 var(--ui-space-3);
 }
+.ai-thumb {
+  max-height: 4rem;
+  max-width: 8rem;
+  border-radius: var(--ui-radius-sm);
+}
+.ai-result {
+  display: block;
+  max-width: 100%;
+  max-height: 24rem;
+  border-radius: var(--ui-radius-media);
+}
+.ai-key-row {
+  display: grid;
+  gap: var(--ui-space-2);
+}
 
 /* ---- detail / profile ----------------------------------------------------- */
 
@@ -540,8 +555,12 @@
   padding: 0;
   list-style: none;
 }
-.profile-tabs {
-  margin-bottom: var(--ui-space-5);
+/* Account tabs, then the content tabs as a separate group, right under the name. */
+.profile-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-5);
 }
 .profile-stats {
   margin: var(--ui-space-3) 0;

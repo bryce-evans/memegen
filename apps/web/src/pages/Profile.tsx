@@ -1,8 +1,9 @@
 import { useParams, useSearchParams } from "react-router-dom";
-import type { Meme, Page, Template } from "@memegen/shared";
-import { EmptyState, Icon, PageHeader, SegmentedControl, Stat, StatGroup, Text } from "@memegen/ui";
+import type { Meme, Page, Template, UserProfile } from "@memegen/shared";
+import { EmptyState, Icon, PageHeader, SegmentedControl, Spinner, Stat, StatGroup, Text } from "@memegen/ui";
 import { getMyActivity, getMyFavorites, getUser, getUserMemes, getUserTemplates, type PageParams } from "../api.ts";
 import { useUser } from "../auth.tsx";
+import { AiKeysPanel } from "../components/ai.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
 import { TemplateGrid } from "../components/templates.tsx";
@@ -10,12 +11,18 @@ import { STAT_HINTS, STAT_LABELS, UserBadges } from "../components/users.tsx";
 import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
-/** Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own. */
-const PUBLIC_TABS = ["memes", "templates"] as const;
-const PROFILE_TABS = [...PUBLIC_TABS, "favorites", "activity"] as const;
-type ProfileTab = (typeof PROFILE_TABS)[number];
-type MemeTab = Exclude<ProfileTab, "templates">;
+/**
+ * Two tab groups under the name: the account (Profile: stats and badges; AI keys, owner only), then the content
+ * (Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own).
+ */
+const ACCOUNT_TABS = ["profile", "ai"] as const;
+const PUBLIC_CONTENT_TABS = ["memes", "templates"] as const;
+const CONTENT_TABS = [...PUBLIC_CONTENT_TABS, "favorites", "activity"] as const;
+type ProfileTab = (typeof ACCOUNT_TABS)[number] | (typeof CONTENT_TABS)[number];
+type MemeTab = Exclude<ProfileTab, "profile" | "ai" | "templates">;
 const TAB_LABELS: Record<ProfileTab, string> = {
+  profile: "Profile",
+  ai: "AI keys",
   memes: "Memes",
   templates: "Templates",
   favorites: "Favorites",
@@ -32,9 +39,12 @@ export function Profile() {
   const user = useUser();
   const { data: profile, error } = useAsync(username, () => getUser(username));
   const isOwner = user.username === username;
-  const tabs: readonly ProfileTab[] = isOwner ? PROFILE_TABS : PUBLIC_TABS;
+  const accountTabs: readonly ProfileTab[] = isOwner ? ACCOUNT_TABS : ["profile"];
+  const contentTabs: readonly ProfileTab[] = isOwner ? CONTENT_TABS : PUBLIC_CONTENT_TABS;
   const tabParam = params.get("tab");
-  const tab: ProfileTab = tabs.find((t) => t === tabParam) ?? "memes";
+  const tab: ProfileTab = [...accountTabs, ...contentTabs].find((t) => t === tabParam) ?? "profile";
+  const show = (next: ProfileTab) => setParams(next === "profile" ? {} : { tab: next });
+  const options = (tabs: readonly ProfileTab[]) => tabs.map((t) => ({ value: t, label: TAB_LABELS[t], testId: `profile-tab-${t}` }));
 
   if (error !== null) return <ErrorView error={error} />;
 
@@ -42,40 +52,42 @@ export function Profile() {
     <section>
       <header className="profile-head">
         <PageHeader title={`@${username}`} />
-        {profile && (
-          <StatGroup className="profile-stats">
-            <Stat label={STAT_LABELS.memeCount} value={profile.stats.memeCount} valueProps={{ "data-testid": "stat-meme-count" }} />
-            <Stat label={STAT_LABELS.highScore} value={profile.stats.highScore} valueProps={{ "data-testid": "stat-high-score" }} />
-            <Stat
-              label={STAT_LABELS.hScore}
-              hint={STAT_HINTS.hScore}
-              value={profile.stats.hScore}
-              valueProps={{ "data-testid": "stat-h-score" }}
-            />
-            <Stat
-              label="Templates"
-              hint="Public templates this user added, variations included"
-              value={profile.templateCount}
-              valueProps={{ "data-testid": "stat-template-count" }}
-            />
-          </StatGroup>
-        )}
-        {profile && <UserBadges stats={profile.stats} />}
-        {profile && <Text tone="muted">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</Text>}
+        <nav className="profile-nav" aria-label="Profile sections">
+          <SegmentedControl aria-label="Account" value={tab} onChange={show} options={options(accountTabs)} />
+          <SegmentedControl aria-label="Content" value={tab} onChange={show} options={options(contentTabs)} />
+        </nav>
       </header>
-      <SegmentedControl
-        aria-label="Show"
-        className="profile-tabs"
-        value={tab}
-        onChange={(next) => setParams(next === "memes" ? {} : { tab: next })}
-        options={tabs.map((t) => ({ value: t, label: TAB_LABELS[t], testId: `profile-tab-${t}` }))}
-      />
-      {tab === "templates" ? (
+      {tab === "profile" ? (
+        profile ? <ProfileOverview profile={profile} /> : <Spinner label="Loading…" />
+      ) : tab === "ai" ? (
+        <AiKeysPanel />
+      ) : tab === "templates" ? (
         <ProfileTemplates username={username} editable={isOwner} />
       ) : (
         <ProfileMemes username={username} tab={tab} />
       )}
     </section>
+  );
+}
+
+/** Stats, badges, and join date. */
+function ProfileOverview({ profile }: { profile: UserProfile }) {
+  return (
+    <div data-testid="profile-overview">
+      <StatGroup className="profile-stats">
+        <Stat label={STAT_LABELS.memeCount} value={profile.stats.memeCount} valueProps={{ "data-testid": "stat-meme-count" }} />
+        <Stat label={STAT_LABELS.highScore} value={profile.stats.highScore} valueProps={{ "data-testid": "stat-high-score" }} />
+        <Stat label={STAT_LABELS.hScore} hint={STAT_HINTS.hScore} value={profile.stats.hScore} valueProps={{ "data-testid": "stat-h-score" }} />
+        <Stat
+          label="Templates"
+          hint="Public templates this user added, variations included"
+          value={profile.templateCount}
+          valueProps={{ "data-testid": "stat-template-count" }}
+        />
+      </StatGroup>
+      <UserBadges stats={profile.stats} />
+      <Text tone="muted">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</Text>
+    </div>
   );
 }
 

@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
-import { limitViolations, supportedTypesLabel, type Asset, type AssetKind, type Page, type UploadLimits } from "@memegen/shared";
+import { limitViolations, sniff, supportedTypesLabel, type Asset, type AssetKind, type Page, type UploadLimits } from "@memegen/shared";
 import { HttpError, page, pageSql, toAsset, uploadLimitsFromEnv, type AssetRow, type Sql } from "@memegen/server-kit";
 import { probe, ProbeError } from "./probe.ts";
 import { createProviders, type Providers } from "./providers/registry.ts";
 import { ObjectNotFoundError, type ByteRange, type StoredObject } from "./providers/types.ts";
-import { sniff } from "./sniff.ts";
 
 export interface UploadInput {
   data: Uint8Array;

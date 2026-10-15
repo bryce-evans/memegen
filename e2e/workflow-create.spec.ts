@@ -42,6 +42,7 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   expect(meme.templateId).not.toBeNull();
 
   await page.getByTestId("nav-profile").click();
+  await page.getByTestId("profile-tab-memes").click();
   await expect(memeCard(page, id)).toBeVisible();
 
   // Post it and find it at the top of Recent.

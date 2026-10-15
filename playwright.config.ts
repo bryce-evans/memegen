@@ -8,6 +8,8 @@ import { services } from "./scripts/services.ts";
 const API_PORT = 4100;
 const STORAGE_PORT = 4101;
 const WEB_PORT = 5174;
+/** The AI provider stub (`startAiStub`), started by global setup. */
+export const AI_STUB_PORT = 4102;
 
 export const E2E_ENV = {
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? "postgres://localhost:5432/memegen_e2e",
@@ -22,6 +24,9 @@ export const E2E_ENV = {
   INTERNAL_TOKEN: "e2e-internal-token",
   // Specs sign in through the dev login.
   MODE: "dev",
+  // AI images go to the local stub, never a real provider.
+  OPENAI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/openai/v1`,
+  GEMINI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/gemini/v1beta`,
 };
 
 const serverEnv = { ...process.env, ...E2E_ENV } as Record<string, string>;

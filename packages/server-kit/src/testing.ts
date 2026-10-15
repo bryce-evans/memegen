@@ -1,3 +1,5 @@
+import { createServer, type Server, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
 import { crc32, deflateSync } from "node:zlib";
 import { createSql, type Sql } from "./db.ts";
 import { migrate } from "./migrate.ts";
@@ -36,4 +38,70 @@ export function encodePng(width: number, height: number, rgb?: Uint8Array): Uint
     chunk("IDAT", deflateSync(raw)),
     chunk("IEND", new Uint8Array()),
   ]);
+}
+
+/** The one key the AI stub accepts; any other is rejected the way each provider rejects a bad key. */
+export const AI_STUB_KEY = "stub-key";
+/** Pixel size of the stub's result image (distinct from any fixture, so a spec can tell it came back). */
+export const AI_STUB_RESULT = { width: 48, height: 32 } as const;
+/** A prompt containing this is refused like a content-policy rejection. */
+export const AI_STUB_REFUSE = "[refuse]";
+
+export interface AiStub {
+  /** `OPENAI_BASE_URL` and `GEMINI_BASE_URL` values pointing at the stub. */
+  urls: { openai: string; gemini: string };
+  /** What the last accepted call received: the prompt and the background image's mime and size. */
+  last: { prompt: string; mime: string; bytes: number } | null;
+  close(): Promise<void>;
+}
+
+/**
+ * A local stand-in for the OpenAI image-edit and Gemini generateContent endpoints, speaking each wire format: tests
+ * exercise the real adapters without keys or network.
+ */
+export async function startAiStub(port = 0): Promise<AiStub> {
+  const result = Buffer.from(encodePng(AI_STUB_RESULT.width, AI_STUB_RESULT.height, new Uint8Array(AI_STUB_RESULT.width * AI_STUB_RESULT.height * 3).fill(200)));
+  const stub: AiStub = { urls: { openai: "", gemini: "" }, last: null, close: async () => {} };
+  const json = (res: ServerResponse, status: number, body: unknown) => {
+    res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(body));
+  };
+  const server: Server = createServer(async (req, res) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    const headers = { "content-type": req.headers["content-type"] ?? "" };
+    const request = new Request(`http://stub${req.url}`, { method: req.method, headers, body: Buffer.concat(chunks) });
+    const header = (name: string) => req.headers[name];
+    if (req.url === "/openai/v1/images/edits") {
+      if (header("authorization") !== `Bearer ${AI_STUB_KEY}`) return json(res, 401, { error: { message: "Incorrect API key provided" } });
+      const form = await request.formData();
+      const prompt = String(form.get("prompt"));
+      const image = form.get("image") as File;
+      if (prompt.includes(AI_STUB_REFUSE)) return json(res, 400, { error: { message: "Your request was rejected by the safety system." } });
+      stub.last = { prompt, mime: image.type, bytes: image.size };
+      return json(res, 200, { data: [{ b64_json: result.toString("base64") }] });
+    }
+    if (/^\/gemini\/v1beta\/models\/[^/]+:generateContent$/.test(req.url ?? "")) {
+      if (header("x-goog-api-key") !== AI_STUB_KEY) return json(res, 400, { error: { message: "API key not valid. Please pass a valid API key." } });
+      const body = (await request.json()) as { contents: { parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] }[] };
+      const parts = body.contents[0]!.parts;
+      const prompt = parts.find((p) => p.text)?.text ?? "";
+      const image = parts.find((p) => p.inlineData)!.inlineData!;
+      if (prompt.includes(AI_STUB_REFUSE)) return json(res, 200, { candidates: [{ content: { parts: [{ text: "I can't make that image." }] } }] });
+      stub.last = { prompt, mime: image.mimeType, bytes: Buffer.from(image.data, "base64").byteLength };
+      return json(res, 200, { candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: result.toString("base64") } }] } }] });
+    }
+    json(res, 404, { error: { message: "not found" } });
+  });
+  const listening = Promise.withResolvers<void>();
+  server.listen(port, "127.0.0.1", listening.resolve);
+  await listening.promise;
+  const address: AddressInfo = server.address() as AddressInfo; // listen() on a port always yields an AddressInfo
+  const base = `http://127.0.0.1:${address.port}`;
+  stub.urls = { openai: `${base}/openai/v1`, gemini: `${base}/gemini/v1beta` };
+  stub.close = () => {
+    const closed = Promise.withResolvers<void>();
+    server.close(() => closed.resolve());
+    return closed.promise;
+  };
+  return stub;
 }

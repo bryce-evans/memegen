@@ -30,7 +30,7 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
 
   // Persisted; the card links to the discussion with the count.
   expect((await apiGet<Meme>(request, `/api/memes/${meme.id}`)).commentCount).toBe(2);
-  await page.goto(`/u/${author.username}`);
+  await page.goto(`/u/${author.username}?tab=memes`);
   const count = memeCard(page, meme.id).getByTestId("meme-comment-count");
   await expect(count).toContainText("2");
   await count.click();

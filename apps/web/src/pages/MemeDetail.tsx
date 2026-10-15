@@ -36,7 +36,7 @@ export function MemeDetail() {
     if (!window.confirm("Delete this meme?")) return;
     void run(async () => {
       await deleteMeme(meme.id);
-      navigate(`/u/${meme.owner.username}`);
+      navigate(`/u/${meme.owner.username}?tab=memes`);
     });
   }
 

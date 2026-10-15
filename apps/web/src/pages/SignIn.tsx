@@ -10,13 +10,14 @@ import { useAction } from "../useAction.ts";
 export function SignIn({ brand }: { brand: string }) {
   return (
     <main className="sign-in-page" data-testid="sign-in-page">
-      <IntroBurst />
-      <Panel className="sign-in">
-        <Stack gap="lg" align="center">
-          <Wordmark text={brand} />
-          {DEV_MODE ? <LoginForm /> : <SsoPlaceholder />}
-        </Stack>
-      </Panel>
+      <IntroBurst>
+        <Panel className="sign-in">
+          <Stack gap="lg" align="center">
+            <Wordmark text={brand} />
+            {DEV_MODE ? <LoginForm /> : <SsoPlaceholder />}
+          </Stack>
+        </Panel>
+      </IntroBurst>
       {DEV_MODE && (
         <Panel className="dev-tools" heading="Dev tools" data-testid="dev-tools">
           <SkinSwitcher data-testid="dev-skin" />

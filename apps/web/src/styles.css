@@ -25,10 +25,14 @@
   place-items: center;
   min-height: 100vh;
   padding: var(--ui-space-6);
+  /* Nyan cat's rainbow runs off the page; never scroll to it. */
+  overflow: clip;
 }
+/* The card and everything in it (wordmark, field, button) at 120%; the stage around it is widened to match. */
 .sign-in {
   position: relative;
   z-index: 1;
+  zoom: 1.2;
   width: min(26rem, 100%);
   text-align: center;
 }
@@ -42,85 +46,125 @@
 }
 
 /*
- * Intro (IntroBurst.tsx): sprites start stacked just below the bottom edge, under the pile
- * (--ox/--oy), and fly straight to their landing (--x/--y/--spin) on a spring: past it by ~9% at
- * 30% of the run, straight back, settled by the end. Paused until every image has loaded.
+ * Intro (IntroBurst.tsx), paused until every image has loaded, then all at once:
+ * - scattered sprites grow out of nothing at the viewport center, behind the card, and fly to their landing
+ *   (--x/--y/--spin) on a spring: past it by ~9% at 30% of the run, straight back, settled by the end;
+ * - dat boi pops up from behind the card's top-right corner;
+ * - nyan cat shoots out of its top-left corner, rainbow streaming behind (its end sets data-done).
  */
-.intro-burst {
-  --ox: -28vmin;
-  --oy: 14vmin;
-  /* Damped spring (damping ratio 0.6), sampled every 2.5%; a curve past 1 overshoots along the path. */
+.intro-stage {
   --intro-spring: linear(
     0, 0.047, 0.162, 0.313, 0.476, 0.632, 0.769, 0.882, 0.969, 1.03, 1.069, 1.089, 1.095, 1.09, 1.079,
     1.065, 1.05, 1.035, 1.022, 1.011, 1.003, 0.997, 0.993, 0.992, 0.991, 0.991, 0.992, 0.994, 0.995,
     0.997, 0.998, 0.999, 1, 1, 1, 1, 1, 1, 1, 1, 1
   );
+  position: relative;
+  /* The card's width at its 1.2 zoom, so dat boi and nyan cat sit on its corners. */
+  width: min(31.2rem, 100%);
+}
+.intro-scatter {
   position: fixed;
   inset: 0;
-  overflow: hidden;
   pointer-events: none;
 }
 .intro-sprite {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  top: 50%;
   width: var(--size);
-  translate: 50% 50%;
+  translate: -50% -50%;
   transform: translate(var(--x), var(--y)) rotate(var(--spin));
-  animation: intro-burst 1s var(--intro-spring) var(--delay) both paused;
-}
-.intro-sprite > img {
-  display: block;
-  width: 100%;
-}
-.intro-dat-boi {
-  z-index: 1;
+  animation: intro-pop 0.9s var(--intro-spring) both paused;
 }
 /*
- * Nyan cat flies out from behind dat boi's shoulder, up and to the left. The box is the upright
- * image's shape, its bottom edge (the rainbow's tail) pinned to his shoulder and rotated about it;
- * the image slides up through it, so the cat leads and the rainbow streams out after it.
+ * Several images flying as one sprite (the soyjaks): side by side, bottoms aligned, spread to the edges. Each part
+ * moves by its --dx/--dy in cqw (% of the group's width, via the size container), so nudges scale with the group,
+ * and takes its own --scale and --rotate about its center.
+ */
+.intro-group {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  container-type: inline-size;
+}
+.intro-group > img {
+  display: block;
+  min-width: 0;
+  translate: var(--dx, 0) var(--dy, 0);
+  scale: var(--scale, 1);
+  rotate: var(--rotate, 0deg);
+}
+/* Tall and tilted, his lower third hidden behind the card. */
+.intro-dat-boi {
+  position: absolute;
+  right: -2.5rem;
+  bottom: calc(100% - 4.5rem);
+  width: 8rem;
+  rotate: 8deg;
+  pointer-events: none;
+}
+/* Scaled up about a point below his wheel, tuned by eye. */
+.intro-dat-boi > img {
+  display: block;
+  width: 100%;
+  transform-origin: 46% 128%;
+  scale: 1.4;
+  animation: intro-rise 0.8s var(--intro-spring) both paused;
+}
+/*
+ * The box is a strip as wide as the image, its bottom edge (the rainbow's tail) pinned just inside the card's top-left
+ * corner and rotated to fly up and to the left at --nyan-angle above horizontal. Its length, --nyan-length, is set by
+ * IntroBurst: the whole image when it fits, else cut so the cat stays on screen. The image's top (the cat) sits at the
+ * far end and anything past the pin is clipped, so a shorter strip shows less rainbow, never less cat. The image slides
+ * up through the strip, so the cat leads and the rainbow streams out after it.
  */
 .intro-nyan {
   position: absolute;
-  z-index: -1;
-  left: 48%;
-  bottom: 82%;
-  width: 22%;
+  left: 1.5rem;
+  bottom: calc(100% - 1.5rem);
+  /* 1.5× the original 3.5rem. */
+  width: 5.25rem;
   aspect-ratio: 242 / 1689;
+  height: var(--nyan-length, auto);
   overflow: hidden;
   translate: -50% 0;
   transform-origin: 50% 100%;
-  rotate: -74deg;
+  rotate: calc(var(--nyan-angle) - 90deg);
+  pointer-events: none;
 }
 .intro-nyan > img {
   display: block;
   width: 100%;
-  animation: intro-nyan 0.7s calc(var(--delay) + 0.5s) cubic-bezier(0.2, 0.7, 0.3, 1) both paused;
+  animation: intro-nyan 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) both paused;
 }
-.intro-burst[data-ready="true"] :is(.intro-sprite, .intro-nyan > img) {
+.intro-stage[data-ready="true"] :is(.intro-sprite, .intro-dat-boi > img, .intro-nyan > img) {
   animation-play-state: running;
 }
-@keyframes intro-burst {
+@keyframes intro-pop {
   from {
-    transform: translate(var(--ox), var(--oy)) rotate(0deg) scale(0.3);
+    transform: translate(0, 0) rotate(0deg) scale(0);
     opacity: 0;
+  }
+}
+@keyframes intro-rise {
+  from {
+    transform: translateY(70%) scale(0);
   }
 }
 @keyframes intro-nyan {
   from {
-    transform: translateY(100%);
+    transform: translateY(var(--nyan-length, 100%));
   }
   to {
     transform: none;
   }
 }
-/* Reduced motion: jump straight to the settled pile (still ending, so data-done is set). */
+/* Reduced motion: jump straight to the settled layout (still ending, so data-done is set). */
 @media (prefers-reduced-motion: reduce) {
   .intro-sprite,
+  .intro-dat-boi > img,
   .intro-nyan > img {
     animation-duration: 1ms;
-    animation-delay: 0s;
   }
 }
 .login {

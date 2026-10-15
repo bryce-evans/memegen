@@ -55,7 +55,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `NavList`, `NavItem` | vertical nav; item (`as`, default `a`) | `active`, `icon`, `trailing` (NavLink's `aria-current="page"` also marks active) |
 | `PageHeader` | `h1`/`h2` + controls row | `title`, `level`, `actions`, `titleProps` |
 | `Stack`, `Inline` | flex column / row | `gap`, `align`, `justify`, `wrap` |
-| `Button` | `<button type=button>` | `variant` (`primary`/`secondary`/`quiet`/`danger`), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin; a pressed toned button also fills its `Icon`), `icon` |
+| `Button` | `<button type=button>` | `variant` (`primary`/`special`/`secondary`/`quiet`/`danger`; `special` is the fixed brand gradient, `--ui-gradient-special`, the same in every skin), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin; a pressed toned button also fills its `Icon`), `icon` |
 | `IconButton` | icon-only `<button>` | `label` (aria-label + tooltip) |
 | `LinkButton` | button-looking link (`as`, default `a`) | `variant`, `size`, `icon` |
 | `FileButton` | `<label>` styled as a button around a hidden native `<input type=file>` | all input props (incl. `data-testid`) go to the input; `variant`, `size`, `icon` |

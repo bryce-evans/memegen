@@ -2,10 +2,13 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cx, type ControlSize, type LoosePolymorphicProps } from "../cx.ts";
 import { skinnable, skinnablePolymorphic } from "../skin.tsx";
 
-export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
+export type ButtonVariant = "primary" | "special" | "secondary" | "quiet" | "danger";
 
 interface ButtonLook {
-  /** `primary`: the one main action; `secondary`: default; `quiet`: no chrome until hover; `danger`: destructive. */
+  /**
+   * `primary`: the one main action; `special`: a standout action on the fixed brand gradient (same in every skin);
+   * `secondary`: default; `quiet`: no chrome until hover; `danger`: destructive.
+   */
   variant?: ButtonVariant;
   size?: ControlSize;
   /** Leading icon (decorative). */

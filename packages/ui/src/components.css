@@ -384,6 +384,27 @@ textarea {
 .ui-button--danger {
   --ui-button-fg: var(--ui-color-danger);
 }
+/*
+ * Special: the brand gradient, the same in every skin. Skins style `:root[data-skin] .ui-button` (0,3,0) and load
+ * later, setting fills directly or through the button variables; the doubled class (0,4,0) keeps the gradient and its
+ * text over all of them. The state layers paint over the gradient.
+ */
+:root .ui-button.ui-button--special.ui-button--special {
+  border-color: transparent;
+  background-color: var(--ui-color-special);
+  background-image: var(--ui-gradient-special);
+  color: var(--ui-color-on-special);
+  font-weight: var(--ui-font-weight-semibold);
+}
+:root .ui-button.ui-button--special.ui-button--special:hover:not(:disabled, .is-disabled) {
+  border-color: transparent;
+  background-color: var(--ui-color-special);
+  background-image: linear-gradient(var(--ui-color-state-hover), var(--ui-color-state-hover)), var(--ui-gradient-special);
+  color: var(--ui-color-on-special);
+}
+:root .ui-button.ui-button--special.ui-button--special:active:not(:disabled, .is-disabled) {
+  background-image: linear-gradient(var(--ui-color-state-press), var(--ui-color-state-press)), var(--ui-gradient-special);
+}
 .ui-button[aria-pressed="true"] {
   --ui-button-bg: var(--ui-color-tonal);
   --ui-button-fg: var(--ui-color-on-tonal);

@@ -15,6 +15,10 @@
   --ui-color-primary: #ffcc33;
   --ui-color-primary-hover: #ffd75c;
   --ui-color-on-primary: #1a1400;
+  /* Special: a fixed brand gradient (with a solid fallback) for standout actions; skins don't theme it. */
+  --ui-color-special: #3a58b4;
+  --ui-gradient-special: linear-gradient(21deg, rgb(58 88 180) 0%, rgb(253 29 29) 44%, rgb(252 176 69) 100%);
+  --ui-color-on-special: #ffffff;
   /* Tonal (selected/secondary-emphasis) fill and its text. */
   --ui-color-tonal: #2a2f3a;
   --ui-color-on-tonal: var(--ui-color-text);

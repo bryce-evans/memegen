@@ -7,8 +7,9 @@ test("gallery: popular all time and this month, recent newest first; hidden meme
   await page.goto("/recent");
   await signIn(page, scoped("browser"));
 
-  // Popular (best) over all time.
-  await openFeed(page, { feed: "popular", period: "all" });
+  // Popular (best) opens on all time.
+  await openFeed(page, { feed: "popular" });
+  await expect(page.getByTestId("meme-feed")).toHaveAttribute("data-period", "all");
   await expect.poll(async () => (await mockTitles(page))[0]).toBe(MOCK_EXPECT.bestAllTime[0]);
   await loadAll(page);
   const popular = await mockTitles(page);

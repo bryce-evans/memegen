@@ -20,7 +20,7 @@ interface FeedConfig {
 }
 
 const FEEDS: Record<FeedKind, FeedConfig> = {
-  popular: { period: "week", sort: "best", periodControl: true, sortControl: false },
+  popular: { period: "all", sort: "best", periodControl: true, sortControl: false },
   recent: { period: "all", sort: "new", periodControl: false, sortControl: false },
   tag: { period: "all", sort: "best", periodControl: true, sortControl: true },
   search: { period: "all", sort: "best", periodControl: true, sortControl: true },

@@ -127,7 +127,7 @@ Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `me
 - `votes(user_id, meme_id, value ±1)`, one per user per meme. A trigger maintains `memes.upvotes/downvotes`, and `score` is generated.
 - Posting casts the author's upvote (Reddit-style), in the API only when the meme becomes listed (first post of a public meme), so a removed self-vote stays removed. Seeds write votes directly and get none.
 - Votes double as the owner-only activity feed (`GET /api/me/activity`). Favorites are a separate table.
-- Popular = listed memes posted in the period, by score then recency. Recent = all-time recency.
+- Popular = listed memes posted in the period (all time by default), by score then recency. Recent = all-time recency.
 - User stats over posted memes: `memeCount`, `highScore`, `hScore` (largest h with h memes scoring ≥ h). `negativeHScore` (h memes ≤ −h) is internal only, at `/internal/users/:username/stats` behind `X-Internal-Token`. The web proxy never forwards `/internal`.
 - One SQL definition serves profiles and the leaderboard.
 - Badges are config in `packages/shared/src/badges.ts`, computed client-side from public stats, so they can't leak internal stats. Each stat shows only its highest tier.

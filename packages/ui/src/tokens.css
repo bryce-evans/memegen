@@ -15,9 +15,16 @@
   --ui-color-primary: #ffcc33;
   --ui-color-primary-hover: #ffd75c;
   --ui-color-on-primary: #1a1400;
-  /* Special: a fixed brand gradient (with a solid fallback) for standout actions; skins don't theme it. */
+  /*
+   * Special: a fixed brand gradient (blue → red → orange, the red at 44%) for standout actions, with a solid
+   * fallback; skins don't theme it. components.css builds the gradient from these stops so hover can slide it part of
+   * the way toward the next color along, bringing in a little yellow at the end.
+   */
   --ui-color-special: #3a58b4;
-  --ui-gradient-special: linear-gradient(21deg, rgb(58 88 180) 0%, rgb(253 29 29) 44%, rgb(252 176 69) 100%);
+  --ui-color-special-start: rgb(58 88 180);
+  --ui-color-special-mid: rgb(253 29 29);
+  --ui-color-special-end: rgb(252 176 69);
+  --ui-color-special-hover-end: rgb(253 224 71);
   --ui-color-on-special: #ffffff;
   /* Tonal (selected/secondary-emphasis) fill and its text. */
   --ui-color-tonal: #2a2f3a;

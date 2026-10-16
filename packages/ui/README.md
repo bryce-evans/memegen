@@ -10,7 +10,7 @@ Skinnable React components and design tokens for the memegen web app. One compon
 | `google` | Google's internal Memegen, circa 2012 ("Kennedy": Arial 13px, jfk-buttons, red CREATE MEME) |
 | `studio` | A light creative-studio look (rounder, black CTA pills, blue selection, gradient wordmark) |
 | `spectrum` | Real Adobe Spectrum 2, styled like Firefly: `@spectrum-css/tokens` values, dark, pill buttons, accent-blue "new" action, raised content sheet |
-| `painted` | `spectrum` in Spectrum 2 light over a fixed watercolor wash with paper grain: tall frosted header (50% white + blur), translucent white surfaces instead of grays, black primary buttons and white ones for the rest, large painted-ink wordmark on a swatch of brush strokes |
+| `painted` | `spectrum` in Spectrum 2 light over a fixed watercolor wash with paper grain: tall frosted header (50% white + blur), translucent white surfaces instead of grays, black primary buttons and white ones for the rest, large painted-ink wordmark on a swatch of brush strokes (on the sign-in card its warm and cool under-lights drift gently, like a sign lit from below) |
 
 `matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple`, `google`, and `painted` are light only.
 
@@ -55,7 +55,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `NavList`, `NavItem` | vertical nav; item (`as`, default `a`) | `active`, `icon`, `trailing` (NavLink's `aria-current="page"` also marks active) |
 | `PageHeader` | `h1`/`h2` + controls row | `title`, `level`, `actions`, `titleProps` |
 | `Stack`, `Inline` | flex column / row | `gap`, `align`, `justify`, `wrap` |
-| `Button` | `<button type=button>` | `variant` (`primary`/`special`/`secondary`/`quiet`/`danger`; `special` is the fixed brand gradient, `--ui-gradient-special`, the same in every skin), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin; a pressed toned button also fills its `Icon`), `icon` |
+| `Button` | `<button type=button>` | `variant` (`primary`/`special`/`secondary`/`quiet`/`danger`; `special` is the fixed brand gradient, stops `--ui-color-special-start`/`-mid`/`-end`, the same in every skin; on hover it slides 35% of the way toward red → orange → `--ui-color-special-hover-end` yellow), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin; a pressed toned button also fills its `Icon`), `icon` |
 | `IconButton` | icon-only `<button>` | `label` (aria-label + tooltip) |
 | `LinkButton` | button-looking link (`as`, default `a`) | `variant`, `size`, `icon` |
 | `FileButton` | `<label>` styled as a button around a hidden native `<input type=file>` | all input props (incl. `data-testid`) go to the input; `variant`, `size`, `icon` |

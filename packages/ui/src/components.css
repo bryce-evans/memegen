@@ -387,23 +387,43 @@ textarea {
 /*
  * Special: the brand gradient, the same in every skin. Skins style `:root[data-skin] .ui-button` (0,3,0) and load
  * later, setting fills directly or through the button variables; the doubled class (0,4,0) keeps the gradient and its
- * text over all of them. The state layers paint over the gradient.
+ * text over all of them. The gradient is laid out for a slide one color toward the start (--ui-special-shift 0 → 1:
+ * red to blue's place, orange to red's, yellow in where orange was); hover goes 35% of the way. The press layer
+ * paints over it.
  */
+@property --ui-special-shift {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
 :root .ui-button.ui-button--special.ui-button--special {
+  --ui-special-shift: 0;
+  /* Shift 0: blue 0%, red 44%, orange 100% (yellow past the end). Shift 1: red 0%, orange 44%, yellow 100%. */
+  --ui-special-fill: linear-gradient(
+    21deg,
+    var(--ui-color-special-start) calc(-44% * var(--ui-special-shift)),
+    var(--ui-color-special-mid) calc(44% - 44% * var(--ui-special-shift)),
+    var(--ui-color-special-end) calc(100% - 56% * var(--ui-special-shift)),
+    var(--ui-color-special-hover-end) calc(156% - 56% * var(--ui-special-shift))
+  );
   border-color: transparent;
   background-color: var(--ui-color-special);
-  background-image: var(--ui-gradient-special);
+  background-image: var(--ui-special-fill);
   color: var(--ui-color-on-special);
   font-weight: var(--ui-font-weight-semibold);
+  transition:
+    --ui-special-shift var(--ui-duration-slow) var(--ui-easing-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-easing-standard);
 }
 :root .ui-button.ui-button--special.ui-button--special:hover:not(:disabled, .is-disabled) {
+  --ui-special-shift: 0.5;
   border-color: transparent;
   background-color: var(--ui-color-special);
-  background-image: linear-gradient(var(--ui-color-state-hover), var(--ui-color-state-hover)), var(--ui-gradient-special);
+  background-image: var(--ui-special-fill);
   color: var(--ui-color-on-special);
 }
 :root .ui-button.ui-button--special.ui-button--special:active:not(:disabled, .is-disabled) {
-  background-image: linear-gradient(var(--ui-color-state-press), var(--ui-color-state-press)), var(--ui-gradient-special);
+  background-image: linear-gradient(var(--ui-color-state-press), var(--ui-color-state-press)), var(--ui-special-fill);
 }
 .ui-button[aria-pressed="true"] {
   --ui-button-bg: var(--ui-color-tonal);

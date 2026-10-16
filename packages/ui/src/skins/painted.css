@@ -53,12 +53,18 @@
   /* Glows up from under the last "e"/"n": a small yellow core (so "gen" stays orange against the brush strokes'
      yellow), then fast through orange and red to dark red at the far "M". */
   --painted-wordmark-gradient: radial-gradient(ellipse farthest-corner at 80% 92%, var(--painted-ink-yellow) 8%, var(--painted-ink-amber) 20%, var(--painted-ink-orange) 32%, var(--painted-ink-flame) 48%, var(--painted-ink-red) 62%, var(--painted-ink-dark-red) 88%);
-  /* Cool counter-light welling up under the "M", painted over the fire gradient: a steel blue core darkening to
-     slate, then thinning into the fire. */
-  --painted-wordmark-cool-light: radial-gradient(ellipse 46% 50% at 17% 100%, #4675c7 45%, #4d4e8b 56%, rgb(220 30 40 / 0) 120%);
+  /* The cool counter-light (--painted-wordmark-cool-light) is defined on the wordmark rule instead, so the sign-in
+     card's wordmark can move it. */
   --painted-wash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='1100' viewBox='0 -220 1600 1100'%3E%3Cdefs%3E%3Cfilter id='paint' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.008 .018' numOctaves='3' seed='12' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='95'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23paint)' fill='none' stroke-linecap='round'%3E%3Cpath d='M-160 260 Q350 -70 780 70 T1750 100' stroke='%23d8f2f5' stroke-width='360'/%3E%3Cpath d='M-130 630 Q280 330 770 390 T1720 260' stroke='%23fce1e4' stroke-width='230'/%3E%3Cpath d='M-100 1030 Q350 690 790 770 T1720 920' stroke='%23e0f3f4' stroke-width='330'/%3E%3Cpath d='M-90 810 Q340 580 610 640 M1080 110 Q1350 -10 1720 50' stroke='%23fff0bf' stroke-width='55'/%3E%3Cpath d='M-130 480 Q260 130 590 240 M960 1000 Q1220 760 1700 720' stroke='%23fbdde9' stroke-width='24'/%3E%3Cpath d='M-80 870 Q180 680 340 710 M1220 210 Q1490 10 1650 100' stroke='%23cff3eb' stroke-width='38'/%3E%3C/g%3E%3C/svg%3E");
   --painted-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' opacity='.055' filter='url(%23grain)' d='M0 0h180v180H0z'/%3E%3C/svg%3E");
   --painted-brand-paint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 150'%3E%3Cdefs%3E%3Cfilter id='brush' x='-20%25' y='-30%25' width='140%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.025 .08' numOctaves='3' seed='7' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='18'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23brush)' fill='none' stroke-linecap='square'%3E%3Cpath d='M22 88 Q80 36 153 58 T289 42 T435 51' stroke='%237ddce8' stroke-width='39'/%3E%3Cpath d='M25 111 Q160 74 237 86 T425 65' stroke='%23ffb7cf' stroke-width='32'/%3E%3Cpath d='M52 124 Q198 114 281 91 T432 98' stroke='%23ffe078' stroke-width='17'/%3E%3Cpath d='M9 62 Q128 19 220 40 M278 133 L449 75' stroke='%23c4f0e3' stroke-width='10'/%3E%3Cpath d='M73 29 L179 17 M326 26 L435 12' stroke='%23f8b6e5' stroke-width='7'/%3E%3C/g%3E%3C/svg%3E");
+  /* The same brush strokes with their edges flowing left to right, like a cloud floating past, while the strokes
+     themselves stay put. Two copies of the noise that roughens them slide right 160 units every 16s, half a cycle
+     apart, and crossfade: each copy is fully faded out at the moment it jumps back to the start, so the loop has no
+     seam. (A repeating tile instead shows a hard edge each pass, because the tile isn't a whole number of pixels
+     wide.) The filter region reaches far to the left so the gap the slide opens there stays clear of the strokes.
+     Only the sign-in card's wordmark uses it; keep its paths in step with --painted-brand-paint. */
+  --painted-brand-paint-flowing: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 150'%3E%3Cdefs%3E%3Cfilter id='brush' filterUnits='userSpaceOnUse' x='-300' y='-45' width='800' height='240'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.025 .08' numOctaves='3' seed='7' result='noise'/%3E%3CfeOffset in='noise' result='a'%3E%3Canimate attributeName='dx' values='0;160' dur='16s' repeatCount='indefinite'/%3E%3C/feOffset%3E%3CfeOffset in='noise' result='b'%3E%3Canimate attributeName='dx' values='0;160' dur='16s' begin='-8s' repeatCount='indefinite'/%3E%3C/feOffset%3E%3CfeComposite in='a' in2='b' operator='arithmetic' k1='0' k4='0' result='flow'%3E%3Canimate attributeName='k2' values='0;1;0' dur='16s' repeatCount='indefinite'/%3E%3Canimate attributeName='k3' values='1;0;1' dur='16s' repeatCount='indefinite'/%3E%3C/feComposite%3E%3CfeDisplacementMap in='SourceGraphic' in2='flow' scale='18'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23brush)' fill='none' stroke-linecap='square'%3E%3Cpath d='M22 88 Q80 36 153 58 T289 42 T435 51' stroke='%237ddce8' stroke-width='39'/%3E%3Cpath d='M25 111 Q160 74 237 86 T425 65' stroke='%23ffb7cf' stroke-width='32'/%3E%3Cpath d='M52 124 Q198 114 281 91 T432 98' stroke='%23ffe078' stroke-width='17'/%3E%3Cpath d='M9 62 Q128 19 220 40 M278 133 L449 75' stroke='%23c4f0e3' stroke-width='10'/%3E%3Cpath d='M73 29 L179 17 M326 26 L435 12' stroke='%23f8b6e5' stroke-width='7'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 /* ---- backdrop: the wash and paper grain stay put while the page scrolls over them ------------------------- */
@@ -86,6 +92,29 @@
   padding-top: var(--spectrum-spacing-300);
 }
 
+/* Where the wordmark's lights well up from: the fire's warm core under the end of the word and the cool light under
+   the "M". Registered so the sign-in wordmark can animate them; the initial values are where they rest. */
+@property --painted-fire-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 80%;
+}
+@property --painted-fire-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 92%;
+}
+@property --painted-cool-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 17%;
+}
+@property --painted-cool-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+
 /* Painted ink on a swatch of brush strokes, lit from below at both ends: a cool light under the "M" (steel blue at
    its feet, darkening to slate and thinning out, reaching the left side of the first "e") over the fire gradient
    (yellow welling up under the end of the word, dark red toward the "M"), and the paper grain shows through. Clips are per layer:
@@ -93,6 +122,14 @@
    them. The padding gives the strokes room around the letters (about the SVG's 3:1 shape) and keeps the "g"
    descender inside the painted box. */
 :root[data-skin="painted"] .ui-wordmark {
+  /* Cool counter-light welling up under the "M", painted over the fire gradient: a steel blue core darkening to
+     slate, then thinning into the fire. */
+  --painted-wordmark-cool-light: radial-gradient(
+    ellipse 46% 50% at var(--painted-cool-x) var(--painted-cool-y),
+    #4675c7 45%,
+    #4d4e8b 56%,
+    rgb(220 30 40 / 0) 120%
+  );
   padding: 0.3em 0.55em 0.36em;
   font-family: Radlush, "Archivo Variable", "Archivo", var(--ui-font-family);
   font-size: var(--painted-wordmark-size);
@@ -109,9 +146,74 @@
   color: transparent;
   -webkit-text-fill-color: transparent;
 }
-/* The sign-in card's wordmark (the only one in a panel) stands alone, so it is 30% larger than the header's. */
+/*
+ * The sign-in card's wordmark (the only one in a panel) stands alone, so it is 30% larger than the header's, and its
+ * lights twinkle like a sign lit from below: the fire's warm core (yellow through orange, fading out before the red)
+ * and the cool light each drift up and down a little and side to side more, on ease-in-out (sine-like) swings. The
+ * orange swings faster than the purple-blue, and every period differs so the motion never visibly repeats. The red
+ * and dark red stay put in the fire gradient beneath. Behind it, the brush strokes' edges flow slowly
+ * (--painted-brand-paint-flowing).
+ */
 :root[data-skin="painted"] .ui-panel .ui-wordmark {
+  --painted-wordmark-warm-core: radial-gradient(
+    ellipse farthest-corner at var(--painted-fire-x) var(--painted-fire-y),
+    var(--painted-ink-yellow) 8%,
+    var(--painted-ink-amber) 20%,
+    var(--painted-ink-orange) 32%,
+    rgb(255 106 0 / 0) 48%
+  );
+  --painted-wordmark-paint: var(--painted-brand-paint-flowing);
   font-size: calc(var(--painted-wordmark-size) * 1.3);
+  background-image: var(--painted-grain), var(--painted-wordmark-cool-light), var(--painted-wordmark-warm-core),
+    var(--painted-wordmark-gradient), var(--painted-wordmark-paint);
+  background-position: 0 0, center, center, center, center;
+  background-size: auto, auto, auto, auto, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  -webkit-background-clip: text, text, text, text, border-box;
+  background-clip: text, text, text, text, border-box;
+  animation:
+    painted-fire-x 1.9s ease-in-out infinite alternate,
+    painted-fire-y 1.4s ease-in-out infinite alternate,
+    painted-cool-x 4.3s ease-in-out infinite alternate,
+    painted-cool-y 3.1s ease-in-out infinite alternate;
+}
+@keyframes painted-fire-x {
+  from {
+    --painted-fire-x: 70%;
+  }
+  to {
+    --painted-fire-x: 90%;
+  }
+}
+@keyframes painted-fire-y {
+  from {
+    --painted-fire-y: 87%;
+  }
+  to {
+    --painted-fire-y: 97%;
+  }
+}
+@keyframes painted-cool-x {
+  from {
+    --painted-cool-x: 4%;
+  }
+  to {
+    --painted-cool-x: 20%;
+  }
+}
+@keyframes painted-cool-y {
+  from {
+    --painted-cool-y: 106%;
+  }
+  to {
+    --painted-cool-y: 114%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-skin="painted"] .ui-panel .ui-wordmark {
+    --painted-wordmark-paint: var(--painted-brand-paint);
+    animation: none;
+  }
 }
 
 /* ---- content: translucent white sheets that let the wash through ---------------------------------------- */

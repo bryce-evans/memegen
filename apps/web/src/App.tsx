@@ -35,6 +35,28 @@ const BRAND = "memegen";
 /** Prod pins this skin (`?skin=` and stored choices ignored); dev lets the sign-in page's dev tools switch it. */
 const SKIN = "default";
 
+/** The header search's placeholder: one picked at random each time the page loads. */
+const SEARCH_PLACEHOLDERS = [
+  "all your memes are belong to us",
+  "one does not simply search...",
+  "much search. very meme. wow.",
+  "a meme a day...",
+  "whatcha lookin' for?",
+  "tell me without telling me",
+  "it's giving...",
+  "IYKYK...",
+  "hello there...",
+  "show me what you got",
+  "sir, this is a search bar",
+  "what's the meme, precious?",
+  "I need this for... reasons",
+  "*aggressively searches*",
+  "chat, is this real?",
+  "gimme the good stuff",
+  "y'all got any more of them templates",
+];
+const searchPlaceholder = SEARCH_PLACEHOLDERS[Math.floor(Math.random() * SEARCH_PLACEHOLDERS.length)];
+
 /** Meme search in the header: submitting opens `/search?q=`; on that page the box shows the current query. */
 function SiteSearch() {
   const navigate = useNavigate();
@@ -54,7 +76,7 @@ function SiteSearch() {
     <form role="search" className="site-search" onSubmit={submit}>
       <TextField
         type="search"
-        placeholder="Search"
+        placeholder={searchPlaceholder}
         aria-label="Search memes"
         value={value}
         onChange={(e) => setValue(e.target.value)}

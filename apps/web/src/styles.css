@@ -439,9 +439,75 @@
 /* ---- templates ------------------------------------------------------------ */
 
 /*
- * Create start view: floating cards, top to bottom: Upload (three tiles; Template on pixel-art that plays on hover),
- * the AI image form, Hot templates, then all templates.
+ * Create start view: four cards, top to bottom: the Creator (a canvas of the chosen template beside its form), Upload
+ * (three tiles; Template on pixel-art that plays on hover), Hot templates, then all templates.
  */
+.ai-creator-body {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--ui-space-6);
+  align-items: start;
+}
+.ai-creator-preview {
+  min-width: 0;
+}
+.ai-creator-canvas {
+  display: block;
+  width: 100%;
+  border-radius: var(--ui-radius-media);
+  background: var(--ui-color-media-bg);
+}
+.ai-creator-form {
+  min-width: 0;
+}
+/* The provider dropdown sizes to its options beside Create, not to the form's width. */
+.ai-creator-form .ai-provider {
+  width: auto;
+}
+/* The missing-key warning is red throughout, its profile link included (underlined to stay a link). */
+.ai-no-key a {
+  color: inherit;
+  text-decoration: underline;
+}
+.ai-template-options {
+  display: flex;
+  gap: var(--ui-space-3);
+  overflow-x: auto;
+  padding-bottom: var(--ui-space-2);
+}
+.ai-template-option {
+  flex: 0 0 104px;
+  width: 104px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ui-color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.ai-template-option img,
+.ai-template-option video {
+  width: 104px;
+  height: 78px;
+  object-fit: cover;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-media-bg);
+}
+.ai-template-option[aria-pressed="true"] :is(img, video) {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-primary);
+  outline-offset: 2px;
+}
+.ai-template-option-name {
+  font-size: var(--ui-font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .add-content-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -666,23 +732,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-.upload-form {
-  margin-top: var(--ui-space-3);
-}
-.upload-form > .ui-text {
-  margin: 0 0 var(--ui-space-3);
-}
-.ai-thumb {
-  max-height: 4rem;
-  max-width: 8rem;
-  border-radius: var(--ui-radius-sm);
-}
-.ai-result {
-  display: block;
-  max-width: 100%;
-  max-height: 24rem;
-  border-radius: var(--ui-radius-media);
 }
 .ai-key-row {
   display: grid;
@@ -1140,6 +1189,7 @@
 @media (max-width: 960px) {
   .editor,
   .detail,
+  .ai-creator-body,
   .add-content-cards {
     grid-template-columns: minmax(0, 1fr);
   }

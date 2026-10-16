@@ -1,5 +1,7 @@
 import { AI_KEY_HEADER, ASSETS_QUERY_MAX_LIMIT, assetContentPath } from "@memegen/shared";
 import type {
+  AiCaptionsFields,
+  AiCaptionsResponse,
   AiImageFields,
   Asset,
   Comment,
@@ -273,4 +275,24 @@ export async function generateAiImage({ provider, prompt }: AiImageFields, image
   form.append("image", image, "background");
   const res = await send("/api/ai/images", { method: "POST", body: form, headers: { [AI_KEY_HEADER]: apiKey }, signal });
   return res.blob();
+}
+
+/**
+ * The description, the template's own text boxes (hints), and optionally the image go to `provider` with the user's
+ * own `apiKey`; the model splits the description's text into placed captions and pulls out any change it asks for to
+ * the image. Nothing is stored.
+ */
+export async function placeAiCaptions(
+  { provider, text, boxes = [] }: AiCaptionsFields,
+  image: Blob | null,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<AiCaptionsResponse> {
+  const form = new FormData();
+  form.append("provider", provider);
+  form.append("text", text);
+  form.append("boxes", JSON.stringify(boxes));
+  if (image) form.append("image", image, "image");
+  const res = await send("/api/ai/captions", { method: "POST", body: form, headers: { [AI_KEY_HEADER]: apiKey }, signal });
+  return (await res.json()) as AiCaptionsResponse;
 }

@@ -1,22 +1,44 @@
 import type { AiProviderId } from "@memegen/shared";
 
+/** A sniffed still image sent to a model. */
+export interface AiImage {
+  data: Uint8Array<ArrayBuffer>;
+  mime: string;
+  ext: string;
+}
+
 export interface AiImageRequest {
   /** The caller's own key for this provider, sent per request and never stored. */
   apiKey: string;
   prompt: string;
-  /** Background image the model edits or uses as context; a sniffed still image. */
-  image: { data: Uint8Array<ArrayBuffer>; mime: string; ext: string };
+  /** Background image the model edits or uses as context. */
+  image: AiImage;
   signal?: AbortSignal;
 }
 
-/** One image model behind a user's API key: prompt + background image in, one image's bytes out. */
-export interface AiImageProvider {
-  readonly id: AiProviderId;
-  readonly label: string;
-  edit(request: AiImageRequest): Promise<Uint8Array<ArrayBuffer>>;
+export interface AiCaptionRequest {
+  /** The caller's own key for this provider, sent per request and never stored. */
+  apiKey: string;
+  /** The user's caption text, to split and place. */
+  text: string;
+  /** The template's own text boxes, as placement hints. */
+  boxes: { text: string; x: number; y: number; width: number; height: number }[];
+  /** The media the captions go on, when the client sends it. */
+  image?: AiImage;
+  signal?: AbortSignal;
 }
 
-/** The provider answered with an error, or with no image. `status` is the provider's HTTP status (502 for no image). */
+/** The models behind a user's API key for one provider. */
+export interface AiProvider {
+  readonly id: AiProviderId;
+  readonly label: string;
+  /** Prompt + background image in, one image's bytes out. */
+  edit(request: AiImageRequest): Promise<Uint8Array<ArrayBuffer>>;
+  /** Text (and optionally the image) in; the model's parsed JSON out, unvalidated (see `normalizeCaptions`). */
+  caption(request: AiCaptionRequest): Promise<unknown>;
+}
+
+/** The provider answered with an error, or with no result. `status` is the provider's HTTP status (502 for no result). */
 export class AiProviderError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {

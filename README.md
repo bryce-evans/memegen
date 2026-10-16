@@ -9,7 +9,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 - **Animation**: for GIFs and videos, a frame-by-frame timeline with per-layer visibility windows, keyframes, and a live loop preview. Exports are GIF or MP4, and MP4s keep their audio.
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
 - **Multi-panel templates**: expanding brain and similar formats, built from an image pack. Memes can add, remove, and reorder panels.
-- **AI images**: on Create, describe a change to a background image and turn the result into a new template, using OpenAI GPT Image or Google Nano Banana with your own API key (added under your profile's AI keys tab).
+- **Creator**: at the top of Create, a template (a random one to start) drawn with its text, and one Describe field (prefilled with the template's top and bottom text). The AI places the described text and makes any described change to the image (the result becomes a new template), then the editor opens prefilled. Uses OpenAI or Google Gemini with your own API key (added under your profile's AI keys tab). Below it, an Upload card adds a template, multi-panel template, or sticker.
 - **Gallery**: Popular (day, week, month, year, or all time) and Recent feeds, voting, threaded comments, favorites, search, and tag pages.
 - **Profiles and leaderboard**: a Profile tab with h-score, high score, and tiered badges; the user's memes and templates; and, on your own profile, AI keys plus private Favorites and Recent activity tabs.
 - **Skins**: seven interchangeable looks from `packages/ui` (dev only. Prod is locked to `default`).
@@ -89,7 +89,7 @@ Main keys (see `config/dev.env` and `config/prod.env.example` for all of them):
 - `STORAGE_PROVIDER`: `local` (files in `.data/storage`) or `s3` (`S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, …).
 - `MAX_*`: upload caps. Defaults are 20 MB per file. Longest edge: images 4096 px, GIFs 1024 px, videos 1920 px. Frames: GIFs 500, videos 1800.
 - `INTERNAL_TOKEN`: guards the API's `/internal/*` routes.
-- `OPENAI_IMAGE_MODEL` (default `gpt-image-2`), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`): models for AI images. Users bring their own API keys, so the server needs none. `OPENAI_BASE_URL`/`GEMINI_BASE_URL` point at a proxy or gateway.
+- `OPENAI_IMAGE_MODEL` (default `gpt-image-2`), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`): models for AI images. `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `GEMINI_TEXT_MODEL` (default `gemini-2.5-flash`): models that place AI captions. Users bring their own API keys, so the server needs none. `OPENAI_BASE_URL`/`GEMINI_BASE_URL` point at a proxy or gateway.
 
 ### Production
 

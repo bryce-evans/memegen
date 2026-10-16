@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TEXT_BOX_MIN, TEXT_MAX_LENGTH } from "./limits.ts";
 
 /** Image models a user can bring their own API key for; the API holds one adapter per id. */
 export const AI_PROVIDERS = [
@@ -24,3 +25,33 @@ export const aiImageFieldsSchema = z.object({
   prompt: z.string().trim().min(1).max(AI_PROMPT_MAX_LENGTH),
 });
 export type AiImageFields = z.input<typeof aiImageFieldsSchema>;
+
+/** Captions one AI placement may return. */
+export const AI_CAPTIONS_MAX = 8;
+/** A caption box: center x/y and size as fractions of the media, like a text layer's anchor and maxWidth/maxHeight. */
+export const aiCaptionBoxSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(TEXT_BOX_MIN).max(1),
+  height: z.number().min(TEXT_BOX_MIN).max(1),
+});
+export const aiCaptionSchema = aiCaptionBoxSchema.extend({ text: z.string().trim().min(1).max(TEXT_MAX_LENGTH) });
+export type AiCaption = z.output<typeof aiCaptionSchema>;
+/**
+ * Text fields of `POST /api/ai/captions` (multipart). `text` is the user's description: the meme's text, and maybe a
+ * change to the image. `boxes` (JSON) are the template's own text boxes, as hints.
+ */
+export const aiCaptionsFieldsSchema = z.object({
+  provider: z.enum(AI_PROVIDER_IDS),
+  text: z.string().trim().min(1).max(TEXT_MAX_LENGTH),
+  boxes: z.array(aiCaptionBoxSchema.extend({ text: z.string().max(TEXT_MAX_LENGTH) })).max(50).default([]),
+});
+export type AiCaptionsFields = z.input<typeof aiCaptionsFieldsSchema>;
+/**
+ * The description read by the model: its text as placed captions (possibly none), and any change it asks for to the
+ * image itself (an `/api/ai/images` prompt, at most `AI_PROMPT_MAX_LENGTH`), else null. Never both empty.
+ */
+export interface AiCaptionsResponse {
+  captions: AiCaption[];
+  modification: string | null;
+}

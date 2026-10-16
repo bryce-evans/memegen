@@ -46,7 +46,8 @@
 }
 
 /*
- * Intro (IntroBurst.tsx), paused until every image has loaded, then all at once:
+ * Intro (IntroBurst.tsx), paused until every image has loaded, then all at once (bouncing sprites each start up to
+ * 0.08s late, by their random --delay, so they don't bounce in unison):
  * - scattered sprites grow out of nothing at the viewport center, behind the card, and fly to their landing
  *   (--x/--y/--spin) on a spring: past it by ~9% at 30% of the run, straight back, settled by the end;
  * - dat boi pops up from behind the card's top-right corner;
@@ -75,6 +76,7 @@
   translate: -50% -50%;
   transform: translate(var(--x), var(--y)) rotate(var(--spin));
   animation: intro-pop 0.9s var(--intro-spring) both paused;
+  animation-delay: var(--delay, 0s);
 }
 /*
  * Several images flying as one sprite (the soyjaks, this is fine): side by side, bottoms aligned, spread to the edges. Each part
@@ -110,6 +112,7 @@
   transform-origin: 46% 128%;
   scale: 1.4;
   animation: intro-rise 0.8s var(--intro-spring) both paused;
+  animation-delay: var(--delay, 0s);
 }
 /*
  * The box is a strip as wide as the image, its bottom edge (the rainbow's tail) pinned just inside the card's top-left
@@ -165,6 +168,7 @@
   .intro-dat-boi > img,
   .intro-nyan > img {
     animation-duration: 1ms;
+    animation-delay: 0s;
   }
 }
 .login {

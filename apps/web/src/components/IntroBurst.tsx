@@ -91,13 +91,23 @@ function partStyle({ share, dx, dy, scale, rotate }: Part): CSSProperties {
 /** Every image, dat boi and nyan cat included; the burst starts once all have loaded (or failed), so none pops in mid-flight. */
 const IMAGE_COUNT = SCATTERED.length + GROUPS.reduce((n, g) => n + g.parts.length, 0) + 2;
 
-function landingStyle({ x, y, size, spin }: Landing): CSSProperties {
+function landingStyle({ x, y, size, spin }: Landing, delay: number): CSSProperties {
   return {
     "--x": `${x}vmin`,
     "--y": `${y}vmin`,
     "--size": `${size}vmin`,
     "--spin": `${spin}deg`,
+    "--delay": `${delay}s`,
   } as CSSProperties;
+}
+
+/** Each bouncing sprite (scattered, groups, dat boi) starts up to this many seconds late, so they don't bounce in unison. */
+const MAX_DELAY_S = 0.08;
+
+/** A random start delay per bouncing sprite, by name; drawn once per mount so re-renders never shift a running animation. */
+function randomDelays(): Map<string, number> {
+  const names = [...SCATTERED.map((s) => s.name), ...GROUPS.map((g) => g.name), "dat-boi"];
+  return new Map(names.map((name) => [name, Math.random() * MAX_DELAY_S]));
 }
 
 /** Nyan cat flies up and to the left, this many degrees above horizontal. */
@@ -135,6 +145,7 @@ export function IntroBurst({ children }: { children: ReactNode }) {
   const onLoad = () => setLoaded((n) => n + 1);
   const ready = loaded >= IMAGE_COUNT;
   const nyan = useRef<HTMLDivElement>(null);
+  const [delays] = useState(randomDelays);
 
   // Size nyan cat's flight before the first paint, and again whenever the window or the card moves its pin.
   useLayoutEffect(() => {
@@ -169,13 +180,13 @@ export function IntroBurst({ children }: { children: ReactNode }) {
             data-sprite={s.name}
             src={s.src}
             alt=""
-            style={landingStyle(s)}
+            style={landingStyle(s, delays.get(s.name) ?? 0)}
             onLoad={onLoad}
             onError={onLoad}
           />
         ))}
         {GROUPS.map((g) => (
-          <div key={g.name} className="intro-sprite intro-group" data-sprite={g.name} style={landingStyle(g)}>
+          <div key={g.name} className="intro-sprite intro-group" data-sprite={g.name} style={landingStyle(g, delays.get(g.name) ?? 0)}>
             {g.parts.map((p) => (
               <img
                 key={p.name}
@@ -192,7 +203,15 @@ export function IntroBurst({ children }: { children: ReactNode }) {
         ))}
       </div>
       <div className="intro-dat-boi" aria-hidden="true">
-        <img src={datBoi} alt="" data-testid="intro-image" data-sprite="dat-boi" onLoad={onLoad} onError={onLoad} />
+        <img
+          src={datBoi}
+          alt=""
+          data-testid="intro-image"
+          data-sprite="dat-boi"
+          style={{ "--delay": `${delays.get("dat-boi") ?? 0}s` } as CSSProperties}
+          onLoad={onLoad}
+          onError={onLoad}
+        />
       </div>
       <div ref={nyan} className="intro-nyan" aria-hidden="true" data-testid="intro-nyan" style={{ "--nyan-angle": `${NYAN_ANGLE_DEG}deg` } as CSSProperties}>
         <img

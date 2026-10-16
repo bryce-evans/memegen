@@ -136,8 +136,40 @@ textarea {
   gap: var(--ui-space-3);
 }
 /*
+ * Dropdown: the panel hangs under its button, on the header's surface and blur, and shows only while open. The panel's
+ * `display` is not set while open, so content keeps its own layout.
+ */
+.ui-dropdown {
+  position: relative;
+}
+.ui-dropdown-chevron {
+  margin-inline-end: -0.25em;
+}
+.ui-dropdown-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--ui-space-2));
+  left: 0;
+  min-width: 12rem;
+  max-width: calc(100vw - 2 * var(--ui-space-5));
+  padding: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-color-border);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-header-bg);
+  -webkit-backdrop-filter: var(--ui-header-backdrop);
+  backdrop-filter: var(--ui-header-backdrop);
+  box-shadow: var(--ui-shadow-3);
+}
+.ui-dropdown-panel[data-align="end"] {
+  right: 0;
+  left: auto;
+}
+.ui-dropdown:not([data-open]) > .ui-dropdown-panel {
+  display: none;
+}
+/*
  * Wide screens: the header follows the shell's columns (same max width, inline padding, and gap), so the brand spans
- * the side column and the search starts at the main column's edge. Narrow screens keep the wrapping flex row.
+ * the side column and the search starts at the main column's edge.
  */
 @media (min-width: 761px) {
   .ui-header {
@@ -1244,12 +1276,30 @@ span.ui-text {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- narrow screens: side column collapses above the main area -------------- */
+/*
+ * ---- narrow screens: one header row (first letter of the wordmark, search, account dropdown); the side column is a
+ * row above the main area ------------------------------------------------------------------------------------------
+ */
 
 @media (max-width: 760px) {
-  /* The header wraps to several rows here; let it scroll away instead of pinning them. */
   .ui-header {
     position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--ui-space-4);
+  }
+  .ui-header-brand .ui-wordmark-letter:not(:first-child) {
+    display: none;
+  }
+  .ui-header-center {
+    max-width: none;
+  }
+  .ui-header-account > .ui-dropdown-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ui-space-3);
+    width: max-content;
   }
   .ui-shell {
     grid-template-columns: minmax(0, 1fr);
@@ -1258,26 +1308,9 @@ span.ui-text {
   }
   .ui-sidebar {
     position: static;
-    gap: var(--ui-space-3);
-  }
-  .ui-sidebar-section,
-  .ui-nav-list,
-  .ui-segmented--vertical {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--ui-space-2);
-  }
-  .ui-sidebar-heading {
-    margin: 0 var(--ui-space-3) 0 0;
-  }
-  .ui-nav-item,
-  .ui-segmented--vertical .ui-segmented-option {
-    width: auto;
-  }
-  .ui-header-center {
-    order: 3;
-    flex-basis: 100%;
-    max-width: none;
+    gap: var(--ui-space-3);
   }
 }

@@ -150,12 +150,6 @@
   :root[data-skin="google"] .ui-header {
     padding: var(--ui-space-3) var(--ui-space-5);
   }
-  :root[data-skin="google"] .ui-sidebar .ui-sidebar-heading {
-    margin-left: 0;
-  }
-  :root[data-skin="google"] .ui-sidebar .ui-nav-item {
-    padding: 3px 8px 3px 0;
-  }
 }
 
 :root[data-skin="google"] .ui-wordmark {

@@ -48,8 +48,9 @@ Every component extends its root element's native props (so `data-testid`, `aria
 
 | Component | Renders | Own props |
 |---|---|---|
-| `AppShell` | header + side column + `<main>` | `header`, `sidebar` |
-| `Header` | sticky `<header>` | `brand`, `center` (search); children = right-hand actions |
+| `AppShell` | header + side column + `<main>`; on narrow screens (≤ 760px) the side column is a row above the main area | `header`, `sidebar` |
+| `Header` | sticky `<header>`; on narrow screens one row: the wordmark's first letter, the search, and an account `Dropdown` holding the actions | `brand`, `center` (search); children = right-hand actions; `accountLabel` (default "Account"), `accountButtonProps` (e.g. `data-testid`) |
+| `Dropdown` | toggle button + panel (a disclosure, not an ARIA menu); outside click, Escape, or choosing a link/button inside closes it | `label` (button text, or with `icon` the icon button's name), `icon`, `align` (`start`/`end`), `buttonProps` |
 | `Wordmark` | product name, one span per letter | `text` |
 | `Sidebar`, `SidebarSection` | `<aside>`; titled group (`div`/`nav`/`section`) | `heading`, `as` |
 | `NavList`, `NavItem` | vertical nav; item (`as`, default `a`) | `active`, `icon`, `trailing` (NavLink's `aria-current="page"` also marks active) |
@@ -80,6 +81,8 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `Text` | `p`/`span`/`div` | `tone`, `size`, `numeric` |
 | `Icon` | stroke SVG (`--ui-icon-stroke`) | `name`, `label` |
 | `SkinSwitcher` | native `<select>` of registered skins | select props |
+
+`useNarrowScreen()` is true at the narrow-screen breakpoint (≤ 760px, the same width as the CSS), for apps that render different content there.
 
 ## Overriding a component for one skin
 

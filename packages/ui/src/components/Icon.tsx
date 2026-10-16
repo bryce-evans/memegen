@@ -20,6 +20,7 @@ const PATHS = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  chevron: <path d="m7 10 5 5 5-5" />,
   edit: <path d="M15.5 5.5l3 3M4.5 19.5l1-4L15.5 5.5l3 3-10 10z" />,
   user: (
     <>

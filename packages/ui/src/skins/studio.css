@@ -510,9 +510,6 @@
     min-height: 0;
     padding: var(--ui-space-6) var(--ui-space-5);
   }
-  :root[data-skin="studio"] .ui-sidebar-heading {
-    margin: 0 var(--ui-space-3) 0 var(--ui-space-3);
-  }
   :root[data-skin="studio"] .ui-segmented--sm .ui-segmented-option {
     padding: 0 9px;
   }

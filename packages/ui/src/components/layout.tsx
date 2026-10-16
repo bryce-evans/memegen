@@ -1,10 +1,114 @@
-import { useLayoutEffect, useRef, type ComponentPropsWithRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ComponentPropsWithRef,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { cx, type LoosePolymorphicProps } from "../cx.ts";
 import { skinnable, skinnablePolymorphic } from "../skin.tsx";
+import { Button, IconButton, type ButtonProps } from "./buttons.tsx";
+import { Icon } from "./Icon.tsx";
+
+/** The narrow-screen breakpoint; `components.css` uses the same width. */
+const NARROW_QUERY = "(max-width: 760px)";
+
+function subscribeNarrow(onChange: () => void) {
+  const query = window.matchMedia(NARROW_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** Whether the window is at the narrow-screen breakpoint (≤ 760px), where the shell stacks into one column. */
+export function useNarrowScreen(): boolean {
+  return useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW_QUERY).matches);
+}
+
+/** Extra props for a dropdown's toggle button (e.g. `data-testid`). */
+export type DropdownButtonProps = Omit<ButtonProps, "children" | "onClick" | "aria-expanded" | "aria-controls"> & {
+  [key: `data-${string}`]: string | undefined;
+};
+
+export interface DropdownProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
+  /** The button's text, or with `icon` its accessible name (and tooltip). */
+  label: string;
+  /** Makes the button icon-only. */
+  icon?: ReactNode;
+  /** Panel edge lined up with the button's: `start` (default) or `end`. */
+  align?: "start" | "end";
+  buttonProps?: DropdownButtonProps;
+  /** Panel content. */
+  children?: ReactNode;
+}
+
+/**
+ * A toggle button and the panel it drops down (a disclosure, not an ARIA menu). Clicking outside or pressing Escape
+ * closes the panel, and so does choosing a link or button inside it.
+ */
+function DropdownBase({ label, icon, align = "start", buttonProps, className, children, ...rest }: DropdownProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+  const toggle = {
+    ...buttonProps,
+    ref: buttonRef,
+    "aria-expanded": open,
+    "aria-controls": panelId,
+    onClick: () => setOpen((o) => !o),
+  };
+  return (
+    <div ref={rootRef} className={cx("ui-dropdown", className)} data-open={open || undefined} {...rest}>
+      {icon ? (
+        <IconButton {...toggle} label={label}>
+          {icon}
+        </IconButton>
+      ) : (
+        <Button {...toggle}>
+          {label}
+          <Icon name="chevron" className="ui-dropdown-chevron" />
+        </Button>
+      )}
+      <div
+        id={panelId}
+        className="ui-dropdown-panel"
+        data-align={align}
+        onClick={(e: MouseEvent) => {
+          if ((e.target as Element).closest("a[href], button")) setOpen(false);
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export const Dropdown = skinnable("Dropdown", DropdownBase);
 
 export interface AppShellProps extends ComponentPropsWithRef<"div"> {
   header?: ReactNode;
-  /** Side column (usually a `Sidebar`); stacks above the main area on narrow screens. */
+  /** Side column (usually a `Sidebar`); a row above the main area on narrow screens. */
   sidebar?: ReactNode;
 }
 
@@ -24,10 +128,13 @@ function AppShellBase({ header, sidebar, className, children, ...rest }: AppShel
 export const AppShell = skinnable("AppShell", AppShellBase);
 
 export interface HeaderProps extends ComponentPropsWithRef<"header"> {
-  /** Left: logo/wordmark link. */
+  /** Left: logo/wordmark link; on narrow screens a wordmark shows its first letter only. */
   brand?: ReactNode;
   /** Middle: usually a search field; grows to fill. */
   center?: ReactNode;
+  /** Accessible name of the narrow-screen button that drops down the actions (`children`). */
+  accountLabel?: string;
+  accountButtonProps?: DropdownButtonProps;
 }
 
 /**
@@ -55,9 +162,10 @@ function useWordmarkShape(brand: ReactNode) {
   return ref;
 }
 
-/** Sticky top bar; `children` go to the right-hand actions area. */
-function HeaderBase({ brand, center, className, children, ...rest }: HeaderProps) {
+/** Sticky top bar; `children` go to the right-hand actions area (on narrow screens, an account dropdown). */
+function HeaderBase({ brand, center, accountLabel = "Account", accountButtonProps, className, children, ...rest }: HeaderProps) {
   const brandRef = useWordmarkShape(brand);
+  const narrow = useNarrowScreen();
   return (
     <header className={cx("ui-header", className)} {...rest}>
       {brand != null && (
@@ -66,7 +174,19 @@ function HeaderBase({ brand, center, className, children, ...rest }: HeaderProps
         </div>
       )}
       {center != null && <div className="ui-header-center">{center}</div>}
-      <div className="ui-header-actions">{children}</div>
+      {narrow ? (
+        <Dropdown
+          className="ui-header-account"
+          label={accountLabel}
+          icon={<Icon name="user" />}
+          align="end"
+          buttonProps={{ variant: "quiet", ...accountButtonProps }}
+        >
+          {children}
+        </Dropdown>
+      ) : (
+        <div className="ui-header-actions">{children}</div>
+      )}
     </header>
   );
 }

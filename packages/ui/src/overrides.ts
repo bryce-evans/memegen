@@ -26,6 +26,7 @@ import type { ColorFieldProps, FieldProps, SelectFieldProps, SliderProps, TextAr
 import type { IconProps } from "./components/Icon.tsx";
 import type {
   AppShellProps,
+  DropdownProps,
   HeaderProps,
   InlineProps,
   NavItemProps,
@@ -54,6 +55,7 @@ export interface ComponentOverrides {
   ChipGroup: ComponentType<ChipGroupProps>;
   ColorField: ComponentType<ColorFieldProps>;
   Dialog: ComponentType<DialogProps>;
+  Dropdown: ComponentType<DropdownProps>;
   EmptyState: ComponentType<EmptyStateProps>;
   Field: ComponentType<FieldProps>;
   FileButton: ComponentType<FileButtonProps>;

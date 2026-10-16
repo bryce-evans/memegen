@@ -804,7 +804,7 @@
   font-size: 14px;
 }
 
-/* ---- narrow: drawer collapses into rows of pills ------------------------------- */
+/* ---- narrow: the drawer drops down from the menu button and scrolls itself ------------------------------------ */
 
 @media (max-width: 760px) {
   :root[data-skin="matte"] .ui-header {
@@ -817,21 +817,5 @@
     max-height: none;
     overflow: visible;
     padding-bottom: 0;
-  }
-  :root[data-skin="matte"] .ui-sidebar-section {
-    gap: var(--ui-space-2);
-    padding-bottom: var(--ui-space-2);
-  }
-  :root[data-skin="matte"] .ui-sidebar-section + .ui-sidebar-section {
-    padding-top: var(--ui-space-2);
-    border-top: none;
-  }
-  :root[data-skin="matte"] .ui-sidebar-heading {
-    min-height: 32px;
-    padding: 0 var(--ui-space-3) 0 var(--ui-space-2);
-  }
-  :root[data-skin="matte"] :is(.ui-nav-item, .ui-segmented--vertical .ui-segmented-option) {
-    min-height: 36px;
-    padding: 0 var(--ui-space-5) 0 var(--ui-space-4);
   }
 }

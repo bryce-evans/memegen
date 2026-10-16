@@ -1,5 +1,8 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import butterfly from "../assets/intro/butterfly.png";
 import catMeme from "../assets/intro/cat-meme.png";
+import chad from "../assets/intro/chad.png";
+import coffeeMug from "../assets/intro/coffee-mug.png";
 import cheers from "../assets/intro/cheers.png";
 import datBoi from "../assets/intro/dat-boi.png";
 import doge from "../assets/intro/doge.png";
@@ -8,6 +11,8 @@ import pepe from "../assets/intro/pepe.png";
 import pooh from "../assets/intro/pooh.png";
 import soyjack1 from "../assets/intro/soyjack1.png";
 import soyjack2 from "../assets/intro/soyjack2.png";
+import thisIsFine from "../assets/intro/this-is-fine.png";
+import thisIsFineFire from "../assets/intro/this-is-fine-fire.png";
 
 /**
  * Where a scattered sprite lands: its center `x`/`y` right of and below the viewport center, and its width `size`,
@@ -25,15 +30,17 @@ const SCATTERED: (Landing & { name: string; src: string })[] = [
   { name: "doge", src: doge, x: -34, y: 30, size: 19, spin: 4 },
   { name: "pepe", src: pepe, x: -18, y: -31, size: 15, spin: -6 },
   { name: "cat-meme", src: catMeme, x: 44, y: -6, size: 16, spin: 5 },
-  { name: "cheers", src: cheers, x: -42, y: 7, size: 13, spin: -4 },
+  { name: "cheers", src: cheers, x: -45, y: 3, size: 13, spin: -4 },
   { name: "pooh", src: pooh, x: 3, y: 31, size: 34, spin: 4 },
+  { name: "chad", src: chad, x: 61, y: -21, size: 24, spin: -6 },
+  { name: "butterfly", src: butterfly, x: -41, y: -38, size: 11, spin: -8 },
+  { name: "coffee-mug", src: coffeeMug, x: 72, y: 21, size: 18, spin: 3 },
 ];
 
 /**
- * Two soyjaks, one pointing at the other: separate images flying as one sprite, side by side with bottoms aligned.
- * Each part's `share` is its width as a fraction of the group (from the classic meme's 882 px frame: 458 px left,
- * 374 px right); `dx`/`dy` nudge it from that layout in % of the group's width, so nudges scale with `size`; `scale`
- * and `rotate` (degrees) adjust it about its center.
+ * Separate images flying as one sprite, side by side with bottoms aligned, later parts painted over earlier ones.
+ * Each part's `share` is its width as a fraction of the group; `dx`/`dy` nudge it from that layout in % of the
+ * group's width, so nudges scale with `size`; `scale` and `rotate` (degrees) adjust it about its center.
  */
 interface Part {
   name: string;
@@ -44,16 +51,32 @@ interface Part {
   scale: number;
   rotate: number;
 }
-const SOYJAKS: Landing & { parts: Part[] } = {
-  x: 36,
-  y: 25,
-  size: 38,
-  spin: 2,
-  parts: [
-    { name: "soyjack1", src: soyjack1, share: 458 / 882, dx: 16, dy: 17, scale: 0.8, rotate: 2 },
-    { name: "soyjack2", src: soyjack2, share: 374 / 882, dx: 0, dy: 0, scale: 1, rotate: -2 },
-  ],
-};
+const GROUPS: (Landing & { name: string; parts: Part[] })[] = [
+  /** Two soyjaks, one pointing at the other (the classic meme's 882 px frame: 458 px left, 374 px right). */
+  {
+    name: "soyjaks",
+    x: 36,
+    y: 25,
+    size: 38,
+    spin: 2,
+    parts: [
+      { name: "soyjack1", src: soyjack1, share: 458 / 882, dx: 16, dy: 17, scale: 0.8, rotate: 2 },
+      { name: "soyjack2", src: soyjack2, share: 374 / 882, dx: 0, dy: 0, scale: 1, rotate: -2 },
+    ],
+  },
+  /** This is fine: the dog in front, its fire just left of and behind him, overlapping a little (315 px + 300 px). */
+  {
+    name: "this-is-fine",
+    x: -67,
+    y: 23,
+    size: 30,
+    spin: -3,
+    parts: [
+      { name: "this-is-fine-fire", src: thisIsFineFire, share: 315 / 615, dx: 26, dy: -30, scale: 1.2, rotate: 0 },
+      { name: "this-is-fine-dog", src: thisIsFine, share: 300 / 615, dx: 0, dy: 0, scale: 1, rotate: 0 },
+    ],
+  },
+];
 
 function partStyle({ share, dx, dy, scale, rotate }: Part): CSSProperties {
   return {
@@ -66,7 +89,7 @@ function partStyle({ share, dx, dy, scale, rotate }: Part): CSSProperties {
 }
 
 /** Every image, dat boi and nyan cat included; the burst starts once all have loaded (or failed), so none pops in mid-flight. */
-const IMAGE_COUNT = SCATTERED.length + SOYJAKS.parts.length + 2;
+const IMAGE_COUNT = SCATTERED.length + GROUPS.reduce((n, g) => n + g.parts.length, 0) + 2;
 
 function landingStyle({ x, y, size, spin }: Landing): CSSProperties {
   return {
@@ -151,20 +174,22 @@ export function IntroBurst({ children }: { children: ReactNode }) {
             onError={onLoad}
           />
         ))}
-        <div className="intro-sprite intro-group" data-sprite="soyjaks" style={landingStyle(SOYJAKS)}>
-          {SOYJAKS.parts.map((p) => (
-            <img
-              key={p.name}
-              data-testid="intro-image"
-              data-sprite={p.name}
-              src={p.src}
-              alt=""
-              style={partStyle(p)}
-              onLoad={onLoad}
-              onError={onLoad}
-            />
-          ))}
-        </div>
+        {GROUPS.map((g) => (
+          <div key={g.name} className="intro-sprite intro-group" data-sprite={g.name} style={landingStyle(g)}>
+            {g.parts.map((p) => (
+              <img
+                key={p.name}
+                data-testid="intro-image"
+                data-sprite={p.name}
+                src={p.src}
+                alt=""
+                style={partStyle(p)}
+                onLoad={onLoad}
+                onError={onLoad}
+              />
+            ))}
+          </div>
+        ))}
       </div>
       <div className="intro-dat-boi" aria-hidden="true">
         <img src={datBoi} alt="" data-testid="intro-image" data-sprite="dat-boi" onLoad={onLoad} onError={onLoad} />

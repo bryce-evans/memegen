@@ -77,7 +77,7 @@
   animation: intro-pop 0.9s var(--intro-spring) both paused;
 }
 /*
- * Several images flying as one sprite (the soyjaks): side by side, bottoms aligned, spread to the edges. Each part
+ * Several images flying as one sprite (the soyjaks, this is fine): side by side, bottoms aligned, spread to the edges. Each part
  * moves by its --dx/--dy in cqw (% of the group's width, via the size container), so nudges scale with the group,
  * and takes its own --scale and --rotate about its center.
  */

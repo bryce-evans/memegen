@@ -1,5 +1,5 @@
-import { CAPTION_SYSTEM_PROMPT, CAPTIONS_GEMINI_SCHEMA, captionUserPrompt, parseCaptionJson } from "./captions.ts";
-import { AiProviderError, providerError, type AiCaptionRequest, type AiImageRequest, type AiProvider } from "./types.ts";
+import { EDIT_GEMINI_SCHEMA, editSystemPrompt, editUserPrompt, parseEditJson } from "./quickEdit.ts";
+import { AiProviderError, providerError, type AiEditCall, type AiImageRequest, type AiProvider } from "./types.ts";
 
 interface GenerateContentResponse {
   promptFeedback?: { blockReason?: string };
@@ -8,7 +8,7 @@ interface GenerateContentResponse {
 
 /**
  * Google Gemini at `POST {baseUrl}/models/{model}:generateContent`: Nano Banana image edits with the image inline,
- * and caption placement from a text model answering JSON.
+ * and Quick Creator edits from a text model answering JSON.
  */
 export class GeminiProvider implements AiProvider {
   readonly id = "gemini";
@@ -36,9 +36,9 @@ export class GeminiProvider implements AiProvider {
     return result;
   }
 
-  async edit({ apiKey, prompt, image, signal }: AiImageRequest): Promise<Uint8Array<ArrayBuffer>> {
+  async edit({ apiKey, prompt, image, model, signal }: AiImageRequest): Promise<Uint8Array<ArrayBuffer>> {
     const body = await this.generate(
-      this.imageModel,
+      model ?? this.imageModel,
       apiKey,
       {
         contents: [
@@ -57,19 +57,19 @@ export class GeminiProvider implements AiProvider {
     throw new AiProviderError(422, `returned no image${text ? `: ${text}` : candidate?.finishReason ? ` (${candidate.finishReason})` : ""}`);
   }
 
-  async caption({ apiKey, text, boxes, image, signal }: AiCaptionRequest): Promise<unknown> {
-    const parts: unknown[] = [{ text: captionUserPrompt({ text, boxes, image }) }];
+  async quickEdit({ apiKey, instructions, request, image, model, signal }: AiEditCall): Promise<unknown> {
+    const parts: unknown[] = [{ text: editUserPrompt({ request, image }) }];
     if (image) parts.push({ inlineData: { mimeType: image.mime, data: Buffer.from(image.data).toString("base64") } });
     const body = await this.generate(
-      this.textModel,
+      model ?? this.textModel,
       apiKey,
       {
-        systemInstruction: { parts: [{ text: CAPTION_SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: editSystemPrompt(instructions) }] },
         contents: [{ parts }],
-        generationConfig: { responseMimeType: "application/json", responseSchema: CAPTIONS_GEMINI_SCHEMA },
+        generationConfig: { responseMimeType: "application/json", responseSchema: EDIT_GEMINI_SCHEMA },
       },
       signal,
     );
-    return parseCaptionJson(body.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text);
+    return parseEditJson(body.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text);
   }
 }

@@ -2,84 +2,181 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { composedSize, composeFrame, context2d, decodeMedia, ensureLayerFonts, ensureLayerImages, type DecodedMedia } from "@memegen/render";
 import {
+  AI_EDIT_FONTS_MAX,
+  AI_AGENT_NAME_MAX_LENGTH,
+  AI_INSTRUCTIONS_MAX_LENGTH,
   AI_PROVIDERS,
+  aiEditTarget,
+  applyAiEdit,
   extensionForMime,
-  TEXT_BOX_MIN,
+  layerLabels,
   TEXT_MAX_LENGTH,
-  topBottomLayers,
-  type AiCaptionsFields,
-  type AiProviderId,
   type Template,
 } from "@memegen/shared";
 import { Badge, Button, Icon, Inline, Panel, SelectField, Spinner, Stack, Text, TextArea, TextField } from "@memegen/ui";
-import { assetUrl, countTemplates, fetchAssetBlob, generateAiImage, listFonts, listTemplates, placeAiCaptions, uploadAsset } from "../api.ts";
-import { useAiKeys } from "../aiKeys.ts";
+import { assetUrl, countTemplates, fetchAssetBlob, generateAiImage, listFonts, listTemplates, requestAiEdit, uploadAsset } from "../api.ts";
+import { useAiAgents, validModel, type AiAgent } from "../aiAgents.ts";
 import { useUser } from "../auth.tsx";
 import { fileSlug } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { ErrorView, MediaView } from "./common.tsx";
-import { defaultFontId } from "./editor/session.ts";
+import { defaultFontId, templateLayers } from "./editor/session.ts";
 
-/** Profile (owner only): connect AI image providers with the user's own API keys, kept in this browser. */
-export function AiKeysPanel() {
+type AgentDraft = Omit<AiAgent, "id">;
+const EMPTY_DRAFT: AgentDraft = { name: "", provider: AI_PROVIDERS[0].id, apiKey: "", instructions: "", textModel: "", imageModel: "" };
+
+/**
+ * Profile (owner only): the user's Quick Creator agents. Each is a name, a provider with the user's own API key, its
+ * own instructions, and optional model overrides, kept in this browser.
+ */
+export function AiAgentsPanel() {
   const user = useUser();
-  const [keys, setKey] = useAiKeys(user.id);
-  const [drafts, setDrafts] = useState<Partial<Record<AiProviderId, string>>>({});
+  const { agents, save, remove } = useAiAgents(user.id);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState<AgentDraft>(EMPTY_DRAFT);
+  const current = agents.find((a) => a.id === editing);
+  const provider = AI_PROVIDERS.find((p) => p.id === draft.provider) ?? AI_PROVIDERS[0];
+  const set = (change: Partial<AgentDraft>) => setDraft((d) => ({ ...d, ...change }));
+  const reset = () => {
+    setEditing(null);
+    setDraft(EMPTY_DRAFT);
+  };
+  // Editing keeps the stored key unless a new one is typed.
+  const apiKey = draft.apiKey.trim() || current?.apiKey || "";
+  const modelError = (m: string) => (validModel(m) ? undefined : "Letters, digits, and . _ : - only");
+  const valid = draft.name.trim() !== "" && apiKey !== "" && validModel(draft.textModel) && validModel(draft.imageModel);
 
   return (
-    <Panel heading="AI image providers" data-testid="ai-keys">
+    <Panel heading="AI agents" data-testid="ai-agents">
       <Text tone="muted">
-        Add your own API key to generate images from a prompt and a background on the Create page. Keys stay in this
-        browser and are sent only with your AI requests; memegen never stores them.
+        Agents write your memes in the Quick Creator on the Create page. Each one uses your own API key and follows its
+        own instructions. Agents and keys stay in this browser and are sent only with your AI requests; memegen never
+        stores them.
       </Text>
       <Stack>
-        {AI_PROVIDERS.map((p) => {
-          const connected = Boolean(keys[p.id]);
-          const draft = drafts[p.id] ?? "";
-          return (
-            <form
-              key={p.id}
-              className="ai-key-row"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setKey(p.id, draft);
-                setDrafts((d) => ({ ...d, [p.id]: "" }));
+        {agents.length === 0 && <Text tone="muted">No agents yet.</Text>}
+        {agents.map((a) => (
+          <Inline key={a.id} className="ai-agent-row" data-testid="ai-agent" data-agent-name={a.name}>
+            <Text as="span">{a.name}</Text>
+            <Badge tone="neutral">{AI_PROVIDERS.find((p) => p.id === a.provider)?.label}</Badge>
+            <Button
+              variant="quiet"
+              onClick={() => {
+                setEditing(a.id);
+                setDraft({ ...a, apiKey: "" });
               }}
+              data-testid="ai-agent-edit"
             >
-              <Inline>
-                <Text as="span">{p.label}</Text>
-                <Badge tone={connected ? "success" : "neutral"} data-testid={`ai-key-status-${p.id}`} data-connected={connected}>
-                  {connected ? "Connected" : "Not connected"}
-                </Badge>
-                <a href={p.keyUrl} target="_blank" rel="noreferrer">
-                  Get a key
-                </a>
-              </Inline>
-              <Inline>
-                <TextField
-                  type="password"
-                  autoComplete="off"
-                  aria-label={`${p.label} API key`}
-                  placeholder={connected ? "Replace key…" : "Paste API key…"}
-                  value={draft}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
-                  data-testid={`ai-key-input-${p.id}`}
-                />
-                <Button type="submit" disabled={!draft.trim()} data-testid={`ai-key-save-${p.id}`}>
-                  Save
-                </Button>
-                {connected && (
-                  <Button variant="quiet" onClick={() => setKey(p.id, null)} data-testid={`ai-key-remove-${p.id}`}>
-                    Remove
-                  </Button>
-                )}
-              </Inline>
-            </form>
-          );
-        })}
+              Edit
+            </Button>
+            <Button
+              variant="quiet"
+              onClick={() => {
+                remove(a.id);
+                if (editing === a.id) reset();
+              }}
+              data-testid="ai-agent-remove"
+            >
+              Remove
+            </Button>
+          </Inline>
+        ))}
       </Stack>
+      <form
+        className="ai-agent-form"
+        data-testid="ai-agent-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!valid) return;
+          save({
+            id: current?.id ?? crypto.randomUUID(),
+            name: draft.name.trim(),
+            provider: draft.provider,
+            apiKey,
+            instructions: draft.instructions.trim(),
+            textModel: draft.textModel.trim(),
+            imageModel: draft.imageModel.trim(),
+          });
+          reset();
+        }}
+      >
+        <Stack>
+          <Text as="p">{current ? `Edit ${current.name}` : "Add an agent"}</Text>
+          <TextField
+            label="Name"
+            maxLength={AI_AGENT_NAME_MAX_LENGTH}
+            placeholder="Deadpan Dan"
+            value={draft.name}
+            onChange={(e) => set({ name: e.target.value })}
+            data-testid="ai-agent-name"
+          />
+          <SelectField
+            label="Provider"
+            value={draft.provider}
+            onChange={(e) => set({ provider: AI_PROVIDERS.find((p) => p.id === e.target.value)?.id ?? draft.provider })}
+            data-testid="ai-agent-provider"
+          >
+            {AI_PROVIDERS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            type="password"
+            autoComplete="off"
+            label="API key"
+            placeholder={current ? "Keep the current key…" : "Paste API key…"}
+            description={
+              <a href={provider.keyUrl} target="_blank" rel="noreferrer">
+                Get an API key from {provider.label}
+              </a>
+            }
+            value={draft.apiKey}
+            onChange={(e) => set({ apiKey: e.target.value })}
+            data-testid="ai-agent-key"
+          />
+          <TextArea
+            label="Instructions"
+            rows={3}
+            maxLength={AI_INSTRUCTIONS_MAX_LENGTH}
+            placeholder="Its style and voice, e.g. “Deadpan and lowercase; prefer Impact.”"
+            value={draft.instructions}
+            onChange={(e) => set({ instructions: e.target.value })}
+            data-testid="ai-agent-instructions"
+          />
+          <div className="ai-agent-models">
+            <TextField
+              label="Text model"
+              placeholder="Provider default"
+              value={draft.textModel}
+              error={modelError(draft.textModel)}
+              onChange={(e) => set({ textModel: e.target.value })}
+              data-testid="ai-agent-text-model"
+            />
+            <TextField
+              label="Image model"
+              placeholder="Provider default"
+              value={draft.imageModel}
+              error={modelError(draft.imageModel)}
+              onChange={(e) => set({ imageModel: e.target.value })}
+              data-testid="ai-agent-image-model"
+            />
+          </div>
+          <Inline>
+            <Button type="submit" variant="primary" disabled={!valid} data-testid="ai-agent-save">
+              {current ? "Save agent" : "Add agent"}
+            </Button>
+            {current && (
+              <Button variant="quiet" onClick={reset} data-testid="ai-agent-cancel">
+                Cancel
+              </Button>
+            )}
+          </Inline>
+        </Stack>
+      </form>
     </Panel>
   );
 }
@@ -87,25 +184,18 @@ export function AiKeysPanel() {
 /** Template search results shown under the Creator's search field. */
 const PICKER_LIMIT = 6;
 
-/** The template's own text boxes, as placement hints for the model (clamped into the media). */
-function captionHints(template: Template): AiCaptionsFields["boxes"] {
-  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-  return template.defaultLayers.flatMap((l) =>
-    l.type === "text" && !l.topSection
-      ? [{ x: clamp(l.x, 0, 1), y: clamp(l.y, 0, 1), width: clamp(l.maxWidth, TEXT_BOX_MIN, 1), height: clamp(l.maxHeight, TEXT_BOX_MIN, 1), text: l.text }]
-      : [],
-  );
-}
+/** One line of a box's text: line breaks would split it in the directions. */
+const oneLine = (text: string) => text.replace(/\s*\n\s*/g, " ");
 
 /**
- * The Text field's starting value for a template: its top and bottom text, labelled so the model knows where each
- * goes. Templates without boxes get the editor's own defaults; one box is the top text.
+ * The Describe field's starting value for a template: each text box's text after its label (the top section's
+ * first), so the agent knows which box each part goes in. Templates without boxes get the editor's own defaults.
  */
 function startingText(template: Template): string {
-  const boxes = template.defaultLayers.flatMap((l) => (l.type === "text" && !l.topSection ? [l.text.replace(/\s*\n\s*/g, " ")] : []));
-  const top = boxes.length ? boxes[0] : "TOP TEXT";
-  const bottom = boxes.length > 1 ? boxes.at(-1) : boxes.length ? "" : "BOTTOM TEXT";
-  return `top text: ${top}\nbottom text: ${bottom}`;
+  const layers = templateLayers(template, null);
+  const { boxes, topSection } = aiEditTarget(layers, layerLabels(layers));
+  const lines = boxes.map((b) => `${b.label}: ${oneLine(b.text)}`);
+  return (topSection === null ? lines : [`Top section: ${oneLine(topSection)}`, ...lines]).join("\n");
 }
 
 /** A random browsable template to start from; multi-panel ones (no single image) are skipped. */
@@ -119,17 +209,17 @@ async function randomTemplate(): Promise<Template | null> {
 }
 
 /**
- * Create page, top: a template (a random one to begin with) shown on a canvas, and a description of the meme
- * (starting as the template's own text). The description goes to the chosen AI provider, which splits its text into
- * placed captions and pulls out any change it asks for to the image; that change goes to the same provider as an image
- * edit, whose result becomes a new template like any new media. The editor then opens prefilled. AI calls use the
- * user's own key; with no description, the template simply opens.
+ * Create page, top: a template (a random one to begin with) shown on a canvas, and directions for the meme (starting
+ * as the template's own text). The directions go to the chosen agent as a `quick-creator/1` request; its answer
+ * rewrites the template's text boxes and top section (never their placement or timing), and any change it asks for to
+ * the picture goes to the agent's provider as an image edit, whose result becomes a new template like any new media.
+ * The editor then opens prefilled. With no directions, the template simply opens.
  */
 export function AiCreator() {
   const user = useUser();
   const navigate = useNavigate();
-  const [keys] = useAiKeys(user.id);
-  const [provider, setProvider] = useState<AiProviderId>(() => AI_PROVIDERS.find((p) => keys[p.id])?.id ?? AI_PROVIDERS[0].id);
+  const { agents } = useAiAgents(user.id);
+  const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [source, setSource] = useState<Template | null>(null);
   const [description, setDescription] = useState("");
@@ -138,10 +228,9 @@ export function AiCreator() {
   const results = useAsync(`ai-templates:${q}`, () => (q ? listTemplates({ q, limit: PICKER_LIMIT }) : Promise.resolve(null)));
   const start = useAsync("ai-random-template", randomTemplate);
   const create = useAction();
-  const apiKey = keys[provider];
-  const hasAnyKey = AI_PROVIDERS.some((p) => keys[p.id]);
+  const agent = agents.find((a) => a.id === agentId) ?? agents[0];
   const words = description.trim();
-  const blocked = !source || (words !== "" && !apiKey);
+  const blocked = !source || (words !== "" && !agent);
 
   // Set once the user searches or picks: the random starting template never replaces their choice.
   const touched = useRef(false);
@@ -160,26 +249,41 @@ export function AiCreator() {
 
   function run(from: Template) {
     void create.run(async (signal) => {
-      // No description: the template simply opens.
-      if (!words || !apiKey) {
+      // No directions: the template simply opens.
+      if (!words || !agent) {
         navigate(`/create?template=${from.id}`);
         return;
       }
-      const image = from.asset.kind === "image" ? await fetchAssetBlob(from.asset, signal) : null;
-      setStep("Reading the description…");
-      const placed = await placeAiCaptions({ provider, text: words, boxes: captionHints(from) }, image, apiKey, signal);
-      const state = placed.captions.length ? { captions: placed.captions } : undefined;
-      if (!placed.modification) {
+      const { provider, apiKey } = agent;
+      const [image, fonts] = await Promise.all([from.asset.kind === "image" ? fetchAssetBlob(from.asset, signal) : null, listFonts()]);
+      const base = templateLayers(from, defaultFontId(fonts.items));
+      setStep(`Asking ${agent.name}…`);
+      const edit = await requestAiEdit(
+        {
+          provider,
+          instructions: agent.instructions,
+          model: agent.textModel,
+          request: {
+            directions: words,
+            ...aiEditTarget(base, layerLabels(base)),
+            fonts: fonts.items.slice(0, AI_EDIT_FONTS_MAX).map((f) => ({ id: f.id, name: f.name })),
+          },
+        },
+        image,
+        apiKey,
+        signal,
+      );
+      const state = { layers: applyAiEdit(base, edit) };
+      // The API only returns an image edit when it got an image: GIF/video templates take text changes only.
+      if (!edit.imageEdit || !image) {
         navigate(`/create?template=${from.id}`, { state });
         return;
       }
-      // Only still images can be edited; GIF/video templates take placed text only.
-      if (!image) throw new Error("This template is a GIF or video, so its image can't be changed. Describe only its text.");
       setStep("Editing the image…");
-      const edited = await generateAiImage({ provider, prompt: placed.modification }, image, apiKey, signal);
-      // The edited image becomes a new template, named after its file: the modification.
+      const edited = await generateAiImage({ provider, prompt: edit.imageEdit, model: agent.imageModel }, image, apiKey, signal);
+      // The edited image becomes a new template, named after its file: the image edit.
       setStep("Uploading…");
-      const asset = await uploadAsset(edited, `${fileSlug(placed.modification)}${extensionForMime(edited.type) ?? ".png"}`, undefined, signal);
+      const asset = await uploadAsset(edited, `${fileSlug(edit.imageEdit)}${extensionForMime(edited.type) ?? ".png"}`, undefined, signal);
       navigate(`/create?newTemplate=${asset.id}`, { state });
     });
   }
@@ -245,20 +349,21 @@ export function AiCreator() {
             data-testid="ai-describe"
           />
           <Inline>
-            <SelectField
-              aria-label="AI provider"
-              className="ai-provider"
-              value={provider}
-              onChange={(e) => setProvider(AI_PROVIDERS.find((p) => p.id === e.target.value)?.id ?? provider)}
-              data-testid="ai-provider"
-            >
-              {AI_PROVIDERS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                  {keys[p.id] ? "" : " (no key)"}
-                </option>
-              ))}
-            </SelectField>
+            {agent && (
+              <SelectField
+                aria-label="Agent"
+                className="ai-agent-select"
+                value={agent.id}
+                onChange={(e) => setAgentId(e.target.value)}
+                data-testid="ai-agent-select"
+              >
+                {agents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </SelectField>
+            )}
             <Button
               variant="primary"
               icon={<Icon name="sparkle" />}
@@ -274,10 +379,10 @@ export function AiCreator() {
               </Button>
             )}
           </Inline>
-          {!hasAnyKey && (
-            <Text size="sm" tone="danger" className="ai-no-key" data-testid="ai-no-key">
-              <Link to={`/u/${encodeURIComponent(user.username)}?tab=ai`}>Add your API key</Link> in your profile to use a mod
-              or text.
+          {!agent && (
+            <Text size="sm" tone="danger" className="ai-no-agent" data-testid="ai-no-agent">
+              <Link to={`/u/${encodeURIComponent(user.username)}?tab=ai`}>Add an AI agent</Link> in your profile to have it
+              write your meme.
             </Text>
           )}
           {create.error !== null && <ErrorView error={create.error} testId="ai-error" />}
@@ -311,7 +416,7 @@ function TemplateCanvas({ template }: { template: Template }) {
       const [decoded, fonts] = await Promise.all([fetchAssetBlob(asset).then((blob) => decodeMedia(blob, kind)), listFonts()]);
       if (cancelled) return decoded.dispose();
       media = decoded;
-      const layers = template.defaultLayers.length ? template.defaultLayers : topBottomLayers(undefined, undefined, defaultFontId(fonts.items));
+      const layers = templateLayers(template, defaultFontId(fonts.items));
       const [frame, images] = await Promise.all([decoded.frame(0), ensureLayerImages(layers, assetUrl), ensureLayerFonts(layers, assetUrl)]);
       if (cancelled) return;
       // Drawn at the shown width × devicePixelRatio; CSS keeps the aspect ratio.

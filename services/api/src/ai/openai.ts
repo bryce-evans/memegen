@@ -1,5 +1,5 @@
-import { CAPTION_SYSTEM_PROMPT, CAPTIONS_JSON_SCHEMA, captionUserPrompt, parseCaptionJson } from "./captions.ts";
-import { AiProviderError, providerError, type AiCaptionRequest, type AiImageRequest, type AiProvider } from "./types.ts";
+import { EDIT_JSON_SCHEMA, editSystemPrompt, editUserPrompt, parseEditJson } from "./quickEdit.ts";
+import { AiProviderError, providerError, type AiEditCall, type AiImageRequest, type AiProvider } from "./types.ts";
 
 interface ChatCompletionResponse {
   choices?: { message?: { content?: string | null; refusal?: string | null } }[];
@@ -7,7 +7,7 @@ interface ChatCompletionResponse {
 
 /**
  * OpenAI: GPT Image edits at `POST {baseUrl}/images/edits` (multipart; GPT image models always answer with base64),
- * and caption placement at `POST {baseUrl}/chat/completions` with a strict JSON schema.
+ * and Quick Creator edits at `POST {baseUrl}/chat/completions` with a strict JSON schema.
  */
 export class OpenAiProvider implements AiProvider {
   readonly id = "openai";
@@ -22,9 +22,9 @@ export class OpenAiProvider implements AiProvider {
     this.textModel = textModel;
   }
 
-  async edit({ apiKey, prompt, image, signal }: AiImageRequest): Promise<Uint8Array<ArrayBuffer>> {
+  async edit({ apiKey, prompt, image, model, signal }: AiImageRequest): Promise<Uint8Array<ArrayBuffer>> {
     const form = new FormData();
-    form.set("model", this.imageModel);
+    form.set("model", model ?? this.imageModel);
     form.set("prompt", prompt);
     form.set("image", new Blob([image.data], { type: image.mime }), `background${image.ext}`);
     const res = await fetch(`${this.baseUrl}/images/edits`, {
@@ -40,19 +40,19 @@ export class OpenAiProvider implements AiProvider {
     return Buffer.from(b64, "base64");
   }
 
-  async caption({ apiKey, text, boxes, image, signal }: AiCaptionRequest): Promise<unknown> {
-    const content: unknown[] = [{ type: "text", text: captionUserPrompt({ text, boxes, image }) }];
+  async quickEdit({ apiKey, instructions, request, image, model, signal }: AiEditCall): Promise<unknown> {
+    const content: unknown[] = [{ type: "text", text: editUserPrompt({ request, image }) }];
     if (image) content.push({ type: "image_url", image_url: { url: `data:${image.mime};base64,${Buffer.from(image.data).toString("base64")}` } });
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({
-        model: this.textModel,
+        model: model ?? this.textModel,
         messages: [
-          { role: "system", content: CAPTION_SYSTEM_PROMPT },
+          { role: "system", content: editSystemPrompt(instructions) },
           { role: "user", content },
         ],
-        response_format: { type: "json_schema", json_schema: { name: "captions", strict: true, schema: CAPTIONS_JSON_SCHEMA } },
+        response_format: { type: "json_schema", json_schema: { name: "quick_creator_edit", strict: true, schema: EDIT_JSON_SCHEMA } },
       }),
       signal,
     });
@@ -60,6 +60,6 @@ export class OpenAiProvider implements AiProvider {
     const body = (await res.json()) as ChatCompletionResponse;
     const message = body.choices?.[0]?.message;
     if (message?.refusal) throw new AiProviderError(422, message.refusal);
-    return parseCaptionJson(message?.content);
+    return parseEditJson(message?.content);
   }
 }

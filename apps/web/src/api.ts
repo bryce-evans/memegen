@@ -1,7 +1,7 @@
 import { AI_KEY_HEADER, ASSETS_QUERY_MAX_LIMIT, assetContentPath } from "@memegen/shared";
 import type {
-  AiCaptionsFields,
-  AiCaptionsResponse,
+  AiEdit,
+  AiEditFields,
   AiImageFields,
   Asset,
   Comment,
@@ -265,34 +265,36 @@ export const createComment = (memeId: string, body: string, parentId: string | n
 export const deleteComment = (id: string) => request<void>(`/api/comments/${id}`, { method: "DELETE" });
 
 /**
- * The prompt and background image go to `provider` with the user's own `apiKey` (forwarded, never stored); resolves to
- * the generated image. Nothing is saved until the caller uploads the result.
+ * The prompt and background image go to `provider` (its `model`, else the server's default) with the user's own
+ * `apiKey` (forwarded, never stored); resolves to the generated image. Nothing is saved until the caller uploads it.
  */
-export async function generateAiImage({ provider, prompt }: AiImageFields, image: Blob, apiKey: string, signal?: AbortSignal): Promise<Blob> {
+export async function generateAiImage({ provider, prompt, model }: AiImageFields, image: Blob, apiKey: string, signal?: AbortSignal): Promise<Blob> {
   const form = new FormData();
   form.append("provider", provider);
   form.append("prompt", prompt);
+  if (model) form.append("model", model);
   form.append("image", image, "background");
   const res = await send("/api/ai/images", { method: "POST", body: form, headers: { [AI_KEY_HEADER]: apiKey }, signal });
   return res.blob();
 }
 
 /**
- * The description, the template's own text boxes (hints), and optionally the image go to `provider` with the user's
- * own `apiKey`; the model splits the description's text into placed captions and pulls out any change it asks for to
- * the image. Nothing is stored.
+ * A `quick-creator/1` request (the user's directions and the template's text boxes), the agent's instructions, and
+ * optionally the still image go to `provider` with the user's own `apiKey`; resolves to the agent's checked edit.
+ * Nothing is stored.
  */
-export async function placeAiCaptions(
-  { provider, text, boxes = [] }: AiCaptionsFields,
+export async function requestAiEdit(
+  { provider, instructions = "", model, request }: AiEditFields,
   image: Blob | null,
   apiKey: string,
   signal?: AbortSignal,
-): Promise<AiCaptionsResponse> {
+): Promise<AiEdit> {
   const form = new FormData();
   form.append("provider", provider);
-  form.append("text", text);
-  form.append("boxes", JSON.stringify(boxes));
+  form.append("instructions", instructions);
+  if (model) form.append("model", model);
+  form.append("request", JSON.stringify(request));
   if (image) form.append("image", image, "image");
-  const res = await send("/api/ai/captions", { method: "POST", body: form, headers: { [AI_KEY_HEADER]: apiKey }, signal });
-  return (await res.json()) as AiCaptionsResponse;
+  const res = await send("/api/ai/edit", { method: "POST", body: form, headers: { [AI_KEY_HEADER]: apiKey }, signal });
+  return (await res.json()) as AiEdit;
 }

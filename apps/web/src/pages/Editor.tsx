@@ -1,5 +1,5 @@
 import { useLocation, useSearchParams } from "react-router-dom";
-import { aiCaptionSchema, type AiCaption } from "@memegen/shared";
+import { layersSchema, type Layer } from "@memegen/shared";
 import { PageHeader, Spinner } from "@memegen/ui";
 import { ErrorView } from "../components/common.tsx";
 import { CreateStart } from "../components/editor/CreateStart.tsx";
@@ -7,10 +7,10 @@ import { MediaWorkspace } from "../components/editor/MediaWorkspace.tsx";
 import { PanelWorkspace } from "../components/editor/PanelWorkspace.tsx";
 import { EDITOR_TITLES, sourceRef, useEditorSession, type SourceRef } from "../components/editor/session.ts";
 
-/** The AI Creator's captions from history state (`{ captions }`); anything else (no state, stale shapes) is none. */
-function stateCaptions(state: unknown): AiCaption[] | null {
-  if (typeof state !== "object" || state === null || !("captions" in state)) return null;
-  const parsed = aiCaptionSchema.array().safeParse(state.captions);
+/** The Quick Creator's edited layers from history state (`{ layers }`); anything else (no state, stale shapes) is none. */
+function stateLayers(state: unknown): Layer[] | null {
+  if (typeof state !== "object" || state === null || !("layers" in state)) return null;
+  const parsed = layersSchema.safeParse(state.layers);
   return parsed.success ? parsed.data : null;
 }
 
@@ -23,11 +23,11 @@ export function Editor() {
   const [params] = useSearchParams();
   const ref = sourceRef(params);
   // Remount whenever the query string changes (new template/meme/upload).
-  return ref ? <EditorSession key={location.search} source={ref} captions={stateCaptions(location.state)} /> : <CreateStart />;
+  return ref ? <EditorSession key={location.search} source={ref} aiLayers={stateLayers(location.state)} /> : <CreateStart />;
 }
 
-function EditorSession({ source, captions }: { source: SourceRef; captions: AiCaption[] | null }) {
-  const { session, error } = useEditorSession(source, captions);
+function EditorSession({ source, aiLayers }: { source: SourceRef; aiLayers: Layer[] | null }) {
+  const { session, error } = useEditorSession(source, aiLayers);
   if (session) return session.type === "panels" ? <PanelWorkspace session={session} /> : <MediaWorkspace session={session} />;
   return (
     <section className="editor-start">

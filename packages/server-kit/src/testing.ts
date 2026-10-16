@@ -44,20 +44,24 @@ export function encodePng(width: number, height: number, rgb?: Uint8Array): Uint
 export const AI_STUB_KEY = "stub-key";
 /** Pixel size of the stub's result image (distinct from any fixture, so a spec can tell it came back). */
 export const AI_STUB_RESULT = { width: 48, height: 32 } as const;
-/** A prompt or caption text containing this is refused like a content-policy rejection. */
+/** Directions or a prompt containing this are refused like a content-policy rejection. */
 export const AI_STUB_REFUSE = "[refuse]";
 
-/** What an accepted image edit received: the prompt and the background image's mime and size. */
+/** What an accepted image edit received: the prompt, the model, and the background image's mime and size. */
 export interface AiStubImageCall {
+  kind: "image";
   prompt: string;
+  model: string;
   mime: string;
   bytes: number;
 }
-/** What an accepted caption placement received: the user's text, the template's boxes, and whether an image came along. */
-export interface AiStubCaptionCall {
-  kind: "captions";
-  text: string;
-  boxes: unknown[];
+/** What an accepted Quick Creator edit received: the directions, the box ids, the agent's instructions and model, and whether an image came along. */
+export interface AiStubEditCall {
+  kind: "edit";
+  directions: string;
+  boxIds: string[];
+  instructions: string;
+  model: string;
   hasImage: boolean;
 }
 
@@ -65,40 +69,55 @@ export interface AiStub {
   /** `OPENAI_BASE_URL` and `GEMINI_BASE_URL` values pointing at the stub. */
   urls: { openai: string; gemini: string };
   /** What the last accepted call received. */
-  last: AiStubImageCall | AiStubCaptionCall | null;
+  last: AiStubImageCall | AiStubEditCall | null;
   close(): Promise<void>;
 }
 
+interface StubEditRequest {
+  directions: string;
+  boxes: { id: string; label: string }[];
+  fonts: { id: string; name: string }[];
+}
+
 /**
- * The request the API's caption prompt carries as JSON after `Request (JSON):` (`captionUserPrompt` in
- * services/api), and the stub's deterministic answer: lines starting `mod:` are the image modification (joined, else
- * null); every other line is a caption, any `<position> text:` label dropped, empty ones skipped, centered and spread
- * top to bottom.
+ * The request the API's edit prompt carries as JSON after `Request (JSON):` (`editUserPrompt` in services/api), and
+ * the stub's deterministic answer to its directions, line by line: `mod: …` is the image edit (joined, else null);
+ * `top section: …` the top section's text ("" removes it); `font: <name>` puts every box in that font; `<box label>:
+ * …` that box's text; any other line goes to the next box not yet given text. Extra lines are dropped.
  */
-function stubCaptions(prompt: string): {
-  text: string;
-  boxes: unknown[];
-  answer: { captions: { text: string; x: number; y: number; width: number; height: number }[]; modification: string | null };
-} {
+function stubEdit(prompt: string): { request: StubEditRequest; answer: unknown } {
   const marker = "Request (JSON):\n";
-  const request = JSON.parse(prompt.slice(prompt.indexOf(marker) + marker.length)) as { text: string; boxes: unknown[] };
+  const request = JSON.parse(prompt.slice(prompt.indexOf(marker) + marker.length)) as StubEditRequest;
+  const texts = new Map<string, string>();
   const mods: string[] = [];
-  const lines = request.text.split("\n").flatMap((line) => {
-    const mod = /^\s*mod:(.*)$/i.exec(line);
-    if (mod) {
-      if (mod[1]!.trim()) mods.push(mod[1]!.trim());
-      return [];
-    }
-    const text = line.replace(/^\s*\w+ text:/i, "").trim();
-    return text ? [text] : [];
-  });
-  const captions = lines.map((text, i) => ({ text, x: 0.5, y: lines.length === 1 ? 0.1 : 0.1 + (0.8 * i) / (lines.length - 1), width: 0.9, height: 0.2 }));
-  return { text: request.text, boxes: request.boxes, answer: { captions, modification: mods.length ? mods.join(" ") : null } };
+  let topSection: string | null = null;
+  let fontId: string | null = null;
+  const free: string[] = [];
+  for (const line of request.directions.split("\n")) {
+    const [, label = "", rest = ""] = /^\s*([^:]+):(.*)$/.exec(line) ?? [];
+    const key = label.trim().toLowerCase();
+    const box = request.boxes.find((b) => b.label.toLowerCase() === key);
+    if (key === "mod") mods.push(rest.trim());
+    else if (key === "top section") topSection = rest.trim();
+    else if (key === "font") fontId = request.fonts.find((f) => f.name.toLowerCase() === rest.trim().toLowerCase())?.id ?? null;
+    else if (box) texts.set(box.id, rest.trim());
+    else if (line.trim()) free.push(line.trim());
+  }
+  for (const box of request.boxes) if (!texts.has(box.id) && free.length) texts.set(box.id, free.shift()!);
+  const boxes = request.boxes.flatMap((b) => (texts.has(b.id) || fontId ? [{ id: b.id, text: texts.get(b.id) ?? null, fontId }] : []));
+  return { request, answer: { boxes, topSection, imageEdit: mods.filter(Boolean).join(" ") || null } };
+}
+
+/** The agent's instructions: whatever follows the `Agent instructions …:` line of the system prompt (`editSystemPrompt`). */
+function stubInstructions(system: string): string {
+  const at = system.search(/^Agent instructions.*:$/m);
+  return at < 0 ? "" : system.slice(system.indexOf("\n", at) + 1);
 }
 
 /**
  * A local stand-in for the OpenAI image-edit and chat-completions endpoints and Gemini generateContent (images, and
- * JSON answers for captions), speaking each wire format: tests exercise the real adapters without keys or network.
+ * JSON answers for Quick Creator edits), speaking each wire format: tests exercise the real adapters without keys or
+ * network.
  */
 export async function startAiStub(port = 0): Promise<AiStub> {
   const result = Buffer.from(encodePng(AI_STUB_RESULT.width, AI_STUB_RESULT.height, new Uint8Array(AI_STUB_RESULT.width * AI_STUB_RESULT.height * 3).fill(200)));
@@ -114,12 +133,20 @@ export async function startAiStub(port = 0): Promise<AiStub> {
     const header = (name: string) => req.headers[name];
     if (req.url === "/openai/v1/chat/completions") {
       if (header("authorization") !== `Bearer ${AI_STUB_KEY}`) return json(res, 401, { error: { message: "Incorrect API key provided" } });
-      const body = (await request.json()) as { messages: { role: string; content: string | { type: string; text?: string }[] }[] };
+      const body = (await request.json()) as { model: string; messages: { role: string; content: string | { type: string; text?: string }[] }[] };
+      const system = body.messages.find((m) => m.role === "system")!.content as string;
       const user = body.messages.find((m) => m.role === "user")!.content as { type: string; text?: string }[];
-      const placed = stubCaptions(user.find((p) => p.type === "text")!.text!);
-      if (placed.text.includes(AI_STUB_REFUSE)) return json(res, 200, { choices: [{ message: { role: "assistant", content: null, refusal: "I can't help with that." } }] });
-      stub.last = { kind: "captions", text: placed.text, boxes: placed.boxes, hasImage: user.some((p) => p.type === "image_url") };
-      return json(res, 200, { choices: [{ message: { role: "assistant", content: JSON.stringify(placed.answer), refusal: null } }] });
+      const { request: edit, answer } = stubEdit(user.find((p) => p.type === "text")!.text!);
+      if (edit.directions.includes(AI_STUB_REFUSE)) return json(res, 200, { choices: [{ message: { role: "assistant", content: null, refusal: "I can't help with that." } }] });
+      stub.last = {
+        kind: "edit",
+        directions: edit.directions,
+        boxIds: edit.boxes.map((b) => b.id),
+        instructions: stubInstructions(system),
+        model: body.model,
+        hasImage: user.some((p) => p.type === "image_url"),
+      };
+      return json(res, 200, { choices: [{ message: { role: "assistant", content: JSON.stringify(answer), refusal: null } }] });
     }
     if (req.url === "/openai/v1/images/edits") {
       if (header("authorization") !== `Bearer ${AI_STUB_KEY}`) return json(res, 401, { error: { message: "Incorrect API key provided" } });
@@ -127,26 +154,36 @@ export async function startAiStub(port = 0): Promise<AiStub> {
       const prompt = String(form.get("prompt"));
       const image = form.get("image") as File;
       if (prompt.includes(AI_STUB_REFUSE)) return json(res, 400, { error: { message: "Your request was rejected by the safety system." } });
-      stub.last = { prompt, mime: image.type, bytes: image.size };
+      stub.last = { kind: "image", prompt, model: String(form.get("model")), mime: image.type, bytes: image.size };
       return json(res, 200, { data: [{ b64_json: result.toString("base64") }] });
     }
-    if (/^\/gemini\/v1beta\/models\/[^/]+:generateContent$/.test(req.url ?? "")) {
+    const gemini = /^\/gemini\/v1beta\/models\/([^/]+):generateContent$/.exec(req.url ?? "");
+    if (gemini) {
       if (header("x-goog-api-key") !== AI_STUB_KEY) return json(res, 400, { error: { message: "API key not valid. Please pass a valid API key." } });
       const body = (await request.json()) as {
+        systemInstruction?: { parts: { text: string }[] };
         contents: { parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] }[];
         generationConfig?: { responseMimeType?: string };
       };
+      const model = decodeURIComponent(gemini[1]!);
       const parts = body.contents[0]!.parts;
       const prompt = parts.find((p) => p.text)?.text ?? "";
       if (body.generationConfig?.responseMimeType === "application/json") {
-        const placed = stubCaptions(prompt);
-        if (placed.text.includes(AI_STUB_REFUSE)) return json(res, 200, { promptFeedback: { blockReason: "SAFETY" } });
-        stub.last = { kind: "captions", text: placed.text, boxes: placed.boxes, hasImage: parts.some((p) => p.inlineData) };
-        return json(res, 200, { candidates: [{ content: { parts: [{ text: JSON.stringify(placed.answer) }] } }] });
+        const { request: edit, answer } = stubEdit(prompt);
+        if (edit.directions.includes(AI_STUB_REFUSE)) return json(res, 200, { promptFeedback: { blockReason: "SAFETY" } });
+        stub.last = {
+          kind: "edit",
+          directions: edit.directions,
+          boxIds: edit.boxes.map((b) => b.id),
+          instructions: stubInstructions(body.systemInstruction?.parts[0]?.text ?? ""),
+          model,
+          hasImage: parts.some((p) => p.inlineData),
+        };
+        return json(res, 200, { candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] });
       }
       const image = parts.find((p) => p.inlineData)!.inlineData!;
       if (prompt.includes(AI_STUB_REFUSE)) return json(res, 200, { candidates: [{ content: { parts: [{ text: "I can't make that image." }] } }] });
-      stub.last = { prompt, mime: image.mimeType, bytes: Buffer.from(image.data, "base64").byteLength };
+      stub.last = { kind: "image", prompt, model, mime: image.mimeType, bytes: Buffer.from(image.data, "base64").byteLength };
       return json(res, 200, { candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: result.toString("base64") } }] } }] });
     }
     json(res, 404, { error: { message: "not found" } });

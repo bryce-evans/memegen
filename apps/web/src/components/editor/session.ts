@@ -2,14 +2,11 @@ import { useEffect, useState } from "react";
 import { decodeMedia, loadAssetImages, type AssetImages, type DecodedMedia } from "@memegen/render";
 import {
   PANEL_FONT_SIZE_DEFAULT,
-  newTextLayer,
   topBottomLayers,
-  type AiCaption,
   type Asset,
   type Meme,
   type PanelSet,
   type Template,
-  type TextLayer,
   type Layer,
   type UploadLimits,
   type User,
@@ -81,6 +78,11 @@ export function defaultFontId(fonts: Asset[]): string | null {
   return (fonts.find((f) => f.name.toLowerCase() === "impact") ?? fonts[0])?.id ?? null;
 }
 
+/** A template's text as it opens: its default layers, or the classic top/bottom boxes (in `fontId`) when it has none. */
+export function templateLayers(template: Template, fontId: string | null): Layer[] {
+  return template.defaultLayers.length ? template.defaultLayers : topBottomLayers(undefined, undefined, fontId);
+}
+
 /** Editor page titles: shown while a source loads, and as the header of the template-authoring editors. */
 export const EDITOR_TITLES: Record<SourceRef["kind"], string> = {
   meme: "Edit meme",
@@ -121,28 +123,16 @@ async function panelSource(source: Source | { kind: "new-panels" }): Promise<Pan
   }
 }
 
-/** Look carried over from a template's first text box to AI-placed captions: font, size, colors, style. */
-function captionStyle(source: Source): Partial<TextLayer> {
-  const base = source.kind === "template" ? source.template.defaultLayers.find((l): l is TextLayer => l.type === "text" && !l.topSection) : undefined;
-  if (!base) return {};
-  const { fontAssetId, fontSize, color, strokeColor, strokeWidth, align, textStyle } = base;
-  return { fontAssetId, fontSize, color, strokeColor, strokeWidth, align, textStyle };
-}
+/** Layers for a meme made from a template or new media, with fresh ids: they become the meme's own. */
+const withFreshIds = (layers: readonly Layer[]): Layer[] => layers.map((l) => ({ ...structuredClone(l), id: crypto.randomUUID() }));
 
-function initialLayers(source: Source, fontId: string | null, captions: AiCaption[] | null): Layer[] {
+function initialLayers(source: Source, fontId: string | null, aiLayers: Layer[] | null): Layer[] {
   if (source.kind === "meme") return source.meme.layers;
   // Editing works on the stored defaults themselves (ids kept); an empty list stays empty.
   if (source.kind === "edit-template") return source.template.defaultLayers;
-  // AI Creator: the model's captions replace the template's own text boxes.
-  if (captions?.length) {
-    const style = { fontAssetId: fontId, ...captionStyle(source) };
-    return captions.map((c, i) =>
-      newTextLayer({ ...style, name: `Text ${i + 1}`, text: c.text, x: c.x, y: c.y, maxWidth: c.width, maxHeight: c.height }),
-    );
-  }
-  if (source.kind === "template" && source.template.defaultLayers.length) {
-    return source.template.defaultLayers.map((l) => ({ ...structuredClone(l), id: crypto.randomUUID() }));
-  }
+  // Quick Creator: the template's layers with the agent's edit applied.
+  if (aiLayers) return withFreshIds(aiLayers);
+  if (source.kind === "template" && source.template.defaultLayers.length) return withFreshIds(source.template.defaultLayers);
   return topBottomLayers(undefined, undefined, fontId);
 }
 
@@ -161,10 +151,10 @@ function initialPanels(source: PanelSource): { pack: Asset[]; set: PanelSet } {
 
 /**
  * Load fonts, limits and the source, then decode its media (or, for a multi-panel template, its pack images); the
- * decoded media is released when the session goes away (pack images stay in render's per-page cache). `captions`
- * (from the AI Creator) become the starting text layers of a template or new-template source.
+ * decoded media is released when the session goes away (pack images stay in render's per-page cache). `aiLayers`
+ * (from the Quick Creator) become the starting layers of a template or new-template source.
  */
-export function useEditorSession(ref: SourceRef, captions: AiCaption[] | null = null): { session: Session | null; error: unknown } {
+export function useEditorSession(ref: SourceRef, aiLayers: Layer[] | null = null): { session: Session | null; error: unknown } {
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<unknown>(null);
   const { kind, id } = ref;
@@ -191,7 +181,7 @@ export function useEditorSession(ref: SourceRef, captions: AiCaption[] | null = 
       }
       media = decoded;
       const fonts = fontPage.items;
-      setSession({ type: "media", source: loaded, media, layers: initialLayers(loaded, defaultFontId(fonts), captions), fonts, limits });
+      setSession({ type: "media", source: loaded, media, layers: initialLayers(loaded, defaultFontId(fonts), aiLayers), fonts, limits });
     })().catch((err: unknown) => !cancelled && setError(err));
     return () => {
       cancelled = true;

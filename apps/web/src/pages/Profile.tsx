@@ -3,7 +3,7 @@ import type { Meme, Page, Template, UserProfile } from "@memegen/shared";
 import { EmptyState, Icon, PageHeader, SegmentedControl, Spinner, Stat, StatGroup, Text } from "@memegen/ui";
 import { getMyActivity, getMyFavorites, getUser, getUserMemes, getUserTemplates, type PageParams } from "../api.ts";
 import { useUser } from "../auth.tsx";
-import { AiKeysPanel } from "../components/ai.tsx";
+import { AiAgentsPanel } from "../components/ai.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
 import { TemplateGrid } from "../components/templates.tsx";
@@ -12,7 +12,7 @@ import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
 /**
- * Two tab groups under the name: the account (Profile: stats and badges; AI keys, owner only), then the content
+ * Two tab groups under the name: the account (Profile: stats and badges; AI agents, owner only), then the content
  * (Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own).
  */
 const ACCOUNT_TABS = ["profile", "ai"] as const;
@@ -22,7 +22,7 @@ type ProfileTab = (typeof ACCOUNT_TABS)[number] | (typeof CONTENT_TABS)[number];
 type MemeTab = Exclude<ProfileTab, "profile" | "ai" | "templates">;
 const TAB_LABELS: Record<ProfileTab, string> = {
   profile: "Profile",
-  ai: "AI keys",
+  ai: "AI agents",
   memes: "Memes",
   templates: "Templates",
   favorites: "Favorites",
@@ -60,7 +60,7 @@ export function Profile() {
       {tab === "profile" ? (
         profile ? <ProfileOverview profile={profile} /> : <Spinner label="Loading…" />
       ) : tab === "ai" ? (
-        <AiKeysPanel />
+        <AiAgentsPanel />
       ) : tab === "templates" ? (
         <ProfileTemplates username={username} editable={isOwner} />
       ) : (

@@ -460,12 +460,12 @@
 .ai-creator-form {
   min-width: 0;
 }
-/* The provider dropdown sizes to its options beside Create, not to the form's width. */
-.ai-creator-form .ai-provider {
+/* The agent dropdown sizes to its options beside Create, not to the form's width. */
+.ai-creator-form .ai-agent-select {
   width: auto;
 }
-/* The missing-key warning is red throughout, its profile link included (underlined to stay a link). */
-.ai-no-key a {
+/* The missing-agent warning is red throughout, its profile link included (underlined to stay a link). */
+.ai-no-agent a {
   color: inherit;
   text-decoration: underline;
 }
@@ -733,9 +733,15 @@
   height: 100%;
   object-fit: cover;
 }
-.ai-key-row {
+.ai-agent-form {
+  margin-top: var(--ui-space-6);
+}
+/* Text and image model side by side, tops aligned so one field's error doesn't shift the other. */
+.ai-agent-models {
   display: grid;
-  gap: var(--ui-space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+  align-items: start;
 }
 
 /* ---- detail / profile ----------------------------------------------------- */

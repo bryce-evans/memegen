@@ -1,4 +1,4 @@
-import type { AiProviderId } from "@memegen/shared";
+import type { AiEditRequest, AiProviderId } from "@memegen/shared";
 
 /** A sniffed still image sent to a model. */
 export interface AiImage {
@@ -13,18 +13,22 @@ export interface AiImageRequest {
   prompt: string;
   /** Background image the model edits or uses as context. */
   image: AiImage;
+  /** The agent's image model; the adapter's default when absent. */
+  model?: string;
   signal?: AbortSignal;
 }
 
-export interface AiCaptionRequest {
+/** One `quick-creator/1` edit: the agent's instructions and the request, answered by a text model. */
+export interface AiEditCall {
   /** The caller's own key for this provider, sent per request and never stored. */
   apiKey: string;
-  /** The user's caption text, to split and place. */
-  text: string;
-  /** The template's own text boxes, as placement hints. */
-  boxes: { text: string; x: number; y: number; width: number; height: number }[];
-  /** The media the captions go on, when the client sends it. */
+  /** The agent's own instructions (style and voice), after the spec's rules. */
+  instructions: string;
+  request: AiEditRequest;
+  /** The still media the boxes sit on, when the client sends it; image edits need it. */
   image?: AiImage;
+  /** The agent's text model; the adapter's default when absent. */
+  model?: string;
   signal?: AbortSignal;
 }
 
@@ -34,8 +38,8 @@ export interface AiProvider {
   readonly label: string;
   /** Prompt + background image in, one image's bytes out. */
   edit(request: AiImageRequest): Promise<Uint8Array<ArrayBuffer>>;
-  /** Text (and optionally the image) in; the model's parsed JSON out, unvalidated (see `normalizeCaptions`). */
-  caption(request: AiCaptionRequest): Promise<unknown>;
+  /** A `quick-creator/1` request in; the model's parsed JSON out, unchecked (see `normalizeEdit`). */
+  quickEdit(call: AiEditCall): Promise<unknown>;
 }
 
 /** The provider answered with an error, or with no result. `status` is the provider's HTTP status (502 for no result). */

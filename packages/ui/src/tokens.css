@@ -91,6 +91,8 @@
   --ui-radius-pill: 999px;
   --ui-radius-control: var(--ui-radius-md);
   --ui-radius-field: var(--ui-radius-md);
+  /* The header's search field: rounder than other fields. */
+  --ui-radius-search: 16px;
   --ui-radius-card: var(--ui-radius-lg);
   --ui-radius-media: var(--ui-radius-lg);
   --ui-radius-chip: var(--ui-radius-pill);
@@ -133,6 +135,15 @@
 
   /* ---- layout ---- */
   --ui-sidebar-width: 200px;
+  /* The wordmark's size; in the wide-screen header it shrinks below this only to fit the side column. */
+  --ui-wordmark-size: 1.3rem;
+  /* Shell column gap and inline padding; the header reuses them so its brand sits over the side column and its
+     search starts at the main column. */
+  --ui-shell-gap: var(--ui-space-7);
+  --ui-shell-padding-start: var(--ui-space-6);
+  --ui-shell-padding-end: var(--ui-space-6);
+  /* Inline padding inside `<main>` (skins that put content on a sheet); the header's search lines up with it. */
+  --ui-main-padding-inline: 0px;
   --ui-content-max-width: 1600px;
   --ui-header-height: 3.6rem;
   --ui-grid-min: 240px;

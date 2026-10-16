@@ -136,12 +136,8 @@
 
 :root[data-skin="google"] .ui-header {
   min-height: var(--ui-header-height);
-  padding: 0 var(--ui-space-6);
-  column-gap: var(--ui-space-7);
+  padding-block: 0;
   border-bottom-color: #ebebeb;
-}
-:root[data-skin="google"] .ui-header-brand {
-  min-width: var(--ui-sidebar-width);
 }
 :root[data-skin="google"] .ui-header-center {
   max-width: 600px;
@@ -154,9 +150,6 @@
   :root[data-skin="google"] .ui-header {
     padding: var(--ui-space-3) var(--ui-space-5);
   }
-  :root[data-skin="google"] .ui-header-brand {
-    min-width: 0;
-  }
   :root[data-skin="google"] .ui-sidebar .ui-sidebar-heading {
     margin-left: 0;
   }
@@ -167,7 +160,7 @@
 
 :root[data-skin="google"] .ui-wordmark {
   font-family: Catull, Georgia, "Times New Roman", serif;
-  font-size: 26px;
+  --ui-wordmark-size: 26px;
   font-weight: 400;
   letter-spacing: -0.01em;
   line-height: 1;

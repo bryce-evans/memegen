@@ -194,8 +194,8 @@
 /* ---- top app bar ------------------------------------------------------------ */
 
 :root[data-skin="matte"] .ui-header {
-  gap: var(--ui-space-4) var(--ui-space-7);
-  padding: var(--ui-space-3) var(--ui-space-5) var(--ui-space-3) var(--ui-space-7);
+  row-gap: var(--ui-space-4);
+  padding-block: var(--ui-space-3);
   border-bottom-color: transparent;
   transition: background-color var(--ui-duration-normal) var(--ui-easing-standard);
 }
@@ -214,7 +214,7 @@
 }
 
 :root[data-skin="matte"] .ui-wordmark {
-  font-size: 22px; /* title-large */
+  --ui-wordmark-size: 22px; /* title-large */
   font-weight: var(--ui-font-weight-brand);
   letter-spacing: 0;
   line-height: 28px;
@@ -238,9 +238,12 @@
 
 /* ---- shell & navigation drawer -------------------------------------------- */
 
+:root[data-skin="matte"] {
+  --ui-shell-padding-start: var(--ui-space-4);
+  --ui-shell-padding-end: var(--ui-space-7);
+}
 :root[data-skin="matte"] .ui-shell {
-  gap: var(--ui-space-7);
-  padding: var(--ui-space-3) var(--ui-space-7) var(--ui-space-7) var(--ui-space-4);
+  padding-block: var(--ui-space-3) var(--ui-space-7);
 }
 :root[data-skin="matte"] .ui-sidebar {
   top: calc(var(--ui-header-height) + var(--ui-space-3));

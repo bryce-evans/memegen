@@ -132,7 +132,7 @@
 }
 
 :root[data-skin="apple"] .ui-wordmark {
-  font-size: 21px;
+  --ui-wordmark-size: 21px;
   letter-spacing: -0.03em;
 }
 

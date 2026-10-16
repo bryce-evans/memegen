@@ -121,6 +121,10 @@
 
   /* ---- layout ---- */
   --ui-sidebar-width: 216px;
+  --ui-shell-gap: var(--spectrum-spacing-300);
+  --ui-shell-padding-start: var(--spectrum-spacing-200);
+  --ui-shell-padding-end: var(--spectrum-spacing-300);
+  --ui-main-padding-inline: var(--spectrum-spacing-400);
   --ui-header-height: 56px;
   --ui-grid-min: 260px;
   --ui-grid-gap: var(--spectrum-spacing-300);
@@ -136,15 +140,14 @@
 }
 :root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-wordmark {
   color: var(--spectrum-gray-900);
-  font-size: 18px;
+  --ui-wordmark-size: 18px;
   letter-spacing: 0;
 }
 :root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-shell {
-  gap: var(--spectrum-spacing-300);
-  padding: 0 var(--spectrum-spacing-300) var(--spectrum-spacing-300) var(--spectrum-spacing-200);
+  padding-block: 0 var(--spectrum-spacing-300);
 }
 :root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-main {
-  padding: var(--spectrum-spacing-400);
+  padding-block: var(--spectrum-spacing-400);
   border-radius: var(--spectrum-corner-radius-800);
   background: var(--spectrum-background-layer-2-color);
 }

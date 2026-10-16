@@ -199,12 +199,12 @@
 /* ---- shell: gray nav zone, white content sheet ------------------------------ */
 
 :root[data-skin="studio"] .ui-header {
-  gap: var(--ui-space-4) var(--ui-space-7);
-  padding: var(--ui-space-3) var(--ui-space-7);
+  row-gap: var(--ui-space-4);
+  padding-block: var(--ui-space-3);
 }
 
 :root[data-skin="studio"] .ui-wordmark {
-  font-size: 22px;
+  --ui-wordmark-size: 22px;
   letter-spacing: -0.035em;
   background: var(--sp-brand-gradient);
   -webkit-background-clip: text;
@@ -213,13 +213,18 @@
   -webkit-text-fill-color: transparent;
 }
 
+:root[data-skin="studio"] {
+  --ui-shell-gap: var(--ui-space-6);
+  --ui-shell-padding-start: var(--ui-space-5);
+  --ui-shell-padding-end: var(--ui-space-6);
+  --ui-main-padding-inline: 28px;
+}
 :root[data-skin="studio"] .ui-shell {
-  gap: var(--ui-space-6);
-  padding: var(--ui-space-6) var(--ui-space-6) var(--ui-space-7) var(--ui-space-5);
+  padding-block: var(--ui-space-6) var(--ui-space-7);
 }
 :root[data-skin="studio"] .ui-main {
   min-height: calc(100vh - var(--ui-header-height) - 2 * var(--ui-space-6));
-  padding: var(--ui-space-7) 28px;
+  padding-block: var(--ui-space-7);
   border-radius: var(--ui-radius-xl);
   background: var(--ui-color-surface);
   box-shadow: var(--ui-shadow-1);

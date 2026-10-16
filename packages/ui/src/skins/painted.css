@@ -84,9 +84,6 @@
 
 /* ---- header: tall, 50% white, blurring whatever scrolls under it (via --ui-color-header-bg/--ui-header-backdrop) */
 
-:root[data-skin="painted"] .ui-header {
-  padding-inline: var(--spectrum-spacing-500, 32px);
-}
 /* Spectrum's shell starts flush under its flat header; here the frosted header and the content sheet need a gap. */
 :root[data-skin="painted"] .ui-shell {
   padding-top: var(--spectrum-spacing-300);
@@ -132,7 +129,7 @@
   );
   padding: 0.3em 0.55em 0.36em;
   font-family: Radlush, "Archivo Variable", "Archivo", var(--ui-font-family);
-  font-size: var(--painted-wordmark-size);
+  --ui-wordmark-size: var(--painted-wordmark-size);
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -179,18 +176,18 @@
 }
 @keyframes painted-fire-x {
   from {
-    --painted-fire-x: 70%;
+    --painted-fire-x: 58%;
   }
   to {
-    --painted-fire-x: 90%;
+    --painted-fire-x: 100%;
   }
 }
 @keyframes painted-fire-y {
   from {
-    --painted-fire-y: 87%;
+    --painted-fire-y: 80%;
   }
   to {
-    --painted-fire-y: 97%;
+    --painted-fire-y: 104%;
   }
 }
 @keyframes painted-cool-x {

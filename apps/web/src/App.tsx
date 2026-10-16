@@ -52,7 +52,6 @@ function SiteSearch() {
     <form role="search" className="site-search" onSubmit={submit}>
       <TextField
         type="search"
-        size="sm"
         placeholder="Search memes by tag, name, or user…"
         aria-label="Search memes"
         value={value}

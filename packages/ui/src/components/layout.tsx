@@ -1,4 +1,4 @@
-import type { ComponentPropsWithRef, ReactNode } from "react";
+import { useLayoutEffect, useRef, type ComponentPropsWithRef, type ReactNode } from "react";
 import { cx, type LoosePolymorphicProps } from "../cx.ts";
 import { skinnable, skinnablePolymorphic } from "../skin.tsx";
 
@@ -30,11 +30,41 @@ export interface HeaderProps extends ComponentPropsWithRef<"header"> {
   center?: ReactNode;
 }
 
+/**
+ * Publishes the brand's wordmark width in ems (`--ui-wordmark-em-w`) on the brand slot, so CSS can shrink it to fit
+ * the slot. The ratio holds at any font size, so it is re-measured only when the wordmark's box changes for another
+ * reason (web font load, skin switch).
+ */
+function useWordmarkShape(brand: ReactNode) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const slot = ref.current;
+    const mark = slot?.querySelector<HTMLElement>(".ui-wordmark");
+    if (!slot || !mark) return;
+    const measure = () => {
+      const em = parseFloat(getComputedStyle(mark).fontSize);
+      if (!em) return;
+      const w = (mark.offsetWidth / em).toFixed(3);
+      if (slot.style.getPropertyValue("--ui-wordmark-em-w") !== w) slot.style.setProperty("--ui-wordmark-em-w", w);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(mark);
+    return () => observer.disconnect();
+  }, [brand]);
+  return ref;
+}
+
 /** Sticky top bar; `children` go to the right-hand actions area. */
 function HeaderBase({ brand, center, className, children, ...rest }: HeaderProps) {
+  const brandRef = useWordmarkShape(brand);
   return (
     <header className={cx("ui-header", className)} {...rest}>
-      {brand != null && <div className="ui-header-brand">{brand}</div>}
+      {brand != null && (
+        <div ref={brandRef} className="ui-header-brand">
+          {brand}
+        </div>
+      )}
       {center != null && <div className="ui-header-center">{center}</div>}
       <div className="ui-header-actions">{children}</div>
     </header>

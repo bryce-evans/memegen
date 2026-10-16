@@ -90,16 +90,17 @@ textarea {
 .ui-shell {
   display: grid;
   grid-template-columns: var(--ui-sidebar-width) minmax(0, 1fr);
-  gap: var(--ui-space-7);
+  gap: var(--ui-shell-gap);
   max-width: var(--ui-content-max-width);
   margin: 0 auto;
-  padding: var(--ui-space-6);
+  padding: var(--ui-space-6) var(--ui-shell-padding-end) var(--ui-space-6) var(--ui-shell-padding-start);
 }
 .ui-shell--no-sidebar {
   grid-template-columns: minmax(0, 1fr);
 }
 .ui-main {
   min-width: 0;
+  padding-inline: var(--ui-main-padding-inline);
 }
 
 .ui-header {
@@ -134,11 +135,47 @@ textarea {
   align-items: center;
   gap: var(--ui-space-3);
 }
+/*
+ * Wide screens: the header follows the shell's columns (same max width, inline padding, and gap), so the brand spans
+ * the side column and the search starts at the main column's edge. Narrow screens keep the wrapping flex row.
+ */
+@media (min-width: 761px) {
+  .ui-header {
+    display: grid;
+    grid-template-columns: var(--ui-sidebar-width) minmax(0, 1fr) auto;
+    column-gap: var(--ui-shell-gap);
+    padding-inline: max(
+        var(--ui-shell-padding-start),
+        calc((100% - var(--ui-content-max-width)) / 2 + var(--ui-shell-padding-start))
+      )
+      max(var(--ui-shell-padding-end), calc((100% - var(--ui-content-max-width)) / 2 + var(--ui-shell-padding-end)));
+  }
+  .ui-header-brand {
+    grid-column: 1;
+    min-width: 0;
+    container-type: inline-size;
+  }
+  /*
+   * The wordmark, left-aligned, keeps its skin size (--ui-wordmark-size) and shrinks only as far as needed to fit the
+   * side column (100cqi). Header measures the wordmark's width in ems (--ui-wordmark-em-w) for this.
+   */
+  .ui-header-brand .ui-wordmark {
+    font-size: min(var(--ui-wordmark-size), 100cqi / var(--ui-wordmark-em-w, 4.5));
+  }
+  /* The search starts where the main column's content does (inside any sheet padding). */
+  .ui-header-center {
+    grid-column: 2;
+    margin-inline-start: var(--ui-main-padding-inline);
+  }
+  .ui-header-actions {
+    grid-column: 3;
+  }
+}
 
 .ui-wordmark {
   display: inline-block;
   font-family: var(--ui-font-family-display);
-  font-size: 1.3rem;
+  font-size: var(--ui-wordmark-size);
   font-weight: var(--ui-font-weight-brand);
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -578,6 +615,14 @@ textarea {
 }
 input[type="search"].ui-input::-webkit-search-cancel-button {
   cursor: pointer;
+}
+/*
+ * Header search: larger, padded, and rounder than other fields in every skin, hence the extra specificity over skins'
+ * `:root[data-skin] .ui-input` rules.
+ */
+.ui-header .ui-header-center input.ui-input {
+  padding: 1ex 1em;
+  border-radius: var(--ui-radius-search);
 }
 
 .ui-select {

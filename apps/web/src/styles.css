@@ -198,6 +198,12 @@
   align-self: flex-start;
   zoom: 1.15;
 }
+/* Narrow screens: the side column is one row, Create beside the Gallery dropdown, whose button matches Create's size. */
+@media (max-width: 760px) {
+  .sidebar-action {
+    align-self: center;
+  }
+}
 
 .tag-item.team,
 .tag-item.team .ui-nav-item-trailing {

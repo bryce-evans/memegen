@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import { GALLERY_SORTS, PERIODS, type GallerySort, type Meme, type Period } from "@memegen/shared";
-import { PageHeader, SegmentedControl, SidebarSection, useSkin } from "@memegen/ui";
+import { PageHeader, SegmentedControl, SidebarSection, useNarrowScreen, useSkin } from "@memegen/ui";
 import { getGallery } from "../api.ts";
 import { PERIOD_LABELS } from "../format.ts";
 import { usePaged } from "../usePaged.ts";
@@ -37,11 +37,15 @@ export function feedKindFor(pathname: string): FeedKind | null {
 
 type FilterPlacement = "sidebar" | "header";
 
-/** Whether a feed's filters render at `placement`: the skin picks one placement, and fixed feeds have none. */
+/**
+ * Whether a feed's filters render at `placement`: the skin picks one placement (narrow screens, whose side column is a
+ * single row, always put them beside the title), and fixed feeds have none.
+ */
 function useFiltersAt(kind: FeedKind, placement: FilterPlacement): boolean {
   const { layout } = useSkin();
+  const narrow = useNarrowScreen();
   const config = FEEDS[kind];
-  return layout.filters === placement && (config.periodControl || config.sortControl);
+  return (narrow ? "header" : layout.filters) === placement && (config.periodControl || config.sortControl);
 }
 
 /** Feed filters live in the URL so the side column and the grid share them; uncontrolled ones are fixed. */

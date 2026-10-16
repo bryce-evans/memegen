@@ -3,6 +3,7 @@ import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate, 
 import {
   AppShell,
   Button,
+  Dropdown,
   EmptyState,
   Header,
   Icon,
@@ -15,6 +16,7 @@ import {
   Text,
   TextField,
   Wordmark,
+  useNarrowScreen,
   useSkinFavicon,
 } from "@memegen/ui";
 import { AuthProvider, useAuth, useUser } from "./auth.tsx";
@@ -62,9 +64,20 @@ function SiteSearch() {
   );
 }
 
+/** The user's profile entry: in the side column, or on narrow screens in the account dropdown. */
+function ProfileNavItem() {
+  const user = useUser();
+  return (
+    <NavItem as={NavLink} to={`/u/${user.username}`} icon={<Icon name="user" />} data-testid="nav-profile">
+      Profile
+    </NavItem>
+  );
+}
+
 function SiteHeader() {
   const user = useUser();
   const { signOut } = useAuth();
+  const narrow = useNarrowScreen();
   return (
     <Header
       brand={
@@ -73,6 +86,7 @@ function SiteHeader() {
         </Link>
       }
       center={<SiteSearch />}
+      accountButtonProps={{ "data-testid": "account-button" }}
     >
       <Text as="span" size="sm">
         Signed in as{" "}
@@ -80,6 +94,7 @@ function SiteHeader() {
           {user.username}
         </Link>
       </Text>
+      {narrow && <ProfileNavItem />}
       <Button size="sm" onClick={signOut} data-testid="sign-out">
         Sign out
       </Button>
@@ -87,36 +102,61 @@ function SiteHeader() {
   );
 }
 
+/** The gallery pages; Profile joins them only in the wide side column. */
+function GalleryNavItems() {
+  return (
+    <>
+      <NavItem as={NavLink} to="/recent" icon={<Icon name="clock" />} data-testid="nav-recent">
+        Recent
+      </NavItem>
+      <NavItem as={NavLink} to="/" end icon={<Icon name="flame" />} data-testid="nav-popular">
+        Popular
+      </NavItem>
+      <NavItem as={NavLink} to="/leaderboard" icon={<Icon name="chart" />} data-testid="nav-leaderboard">
+        Leaderboard
+      </NavItem>
+    </>
+  );
+}
+
+/** Wide screens: Create, the pages, feed filters, and tags. Narrow screens: one row of Create and a Gallery dropdown. */
 function SideColumn() {
-  const user = useUser();
   const { pathname } = useLocation();
   const feedKind = feedKindFor(pathname);
+  const narrow = useNarrowScreen();
+  const create = (
+    <LinkButton
+      as={NavLink}
+      to="/create"
+      variant="special"
+      icon={<Icon name="plus" />}
+      className="sidebar-action"
+      data-testid="nav-create"
+    >
+      Create
+    </LinkButton>
+  );
+  if (narrow) {
+    return (
+      <Sidebar>
+        {create}
+        <Dropdown label="Gallery" buttonProps={{ className: "sidebar-action", "data-testid": "gallery-menu" }}>
+          <nav aria-label="Pages">
+            <NavList>
+              <GalleryNavItems />
+            </NavList>
+          </nav>
+        </Dropdown>
+      </Sidebar>
+    );
+  }
   return (
     <Sidebar>
-      <LinkButton
-        as={NavLink}
-        to="/create"
-        variant="special"
-        icon={<Icon name="plus" />}
-        className="sidebar-action"
-        data-testid="nav-create"
-      >
-        Create
-      </LinkButton>
+      {create}
       <SidebarSection as="nav" aria-label="Pages">
         <NavList>
-          <NavItem as={NavLink} to="/recent" icon={<Icon name="clock" />} data-testid="nav-recent">
-            Recent
-          </NavItem>
-          <NavItem as={NavLink} to="/" end icon={<Icon name="flame" />} data-testid="nav-popular">
-            Popular
-          </NavItem>
-          <NavItem as={NavLink} to="/leaderboard" icon={<Icon name="chart" />} data-testid="nav-leaderboard">
-            Leaderboard
-          </NavItem>
-          <NavItem as={NavLink} to={`/u/${user.username}`} icon={<Icon name="user" />} data-testid="nav-profile">
-            Profile
-          </NavItem>
+          <GalleryNavItems />
+          <ProfileNavItem />
         </NavList>
       </SidebarSection>
       {feedKind && <GalleryFilters kind={feedKind} placement="sidebar" />}

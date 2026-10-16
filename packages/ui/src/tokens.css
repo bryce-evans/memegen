@@ -47,6 +47,8 @@
   /* Scrim for text laid over photos/media (always dark, in every skin) and the text on it. */
   --ui-color-scrim: rgb(0 0 0 / 0.78);
   --ui-color-on-scrim: #ffffff;
+  /* Behind featured art and the text under it (always black, in every skin); its text uses --ui-color-on-scrim. */
+  --ui-color-art-bg: #000000;
   /* Hover/press state layers, painted over any fill. */
   --ui-color-state-hover: rgb(255 255 255 / 0.04);
   --ui-color-state-press: rgb(255 255 255 / 0.08);

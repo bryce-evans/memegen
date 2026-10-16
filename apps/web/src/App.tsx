@@ -54,7 +54,7 @@ function SiteSearch() {
     <form role="search" className="site-search" onSubmit={submit}>
       <TextField
         type="search"
-        placeholder="Search memes by tag, name, or user…"
+        placeholder="Search"
         aria-label="Search memes"
         value={value}
         onChange={(e) => setValue(e.target.value)}

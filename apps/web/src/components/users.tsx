@@ -1,5 +1,9 @@
-import { badgesFor, type UserStats } from "@memegen/shared";
-import { Badge } from "@memegen/ui";
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { badgesFor, type UserStats, type UserSummary } from "@memegen/shared";
+import { Badge, Table } from "@memegen/ui";
+import type { Paged } from "../usePaged.ts";
+import { PagedList } from "./common.tsx";
 
 /** Names of the public user stats (leaderboard columns and sorts, profile tiles). */
 export const STAT_LABELS: Record<keyof UserStats, string> = { memeCount: "Memes", highScore: "High score", hScore: "h-score" };
@@ -31,5 +35,42 @@ export function UserBadges({ stats, compact = false }: { stats: UserStats; compa
         </li>
       ))}
     </ul>
+  );
+}
+
+/** A paged list of users (search results): each name linking to its profile, with badges and public stats. */
+export function UserList({ list, empty }: { list: Paged<UserSummary>; empty: ReactNode }) {
+  return (
+    <PagedList list={list} empty={empty} paging="sentinel">
+      {(users) =>
+        users.length > 0 && (
+          <Table className="user-list" aria-busy={list.loading} data-testid="user-list">
+            <thead>
+              <tr>
+                <th scope="col">User</th>
+                <th scope="col">{STAT_LABELS.memeCount}</th>
+                <th scope="col">{STAT_LABELS.highScore}</th>
+                <th scope="col" title={STAT_HINTS.hScore}>
+                  {STAT_LABELS.hScore}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(({ id, username, stats }) => (
+                <tr key={id} data-testid="user-row" data-username={username}>
+                  <td>
+                    <Link to={`/u/${encodeURIComponent(username)}`}>@{username}</Link>
+                    <UserBadges stats={stats} compact />
+                  </td>
+                  <td>{stats.memeCount}</td>
+                  <td>{stats.highScore}</td>
+                  <td>{stats.hScore}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )
+      }
+    </PagedList>
   );
 }

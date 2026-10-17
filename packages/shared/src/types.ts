@@ -125,6 +125,13 @@ export interface LeaderboardEntry {
   stats: UserStats;
 }
 
+/** `/api/users?q=` (user search): a user and their public stats. */
+export interface UserSummary {
+  id: string;
+  username: string;
+  stats: UserStats;
+}
+
 export interface Comment {
   id: string;
   memeId: string;

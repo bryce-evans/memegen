@@ -108,7 +108,10 @@ function useCyclingPlaceholder(): string {
   return text;
 }
 
-/** Meme search in the header: submitting opens `/search?q=`; on that page the box shows the current query. */
+/**
+ * Site search in the header: submitting opens `/search?q=` (keeping the shown type, on that page); there the box
+ * shows the current query.
+ */
 function SiteSearch() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -121,7 +124,8 @@ function SiteSearch() {
   function submit(e: FormEvent) {
     e.preventDefault();
     const q = value.trim();
-    if (q) navigate(`/search?${new URLSearchParams({ q })}`);
+    const type = pathname === "/search" ? params.get("type") : null;
+    if (q) navigate(`/search?${new URLSearchParams(type ? { q, type } : { q })}`);
   }
 
   return (

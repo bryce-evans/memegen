@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { GALLERY_SORTS, PERIODS, type GallerySort, type Meme, type Period } from "@memegen/shared";
 import { PageHeader, SegmentedControl, SidebarSection, useNarrowScreen, useSkin } from "@memegen/ui";
@@ -7,6 +8,18 @@ import { usePaged } from "../usePaged.ts";
 import { MemeFeed } from "./memes.tsx";
 
 const SORT_LABELS: Record<GallerySort, string> = { best: "Best", new: "New" };
+
+/** What the search page lists (`?type=`): posted memes, templates, or users. */
+export const SEARCH_TYPES = ["posts", "templates", "users"] as const;
+export type SearchType = (typeof SEARCH_TYPES)[number];
+export const SEARCH_TYPE_LABELS: Record<SearchType, string> = { posts: "Posts", templates: "Templates", users: "Users" };
+
+/** The search page's `?type=` (posts unless it names another). */
+export function useSearchType(): SearchType {
+  const [params] = useSearchParams();
+  const type = params.get("type");
+  return SEARCH_TYPES.find((t) => t === type) ?? "posts";
+}
 
 /** `popular` = `/`, `recent` = `/recent`, `tag` = the memes on `/t/:slug`, `search` = `/search?q=`. */
 type FeedKind = "popular" | "recent" | "tag" | "search";
@@ -23,7 +36,7 @@ const FEEDS: Record<FeedKind, FeedConfig> = {
   popular: { period: "all", sort: "best", periodControl: true, sortControl: false },
   recent: { period: "all", sort: "new", periodControl: false, sortControl: false },
   tag: { period: "all", sort: "best", periodControl: true, sortControl: true },
-  search: { period: "all", sort: "best", periodControl: true, sortControl: true },
+  search: { period: "all", sort: "best", periodControl: false, sortControl: false },
 };
 
 /** Which feed (if any) a pathname shows, so the side column can host its filters. */
@@ -111,8 +124,11 @@ export function GalleryFilters({ kind, placement }: { kind: FeedKind; placement:
   );
 }
 
-/** Paged meme grid for one feed kind, optionally limited to a tag or a search query. */
-export function GalleryFeed({ kind, tag, q, title }: { kind: FeedKind; tag?: string; q?: string; title: string }) {
+/**
+ * Paged meme grid for one feed kind, optionally limited to a tag or a search query. `actions` go beside the title,
+ * before any filters there.
+ */
+export function GalleryFeed({ kind, tag, q, title, actions }: { kind: FeedKind; tag?: string; q?: string; title: string; actions?: ReactNode }) {
   const { config, period, sort } = useFeedFilters(kind);
   const list = usePaged<Meme>(`${period}:${sort}:${tag ?? ""}:${q ?? ""}`, (offset) => getGallery({ period, sort, tag, q, offset }));
   // Filters beside the title show the choice; elsewhere the title names it.
@@ -124,7 +140,14 @@ export function GalleryFeed({ kind, tag, q, title }: { kind: FeedKind; tag?: str
       <PageHeader
         level={tag ? 2 : 1}
         title={filtersHere || subtitle.length === 0 ? title : `${title} · ${subtitle.join(" · ")}`}
-        actions={filtersHere ? <GalleryFilters kind={kind} placement="header" /> : undefined}
+        actions={
+          actions || filtersHere ? (
+            <>
+              {actions}
+              {filtersHere && <GalleryFilters kind={kind} placement="header" />}
+            </>
+          ) : undefined
+        }
       />
       <MemeFeed list={list} data-feed={kind} data-period={period} data-sort={sort} />
     </>

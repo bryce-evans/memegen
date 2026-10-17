@@ -1,4 +1,4 @@
-import { apiMeme, apiTemplate, apiUser, inputTagChip, loadAll, memeCard, signIn } from "./helpers.ts";
+import { apiMeme, apiTemplate, apiUser, inputTagChip, loadAll, memeCard, signIn, templateCard } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("search: the header box finds memes by template name, template tag, title, or author", async ({ page, request }) => {
@@ -35,6 +35,44 @@ test("search: the header box finds memes by template name, template tag, title, 
   await expect(memeCard(page, mine.id)).toHaveCount(0);
   await search(scoped("no such meme anywhere"));
   await expect(page.getByTestId("meme-card")).toHaveCount(0);
+});
+
+test("search: Posts, Templates, and Users beside the title; the chosen type stays for the next query", async ({ page, request }) => {
+  const maker = await apiUser(request, scoped("typemaker"));
+  const name = scoped("Typed Template");
+  const template = await apiTemplate(request, maker, { name });
+  const meme = await apiMeme(request, maker, { title: scoped("typed find"), templateId: template.id });
+
+  await page.goto("/");
+  await signIn(page, scoped("typesearcher"));
+  const results = page.getByTestId("search-results");
+  const search = async (q: string) => {
+    await page.getByTestId("meme-search").fill(q);
+    await page.getByTestId("meme-search").press("Enter");
+    await expect(results).toHaveAttribute("data-query", q);
+  };
+
+  await search(name);
+  await expect(results).toHaveAttribute("data-type", "posts");
+  await expect(page.getByTestId("search-type-posts")).toHaveAttribute("aria-pressed", "true");
+  // Search has no period filter: posts from any time.
+  await expect(page.getByTestId("period-all")).toHaveCount(0);
+  await loadAll(page);
+  await expect(memeCard(page, meme.id)).toBeVisible();
+
+  await page.getByTestId("search-type-templates").click();
+  await expect(results).toHaveAttribute("data-type", "templates");
+  await expect(templateCard(page, template.id)).toBeVisible();
+  await expect(page.getByTestId("meme-card")).toHaveCount(0);
+
+  await page.getByTestId("search-type-users").click();
+  await expect(results).toHaveAttribute("data-type", "users");
+  await search(maker.username);
+  await expect(results).toHaveAttribute("data-type", "users");
+  const row = page.locator(`[data-testid="user-row"][data-username="${maker.username}"]`);
+  await expect(row).toBeVisible();
+  await row.getByRole("link").click();
+  await expect(page).toHaveURL(new RegExp(`/u/${maker.username}$`));
 });
 
 test("a new meme starts with its template's tags, and any of them can be removed", async ({ page, request }) => {

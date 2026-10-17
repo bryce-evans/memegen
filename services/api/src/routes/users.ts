@@ -1,4 +1,4 @@
-import { leaderboardQuerySchema, sessionSchema, userPageQuerySchema, type User, type UserProfile } from "@memegen/shared";
+import { leaderboardQuerySchema, sessionSchema, userPageQuerySchema, usersQuerySchema, type User, type UserProfile } from "@memegen/shared";
 import { page, pageSql, parse, parseJson, requireInternal, toUser, type Sql, type UserRow } from "@memegen/server-kit";
 import { findUserByName, requireUser, type ApiApp } from "../access.ts";
 import {
@@ -11,7 +11,7 @@ import {
   type MemeRow,
   type TemplateRow,
 } from "../rows.ts";
-import { leaderboard, publicStats, userStats } from "../stats.ts";
+import { leaderboard, publicStats, searchUsers, userStats } from "../stats.ts";
 
 /** Public stats plus how many public templates (variations included) the user added. */
 async function profile(sql: Sql, user: User): Promise<UserProfile> {
@@ -41,6 +41,12 @@ export function register(app: ApiApp, sql: Sql): void {
   });
 
   app.get("/api/me", async (c) => c.json(await profile(sql, requireUser(c))));
+
+  /** User search (the search page's Users tab). */
+  app.get("/api/users", async (c) => {
+    const { q, offset, limit } = parse(usersQuerySchema, c.req.query());
+    return c.json(page(await searchUsers(sql, q, offset, limit), offset, limit));
+  });
 
   app.get("/api/users/:username", async (c) => {
     return c.json(await profile(sql, await findUserByName(sql, c.req.param("username"))));

@@ -29,6 +29,7 @@ import type {
   UploadLimits,
   User,
   UserProfile,
+  UserSummary,
 } from "@memegen/shared";
 
 /** Cookie holding the signed-in user (JSON); a year, so the dev login survives restarts. Not a credential. */
@@ -245,6 +246,9 @@ export const getGallery = ({ period, sort, tag, q, offset, limit }: PageParams &
   request<Page<Meme>>(`/api/gallery${qs({ period, sort, tag, q, offset, limit })}`);
 
 export const getLeaderboard = (by: LeaderboardSort) => request<LeaderboardEntry[]>(`/api/leaderboard${qs({ by })}`);
+
+/** Users whose names contain `q`, with their public stats. */
+export const searchUsers = ({ q, offset, limit }: PageParams & { q: string }) => request<Page<UserSummary>>(`/api/users${qs({ q, offset, limit })}`);
 
 /** Recent activity: memes the signed-in user voted on (either way), newest vote first. */
 export const getMyActivity = ({ offset, limit }: PageParams = {}) =>

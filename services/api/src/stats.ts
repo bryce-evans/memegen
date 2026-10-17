@@ -1,5 +1,6 @@
-import type { InternalUserStats, LeaderboardEntry, LeaderboardSort, UserStats } from "@memegen/shared";
-import type { Sql } from "@memegen/server-kit";
+import type { InternalUserStats, LeaderboardEntry, LeaderboardSort, UserStats, UserSummary } from "@memegen/shared";
+import { pageSql, type Sql } from "@memegen/server-kit";
+import { containsPattern } from "./rows.ts";
 
 interface StatsRow {
   owner_id: string;
@@ -66,5 +67,29 @@ export async function leaderboard(sql: Sql, by: LeaderboardSort, limit: number):
     rank: i + 1,
     user: { id: r.owner_id, username: r.username },
     stats: { memeCount: r.meme_count, highScore: r.high_score, hScore: r.h_score },
+  }));
+}
+
+/**
+ * User search: usernames containing `q` (every user when empty), with their public stats (zeros before a first post).
+ * An exact name comes first, then names starting with `q`, then the rest; within each, best h-score, then username.
+ * Fetches one row past `limit` for `page`.
+ */
+export async function searchUsers(sql: Sql, q: string, offset: number, limit: number): Promise<UserSummary[]> {
+  const contains = containsPattern(q);
+  // `contains` without its leading `%`: names starting with `q`.
+  const startsWith = contains.slice(1);
+  const rows = await sql<{ id: string; username: string; meme_count: number | null; high_score: number | null; h_score: number | null }[]>`
+    select u.id, u.username, s.meme_count, s.high_score, s.h_score
+    from users u
+    left join (${statsSelect(sql)}) s on s.owner_id = u.id
+    where u.username ilike ${contains}
+    order by lower(u.username) = lower(${q}) desc, u.username ilike ${startsWith} desc,
+      coalesce(s.h_score, 0) desc, lower(u.username), u.username
+    ${pageSql(sql, offset, limit)}`;
+  return rows.map((r) => ({
+    id: r.id,
+    username: r.username,
+    stats: { memeCount: r.meme_count ?? 0, highScore: r.high_score ?? 0, hScore: r.h_score ?? 0 },
   }));
 }

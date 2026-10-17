@@ -300,6 +300,11 @@ export const leaderboardQuerySchema = z.object({
   limit: limitSchema(50, 100),
 });
 
+/** User search: usernames containing `q` (a username is at most 32 characters). */
+export const usersQuerySchema = pageQuerySchema().extend({
+  q: z.string().trim().max(32).default(""),
+});
+
 export const createCommentSchema = z.object({
   body: z.string().trim().min(1).max(COMMENT_MAX_LENGTH),
   /** Reply to this top-level comment on the same meme. */

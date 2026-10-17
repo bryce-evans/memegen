@@ -10,7 +10,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
 - **Multi-panel templates**: expanding brain and similar formats, built from an image pack. Memes can add, remove, and reorder panels.
 - **Quick Creator**: at the top of Create, a template (a random one to start) drawn with its text, and one Describe field (prefilled with each text box's text). Pick one of your AI agents and it rewrites the template's text boxes (text and font), adds, rewrites, or removes the top section, and makes any described change to the image (the result becomes a new template), then the editor opens prefilled. Box positions and timing never change. Agents use OpenAI or Google Gemini with your own API key, plus their own instructions and optional models (set up under your profile's AI agents tab). Below it, an Upload card adds a template, multi-panel template, or sticker.
-- **Gallery**: Popular (day, week, month, year, or all time) and Recent feeds, voting, threaded comments, favorites, search, and tag pages.
+- **Gallery**: Popular (day, week, month, year, or all time) and Recent feeds, voting, threaded comments, favorites, search (posts, templates, or users), and tag pages.
 - **Profiles and leaderboard**: a Profile tab with h-score, high score, and tiered badges; the user's memes and templates; and, on your own profile, AI agents plus private Favorites and Recent activity tabs.
 - **Skins**: seven interchangeable looks from `packages/ui` (dev only. Prod is locked to `default`).
 - **Snapshots**: back up or restore the whole site (database and media) as one zip.

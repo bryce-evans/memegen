@@ -226,6 +226,7 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | GET | `/api/me/favorites?offset=&limit=` | `Page<Meme>` the viewer starred, newest first; 401 without user |
 | GET | `/api/leaderboard?by=hScore\|highScore\|memeCount&limit=` | `LeaderboardEntry[]` `{rank, user, stats}` |
 | GET | `/api/users/:username` | `UserProfile` (public stats; `templateCount` = public templates the user added, variations included) |
+| GET | `/api/users?q=&offset=&limit=` | `Page<UserSummary>` `{id, username, stats}` (public stats, zeros before a first post): usernames containing `q` (all users when empty), exact match first, then prefix matches, then the rest; within each, best h-score, then name. The search page's Users tab |
 | GET | `/api/users/:username/memes` | `Page<Meme>`; the owner also sees drafts/private |
 | GET | `/api/users/:username/templates` | `Page<Template>` the user added, variations included (each top-level one with its visible variations nested), newest first; the owner also sees private ones |
 | GET | `/api/templates?q=&tag=&kind=&offset=&limit=` | `Page<Template>` (top-level, variations nested; `owner` always set, `baseTags ⊆ tags`), newest first; `kind` = `single`, `multi`, or `gif` (GIFs and videos) |

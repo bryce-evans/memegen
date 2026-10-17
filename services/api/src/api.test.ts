@@ -24,6 +24,7 @@ import {
   type TemplateUsage,
   type User,
   type UserProfile,
+  type UserSummary,
 } from "@memegen/shared";
 import { config, findAssetRow, HeaderAuthProvider, HttpError, type Sql } from "@memegen/server-kit";
 import { encodePng, freshTestDb } from "@memegen/server-kit/testing";
@@ -209,6 +210,34 @@ test("leaderboard: posters only, ordered by the chosen stat with tie-breaks, pub
   assert.deepEqual((await board("highScore")).map((e) => e.user.username), ["bob", "alice", "carol"]);
   assert.deepEqual((await board("memeCount")).map((e) => e.user.username), ["carol", "alice", "bob"]);
   assert.deepEqual((await board("hScore&limit=1")).map((e) => e.user.username), ["alice"]);
+});
+
+test("user search: names containing q, exact then prefix matches first, then by h-score; public stats, zeros before posting", async () => {
+  const pal = await signIn("pal");
+  const opal = await signIn("Opal");
+  const palette = await signIn("palette");
+  await signIn("bob");
+  for (const score of [2, 2]) await setScore((await makeMeme(opal)).id, score);
+  await setScore((await makeMeme(palette)).id, 1);
+  await makeMeme(pal, { post: false });
+
+  const search = async (query: string) => (await call<Page<UserSummary>>("GET", `/api/users?${query}`, null)).body;
+  const found = await search("q=PAL");
+  assert.deepEqual(
+    found.items.map((u) => [u.username, u.stats]),
+    [
+      ["pal", { memeCount: 0, highScore: 0, hScore: 0 }],
+      ["palette", { memeCount: 1, highScore: 1, hScore: 1 }],
+      ["Opal", { memeCount: 2, highScore: 2, hScore: 2 }],
+    ],
+  );
+  assert.equal(found.items.some((u) => "negativeHScore" in u.stats), false);
+  assert.deepEqual(found.items[0]!.id, pal.id);
+  // LIKE wildcards match literally; paging works as everywhere.
+  assert.deepEqual((await search("q=p_l")).items, []);
+  const first = await search("q=pal&limit=2");
+  assert.deepEqual([first.items.map((u) => u.username), first.nextOffset], [["pal", "palette"], 2]);
+  assert.deepEqual((await search("q=pal&offset=2")).items.map((u) => u.username), ["Opal"]);
 });
 
 test("templates allow exactly one level of variations", async () => {

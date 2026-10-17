@@ -510,6 +510,15 @@
   width: 100%;
   text-align: left;
 }
+/* User search results: figures right, the user column takes the slack. */
+.user-list :is(th, td) {
+  text-align: right;
+  white-space: nowrap;
+}
+.user-list :is(th, td):first-child {
+  width: 100%;
+  text-align: left;
+}
 .user-badge-icon {
   margin-left: var(--ui-space-1);
 }

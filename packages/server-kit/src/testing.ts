@@ -55,11 +55,15 @@ export interface AiStubImageCall {
   mime: string;
   bytes: number;
 }
-/** What an accepted Quick Creator edit received: the directions, the box ids, the model, and whether an image came along. */
+/**
+ * What an accepted Quick Creator edit received: the directions, the box ids, whether the prompt offered
+ * `UPDATE_IMAGE`, the model, and whether an image came along.
+ */
 export interface AiStubEditCall {
   kind: "edit";
   directions: string;
   boxIds: string[];
+  canUpdateImage: boolean;
   model: string;
   hasImage: boolean;
 }
@@ -74,22 +78,23 @@ export interface AiStub {
 
 interface StubEditRequest {
   directions: string;
-  boxes: { id: string; label: string }[];
+  boxes: { id: string; label: string; text: string }[];
   fonts: { id: string; name: string }[];
+  canUpdateImage: boolean;
 }
 
 /**
  * The request the API's edit prompt carries as JSON after `Request (JSON):` (`editUserPrompt` in services/api), and
- * the stub's deterministic answer to its directions, line by line: `mod: …` is the image edit (joined, else null);
- * `top section: …` the top section's text ("" removes it); `font: <name>` puts every box in that font; `<box label>:
- * …` that box's text; any other line goes to the next box not yet given text. Extra lines are dropped.
+ * the stub's deterministic `quick-creator/2` actions for its directions, line by line: `mod: …` lines are one
+ * `UPDATE_IMAGE` (joined; sent even when `canUpdateImage` is false, for the API to drop); `<box label>: …` is an
+ * `ADD_TEXT` at that box; any other line an `ADD_TEXT` without a position; `font: <name>` styles every box in that
+ * font (boxes given no text keep theirs). Lines past the boxes are sent too, for the API to drop.
  */
 function stubEdit(prompt: string): { request: StubEditRequest; answer: unknown } {
   const marker = "Request (JSON):\n";
   const request = JSON.parse(prompt.slice(prompt.indexOf(marker) + marker.length)) as StubEditRequest;
   const texts = new Map<string, string>();
   const mods: string[] = [];
-  let topSection: string | null = null;
   let fontId: string | null = null;
   const free: string[] = [];
   for (const line of request.directions.split("\n")) {
@@ -97,14 +102,20 @@ function stubEdit(prompt: string): { request: StubEditRequest; answer: unknown }
     const key = label.trim().toLowerCase();
     const box = request.boxes.find((b) => b.label.toLowerCase() === key);
     if (key === "mod") mods.push(rest.trim());
-    else if (key === "top section") topSection = rest.trim();
     else if (key === "font") fontId = request.fonts.find((f) => f.name.toLowerCase() === rest.trim().toLowerCase())?.id ?? null;
     else if (box) texts.set(box.id, rest.trim());
     else if (line.trim()) free.push(line.trim());
   }
-  for (const box of request.boxes) if (!texts.has(box.id) && free.length) texts.set(box.id, free.shift()!);
-  const boxes = request.boxes.flatMap((b) => (texts.has(b.id) || fontId ? [{ id: b.id, text: texts.get(b.id) ?? null, fontId }] : []));
-  return { request, answer: { boxes, topSection, imageEdit: mods.filter(Boolean).join(" ") || null } };
+  const style = fontId ? { fontId } : null;
+  const unlabeled = request.boxes.filter((b) => !texts.has(b.id));
+  const actions: unknown[] = [
+    ...request.boxes.flatMap((b) => (texts.has(b.id) ? [{ action: "ADD_TEXT", text: texts.get(b.id), position: b.id, style }] : [])),
+    ...free.map((text) => ({ action: "ADD_TEXT", text, position: null, style })),
+    ...(style ? unlabeled.slice(free.length).map((b) => ({ action: "ADD_TEXT", text: b.text, position: b.id, style })) : []),
+  ];
+  const imagePrompt = mods.filter(Boolean).join(" ");
+  if (imagePrompt) actions.unshift({ action: "UPDATE_IMAGE", prompt: imagePrompt });
+  return { request, answer: { actions } };
 }
 
 /**
@@ -134,6 +145,7 @@ export async function startAiStub(port = 0): Promise<AiStub> {
         kind: "edit",
         directions: edit.directions,
         boxIds: edit.boxes.map((b) => b.id),
+        canUpdateImage: edit.canUpdateImage,
         model: body.model,
         hasImage: user.some((p) => p.type === "image_url"),
       };
@@ -149,6 +161,7 @@ export async function startAiStub(port = 0): Promise<AiStub> {
         kind: "edit",
         directions: edit.directions,
         boxIds: edit.boxes.map((b) => b.id),
+        canUpdateImage: edit.canUpdateImage,
         model: body.model,
         hasImage: user.some((p) => p.type === "image"),
       };
@@ -181,6 +194,7 @@ export async function startAiStub(port = 0): Promise<AiStub> {
           kind: "edit",
           directions: edit.directions,
           boxIds: edit.boxes.map((b) => b.id),
+          canUpdateImage: edit.canUpdateImage,
           model,
           hasImage: parts.some((p) => p.inlineData),
         };

@@ -48,7 +48,7 @@ const generate = (fields: Record<string, string>, options?: Parameters<typeof po
 const quickEdit = (fields: Record<string, string>, options?: Parameters<typeof post>[2]) => post("/api/ai/edit", fields, options);
 
 const FONT = "8a6b2c1e-0f4d-4a7e-9b3c-2d1e0f4a7b9c";
-/** A two-box template with no top section, as the Quick Creator sends it. */
+/** A two-box template, as the Quick Creator sends it with an Image Generator set. */
 function editRequest(directions: string, overrides: Partial<AiEditRequest> = {}): string {
   const request: AiEditRequest = {
     directions,
@@ -56,8 +56,8 @@ function editRequest(directions: string, overrides: Partial<AiEditRequest> = {})
       { id: "top", label: "Top text", text: "TOP TEXT", fontId: null, x: 0.5, y: 0.1 },
       { id: "bottom", label: "Bottom text", text: "BOTTOM TEXT", fontId: null, x: 0.5, y: 0.9 },
     ],
-    topSection: null,
     fonts: [{ id: FONT, name: "Comic" }],
+    canUpdateImage: true,
     ...overrides,
   };
   return JSON.stringify(request);
@@ -91,27 +91,33 @@ for (const provider of AI_IMAGE_PROVIDER_IDS) {
 }
 
 for (const provider of AI_PROVIDER_IDS) {
-  test(`${provider}: the agent edits the listed boxes, fonts, and top section, and asks for an image edit, on the chosen model`, async () => {
+  test(`${provider}: the agent's UPDATE_IMAGE and ADD_TEXTs come back checked, on the chosen model; UPDATE_IMAGE needs the image and an Image Generator`, async () => {
     stub.last = null;
-    const directions = "Top text: when the build passes\nfont: comic\ntop section: nobody:\nmod: add a party hat";
+    const directions = "Bottom text: first try\nwhen the build passes\nfont: comic\nmod: add a party hat";
     const res = await quickEdit({ provider, model: "custom-text-1", request: editRequest(directions) });
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("cache-control"), "no-store");
+    // The unpositioned line takes the first box not yet given text.
     assert.deepEqual((await res.json()) as AiEdit, {
-      boxes: [
-        { id: "top", text: "when the build passes", fontId: FONT },
-        { id: "bottom", text: null, fontId: FONT },
+      actions: [
+        { action: "UPDATE_IMAGE", prompt: "add a party hat" },
+        { action: "ADD_TEXT", text: "first try", position: "bottom", style: { fontId: FONT } },
+        { action: "ADD_TEXT", text: "when the build passes", position: "top", style: { fontId: FONT } },
       ],
-      topSection: "nobody:",
-      imageEdit: "add a party hat",
     });
-    assert.deepEqual(stub.last, { kind: "edit", directions, boxIds: ["top", "bottom"], model: "custom-text-1", hasImage: true });
+    assert.deepEqual(stub.last, { kind: "edit", directions, boxIds: ["top", "bottom"], canUpdateImage: true, model: "custom-text-1", hasImage: true });
 
-    // Without the image (GIF/video templates), the agent can't change the picture.
-    const textOnly = await quickEdit({ provider, request: editRequest("first try\nmod: add a party hat") }, { image: null });
-    assert.deepEqual((await textOnly.json()) as AiEdit, { boxes: [{ id: "top", text: "first try", fontId: null }], topSection: null, imageEdit: null });
-    const last = stub.last as AiStub["last"]; // reassigned by the request, which TS can't see
-    assert.deepEqual(last?.kind === "edit" ? [last.boxIds, last.hasImage] : last, [["top", "bottom"], false]);
+    // Without the image (GIF/video templates) or without an Image Generator, the picture can't change: the prompt says
+    // so, and an UPDATE_IMAGE sent anyway is dropped.
+    for (const [request, image] of [
+      [editRequest("first try\nmod: add a party hat"), null],
+      [editRequest("first try\nmod: add a party hat", { canUpdateImage: false }), background],
+    ] as const) {
+      const textOnly = await quickEdit({ provider, request }, { image });
+      assert.deepEqual((await textOnly.json()) as AiEdit, { actions: [{ action: "ADD_TEXT", text: "first try", position: "top", style: null }] });
+      const last = stub.last as AiStub["last"]; // reassigned by the request, which TS can't see
+      assert.deepEqual(last?.kind === "edit" ? [last.canUpdateImage, last.hasImage] : last, [false, image !== null]);
+    }
   });
 
   test(`${provider}: a rejected key or refused directions are a 422, never a 401`, async () => {
@@ -150,38 +156,48 @@ test("AI edits need a signed-in user, a key, a JSON request with directions, val
   assert.equal((await quickEdit(ok, { image: GIF })).status, 415);
 });
 
-test("agent output is checked against the request: listed boxes and fonts only, no-op changes dropped, image edits only with an image", () => {
+test("agent output is checked against the request: one UPDATE_IMAGE first, ADD_TEXTs on distinct listed boxes with listed fonts, no-ops dropped", () => {
   const request = JSON.parse(editRequest("x")) as AiEditRequest;
   const edit = normalizeEdit(
     {
-      boxes: [
-        { id: "ghost", text: "a new box", fontId: null },
-        { id: "top", text: "  ", fontId: "f00dfeed-0000-4000-8000-000000000000" },
-        { id: "top", text: "second answer for the same box", fontId: null },
-        { id: "bottom", text: "BOTTOM TEXT", fontId: FONT },
+      actions: [
+        { action: "ADD_TEXT", text: "a new box", position: "ghost", style: null },
+        { action: "ADD_TEXT", text: "  ", position: "top", style: { fontId: "f00dfeed-0000-4000-8000-000000000000" } },
+        { action: "ADD_TEXT", text: "second answer for the same box", position: "top", style: null },
+        { action: "UPDATE_IMAGE", prompt: "   " },
+        { action: "UPDATE_IMAGE", prompt: ` ${"x".repeat(AI_PROMPT_MAX_LENGTH + 5)} ` },
+        { action: "UPDATE_IMAGE", prompt: "a second image update" },
+        { action: "ADD_TEXT", text: "BOTTOM TEXT", position: null, style: { fontId: FONT } },
+        { action: "ADD_TEXT", text: "a third box", position: null, style: null },
+        { action: "ADD_TEXT", position: "bottom" },
+        { action: "MOVE_TEXT", position: "top" },
         "nonsense",
       ],
-      topSection: "",
-      imageEdit: ` ${"x".repeat(AI_PROMPT_MAX_LENGTH + 5)} `,
       x: 0.1,
     },
     request,
     true,
   );
   assert.deepEqual(edit, {
-    // "" blanks a box; an unlisted font is no change; the same text again is no change.
-    boxes: [
-      { id: "top", text: "", fontId: null },
-      { id: "bottom", text: null, fontId: FONT },
+    actions: [
+      // The first non-blank UPDATE_IMAGE, capped like a prompt, moved first.
+      { action: "UPDATE_IMAGE", prompt: "x".repeat(AI_PROMPT_MAX_LENGTH) },
+      // "" blanks a box; an unlisted font is no change.
+      { action: "ADD_TEXT", text: "", position: "top", style: null },
+      // No position: the next box not yet given text. The same text in a new font is a change.
+      { action: "ADD_TEXT", text: "BOTTOM TEXT", position: "bottom", style: { fontId: FONT } },
     ],
-    // Removing a top section that isn't there is no change.
-    topSection: null,
-    imageEdit: "x".repeat(AI_PROMPT_MAX_LENGTH),
   });
-  assert.equal(normalizeEdit({ topSection: "" }, { ...request, topSection: "nobody:" }, true).topSection, "");
-  assert.equal(normalizeEdit({ imageEdit: "add a hat" }, request, false).imageEdit, null);
-  // Nothing to change is a valid answer: the directions may match the template as it is.
-  assert.deepEqual(normalizeEdit({ boxes: [] }, request, true), { boxes: [], topSection: null, imageEdit: null });
+  // The same text and font again is no change, but still fills its box.
+  assert.deepEqual(
+    normalizeEdit({ actions: [{ action: "ADD_TEXT", text: "TOP TEXT", position: null, style: null }, { action: "ADD_TEXT", text: "b", position: null, style: null }] }, request, true),
+    { actions: [{ action: "ADD_TEXT", text: "b", position: "bottom", style: null }] },
+  );
+  const update = { actions: [{ action: "UPDATE_IMAGE", prompt: "add a hat" }] };
+  assert.deepEqual(normalizeEdit(update, request, false), { actions: [] });
+  assert.deepEqual(normalizeEdit(update, { ...request, canUpdateImage: false }, true), { actions: [] });
+  // No actions is a valid answer: the directions may match the template as it is.
+  assert.deepEqual(normalizeEdit({ actions: [] }, request, true), { actions: [] });
   for (const output of ["nope", null, [1]]) {
     assert.throws(() => normalizeEdit(output, request, true), (err) => err instanceof AiProviderError && err.status === 502);
   }

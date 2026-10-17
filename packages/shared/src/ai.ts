@@ -1,8 +1,6 @@
 import { z } from "zod";
-import { newTopSectionLayer } from "./defaults.ts";
 import { LAYER_NAME_MAX_LENGTH, TEXT_MAX_LENGTH } from "./limits.ts";
-import { topSectionLayer } from "./section.ts";
-import type { Layer, TextLayer } from "./types.ts";
+import type { Layer } from "./types.ts";
 
 /**
  * Model providers a user can bring their own API key for; the API holds one adapter per id. Every provider can be the
@@ -47,13 +45,16 @@ export const aiImageFieldsSchema = z.object({
 export type AiImageFields = z.input<typeof aiImageFieldsSchema>;
 
 /**
- * The Quick Creator's agent contract. The agent sees the template's text boxes and answers with changes to those
- * boxes only (text, font), the top section's text, and an image-edit prompt. Positions, sizes, timing, and new boxes
- * are not in the answer's shape, so an agent cannot change them.
+ * The Quick Creator's agent contract. The agent sees the template's default text boxes and answers with actions: at
+ * most one `UPDATE_IMAGE` (an edit prompt for the picture), then `ADD_TEXT`s that set those boxes' text and font.
+ * Positions, sizes, timing, and new boxes are not in the actions' shape, so an agent cannot change them.
  */
-export const AI_EDIT_SPEC = "quick-creator/1";
+export const AI_EDIT_SPEC = "quick-creator/2";
 
-/** One editable text box: its layer id, editor label, text, and font. `x`/`y` (box center) only say where it sits. */
+/**
+ * One default text box (the top section's included): its layer id, editor label, text, and font. `x`/`y` (box
+ * center; for the top section, a fraction of its band) only say where it sits.
+ */
 export const aiEditBoxSchema = z.object({
   id: z.string().min(1).max(64),
   label: z.string().max(LAYER_NAME_MAX_LENGTH),
@@ -68,21 +69,21 @@ export type AiEditBox = z.output<typeof aiEditBoxSchema>;
 export const AI_EDIT_FONTS_MAX = 200;
 
 /**
- * What the agent edits: the user's directions, the template's text boxes (the top section's text apart, null when
- * there is no top section), and the fonts it may pick from.
+ * What the agent acts on: the user's directions, the template's text boxes, the fonts it may pick from, and whether
+ * it may `UPDATE_IMAGE` (the user has an Image Generator; the API also needs the still image attached).
  */
 export const aiEditRequestSchema = z.object({
   directions: z.string().trim().min(1).max(TEXT_MAX_LENGTH),
   boxes: z.array(aiEditBoxSchema).max(50),
-  topSection: z.string().max(TEXT_MAX_LENGTH).nullable(),
   fonts: z.array(z.object({ id: z.uuid(), name: z.string().max(200) })).max(AI_EDIT_FONTS_MAX),
+  canUpdateImage: z.boolean(),
 });
 export type AiEditRequest = z.output<typeof aiEditRequestSchema>;
 
 /**
  * Text fields of `POST /api/ai/edit` (multipart): the provider, an optional text model,
- * and `request` (JSON, `aiEditRequestSchema`). The optional `image` file is the still media; without it, `imageEdit`
- * is always null.
+ * and `request` (JSON, `aiEditRequestSchema`). The optional `image` file is the still media; without it, the agent
+ * never gets to `UPDATE_IMAGE`.
  */
 export const aiEditFieldsSchema = z.object({
   provider: z.enum(AI_PROVIDER_IDS),
@@ -91,52 +92,62 @@ export const aiEditFieldsSchema = z.object({
 });
 export type AiEditFields = z.input<typeof aiEditFieldsSchema>;
 
-/** A change to one requested box; null leaves that field as it is. `text: ""` blanks the box. */
-export interface AiEditBoxChange {
-  id: string;
-  text: string | null;
-  fontId: string | null;
+/** `UPDATE_IMAGE(prompt)`: change the template's picture itself with the user's Image Generator. */
+export interface AiUpdateImage {
+  action: "UPDATE_IMAGE";
+  /** The change to the picture only, never caption text; ≤ `AI_PROMPT_MAX_LENGTH`. */
+  prompt: string;
 }
 
+/** `ADD_TEXT`'s `style`: a font from the request's `fonts`. Case, color, and outline stay the box's own. */
+export interface AiTextStyle {
+  fontId: string;
+}
+
+/** `ADD_TEXT(text, position?, style?)`: set one default box's text, and optionally its font. */
+export interface AiAddText {
+  action: "ADD_TEXT";
+  /** The box's new text; "" blanks it. */
+  text: string;
+  /** The box's id. The agent may omit it (next box not yet given text); the API always resolves it. */
+  position: string;
+  /** null keeps the box's font. */
+  style: AiTextStyle | null;
+}
+
+export type AiAction = AiUpdateImage | AiAddText;
+
 /**
- * The agent's answer, checked by the API: changes to requested boxes only (known ids, listed fonts), the top section's
- * text (null: unchanged; "": remove the band; text: add or rewrite it), and a prompt for changing the image (null
- * for none, always null without an image). Never empty.
+ * The agent's answer, checked by the API: `[UPDATE_IMAGE?, ...ADD_TEXT]`. At most one `UPDATE_IMAGE`, first, only
+ * when the request allowed it; each `ADD_TEXT` on a distinct requested box with a listed font, changes that change
+ * nothing dropped. May be empty.
  */
 export interface AiEdit {
-  boxes: AiEditBoxChange[];
-  topSection: string | null;
-  imageEdit: string | null;
+  actions: AiAction[];
 }
 
-/** The request's view of `layers`: every text box but the top section's, plus the top section's text. */
-export function aiEditTarget(layers: readonly Layer[], labels: readonly string[]): Pick<AiEditRequest, "boxes" | "topSection"> {
-  const section = topSectionLayer(layers);
+/** The request's view of `layers`: every text box, the top section's included, in layer order. */
+export function aiEditTarget(layers: readonly Layer[], labels: readonly string[]): Pick<AiEditRequest, "boxes"> {
   const boxes = layers.flatMap((l, i) =>
-    l.type === "text" && l !== section ? [{ id: l.id, label: labels[i] ?? "", text: l.text, fontId: l.fontAssetId, x: l.x, y: l.y }] : [],
+    l.type === "text" ? [{ id: l.id, label: labels[i] ?? "", text: l.text, fontId: l.fontAssetId, x: l.x, y: l.y }] : [],
   );
-  return { boxes, topSection: section ? section.text : null };
+  return { boxes };
+}
+
+/** The edit's `UPDATE_IMAGE` prompt, or null when it has none. */
+export function aiImageUpdate(edit: AiEdit): string | null {
+  return edit.actions.find((a): a is AiUpdateImage => a.action === "UPDATE_IMAGE")?.prompt ?? null;
 }
 
 /**
- * `layers` with an edit applied: box text and fonts replaced by id, the top section added, rewritten, or removed.
- * Everything else (positions, sizes, timing, other layers) is kept as it was.
+ * `layers` with the edit's `ADD_TEXT`s applied: box text and fonts replaced by id. `UPDATE_IMAGE` is the caller's
+ * (it needs the Image Generator). Everything else (positions, sizes, timing, other layers) is kept as it was.
  */
 export function applyAiEdit(layers: readonly Layer[], edit: AiEdit): Layer[] {
-  const changes = new Map(edit.boxes.map((b) => [b.id, b]));
-  const section = topSectionLayer(layers);
-  const next = layers.flatMap((l): Layer[] => {
-    if (l === section) {
-      if (edit.topSection === "") return [];
-      return [edit.topSection === null ? l : { ...l, text: edit.topSection }];
-    }
-    const change = l.type === "text" ? changes.get(l.id) : undefined;
-    if (!change) return [l];
-    const text: TextLayer = { ...(l as TextLayer) };
-    if (change.text !== null) text.text = change.text;
-    if (change.fontId !== null) text.fontAssetId = change.fontId;
-    return [text];
+  const texts = new Map(edit.actions.flatMap((a) => (a.action === "ADD_TEXT" ? [[a.position, a] as const] : [])));
+  return layers.map((l) => {
+    const add = l.type === "text" ? texts.get(l.id) : undefined;
+    if (!add || l.type !== "text") return l;
+    return add.style ? { ...l, text: add.text, fontAssetId: add.style.fontId } : { ...l, text: add.text };
   });
-  if (!section && edit.topSection) next.unshift({ ...newTopSectionLayer(), text: edit.topSection });
-  return next;
 }

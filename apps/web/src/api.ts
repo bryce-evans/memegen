@@ -284,8 +284,8 @@ export async function generateAiImage({ provider, prompt, model }: AiImageFields
 }
 
 /**
- * A `quick-creator/1` request (the user's directions and the template's text boxes) and optionally the still image go
- * to `provider` with the user's own `apiKey`; resolves to the agent's checked edit.
+ * A `quick-creator/2` request (the user's directions and the template's text boxes) and optionally the still image go
+ * to `provider` with the user's own `apiKey`; resolves to the agent's checked actions.
  * Nothing is stored.
  */
 export async function requestAiEdit(

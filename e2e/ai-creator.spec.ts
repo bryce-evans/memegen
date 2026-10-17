@@ -24,6 +24,13 @@ async function setAi(page: Page, role: "text" | "image", config: { provider: AiP
   await expect(button).toContainText(`: ${AI_PROVIDERS.find((p) => p.id === config.provider)!.label}`);
 }
 
+/** Click Update and wait for the canvas to draw that Update (the `n`th since the template was picked). */
+async function update(creator: Locator, n: number): Promise<void> {
+  await creator.getByTestId("ai-update").click();
+  await expect(creator.getByTestId("ai-canvas")).toHaveAttribute("data-updates", String(n));
+  await expect(creator.getByTestId("ai-canvas")).toHaveAttribute("data-ready", "true");
+}
+
 test("Creator: starts on a random template, its name searched and its boxes' text as the Describe placeholder, drawn on the canvas", async ({ page, request }) => {
   await page.goto("/create");
   await signIn(page, scoped("creatorstart"));
@@ -38,7 +45,7 @@ test("Creator: starts on a random template, its name searched and its boxes' tex
   await expect(creator.getByTestId("ai-describe")).toHaveValue("");
 });
 
-test("Creator: AI set in the profile; the Agent Provider rewrites the boxes and adds a top section, the Image Generator edits the image into a new template", async ({ page, request }) => {
+test("Creator: AI set in the profile; the Agent Provider rewrites the template's own boxes, the Image Generator edits the image into a new template", async ({ page, request }) => {
   const username = scoped("aiartist");
   const owner = await apiUser(request, username);
   const template = await apiTemplate(request, owner, { name: scoped("ai-mod-base") });
@@ -46,11 +53,12 @@ test("Creator: AI set in the profile; the Agent Provider rewrites the boxes and 
   await signIn(page, username);
   const creator = page.getByTestId("ai-creator");
 
-  // Without an Agent Provider, Describe is off (Publish too) and the form points to the profile; the full editor needs
-  // none.
+  // Without an Agent Provider, Describe is off (Update and Publish too) and the form points to the profile; the full
+  // editor needs none.
   await pickTemplate(creator, template);
   await expect(creator.getByTestId("ai-describe")).toHaveAttribute("placeholder", "Top text: TOP TEXT\nBottom text: BOTTOM TEXT");
   await expect(creator.getByTestId("ai-describe")).toBeDisabled();
+  await expect(creator.getByTestId("ai-update")).toBeDisabled();
   await expect(creator.getByTestId("ai-publish")).toBeDisabled();
   await expect(creator.getByTestId("ai-full-editor")).toBeEnabled();
   await creator.getByTestId("ai-no-agent").getByRole("link").click();
@@ -77,8 +85,9 @@ test("Creator: AI set in the profile; the Agent Provider rewrites the boxes and 
   await expect(creator.getByTestId("ai-no-agent")).toBeHidden();
 
   // A key the provider rejects shows its reason, and the user stays signed in.
-  await creator.getByTestId("ai-full-editor").click();
+  await creator.getByTestId("ai-update").click();
   await expect(creator.getByTestId("ai-error")).toContainText("API key not valid");
+  await expect(creator.getByTestId("ai-publish")).toBeDisabled();
   await expect(page.getByTestId("current-user")).toContainText(username);
 
   // Saving without typing a key keeps the stored one.
@@ -88,27 +97,29 @@ test("Creator: AI set in the profile; the Agent Provider rewrites the boxes and 
   await expect(panel.getByTestId("ai-config-key")).toHaveValue("");
   await panel.getByTestId("ai-config-save").click();
 
-  // The image edit becomes a new template named after it; the agent's text lands in the template's own boxes, under
-  // the top section it added.
+  // Update draws the agent's text on the edited image; Full editor uploads it as a new template named after its
+  // prompt, the text in the template's own boxes. The template has no top section, and the agent can't add one: that
+  // line is dropped.
   await page.getByTestId("nav-create").click();
   await pickTemplate(creator, template);
   const directions = "Top text: when the build passes\nBottom text: first try\ntop section: nobody:\nmod: put a party hat on it";
   await creator.getByTestId("ai-describe").fill(directions);
+  await update(creator, 1);
+  await expect(page).toHaveURL(/\/create$/);
   await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(/\/create\?newTemplate=[0-9a-f-]{36}$/);
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("template-name")).toHaveValue("put a party hat on it");
   const items = page.getByTestId("layer-item");
-  await expect(items).toHaveCount(3);
-  await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("nobody:");
-  await expect(page.getByTestId("layer-text").nth(1)).toHaveValue("when the build passes");
-  await expect(page.getByTestId("layer-text").nth(2)).toHaveValue("first try");
-  await expect(items.first()).toHaveAttribute("data-top-section", "true");
+  await expect(items).toHaveCount(2);
+  await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("when the build passes");
+  await expect(page.getByTestId("layer-text").nth(1)).toHaveValue("first try");
+  await expect(items.first()).not.toHaveAttribute("data-top-section", "true");
   const assetId = new URL(page.url()).searchParams.get("newTemplate")!;
   const asset = await apiGet<Asset>(request, `/storage/assets/${assetId}`);
   expect([asset.kind, asset.width, asset.height]).toEqual(["image", AI_STUB_RESULT.width, AI_STUB_RESULT.height]);
 
-  // Without an Image Generator, an image edit is an error.
+  // Without an Image Generator, the agent isn't offered UPDATE_IMAGE: the text still lands, on the template itself.
   await page.goto(`/u/${username}?tab=ai`);
   await panel.getByTestId("ai-role-image").click();
   await panel.getByTestId("ai-config-clear").click();
@@ -116,11 +127,15 @@ test("Creator: AI set in the profile; the Agent Provider rewrites the boxes and 
   await page.getByTestId("nav-create").click();
   await pickTemplate(creator, template);
   await creator.getByTestId("ai-describe").fill(directions);
+  await update(creator, 1);
   await creator.getByTestId("ai-full-editor").click();
-  await expect(creator.getByTestId("ai-error")).toContainText("set an Image Generator");
+  await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("when the build passes");
+  await expect(page.getByTestId("layer-text").nth(1)).toHaveValue("first try");
 });
 
-test("Creator: text-only directions from Claude fill the template's own boxes, never adding one; empty ones open it as is", async ({ page, request }) => {
+test("Creator: Update with text-only directions from Claude fills the template's own boxes, never adding one, and builds on itself", async ({ page, request }) => {
   const username = scoped("aicaptioner");
   const owner = await apiUser(request, username);
   const template = await apiTemplate(request, owner, { name: scoped("ai-pick") });
@@ -133,30 +148,34 @@ test("Creator: text-only directions from Claude fill the template's own boxes, n
 
   // A provider refusal is shown; the page stays put.
   await creator.getByTestId("ai-describe").fill(`nope ${AI_STUB_REFUSE}`);
-  await creator.getByTestId("ai-full-editor").click();
+  await creator.getByTestId("ai-update").click();
   await expect(creator.getByTestId("ai-error")).toContainText("Claude");
   await expect(page).toHaveURL(/\/create$/);
 
-  // Two boxes, three lines: the agent can't add a box, so the last line is dropped.
+  // Two boxes, three lines: the agent can't add a box, so the last line is dropped. A second Update builds on the
+  // first: the top box keeps its new text.
   await creator.getByTestId("ai-describe").fill("me reading the docs\nme after reading the docs\nsame bug");
+  await update(creator, 1);
+  await creator.getByTestId("ai-describe").fill("Bottom text: same bug");
+  await update(creator, 2);
   await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("layer-text")).toHaveCount(2);
   await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("me reading the docs");
-  await expect(page.getByTestId("layer-text").nth(1)).toHaveValue("me after reading the docs");
+  await expect(page.getByTestId("layer-text").nth(1)).toHaveValue("same bug");
 
-  // Empty directions: the template opens with its own text boxes.
+  // Without an Update, Full editor opens the template with its own text boxes, whatever was typed.
   await page.goto("/create");
   await pickTemplate(creator, template);
-  await creator.getByTestId("ai-describe").fill("");
+  await creator.getByTestId("ai-describe").fill("not sent");
   await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("TOP TEXT");
 });
 
-test("Creator: Publish posts the agent's meme directly, an edited image saved as a new template first; placeholder text never posts", async ({ page, request }) => {
+test("Creator: Publish posts the updated meme directly, an edited image saved as a new template first; nothing posts before an Update", async ({ page, request }) => {
   const username = scoped("aipublisher");
   const owner = await apiUser(request, username);
   const template = await apiTemplate(request, owner, { name: scoped("ai-publish-base"), tags: ["office"] });
@@ -167,13 +186,15 @@ test("Creator: Publish posts the agent's meme directly, an edited image saved as
   await page.getByTestId("nav-create").click();
   const creator = page.getByTestId("ai-creator");
   await pickTemplate(creator, template);
-  // Nothing typed (just the placeholder), or the placeholder's own text, can't be published.
+  // Nothing typed (just the placeholder), or the placeholder's own text, isn't sent; nothing posts before an Update.
   await expect(creator.getByTestId("ai-describe")).toHaveValue("");
-  await expect(creator.getByTestId("ai-publish")).toBeDisabled();
+  await expect(creator.getByTestId("ai-update")).toBeDisabled();
   await creator.getByTestId("ai-describe").fill("Top text: TOP TEXT\nBottom text: BOTTOM TEXT");
+  await expect(creator.getByTestId("ai-update")).toBeDisabled();
+  await creator.getByTestId("ai-describe").fill("Top text: when the build passes\nBottom text: first try\nmod: put a party hat on it");
   await expect(creator.getByTestId("ai-publish")).toBeDisabled();
 
-  await creator.getByTestId("ai-describe").fill("Top text: when the build passes\nBottom text: first try\nmod: put a party hat on it");
+  await update(creator, 1);
   await creator.getByTestId("ai-publish").click();
   const meme = await apiGet<Meme>(request, `/api/memes/${await memeIdFromUrl(page)}`, owner);
   const made = await apiGet<Template>(request, `/api/templates/${meme.templateId}`, owner);

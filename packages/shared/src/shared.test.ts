@@ -9,7 +9,7 @@ import { canMoveLayer, composedHeight, layerArea, layoutTopSection, moveById, mo
 import { badgesFor } from "./badges.ts";
 import { panelGrid, panelRules } from "./panels.ts";
 import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
-import { aiEditTarget, applyAiEdit } from "./ai.ts";
+import { aiEditTarget, aiImageUpdate, applyAiEdit, type AiEdit } from "./ai.ts";
 
 const kf = (t: number, x: number, opacity = 1) => ({ t, x, y: 0.5, opacity });
 
@@ -244,31 +244,33 @@ test("unnamed layers keep their numbers when the top section is switched on", ()
   assert.deepEqual(layerLabels([{ ...text, name: "Caption" }]), ["Caption"]);
 });
 
-test("an agent's edit changes only box text, fonts, and the top section; placement, timing, and other layers stay", () => {
+test("an agent's ADD_TEXTs change only box text and fonts, the top section's included; placement, timing, and other layers stay", () => {
   const font = crypto.randomUUID();
+  const band = { ...newTopSectionLayer(), text: "nobody:" };
   const top = newTextLayer({ name: "Top text", text: "TOP", x: 0.3, y: 0.15, maxWidth: 0.5, start: 1, end: 2, keyframes: [kf(1, 0.3)] });
   const bottom = newTextLayer({ name: "Bottom text", text: "BOTTOM", y: 0.9 });
   const sticker = newImageLayer("asset");
-  const layers = [top, bottom, sticker];
+  const layers = [band, top, bottom, sticker];
   assert.deepEqual(aiEditTarget(layers, layerLabels(layers)), {
     boxes: [
+      { id: band.id, label: "Top section", text: "nobody:", fontId: null, x: band.x, y: band.y },
       { id: top.id, label: "Top text", text: "TOP", fontId: null, x: 0.3, y: 0.15 },
       { id: bottom.id, label: "Bottom text", text: "BOTTOM", fontId: null, x: 0.5, y: 0.9 },
     ],
-    topSection: null,
   });
 
-  const edited = applyAiEdit(layers, { boxes: [{ id: top.id, text: "new top", fontId: font }, { id: bottom.id, text: "", fontId: null }], topSection: "nobody:", imageEdit: null });
-  // The added top section comes first, as the band's layer always does.
-  assert.equal(edited.length, 4);
-  const band = edited[0]!;
-  assert.ok(band.type === "text" && band.topSection !== undefined && band.text === "nobody:");
-  assert.deepEqual(edited[1], { ...top, text: "new top", fontAssetId: font });
-  assert.deepEqual(edited[2], { ...bottom, text: "" });
-  assert.equal(edited[3], sticker);
-
-  // Rewriting and removing the band; null fields and unknown ids change nothing.
-  assert.deepEqual(applyAiEdit(edited, { boxes: [], topSection: "edited", imageEdit: null }), [{ ...band, text: "edited" }, ...edited.slice(1)]);
-  assert.deepEqual(applyAiEdit(edited, { boxes: [], topSection: "", imageEdit: null }), edited.slice(1));
-  assert.deepEqual(applyAiEdit(layers, { boxes: [{ id: top.id, text: null, fontId: null }, { id: "ghost", text: "x", fontId: null }], topSection: null, imageEdit: null }), layers);
+  const edit: AiEdit = {
+    actions: [
+      { action: "UPDATE_IMAGE", prompt: "add a hat" },
+      { action: "ADD_TEXT", text: "new top", position: top.id, style: { fontId: font } },
+      { action: "ADD_TEXT", text: "", position: bottom.id, style: null },
+      { action: "ADD_TEXT", text: "nobody at all:", position: band.id, style: null },
+      { action: "ADD_TEXT", text: "a new box", position: "ghost", style: null },
+    ],
+  };
+  // "" blanks a box; the band stays a band; unknown positions add nothing; UPDATE_IMAGE is the caller's.
+  assert.deepEqual(applyAiEdit(layers, edit), [{ ...band, text: "nobody at all:" }, { ...top, text: "new top", fontAssetId: font }, { ...bottom, text: "" }, sticker]);
+  assert.equal(aiImageUpdate(edit), "add a hat");
+  assert.equal(aiImageUpdate({ actions: [] }), null);
+  assert.deepEqual(applyAiEdit(layers, { actions: [] }), layers);
 });

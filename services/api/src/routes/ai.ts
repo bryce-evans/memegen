@@ -67,8 +67,8 @@ function jsonField(value: unknown, name: string): unknown {
 
 /**
  * AI images and Quick Creator edits go to the caller's chosen provider with their own key. Images: a prompt and a
- * background image in, the result's bytes out. Edits: a `quick-creator/1` request (and optionally the image) in, the
- * agent's checked edit out. Nothing is stored: the client uploads a result image it keeps, like any new template media.
+ * background image in, the result's bytes out. Edits: a `quick-creator/2` request (and optionally the image) in, the
+ * agent's checked actions out. Nothing is stored: the client uploads a result image it keeps, like any new template media.
  */
 export function register(app: ApiApp, providers: AiProviders, limits: UploadLimits): void {
   app.post("/api/ai/images", async (c) => {

@@ -18,7 +18,7 @@ export interface AiImageRequest {
   signal?: AbortSignal;
 }
 
-/** One `quick-creator/1` edit request, answered by a text model. */
+/** One `quick-creator/2` edit request, answered by a text model. */
 export interface AiEditCall {
   /** The caller's own key for this provider, sent per request and never stored. */
   apiKey: string;
@@ -34,7 +34,7 @@ export interface AiEditCall {
 export interface AiProvider {
   readonly id: AiProviderId;
   readonly label: string;
-  /** A `quick-creator/1` request in; the model's parsed JSON out, unchecked (see `normalizeEdit`). */
+  /** A `quick-creator/2` request in; the model's parsed JSON out, unchecked (see `normalizeEdit`). */
   quickEdit(call: AiEditCall): Promise<unknown>;
 }
 

@@ -1,262 +1,165 @@
 # memegen architecture
 
-Design decisions, data model, and service contracts. Setup and commands: [README.md](README.md). Agent rules: [AGENTS.md](AGENTS.md).
+High-level system design: modules, how they connect, and the decisions that shape them. Setup and commands: [README.md](README.md). Rules for changing the repo: [AGENTS.md](AGENTS.md). Exact types live in `packages/shared`; this doc names them but does not repeat them.
 
-## Components
+## System overview
 
-```
-apps/web            React + Vite SPA: editor, template browser, gallery, profiles
-packages/ui         Skinnable React components + design tokens (see its README)
-packages/render     Browser render engine: decode → composite → encode
-packages/shared     Types, zod schemas, upload limits, animation + text layout (used everywhere)
-packages/server-kit Node server plumbing: config, Postgres, migrations, auth, HTTP helpers, asset rows
-services/storage    Asset service: pluggable providers (local, s3), probing, caps
-services/api        Users, templates, memes, votes, comments, tags, stickers, gallery, stats
-db/migrations       Append-only SQL migrations, applied in filename order
-scripts/            run.sh supervisor, seeds, snapshots, prod web server
-e2e/                Playwright specs + fixtures (isolated DB and ports)
-```
+memegen is a React SPA backed by two small Node services and Postgres. The browser does all media work (decode, composite, encode). The servers store, validate, and index.
 
 ```mermaid
 flowchart LR
   subgraph Browser
-    web[apps/web] --> render[packages/render]
+    web[apps/web] --> ui[packages/ui]
+    web --> render[packages/render]
     web --> shared[packages/shared]
-    web --> ui[packages/ui]
     render --> shared
   end
   web -- /storage --> storage[services/storage :4001]
   web -- /api --> api[services/api :4000]
+  api -- provider HTTP --> ai{{AI providers: openai / gemini / anthropic}}
   storage --> pg[(Postgres)]
   api --> pg
   storage --> prov{{StorageProvider: local / s3}}
 ```
 
-## Rendering happens in the browser
+## Modules
 
-- Servers store, validate, and index. They never decode or encode frames.
-- `packages/render` pipelines:
-  - image → canvas → PNG/JPEG
-  - GIF → `gifuct-js` decode (with disposal compositing) → `gifenc`, per-frame delays kept. Delays under 20 ms play as 100 ms, like browsers; render and storage share `gifFrameDelayMs`.
-  - MP4/MOV → `mediabunny` (WebCodecs) decode → per-frame composite → H.264 MP4; audio passed through.
-- Preview == output: the editor stage, the loop preview, and every export (stills, GIF, and MP4) call the same `layoutText`/`drawText` (`packages/shared/src/text.ts`) and `composeFrame`. MP4 frames are mediabunny `VideoSample`s, which draw themselves, so `composeFrame` takes either an image source or a draw callback. `composeFrame` also returns each layer's `LayerBox` for hit-testing.
-- Resolution: all layout is in fractions of the media, and text is rasterized at the size it is shown or saved, never at source size and then stretched. Still exports render at least `STILL_EXPORT_MIN_EDGE` (1200 px) on the long edge, capped by the image cap: `exportMeme` takes the limits, scales the media to the target width first, then measures the band at that width, so the media is never stretched to fill what the band leaves. GIFs and videos export at native size.
-- Trade-off: export speed depends on the client and WebCodecs support. A server fallback could reuse the same TS later without changing the data model.
+| module | runs in | responsibility | depends on |
+|---|---|---|---|
+| `packages/shared` | browser + Node | Types, zod schemas, upload limits, pure layout/animation/panel logic, AI spec | — |
+| `packages/render` | browser only | Decode → composite → encode for images, GIFs, video | shared |
+| `packages/ui` | browser | Skinnable components and design tokens | — |
+| `packages/server-kit` | Node | Config, Postgres, migrations, `AuthProvider`, HTTP helpers, asset rows, test helpers | shared |
+| `services/storage` | Node | Asset upload/serve, content sniffing, probing, caps, storage providers | server-kit, shared |
+| `services/api` | Node | Users, templates, memes, votes, comments, tags, stickers, stats, AI proxy | server-kit, shared |
+| `apps/web` | browser | SPA: editor, template browser, gallery, profiles | ui, render, shared |
+| `db/migrations` | Postgres | Append-only schema, applied in filename order | — |
+| `scripts/` | Node/Bun | `run.sh` supervisor, seeds, snapshots, prod web server | all |
+| `e2e/` | Playwright | Browser specs against isolated DB and ports | — |
 
-## Layers
+Dependency rules:
 
-- `Layer` is a zod discriminated union on `type`: `text` or `image`. Both share `id`, `name`, `angle`, anchor `x,y`, `opacity`, a visibility window, and keyframes, so placement, dragging, tracks, and every `animation.ts` rule apply to both. Types are `z.output` of the schemas, and request bodies (`CreateMemeInput`, `CreateTemplateInput`, …) are their `z.input`, so the API, the web client, and e2e can't drift. Migration 011 tagged pre-image layers as `text`.
-- `TextLayer`: a box (center anchor + `maxWidth`/`maxHeight`, fractions of the media, 0.05..1). `fontSize` is a max: text wraps at the box width and shrinks until it fits. Raising the max size in the editor also grows the box height (`growTextBox`, never shrinks it; a box inside the media stays inside by moving its anchor) so the larger text actually shows; the selected box has corner handles that resize it about the opposite corner. `textStyle` is `upper | lower | none | mock`. Stroke width is a fraction of font size.
-- `ImageLayer`: a still image asset drawn whole at its own aspect ratio, `width` a fraction of the media width (0.02..2), never cropped or stretched. Size and angle are static. Only the anchor and opacity animate.
-- `name` labels a layer in the editor and is never drawn. Only the Template Editor renames layers, so a template's default names carry into its memes.
-- Image layers are added by upload or paste, pre-checked against the image caps (stills only). Layer images and multi-panel pack images go through one loader, render's `loadAssetImages` (`AssetImages` by asset id): asset content is immutable, so each is decoded once per page and kept for the page's lifetime, shared by every editor and export, never closed. The API rejects image layers whose asset is missing or not a still image, and storage refuses to delete a referenced asset (409).
-- Stickers (`stickers`, migration 012) are a shared library of PNGs ≤ `STICKER_MAX_DIMENSION` (512 px). A placed sticker is an ordinary `ImageLayer` on the sticker's asset, so the layer model, drawing, and API checks are unchanged. The PNG/size rule is a product rule, not an upload cap: a constant in `limits.ts` (`stickerViolations`, shared by client and API), with no env override. Owner-less stickers belong to `memegen`. Built-in stickers are seeded in dev only (`SEED_STICKERS_FROM`).
-- Sticker usage (`sticker_uses`, migration 013) mirrors template usage: a trigger on `memes` logs `created` when a saved meme first carries a sticker and `posted` when it's posted, once per meme, sticker, and kind. Unsaved edits don't count. `GET /api/stickers` ranks by posts, then saves, then newest.
-- Top section (caption memes): the one `TextLayer` with `topSection: {height}` is a white band above the media with black Arial text. It lives in `layers` (no column, API field, or migration). `height` is the one-line band height as a fraction of the media width (0.1..1, default 0.2). The font size is a fraction of that height, and each extra wrapped line grows the band. Its x/y are fractions of the band, while other layers stay fractions of the media, so toggling it never moves them. The band height depends on wrapping, so `composedSize` measures it at the width drawn, the same way for the stage, the preview, and every export. The editor pins it as layer 0: `canMoveLayer`/`moveLayer` in `section.ts` decide both the reorder and the disabled buttons. Outputs still pass the upload caps.
+- `packages/shared` is the single source of truth for contracts. Request bodies are `z.input` of its schemas, responses are `z.output`, so API, web, and e2e cannot drift.
+- Servers never import `packages/render`. API runtime code never imports `services/storage` (tests may, as a dev dependency); shared asset-row access lives in `server-kit`.
+- Web `pages/` import from `components/`, never from each other.
 
-## Animation
+## Key decisions
 
-- Per layer: visibility window `start`/`end` in seconds (`null` = unbounded), and `keyframes[] {t, x, y, opacity}` interpolated linearly and clamped at the ends. No keyframes = static layer.
-- The editor shows every decoded frame. Windows are edited in frames (`windowFrames.ts`): `end` stores the last shown frame's start time, matching `isVisibleAt`. The clip's first/last frame stores `null`, and edges are clamped so a window can't invert.
-- Every edit rule is a pure function in `animation.ts` that the editor only applies: `placeAt` (static layers move, animated ones get a keyframe at the current time), `addKeyframeAt`, `removeKeyframe` (the last one becomes the static position), `clearAnimation`, `setWindow`, `resizeImage`, `rotateTo`.
-- Anchor clamping accounts for `above` (canvas above the layer's area, i.e. the top-section band), so layers can reach the top of a tall band. The schema allows anchor y down to `ANCHOR_Y_MIN` (-10).
-- The GIF/video loop preview uses the export compositor and timing, skipping frames that decode too slowly rather than slowing the clock.
+### Rendering is client-side
 
-## Storage
+- Servers never decode or encode frames. `packages/render` handles stills (canvas → PNG/JPEG), GIFs (`gifuct-js` → `gifenc`), and MP4/MOV (`mediabunny`/WebCodecs → H.264, audio passed through).
+- Preview equals output: the editor stage, loop preview, and every export use the same `layoutText`/`drawText` (shared) and `composeFrame` (render).
+- Layout is stored in fractions of the media, so it is resolution-independent; text is rasterized at the size shown or exported.
+- Trade-off: export speed depends on the client. A server renderer could reuse the same TS without changing the data model.
 
-- `StorageProvider` (`put`/`get(range?)`/`delete`) with a factory table in `providers/registry.ts`. Built-ins: `local` and `s3` (any S3-compatible endpoint). A new provider is one table entry.
-- Each asset row records its `provider` and `storage_key`, so providers coexist and the default can change without migrating files.
-- Asset kinds: `image | gif | video | font`. Content type is sniffed from magic bytes, never trusted from the client. `SUPPORTED_TYPES` in `packages/shared` is the single list of accepted types.
-- Content is served with Range support. A row whose bytes are missing answers 404.
-- Asset row types and mapping (`AssetRow`, `toAsset`, `findAssetRow`) live in `server-kit`, so the API never imports the storage service.
+### Storage is pluggable and immutable
 
-### Upload caps
+- `StorageProvider` (`put`/`get`/`delete`) with a registry; built-ins `local` and `s3`. Each asset row records its provider and key, so providers coexist.
+- Asset content is immutable and served with Range support and immutable caching.
+- Content type is sniffed from magic bytes, never trusted from the client.
+- Upload caps (size, dimensions, frames per kind) default in `packages/shared/src/limits.ts`, take env overrides in `server-kit/src/config.ts`, are pre-checked by the client, and enforced by storage on every write, including rendered outputs. Probing is pure JS (no server ffmpeg).
 
-Enforced by storage on every write. The client pre-checks with the same `limitViolations`. Rendered outputs pass the same caps.
+### Derived data lives in the database
 
-| kind  | max longest edge | max frames | env |
-|-------|------------------|------------|-----|
-| any   | 20 MB file size  | —          | `MAX_UPLOAD_BYTES` |
-| image | 4096 px          | —          | `MAX_IMAGE_DIMENSION` |
-| gif   | 1024 px          | 500        | `MAX_GIF_DIMENSION`, `MAX_GIF_FRAMES` |
-| video | 1920 px          | 1800       | `MAX_VIDEO_DIMENSION`, `MAX_VIDEO_FRAMES` |
+Triggers keep derived state consistent across every write path (API, seeds, snapshot restore): template `kind`, default owners, vote tallies, usage logs (`template_uses`, `sticker_uses`), and hierarchy/reply-depth limits. Views handle tag inheritance. Consequence: snapshots are `pg_dump`s, not row replays.
 
-Probing is pure JS (no server ffmpeg): `image-size`, a GIF block walker, and `mediabunny` for MP4/MOV.
+### Access rules are defined once
 
-## Templates
+- Visibility rules (listed, visible, openable) live in `services/api/src/rows.ts`, with the JS form `isListed` in shared.
+- Auth goes only through `AuthProvider` (`server-kit/src/auth.ts`), installed per service via `installAuth`; routes read `c.get("user")`. The current `HeaderAuthProvider` (`X-User-Id`) is a placeholder and **not secure**; a real provider replaces it without touching routes.
+- Internal-only data (e.g. `negativeHScore`) is served under `/internal/*` behind `X-Internal-Token`, which no web proxy forwards.
 
-- One level of hierarchy: `templates.parent_id` (template → variations), enforced by a trigger. Variations are created only through the API.
-- `default_layers` seed the editor. Memes keep their own layers, so editing a template's defaults never changes existing memes.
-- Every template has an owner. Built-ins belong to the reserved `memegen` account (a trigger fills null owners via `memegen_user_id()`), and `memegen` can't be used as a login name.
-- `kind` (`single`, `gif` (GIF or video), or `multi`) is stored (migration 010) and set by a `before insert` trigger from what the row is made of, so every write path agrees. It never changes on update. The editor routes on it.
-- New media enters only as a template: upload → Template Editor (`/create?newTemplate=<assetId>`) → `POST /api/templates` with the placed boxes as `defaultLayers` and tags as base tags. Owners edit name and defaults at `/create?editTemplate=<id>`.
+### AI is a stateless proxy
 
-### Multi-panel templates
+- The API forwards requests to the user's chosen provider with the user's own key (`X-AI-Key`) and stores nothing. Kept results re-enter as ordinary uploads, so caps, sniffing, and the template flow are unchanged.
+- Providers are adapters in `services/api/src/ai/` behind `AiProvider` (text edits) and `AiImageProvider` (image edits), selected via a registry.
+- Text edits use a versioned spec (`AI_EDIT_SPEC` in `packages/shared/src/ai.ts`): the model returns a list of actions (`UPDATE_IMAGE`, `ADD_TEXT`), which the server normalizes and the browser applies.
+- Provider errors map to 422/429/502, never 401 (which the client treats as its own session ending).
+- Provider keys and settings stay in the browser (`localStorage`).
 
-- An image pack plus default panels instead of one media file. `Template.panels = {layout, grid, mirror, fontSize, pack, defaultPanels}`. A meme stores `Meme.panels = {layout, grid, mirror, fontSize, panels}` with `layers: []`. Each panel is `{id, assetId, text}` referencing a pack image.
-- Layouts: `vertical` (rows of caption | image) or `horizontal` (columns of caption over image), with 1..`MAX_PANELS` (12) panels. `mirror` swaps each caption and image (image | caption, image over caption) without changing the size. Memes may change the layout and add, remove, reorder, or re-point panels.
-- Pack images are never cropped or resized, only scaled to a shared width (vertical) or height (horizontal). Captions are uniform per set: `grid`, `mirror`, and `fontSize` apply to all panels. The grid is inner dividers only (`panelRules`: between captions and images and between panels, never the outer edge). Migration 014 stored `mirror: false` on earlier panels.
-- Geometry (`packages/shared/src/panels.ts`) and drawing (`composePanels`/`exportPanels`) are shared by stage and export. Exports are JPEG at `PANEL_EXPORT_UNIT` (600) px per image, shrunk under the image cap.
-- The template's `asset` is a client-rendered cover, so everything that shows a template image needs no special case. Editing the defaults replaces the cover.
-- `template_pack_assets` holds the pack. Packs only grow: memes reference pack images by id, so `PATCH` rejects removals. The API checks each meme panel against its template's pack.
+### UI is skinnable
 
-### Usage ("hot")
+- All web UI is built from `@memegen/ui`; app CSS is layout-only and reads tokens.
+- A skin is token overrides plus optional component replacements and layout hints. Only one arrangement renders at a time, so test ids stay unique. See `packages/ui/README.md`.
 
-- `template_uses` is an append-only log written by a trigger on `memes`: `created` when a meme is made, `posted` when posted. Each row stores `root_template_id`, so variations count toward their parent. `meme_id` is `on delete set null`, so history survives deletes.
-- Hot = `created` uses in the period, tie-broken by posts. `useCount` is all-time. `/usage` gives a zero-filled series.
+### Migrations are the schema version
 
-## Tags
+Migrations are append-only and never edited once applied. Snapshots record their applied migrations; loading restores the snapshot schema, then migrates forward.
 
-- `tags(slug, name, kind topic|team)` with `template_tags` and `meme_tags`. Names normalize via `tagSlug`. An unknown slug creates a `topic` tag.
-- Inheritance in SQL views: `template_tag_matches` rolls variations up to the parent, and `meme_tag_matches` matches a meme by its own tags or its template's. `Template.tags`/`Meme.tags` show only direct tags.
-- Template tags are base (set at creation, never removed via API) or added (any signed-in user). `baseTags ⊆ tags`.
-- Meme owners set meme tags. New memes start with the template's tags. Removing one only affects `Meme.tags`: inheritance still matches.
-- Trade-off: no removal path for added template tags yet (no moderation).
+## Data model
 
-## Memes, visibility, search
+```mermaid
+erDiagram
+  users ||--o{ assets : owns
+  users ||--o{ templates : owns
+  templates ||--o{ templates : "variations (one level)"
+  templates ||--o{ template_pack_assets : "multi-panel pack"
+  templates ||--o{ memes : "made from"
+  users ||--o{ memes : owns
+  memes ||--o{ votes : ""
+  memes ||--o{ favorites : ""
+  memes ||--o{ comments : "replies one level"
+  tags }o--o{ templates : template_tags
+  tags }o--o{ memes : meme_tags
+  stickers }o--|| assets : ""
+```
 
-- Every meme is made from a template (`template_id not null`, `on delete restrict`). A meme stores its template, source asset, rendered output asset, and layers (or panels), so it can be re-edited.
-- Saved = row exists. Posted = `posted_at` set. `visibility` is `public` or `private`.
-- Listed (gallery, public profiles) = posted and public. Votes, favorites, and comments require listed. Opening by id requires public or owned.
-- These rules live once in `services/api/src/rows.ts` (`memeListed`, `memeVisibleTo`, `memeOpenTo`, `templateVisibleTo`, `requireListed`). The JS form of listed is `isListed` in `packages/shared`, used by `requireListed` and the web app.
-- Search (`GET /api/gallery?q=`) matches case-insensitively, with LIKE wildcards taken literally, on meme title, template or parent name, tags (including inherited), and author.
-- Feeds lay memes out in justified rows (`justifyRows`) at native aspect, never cropped. This is JS because rows must both shrink and grow to fill the width. The rows sit in the app's own `.meme-grid` div, not ui `MediaGrid`: skins may restyle `MediaGrid` (Studio's masonry), which would fight a layout the app computes.
+- **Asset**: stored bytes (`image | gif | video | font`). All media, fonts, outputs, and stickers are assets.
+- **Template**: base media plus default layers. `kind` is `single`, `gif` (GIF or video), or `multi` (an image pack laid out as panels). New media enters the system only as a template. Built-ins belong to the reserved `memegen` user.
+- **Meme**: always made from a template; stores its own layers (or panels), source, and rendered output asset, so it can be re-edited. Saved = row exists; posted = `posted_at` set; listed = posted and public.
+- **Layer**: discriminated union `text | image` sharing placement, opacity, a visibility window, and keyframes. Animation rules are pure functions in `packages/shared/src/animation.ts`.
+- **Tag**: `topic | team`; memes inherit their template's tags, variations roll up to the parent.
+- **Votes/stats**: one ±1 vote per user per meme; user stats and leaderboard share one SQL definition; badges are computed client-side from public stats.
 
-## Votes, stats, badges
+## Interfaces
 
-- `votes(user_id, meme_id, value ±1)`, one per user per meme. A trigger maintains `memes.upvotes/downvotes`, and `score` is generated.
-- Posting casts the author's upvote (Reddit-style), in the API only when the meme becomes listed (first post of a public meme), so a removed self-vote stays removed. Seeds write votes directly and get none.
-- Votes double as the owner-only activity feed (`GET /api/me/activity`). Favorites are a separate table.
-- Popular = listed memes posted in the period (all time by default), by score then recency. Recent = all-time recency.
-- User stats over posted memes: `memeCount`, `highScore`, `hScore` (largest h with h memes scoring ≥ h). `negativeHScore` (h memes ≤ −h) is internal only, at `/internal/users/:username/stats` behind `X-Internal-Token`. The web proxy never forwards `/internal`.
-- One SQL definition serves profiles and the leaderboard.
-- Badges are config in `packages/shared/src/badges.ts`, computed client-side from public stats, so they can't leak internal stats. Each stat shows only its highest tier.
+All JSON unless noted. Errors: `{ error: string, details?: string[] }`. Shapes are the types in `packages/shared`.
 
-## Comments
+### storage (`:4001`, web proxy `/storage`)
 
-- Top-level comments plus one level of replies (enforced by a trigger). Only listed memes take comments.
-- The comment author or the meme owner can delete. A comment with replies is blanked (`deleted: true`) to keep the thread shape. Otherwise it is removed, along with a blanked parent left with no replies.
+| route | purpose |
+|---|---|
+| `GET /health` | liveness |
+| `GET /limits` | `UploadLimits` |
+| `GET /providers` | default and available providers |
+| `POST /assets` | multipart upload → `Asset`; 413/422 with cap violations |
+| `GET /assets`, `GET /assets/:id` | list (by `kind`) / fetch `Asset` |
+| `GET /assets/:id/content` | bytes, Range supported |
+| `DELETE /assets/:id` | owner or internal token; 409 if referenced |
 
-## Auth
+### api (`:4000`, web proxy `/api`)
 
-- Placeholder. `POST /api/session {username}` finds or creates a user, and the client sends `X-User-Id`. **Not secure**: anyone can act as anyone.
-- Routes get the user only through `AuthProvider` (`packages/server-kit/src/auth.ts`), so a real provider replaces `HeaderAuthProvider` without touching routes. Both services call `installAuth(app, auth)`, which resolves the user once per request; handlers read it with `c.get("user")`.
-- The web app is sign-in only: with no stored user, every URL renders the sign-in page, then the app at that same URL. Components can therefore assume a user. The API still serves anonymous reads. The gate is UI, not access control.
-- The client keeps the user in a `memegen.user` cookie (one year). The server never reads it. A 401 on a request that carried `X-User-Id` drops the cookie.
-- `MODE` is baked into the build (`__MEMEGEN_MODE__`). Anything but `MODE=dev` builds as prod, so the dev login never ships by accident. Prod shows a "Sign in with SSO" placeholder.
+| area | routes |
+|---|---|
+| health | `GET /health` |
+| session/me | `POST /api/session`, `GET /api/me`, `GET /api/me/activity`, `GET /api/me/favorites` |
+| users | `GET /api/users`, `GET /api/users/:username`, `GET /api/users/:username/memes`, `GET /api/users/:username/templates`, `GET /api/leaderboard` |
+| templates | `GET/POST /api/templates`, `GET /api/templates/count`, `GET /api/templates/hot`, `GET/PATCH/DELETE /api/templates/:id`, `GET /api/templates/:id/usage`, `POST /api/templates/:id/tags` |
+| memes | `POST /api/memes`, `GET/PATCH/DELETE /api/memes/:id`, `POST /api/memes/:id/post`, `PUT /api/memes/:id/vote`, `PUT /api/memes/:id/favorite` |
+| comments | `GET/POST /api/memes/:id/comments`, `DELETE /api/comments/:id` |
+| gallery | `GET /api/gallery` (period, sort, tag, search) |
+| tags | `GET/POST /api/tags`, `GET /api/tags/:slug` |
+| stickers | `GET/POST /api/stickers` |
+| AI | `POST /api/ai/edit` (spec actions), `POST /api/ai/images` (image bytes); multipart, `X-AI-Key`, nothing stored |
+| internal | `GET /internal/users/:username/stats` (`X-Internal-Token`) |
 
-## AI agents and images
-
-- `POST /api/ai/images` sends a prompt and a background image to an image model and returns the result's bytes. Nothing is stored: a result the user keeps is uploaded like any other new media (`/create?newTemplate=`), so caps, sniffing, and the template flow stay the same. Servers still never decode or encode: the API only checks magic bytes (`sniff`, shared with storage) on the way in and out.
-- The Quick Creator talks to an agent through one spec, `quick-creator/2` (`AI_EDIT_SPEC`, schemas and action types in `packages/shared/src/ai.ts`). The request holds the user's directions, the template's default text boxes in layer order, the top section's included (`{id, label, text, fontId, x, y}`; `x`/`y` only say where a box sits), the fonts the agent may pick, and `canUpdateImage`. The answer is a list of actions, not a meme: an optional `UPDATE_IMAGE(prompt)` (change the picture itself), then `ADD_TEXT(text, position?, style?)`s, where `position` is a box id (omitted: the next box not yet given text), `text: ""` blanks the box, and `style` is `{fontId}` (omitted: keep the font). Boxes without an `ADD_TEXT` keep their text. Positions, sizes, timing, and new boxes (including adding or removing a top section) aren't in the actions' shape, so an agent can't change them; custom boxes can join later as a new action under a new spec version. Text and font only, by design: color, outline, and case can join `style` the same way.
-- `UPDATE_IMAGE` needs the user's Image Generator: the client sends `canUpdateImage: false` without one, the API also turns it off without a still image (GIF/video templates take text only), the prompt tells the model whether it's available, and the API drops any `UPDATE_IMAGE` it sends anyway. So a missing Image Generator never fails a run: the text still lands.
-- `POST /api/ai/edit` runs the spec on a text model (OpenAI `/chat/completions` with a strict JSON schema, Gemini `generateContent` with the same shape as a `responseSchema`, Anthropic `/messages` with structured outputs on the JSON schema); each action is one `anyOf` branch keyed by `action`. The system prompt (`editSystemPrompt`) is fixed for every request: the task, the input fields, both actions with their arguments, the rules, and the response format with an example; the user message carries the request as JSON. The server is the one place output becomes an `AiEdit` `{actions}` (`normalizeEdit`, `services/api/src/ai/quickEdit.ts`), always `[UPDATE_IMAGE?, ...ADD_TEXT]`: the first non-blank `UPDATE_IMAGE` (capped like a prompt, only when available), every `ADD_TEXT` resolved to a requested box id (first per box; unknown ids and extra unpositioned text dropped), listed fonts only, and text that changes nothing dropped. An answer with no actions is valid; output that isn't a JSON object is a 502.
-- Providers are adapters (`services/api/src/ai/`), one per id in `AI_PROVIDERS`. Every one is an `AiProvider` (`quickEdit` for the spec); those flagged `image` are also an `AiImageProvider` (`edit` for images): `openai` (`/images/edits`, GPT Image) and `gemini` (`generateContent`, Nano Banana). `anthropic` (Claude) is text only, since Claude doesn't generate images: it can be the Agent Provider, never the Image Generator, and `/api/ai/images` rejects it (`AI_IMAGE_PROVIDER_IDS`). A new provider is one adapter, one registry entry, and one list entry. Both endpoints take an optional `model` (letters, digits, `. _ : -`) that overrides the env default.
-- Users set two AI roles, each a provider, the user's own API key, and an optional model: the Agent Provider (the text model behind `/api/ai/edit`) and the Image Generator (the image model behind `/api/ai/images`). They may use different providers. Users manage them under their profile's API Keys tab: a side menu on the left (`NavList`, one `<role>: <provider>` or `UNSET` item per role; the chosen one dark with white text in every skin) picks the role a form on the right edits. Both stay in that browser (`localStorage` `memegen.aiSettings.<userId>` as `{text, image}`, unset = null; the first of the named agents stored before, under `memegen.aiAgents.<userId>`, becomes both on first read). Agents used to carry their own instructions; those were dropped, so the system prompt is the spec alone. The key goes along in `X-AI-Key` on each request. The server forwards a key and never stores or logs it, so keys never reach the database or snapshots. Trade-off: settings don't follow a user to another browser. Real OAuth isn't offered: OpenAI and Gemini API keys have no end-user sign-in.
-- The Quick Creator starts on a random browsable template (multi-panel ones skipped), drawn on a canvas with the export's compositor (capped in height, scaled down to fit at the template's aspect), with its Describe field empty and its placeholder showing one `<box label>: <text>` line per box (the top section's first). Describe is disabled until an Agent Provider is set. Its buttons are `[Update] [Full editor]` on the left and `[Publish]` on the right; they share one action, so only one runs at a time (with Cancel beside them).
-  - Update (needs an Agent Provider and typed directions other than the placeholder's text, trimmed) sends the directions via `/api/ai/edit` with the current still image and `canUpdateImage` set when an Image Generator is, applies the `ADD_TEXT`s in the browser (`applyAiEdit`), and sends an `UPDATE_IMAGE` prompt (`aiImageUpdate`) to `/api/ai/images` with the Image Generator's provider, key, and model. The result is a draft, kept in the page: its layers and its edited image (a blob, not uploaded yet). The canvas draws the draft, and another Update builds on it (its text and image). Picking another template discards it.
-  - Full editor never calls the agent: it opens the Template Editor on the draft's edited image, uploaded as new media (`?newTemplate=`), otherwise the template itself (`?template=`); the draft's layers travel in history state (`{layers}`, validated against `layersSchema` on arrival) and get fresh ids in the editor. Without a draft, it opens the template as is.
-  - Publish needs a draft, so a template's placeholder text is never posted; it skips the editor: an edited image is uploaded and created as a template (named after its file, which is named after its prompt; the template's tags; the draft's boxes as defaults), then the meme is rendered with `exportMeme`, uploaded, and created posted and public, titled and tagged like its template. Edited images are uploaded only by Full editor or Publish, so Updates that are dropped leave nothing in storage.
-- Provider errors never come back as 401, which the web client treats as its own session being rejected: a refused key or prompt is a 422 with the provider's reason, rate limits stay 429, and anything else is a 502. Both endpoints share this mapping.
-- Tests use `startAiStub` (`server-kit/testing`), a local server speaking all three wire formats. It answers edits with actions, line by line from the directions: `mod: …` lines are one `UPDATE_IMAGE` (sent even when unavailable, for the API to drop), `<box label>: …` an `ADD_TEXT` at that box, other lines an `ADD_TEXT` without a position, and `font: <name>` every box's style. It records what each call received (model and `canUpdateImage` included). e2e points `OPENAI_BASE_URL`/`GEMINI_BASE_URL`/`ANTHROPIC_BASE_URL` at it.
-
-## UI and skins
-
-- All web UI comes from `@memegen/ui`: typed components over native controls, so a11y, automation, and platform behavior are identical in every skin. App CSS is layout-only and reads tokens.
-- A skin is `<html data-skin>` plus CSS token overrides, optional whole-component replacements (`Skin.components`), and one layout hint (`Skin.layout.filters`), which moves controls without duplicating them, so test ids stay unique. Details: `packages/ui/README.md`.
-- On wide screens the header shares the shell's columns through layout tokens (`--ui-shell-gap`, `--ui-shell-padding-*`, `--ui-main-padding-inline`): the wordmark sits over the side column and the search starts where the main content does, in every skin. The wordmark keeps its skin size and shrinks only to fit the side column. That fit needs the wordmark's width in ems, which `Header` measures. CSS can't measure text.
-- Narrow screens (≤ 760px) get one header row: the wordmark's first letter (its swatch scales down with the box), the search, and an account dropdown (Signed in as, Profile, Sign out). Below it sits one row with Create and a Gallery dropdown (Recent, Popular, Leaderboard). Feed filters move beside the page title, and the tag list is not shown. The app picks what to render with `useNarrowScreen()` (the same breakpoint as the CSS). Only one arrangement is ever rendered, so test ids stay unique.
-- Licensed fonts (Adobe Clean, Radlush) are never bundled. They're used only when installed, with OFL fallbacks.
-- Prod is locked to `default`. In dev, skins are switched from the sign-in page's Dev tools panel.
-
-## Code layout
-
-- API: `app.ts` wires auth, errors, and `routes/*.ts` (`register(app, sql)`). Shared loaders/guards are in `access.ts`. Row types, base selects, mappers, and batched child loading (`withVariations`, `nest`) are in `rows.ts`. Schemas come from `@memegen/shared`.
-- Web: `pages/` are route screens and import only from `components/`, never each other. Data goes through `useAsync` (one value, drops stale results), `usePaged` (offset lists), and `useAction` (mutations; each run gets an `AbortSignal` that aborts on `cancel()` or unmount, so leaving cancels an export or upload in flight). A list that ends the page infinite-scrolls. Lists with content after them, and meme feeds, use "Load more".
-
-## Testing
-
-- `node --test`: pure shared logic plus storage/API behavior via `app.request()` against a fresh `memegen_test` schema.
-- Playwright: real servers on separate ports against a fresh `memegen_e2e`. Exports are checked with `ffprobe`. Runs in branded Chrome, because Playwright's Chromium lacks H.264/AAC for WebCodecs.
-- Datasets are committed as code, not DB dumps (dumps go stale with migrations and can't carry media):
-  - Mock (`e2e/mock/data.ts`): e2e only, with generated media. `MOCK_EXPECT` rankings and stats are hand-written as an independent oracle.
-  - Sample (`scripts/sample/data.ts`): the dev site, using the jacebrowning templates.
-  - Starter (`scripts/starter/data.ts`): example memes owned by `memegen`, shipped as a snapshot.
-- Sample and starter memes are rendered at seed time by `@memegen/render` in headless Chromium, with assets served from the store via `page.route` (offline, no running services). Rendering finishes before any DB write.
-- Specs share one seeded DB (retries included): names they create go through `scoped()` and must be distinct across specs, and vote assertions are relative. They wait on state markers (`stage-canvas[data-ready]`, `timeline[data-complete]`), never sleeps.
-
-## Snapshots
-
-- One zip format serves prod backups, the dev sample, and starter content (`scripts/snapshot.ts`):
-  - `manifest.json`: format, label, source, applied migrations, row counts, and every file's size and sha256
-  - `db/memegen.dump`: `pg_dump --format=custom --no-owner --no-acl`
-  - `db/schema.sql`: readable schema, never loaded
-  - `assets/{fonts,stickers,templates,memes,uploads}/<name>--<id8>.<ext>`: uncompressed bytes. Loads find files via the manifest, never by name.
-- A dump, not a row export: replayed inserts would re-fire the triggers behind usage logs, vote tallies, `kind`, and owners. `pg_restore` creates triggers after loading data, so derived rows come back exactly as saved.
-- Versioning is the migration list: a load restores the snapshot's schema, then migrates. Unknown migrations (newer code) or another `SNAPSHOT_FORMAT` are refused. This is why migrations are never edited once applied.
-- Save is read-only and consistent: one `repeatable read` transaction exports a Postgres snapshot shared by both dumps, the row counts, and the asset list. Any missing or mismatched asset fails the save, listing all of them, and leaves no zip.
-- Load targets only a clean system (no tables, or migrations only with no users or assets). It verifies everything before writing, uploads bytes to the default provider, restores in one transaction, repoints asset rows to the default provider, checks row counts, then migrates.
+API layout: `app.ts` wires auth and errors; each `routes/*.ts` exports a `register(app, …)`; shared guards in `access.ts`; row mapping and visibility in `rows.ts`.
 
 ## Runtime and config
 
-- Servers: Node ≥ 24.2 running `.ts` via type stripping (erasable syntax only), Hono, and `postgres` (porsager). Bun installs packages and runs scripts. Vite builds the web app.
-- `run.sh <config> <command>` is the single entry point. Configs are literal `KEY=value` files (no shell expansion).
-- `MODE=prod` guards: refuses sample seeding, `dev`, `reset`, `test`, `e2e`, and `snapshot load --replace`. It also requires a non-dev `INTERNAL_TOKEN` and a real `DATABASE_URL`, and masks secrets in `config`.
-- `scripts/run.ts` supervises migrate → storage → API → web (`--watch` or `--prod`), prefixes output per process, and stops everything when one exits. The process list in `scripts/services.ts` is shared with Playwright's `webServer`.
-- `scripts/serve-web.ts` (prod) serves the SPA with fallback and immutable `assets/`, and proxies `/api` and `/storage` like Vite. It never proxies `/internal`.
-- Proxies target `localhost:${API_PORT}`/`${STORAGE_PORT}`. `API_URL`/`STORAGE_URL` are overrides for split hosts only.
+- Node ≥ 24.2 runs server `.ts` via type stripping; Hono for HTTP; `postgres` (porsager) for SQL. Bun installs and runs scripts; Vite builds the web app.
+- `run.sh <config> <command>` is the single entry point; configs are literal `KEY=value` files.
+- `scripts/run.ts` supervises migrate → storage → API → web. The process list (`scripts/services.ts`) is shared with Playwright.
+- In prod, `scripts/serve-web.ts` serves the SPA and proxies `/api` and `/storage` (never `/internal`).
+- `MODE` is baked into the web build; anything other than `dev` builds as prod. `MODE=prod` refuses destructive and dev-only commands and requires real secrets.
 
-## Service contracts
+## Data sets and snapshots
 
-All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validation issues or cap violations, human-readable).
+- One zip format (`scripts/snapshot.ts`) serves prod backups, the dev sample, and starter content: a manifest, a `pg_dump`, and asset bytes.
+- Saves are read-only and consistent (one `repeatable read` transaction). Loads target a clean system, verify everything first, then restore and migrate.
+- Datasets are committed as code, not dumps: mock (e2e), sample (dev), starter (shipped). Their memes are rendered at seed time by `@memegen/render` in headless Chromium.
 
-### storage (`:4001`, web proxy `/storage`)
-| method | path | notes |
-|---|---|---|
-| GET | `/limits` | `UploadLimits` |
-| GET | `/providers` | `{ default, available[] }` |
-| POST | `/assets` | multipart `file`, optional `name`; `X-User-Id` sets owner. 201 `Asset`; 413/422 `{error, details: violations[]}` |
-| GET | `/assets?kind=&offset=&limit=` | `Page<Asset>` (fonts sorted by name; the editor's font list) |
-| GET | `/assets/:id` | `Asset` |
-| GET | `/assets/:id/content` | file bytes, Range supported, immutable cache |
-| DELETE | `/assets/:id` | owner or internal token; 409 if referenced |
+## Testing
 
-### api (`:4000`, web proxy `/api`)
-| method | path | notes |
-|---|---|---|
-| POST | `/api/session` | `{username}` → `{user}` (find or create); reserved names (`memegen`) → 400 |
-| GET | `/api/me` | `UserProfile` `{user, stats, templateCount}`; 401 without user |
-| GET | `/api/me/activity?offset=&limit=` | `Page<Meme>` the viewer voted on (either way), newest vote first; 401 without user |
-| GET | `/api/me/favorites?offset=&limit=` | `Page<Meme>` the viewer starred, newest first; 401 without user |
-| GET | `/api/leaderboard?by=hScore\|highScore\|memeCount&limit=` | `LeaderboardEntry[]` `{rank, user, stats}` |
-| GET | `/api/users/:username` | `UserProfile` (public stats; `templateCount` = public templates the user added, variations included) |
-| GET | `/api/users?q=&offset=&limit=` | `Page<UserSummary>` `{id, username, stats}` (public stats, zeros before a first post): usernames containing `q` (all users when empty), exact match first, then prefix matches, then the rest; within each, best h-score, then name. The search page's Users tab |
-| GET | `/api/users/:username/memes` | `Page<Meme>`; the owner also sees drafts/private |
-| GET | `/api/users/:username/templates` | `Page<Template>` the user added, variations included (each top-level one with its visible variations nested), newest first; the owner also sees private ones |
-| GET | `/api/templates?q=&tag=&kind=&offset=&limit=` | `Page<Template>` (top-level, variations nested; `owner` always set, `baseTags ⊆ tags`), newest first; `kind` = `single`, `multi`, or `gif` (GIFs and videos) |
-| GET | `/api/templates/count` | `TemplateCount` `{count}`: top-level templates the viewer can browse (the template search's placeholder) |
-| GET | `/api/templates/hot?period=&limit=` | `HotTemplate[]`: most-used top-level templates in the period |
-| GET | `/api/templates/:id/usage?period=` | `TemplateUsage`: zero-filled series (day→hourly, week/month→daily, year/all→monthly) |
-| GET | `/api/templates/:id` | `Template` (+ variations, `useCount`) |
-| POST | `/api/templates` | `{name, assetId, parentId?, defaultLayers?, panels?, isPublic?, tags?}`; `tags` become base tags; `panels` = `{layout, grid?, mirror?, fontSize?, packAssetIds, defaultPanels}` makes a multi-panel template (still-image pack, `assetId` its rendered cover, no `defaultLayers`) |
-| PATCH/DELETE | `/api/templates/:id` | owner only; PATCH `{name?, defaultLayers?, isPublic?, panels?+assetId?}` (multi-panel: new defaults with their re-rendered cover; pack images can be added, not removed); DELETE → 409 while memes use it (or one of its variations) |
-| POST | `/api/memes` | `{title, templateId, outputAssetId, layers, panels?, visibility, post, tags?}`; every meme is made from a template; `panels` (`{layout, grid?, mirror?, fontSize?, panels}`, images from the template's pack) is required for multi-panel templates and rejected otherwise; `post` on a public meme casts the author's upvote |
-| GET | `/api/memes/:id` | `Meme` (private → owner only) |
-| PATCH | `/api/memes/:id` | `{title?, visibility?, tags?, layers+outputAssetId(+panels)?}` owner only |
-| POST | `/api/memes/:id/post` | sets `posted_at`; the first post of a public meme casts the author's upvote (Reddit-style) |
-| DELETE | `/api/memes/:id` | owner only; cascades comments, votes, favorites, tags |
-| PUT | `/api/memes/:id/vote` | `{value: -1|0|1}` → `Meme` |
-| PUT | `/api/memes/:id/favorite` | `{favorite: boolean}` → `Meme`; posted public memes only; idempotent |
-| GET | `/api/memes/:id/comments?offset=&limit=` | `Page<Comment>`: top-level oldest first, replies nested |
-| POST | `/api/memes/:id/comments` | `{body, parentId?}` → 201 `Comment`; posted public memes only |
-| DELETE | `/api/comments/:id` | comment author or the meme's owner; blanked if it has replies, else removed |
-| GET | `/api/gallery?period=&sort=&tag=&q=&offset=&limit=` | `Page<Meme>`; `q` searches title, template (or parent) name, tags incl. inherited ones, and author username |
-| GET | `/api/tags?q=&kind=&sort=&limit=` | `Tag[]` with `templateCount`/`memeCount`; `sort=uses` (default) most used first (templates + memes), `sort=memes` on the most listed memes first, tags on none left out (the side column's Trending: top 5 topic tags, all time) |
-| GET | `/api/tags/:slug` | `Tag` |
-| POST | `/api/tags` | `{name, kind?}` → 201 `Tag`; 409 if slug exists |
-| POST | `/api/templates/:id/tags` | `{tags: string[]}` adds non-base tags (any signed-in user) → `Template` |
-| GET | `/api/stickers?offset=&limit=` | `Page<Sticker>` `{id, name, owner, asset, createdAt, useCount, savedCount}`, most posted first, then most saved, then newest |
-| POST | `/api/stickers` | `{name, assetId}` → 201 `Sticker`; the asset must be the caller's PNG, ≤ 512×512 (422 with `details`); 409 if it already is a sticker |
-| POST | `/api/ai/images` | multipart `provider` (`openai`\|`gemini`), `prompt` (≤ 4000 chars), optional `model` (≤ 100 chars of letters, digits, `. _ : -`; default from env), `image` (still png/jpg/webp within the byte cap); header `X-AI-Key` = the user's own provider key; signed-in only. 200 image bytes (`Content-Type` from magic bytes), nothing stored; 400 missing key/fields, 413 too large, 415 not a still image, 422 provider refused (bad key, content policy), 429 provider rate limit, 502 provider failure |
-| POST | `/api/ai/edit` | multipart `provider` (`openai`\|`gemini`\|`anthropic`), optional `model` (as above), `request` (JSON `quick-creator/2`: `{directions` ≤ 2000 chars, `boxes: [{id, label, text, fontId, x, y}]` ≤ 50 (the top section's included), `fonts: [{id, name}]` ≤ 200, `canUpdateImage: boolean}`), optional `image` (still png/jpg/webp within the byte cap); header `X-AI-Key`; signed-in only. 200 `{actions: [{action: "UPDATE_IMAGE", prompt}?, ...{action: "ADD_TEXT", text, position, style: {fontId} \| null}]}` (`UPDATE_IMAGE` at most once, first, `prompt` ≤ 4000 chars, only with `canUpdateImage` and an image; `position` a requested box id, each at most once; listed fonts only), nothing stored; errors as `/api/ai/images` (502 also when the answer isn't a JSON object) |
-| GET | `/internal/users/:username/stats` | `InternalUserStats`, `X-Internal-Token` |
+- `node --test`: shared logic and service behavior via `app.request()` against a fresh `memegen_test`.
+- Playwright: real servers on separate ports against a fresh `memegen_e2e`, in branded Chrome (needed for H.264 in WebCodecs). AI calls hit a local stub (`startAiStub`).

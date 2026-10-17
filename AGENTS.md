@@ -22,7 +22,7 @@ Rules for changing this repo. Setup and commands: [README.md](README.md). Design
 - **UI:** build only from `@memegen/ui` components. `apps/web/src/styles.css` is layout-only and uses design tokens, never hard-coded colors.
 - **Caps:** defaults in `packages/shared/src/limits.ts`, env overrides in `packages/server-kit/src/config.ts`. Storage enforces them on every write.
 - **Migrations:** never edit an applied migration. Add a new one (snapshots depend on this).
-- **Contracts:** an API shape change updates the `packages/shared` types and schemas, the contract tables in ARCH.md, and every caller in `apps/web`.
+- **Contracts:** an API shape change updates the `packages/shared` types and schemas and every caller in `apps/web`. Adding, removing, or renaming a route also updates the route tables in ARCH.md.
 - **Secret stat:** `negativeHScore` is internal-only. Never return it from `/api/*`.
 - **Auth:** routes get the user only through `AuthProvider` (`c.get("user")`). Never read `X-User-Id` directly.
 - **Assets:** `demo/` and `e2e/fixtures/` are gitignored. Never commit media or fonts.

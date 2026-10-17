@@ -1,9 +1,11 @@
-import type { AiProviderId } from "@memegen/shared";
+import type { AiImageProviderId, AiProviderId } from "@memegen/shared";
+import { AnthropicProvider } from "./anthropic.ts";
 import { GeminiProvider } from "./gemini.ts";
 import { OpenAiProvider } from "./openai.ts";
-import type { AiProvider } from "./types.ts";
+import type { AiImageProvider, AiProvider } from "./types.ts";
 
-export type AiProviders = Readonly<Record<AiProviderId, AiProvider>>;
+/** Every provider makes edits; image providers also generate images. */
+export type AiProviders = Readonly<Record<AiProviderId, AiProvider> & Record<AiImageProviderId, AiImageProvider>>;
 
 /**
  * One adapter per id in `AI_PROVIDERS` (add a provider in both places). Users bring their own keys, so the server
@@ -20,6 +22,10 @@ export function createAiProviders(env: NodeJS.ProcessEnv = process.env): AiProvi
       baseUrl: env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta",
       imageModel: env.GEMINI_IMAGE_MODEL || "gemini-nano-banana-2.1",
       textModel: env.GEMINI_TEXT_MODEL || "gemini-2.5-flash",
+    }),
+    anthropic: new AnthropicProvider({
+      baseUrl: env.ANTHROPIC_BASE_URL || "https://api.anthropic.com/v1",
+      textModel: env.ANTHROPIC_TEXT_MODEL || "claude-haiku-5-5",
     }),
   };
 }

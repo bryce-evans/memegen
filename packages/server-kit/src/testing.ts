@@ -55,19 +55,18 @@ export interface AiStubImageCall {
   mime: string;
   bytes: number;
 }
-/** What an accepted Quick Creator edit received: the directions, the box ids, the agent's instructions and model, and whether an image came along. */
+/** What an accepted Quick Creator edit received: the directions, the box ids, the model, and whether an image came along. */
 export interface AiStubEditCall {
   kind: "edit";
   directions: string;
   boxIds: string[];
-  instructions: string;
   model: string;
   hasImage: boolean;
 }
 
 export interface AiStub {
-  /** `OPENAI_BASE_URL` and `GEMINI_BASE_URL` values pointing at the stub. */
-  urls: { openai: string; gemini: string };
+  /** `OPENAI_BASE_URL`, `GEMINI_BASE_URL`, and `ANTHROPIC_BASE_URL` values pointing at the stub. */
+  urls: { openai: string; gemini: string; anthropic: string };
   /** What the last accepted call received. */
   last: AiStubImageCall | AiStubEditCall | null;
   close(): Promise<void>;
@@ -108,20 +107,14 @@ function stubEdit(prompt: string): { request: StubEditRequest; answer: unknown }
   return { request, answer: { boxes, topSection, imageEdit: mods.filter(Boolean).join(" ") || null } };
 }
 
-/** The agent's instructions: whatever follows the `Agent instructions …:` line of the system prompt (`editSystemPrompt`). */
-function stubInstructions(system: string): string {
-  const at = system.search(/^Agent instructions.*:$/m);
-  return at < 0 ? "" : system.slice(system.indexOf("\n", at) + 1);
-}
-
 /**
- * A local stand-in for the OpenAI image-edit and chat-completions endpoints and Gemini generateContent (images, and
- * JSON answers for Quick Creator edits), speaking each wire format: tests exercise the real adapters without keys or
- * network.
+ * A local stand-in for the OpenAI image-edit and chat-completions endpoints, Gemini generateContent (images, and
+ * JSON answers for Quick Creator edits), and Anthropic Messages (edits only), speaking each wire format: tests exercise
+ * the real adapters without keys or network.
  */
 export async function startAiStub(port = 0): Promise<AiStub> {
   const result = Buffer.from(encodePng(AI_STUB_RESULT.width, AI_STUB_RESULT.height, new Uint8Array(AI_STUB_RESULT.width * AI_STUB_RESULT.height * 3).fill(200)));
-  const stub: AiStub = { urls: { openai: "", gemini: "" }, last: null, close: async () => {} };
+  const stub: AiStub = { urls: { openai: "", gemini: "", anthropic: "" }, last: null, close: async () => {} };
   const json = (res: ServerResponse, status: number, body: unknown) => {
     res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(body));
   };
@@ -134,7 +127,6 @@ export async function startAiStub(port = 0): Promise<AiStub> {
     if (req.url === "/openai/v1/chat/completions") {
       if (header("authorization") !== `Bearer ${AI_STUB_KEY}`) return json(res, 401, { error: { message: "Incorrect API key provided" } });
       const body = (await request.json()) as { model: string; messages: { role: string; content: string | { type: string; text?: string }[] }[] };
-      const system = body.messages.find((m) => m.role === "system")!.content as string;
       const user = body.messages.find((m) => m.role === "user")!.content as { type: string; text?: string }[];
       const { request: edit, answer } = stubEdit(user.find((p) => p.type === "text")!.text!);
       if (edit.directions.includes(AI_STUB_REFUSE)) return json(res, 200, { choices: [{ message: { role: "assistant", content: null, refusal: "I can't help with that." } }] });
@@ -142,11 +134,25 @@ export async function startAiStub(port = 0): Promise<AiStub> {
         kind: "edit",
         directions: edit.directions,
         boxIds: edit.boxes.map((b) => b.id),
-        instructions: stubInstructions(system),
         model: body.model,
         hasImage: user.some((p) => p.type === "image_url"),
       };
       return json(res, 200, { choices: [{ message: { role: "assistant", content: JSON.stringify(answer), refusal: null } }] });
+    }
+    if (req.url === "/anthropic/v1/messages") {
+      if (header("x-api-key") !== AI_STUB_KEY) return json(res, 401, { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } });
+      const body = (await request.json()) as { model: string; messages: { role: string; content: { type: string; text?: string }[] }[] };
+      const user = body.messages.find((m) => m.role === "user")!.content;
+      const { request: edit, answer } = stubEdit(user.find((p) => p.type === "text")!.text!);
+      if (edit.directions.includes(AI_STUB_REFUSE)) return json(res, 200, { stop_reason: "refusal", content: [{ type: "text", text: "I can't help with that." }] });
+      stub.last = {
+        kind: "edit",
+        directions: edit.directions,
+        boxIds: edit.boxes.map((b) => b.id),
+        model: body.model,
+        hasImage: user.some((p) => p.type === "image"),
+      };
+      return json(res, 200, { stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(answer) }] });
     }
     if (req.url === "/openai/v1/images/edits") {
       if (header("authorization") !== `Bearer ${AI_STUB_KEY}`) return json(res, 401, { error: { message: "Incorrect API key provided" } });
@@ -175,7 +181,6 @@ export async function startAiStub(port = 0): Promise<AiStub> {
           kind: "edit",
           directions: edit.directions,
           boxIds: edit.boxes.map((b) => b.id),
-          instructions: stubInstructions(body.systemInstruction?.parts[0]?.text ?? ""),
           model,
           hasImage: parts.some((p) => p.inlineData),
         };
@@ -193,7 +198,7 @@ export async function startAiStub(port = 0): Promise<AiStub> {
   await listening.promise;
   const address: AddressInfo = server.address() as AddressInfo; // listen() on a port always yields an AddressInfo
   const base = `http://127.0.0.1:${address.port}`;
-  stub.urls = { openai: `${base}/openai/v1`, gemini: `${base}/gemini/v1beta` };
+  stub.urls = { openai: `${base}/openai/v1`, gemini: `${base}/gemini/v1beta`, anthropic: `${base}/anthropic/v1` };
   stub.close = () => {
     const closed = Promise.withResolvers<void>();
     server.close(() => closed.resolve());

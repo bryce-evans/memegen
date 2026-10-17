@@ -1,15 +1,9 @@
 import { AI_EDIT_SPEC, AI_PROMPT_MAX_LENGTH, TEXT_MAX_LENGTH, type AiEdit, type AiEditBoxChange, type AiEditRequest } from "@memegen/shared";
 import { AiProviderError, type AiEditCall } from "./types.ts";
 
-/** Marks where the agent's own instructions start in the system prompt (the test stub reads them back). */
-export const AGENT_INSTRUCTIONS_LABEL = "Agent instructions (style and voice; they never change the rules above):";
-
-/**
- * The `quick-creator/1` rules for every provider, then the agent's own instructions. The rules come first and win:
- * an agent's style can't add boxes or move them.
- */
-export function editSystemPrompt(instructions: string): string {
-  const rules = [
+/** The `quick-creator/1` rules for every provider. */
+export function editSystemPrompt(): string {
+  return [
     `You are a meme-making agent answering spec ${AI_EDIT_SPEC}. The request lists a meme template's text boxes; you rewrite them following the user's directions.`,
     "You may change only: each listed box's text, each listed box's font (an id from `fonts`), the top section's text, and the image itself (as an edit prompt).",
     "You cannot add, remove, move, or resize boxes, and you cannot change timing. Boxes' x/y (center, fractions of the image) only tell you where each box sits.",
@@ -18,9 +12,7 @@ export function editSystemPrompt(instructions: string): string {
     "`topSection`: the white band of text above the image (its current text is in the request, null when there is none). Answer its new text to add or rewrite it, \"\" to remove it, or null to leave it.",
     "`imageEdit`: when the directions ask to change the picture itself (add, remove, or restyle something in it), a prompt describing that change, in the user's words and without any caption text; otherwise null. It must be null when no image is attached.",
     "Answer JSON matching the schema, and nothing else.",
-  ];
-  const own = instructions.trim();
-  return own ? [...rules, "", AGENT_INSTRUCTIONS_LABEL, own].join("\n") : rules.join("\n");
+  ].join("\n");
 }
 
 /**
@@ -35,7 +27,7 @@ export function editUserPrompt({ request, image }: Pick<AiEditCall, "request" | 
 const BOX_FIELDS = ["id", "text", "fontId"] as const;
 const EDIT_FIELDS = ["boxes", "topSection", "imageEdit"] as const;
 
-/** JSON Schema for OpenAI structured outputs (strict mode: every property required, no extras). */
+/** JSON Schema for OpenAI strict mode and Anthropic structured outputs: every property required, no extras. */
 export const EDIT_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,

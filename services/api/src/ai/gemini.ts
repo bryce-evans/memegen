@@ -1,5 +1,5 @@
 import { EDIT_GEMINI_SCHEMA, editSystemPrompt, editUserPrompt, parseEditJson } from "./quickEdit.ts";
-import { AiProviderError, providerError, type AiEditCall, type AiImageRequest, type AiProvider } from "./types.ts";
+import { AiProviderError, providerError, type AiEditCall, type AiImageProvider, type AiImageRequest } from "./types.ts";
 
 interface GenerateContentResponse {
   promptFeedback?: { blockReason?: string };
@@ -10,7 +10,7 @@ interface GenerateContentResponse {
  * Google Gemini at `POST {baseUrl}/models/{model}:generateContent`: Nano Banana image edits with the image inline,
  * and Quick Creator edits from a text model answering JSON.
  */
-export class GeminiProvider implements AiProvider {
+export class GeminiProvider implements AiImageProvider {
   readonly id = "gemini";
   readonly label = "Gemini";
   readonly baseUrl: string;
@@ -57,14 +57,14 @@ export class GeminiProvider implements AiProvider {
     throw new AiProviderError(422, `returned no image${text ? `: ${text}` : candidate?.finishReason ? ` (${candidate.finishReason})` : ""}`);
   }
 
-  async quickEdit({ apiKey, instructions, request, image, model, signal }: AiEditCall): Promise<unknown> {
+  async quickEdit({ apiKey, request, image, model, signal }: AiEditCall): Promise<unknown> {
     const parts: unknown[] = [{ text: editUserPrompt({ request, image }) }];
     if (image) parts.push({ inlineData: { mimeType: image.mime, data: Buffer.from(image.data).toString("base64") } });
     const body = await this.generate(
       model ?? this.textModel,
       apiKey,
       {
-        systemInstruction: { parts: [{ text: editSystemPrompt(instructions) }] },
+        systemInstruction: { parts: [{ text: editSystemPrompt() }] },
         contents: [{ parts }],
         generationConfig: { responseMimeType: "application/json", responseSchema: EDIT_GEMINI_SCHEMA },
       },

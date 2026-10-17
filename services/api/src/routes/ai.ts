@@ -92,7 +92,6 @@ export function register(app: ApiApp, providers: AiProviders, limits: UploadLimi
     const body = await c.req.parseBody();
     const fields = parse(aiEditFieldsSchema, {
       provider: body.provider,
-      instructions: body.instructions,
       model: body.model,
       request: jsonField(body.request, "request"),
     });
@@ -102,10 +101,9 @@ export function register(app: ApiApp, providers: AiProviders, limits: UploadLimi
     const provider = providers[fields.provider];
     // Multipart sends line breaks as CRLF; the model sees plain newlines.
     const request = { ...fields.request, directions: fields.request.directions.replace(/\r\n?/g, "\n") };
-    const instructions = fields.instructions.replace(/\r\n?/g, "\n");
     const edit: AiEdit = await callProvider(provider, async () =>
       normalizeEdit(
-        await provider.quickEdit({ apiKey, instructions, request, image, model: fields.model, signal: c.req.raw.signal }),
+        await provider.quickEdit({ apiKey, request, image, model: fields.model, signal: c.req.raw.signal }),
         request,
         image !== undefined,
       ),

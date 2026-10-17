@@ -538,20 +538,26 @@
 .ai-creator-preview {
   min-width: 0;
 }
+/* Capped: tall templates scale down to fit (TemplateCanvas draws at the fitted size), centered in the column. */
 .ai-creator-canvas {
   display: block;
-  width: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 24rem;
+  margin-inline: auto;
   border-radius: var(--ui-radius-media);
   background: var(--ui-color-media-bg);
 }
 .ai-creator-form {
   min-width: 0;
 }
-/* The agent dropdown sizes to its options beside Create, not to the form's width. */
-.ai-creator-form .ai-agent-select {
-  width: auto;
+/* The missing-Agent-Provider note between the Describe title and its box: the title's look in every skin, but red
+ * throughout, its profile link included (underlined to stay a link). */
+.ai-creator .ai-creator-form .ai-no-agent.ui-field-label {
+  display: block;
+  color: var(--ui-color-danger);
 }
-/* The missing-agent warning is red throughout, its profile link included (underlined to stay a link). */
 .ai-no-agent a {
   color: inherit;
   text-decoration: underline;
@@ -820,15 +826,21 @@
   height: 100%;
   object-fit: cover;
 }
-.ai-agent-form {
+/* AI settings: the two roles as large buttons on the left, the chosen one's form on the right. */
+.ai-settings {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
+  gap: var(--ui-space-6);
+  align-items: start;
   margin-top: var(--ui-space-6);
 }
-/* Text and image model side by side, tops aligned so one field's error doesn't shift the other. */
-.ai-agent-models {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ui-space-3);
-  align-items: start;
+/* Like the side column's menu, but the chosen role is dark with white text in every skin. */
+.ai-settings .ai-settings-role {
+  padding-block: var(--ui-space-4);
+}
+.ai-settings .ai-settings-role.is-active {
+  background-color: var(--ui-color-art-bg);
+  color: var(--ui-color-on-scrim);
 }
 
 /* ---- detail / profile ----------------------------------------------------- */
@@ -1283,6 +1295,7 @@
   .editor,
   .detail,
   .ai-creator-body,
+  .ai-settings,
   .add-content-cards {
     grid-template-columns: minmax(0, 1fr);
   }

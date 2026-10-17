@@ -27,6 +27,7 @@ export const E2E_ENV = {
   // AI images go to the local stub, never a real provider.
   OPENAI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/openai/v1`,
   GEMINI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/gemini/v1beta`,
+  ANTHROPIC_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/anthropic/v1`,
 };
 
 const serverEnv = { ...process.env, ...E2E_ENV } as Record<string, string>;

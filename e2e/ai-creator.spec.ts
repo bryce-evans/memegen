@@ -1,8 +1,8 @@
-import type { Asset, Template } from "@memegen/shared";
+import { AI_PROVIDERS, type AiProviderId, type Asset, type Meme, type Template, type TextLayer } from "@memegen/shared";
 import { AI_STUB_KEY, AI_STUB_REFUSE, AI_STUB_RESULT } from "@memegen/server-kit/testing";
 import type { Locator, Page } from "@playwright/test";
 import { expect, scoped, test } from "./test.ts";
-import { apiGet, apiTemplate, apiUser, signIn } from "./helpers.ts";
+import { apiGet, apiTemplate, apiUser, memeIdFromUrl, signIn } from "./helpers.ts";
 
 /** Search the Creator for a template by its (unique) name and pick it. */
 async function pickTemplate(creator: Locator, template: Template): Promise<void> {
@@ -12,20 +12,19 @@ async function pickTemplate(creator: Locator, template: Template): Promise<void>
   await expect(creator.getByTestId("ai-canvas")).toHaveAttribute("data-ready", "true");
 }
 
-const agentRow = (scope: Page | Locator, name: string) => scope.locator(`[data-testid="ai-agent"][data-agent-name="${name}"]`);
-
-/** Add an agent through the profile's AI agents tab (already open). */
-async function addAgent(page: Page, agent: { name: string; provider: "openai" | "gemini"; key: string; instructions?: string }): Promise<void> {
+/** Set the Agent Provider (`text`) or Image Generator (`image`) through the profile's API Keys tab (already open). */
+async function setAi(page: Page, role: "text" | "image", config: { provider: AiProviderId; key: string }): Promise<void> {
   const panel = page.getByTestId("ai-agents");
-  await panel.getByTestId("ai-agent-name").fill(agent.name);
-  await panel.getByTestId("ai-agent-provider").selectOption(agent.provider);
-  await panel.getByTestId("ai-agent-key").fill(agent.key);
-  await panel.getByTestId("ai-agent-instructions").fill(agent.instructions ?? "");
-  await panel.getByTestId("ai-agent-save").click();
-  await expect(agentRow(panel, agent.name)).toBeVisible();
+  const button = panel.getByTestId(`ai-role-${role}`);
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await panel.getByTestId("ai-config-provider").selectOption(config.provider);
+  await panel.getByTestId("ai-config-key").fill(config.key);
+  await panel.getByTestId("ai-config-save").click();
+  await expect(button).toContainText(`: ${AI_PROVIDERS.find((p) => p.id === config.provider)!.label}`);
 }
 
-test("Creator: starts on a random template, its name searched and its boxes' text in the directions, drawn on the canvas", async ({ page, request }) => {
+test("Creator: starts on a random template, its name searched and its boxes' text as the Describe placeholder, drawn on the canvas", async ({ page, request }) => {
   await page.goto("/create");
   await signIn(page, scoped("creatorstart"));
   const creator = page.getByTestId("ai-creator");
@@ -35,10 +34,11 @@ test("Creator: starts on a random template, its name searched and its boxes' tex
   await expect(creator.getByTestId("ai-template-search")).toHaveValue(template.name);
   const texts = template.defaultLayers.flatMap((l) => (l.type === "text" ? [l.text.replace(/\s*\n\s*/g, " ")] : []));
   const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  for (const text of texts.length ? texts : ["TOP TEXT", "BOTTOM TEXT"]) await expect(creator.getByTestId("ai-describe")).toHaveValue(new RegExp(`: ${escape(text)}(\\n|$)`));
+  for (const text of texts.length ? texts : ["TOP TEXT", "BOTTOM TEXT"]) await expect(creator.getByTestId("ai-describe")).toHaveAttribute("placeholder", new RegExp(`: ${escape(text)}(\\n|$)`));
+  await expect(creator.getByTestId("ai-describe")).toHaveValue("");
 });
 
-test("Creator: agents configured in the profile; the chosen one rewrites the boxes, adds a top section, and edits the image into a new template", async ({ page, request }) => {
+test("Creator: AI set in the profile; the Agent Provider rewrites the boxes and adds a top section, the Image Generator edits the image into a new template", async ({ page, request }) => {
   const username = scoped("aiartist");
   const owner = await apiUser(request, username);
   const template = await apiTemplate(request, owner, { name: scoped("ai-mod-base") });
@@ -46,26 +46,30 @@ test("Creator: agents configured in the profile; the chosen one rewrites the box
   await signIn(page, username);
   const creator = page.getByTestId("ai-creator");
 
-  // Directions need an agent: without one, Create is off and the form points to the profile.
+  // Without an Agent Provider, Describe is off (Publish too) and the form points to the profile; the full editor needs
+  // none.
   await pickTemplate(creator, template);
-  await expect(creator.getByTestId("ai-describe")).toHaveValue("Top text: TOP TEXT\nBottom text: BOTTOM TEXT");
-  await expect(creator.getByTestId("ai-create")).toBeDisabled();
-  await expect(creator.getByTestId("ai-agent-select")).toBeHidden();
+  await expect(creator.getByTestId("ai-describe")).toHaveAttribute("placeholder", "Top text: TOP TEXT\nBottom text: BOTTOM TEXT");
+  await expect(creator.getByTestId("ai-describe")).toBeDisabled();
+  await expect(creator.getByTestId("ai-publish")).toBeDisabled();
+  await expect(creator.getByTestId("ai-full-editor")).toBeEnabled();
   await creator.getByTestId("ai-no-agent").getByRole("link").click();
   await expect(page.getByTestId("profile-tab-ai")).toHaveAttribute("aria-pressed", "true");
 
-  // Agents survive a reload; editing one without typing a key keeps its key.
+  // Both settings start unset and survive a reload.
   const panel = page.getByTestId("ai-agents");
-  await addAgent(page, { name: "Gemini Bad Key", provider: "gemini", key: "not-a-real-key" });
-  await addAgent(page, { name: "Stub Pal", provider: "openai", key: AI_STUB_KEY, instructions: "deadpan, lowercase" });
+  await expect(panel.getByTestId("ai-role-image")).toHaveText("Image Generator: UNSET");
+  await expect(panel.getByTestId("ai-role-text")).toHaveText("Agent Provider: UNSET");
+  await setAi(page, "text", { provider: "gemini", key: "not-a-real-key" });
+  await setAi(page, "image", { provider: "openai", key: AI_STUB_KEY });
+  // Claude writes edits but doesn't generate images: it's offered for the Agent Provider only.
+  const claude = panel.getByTestId("ai-config-provider").locator('option[value="anthropic"]');
+  await expect(claude).toHaveCount(0);
+  await panel.getByTestId("ai-role-text").click();
+  await expect(claude).toHaveCount(1);
   await page.reload();
-  await expect(panel.getByTestId("ai-agent")).toHaveCount(2);
-  await agentRow(panel, "Gemini Bad Key").getByTestId("ai-agent-edit").click();
-  await expect(panel.getByTestId("ai-agent-instructions")).toHaveValue("");
-  await panel.getByTestId("ai-agent-name").fill("Gemini Nope");
-  await panel.getByTestId("ai-agent-save").click();
-  await expect(agentRow(panel, "Gemini Nope")).toBeVisible();
-  await expect(panel.getByTestId("ai-agent")).toHaveCount(2);
+  await expect(panel.getByTestId("ai-role-text")).toHaveText("Agent Provider: Google Gemini");
+  await expect(panel.getByTestId("ai-role-image")).toHaveText("Image Generator: OpenAI");
 
   await page.getByTestId("nav-create").click();
   await pickTemplate(creator, template);
@@ -73,15 +77,24 @@ test("Creator: agents configured in the profile; the chosen one rewrites the box
   await expect(creator.getByTestId("ai-no-agent")).toBeHidden();
 
   // A key the provider rejects shows its reason, and the user stays signed in.
-  await creator.getByTestId("ai-agent-select").selectOption({ label: "Gemini Nope" });
-  await creator.getByTestId("ai-create").click();
+  await creator.getByTestId("ai-full-editor").click();
   await expect(creator.getByTestId("ai-error")).toContainText("API key not valid");
   await expect(page.getByTestId("current-user")).toContainText(username);
 
-  // The agent's image edit becomes a new template named after it; its text lands in the template's own boxes, under
+  // Saving without typing a key keeps the stored one.
+  await page.goto(`/u/${username}?tab=ai`);
+  await setAi(page, "text", { provider: "openai", key: AI_STUB_KEY });
+  await panel.getByTestId("ai-role-image").click();
+  await expect(panel.getByTestId("ai-config-key")).toHaveValue("");
+  await panel.getByTestId("ai-config-save").click();
+
+  // The image edit becomes a new template named after it; the agent's text lands in the template's own boxes, under
   // the top section it added.
-  await creator.getByTestId("ai-agent-select").selectOption({ label: "Stub Pal" });
-  await creator.getByTestId("ai-create").click();
+  await page.getByTestId("nav-create").click();
+  await pickTemplate(creator, template);
+  const directions = "Top text: when the build passes\nBottom text: first try\ntop section: nobody:\nmod: put a party hat on it";
+  await creator.getByTestId("ai-describe").fill(directions);
+  await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(/\/create\?newTemplate=[0-9a-f-]{36}$/);
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("template-name")).toHaveValue("put a party hat on it");
@@ -95,31 +108,38 @@ test("Creator: agents configured in the profile; the chosen one rewrites the box
   const asset = await apiGet<Asset>(request, `/storage/assets/${assetId}`);
   expect([asset.kind, asset.width, asset.height]).toEqual(["image", AI_STUB_RESULT.width, AI_STUB_RESULT.height]);
 
+  // Without an Image Generator, an image edit is an error.
   await page.goto(`/u/${username}?tab=ai`);
-  await agentRow(panel, "Gemini Nope").getByTestId("ai-agent-remove").click();
-  await expect(panel.getByTestId("ai-agent")).toHaveCount(1);
+  await panel.getByTestId("ai-role-image").click();
+  await panel.getByTestId("ai-config-clear").click();
+  await expect(panel.getByTestId("ai-role-image")).toHaveText("Image Generator: UNSET");
+  await page.getByTestId("nav-create").click();
+  await pickTemplate(creator, template);
+  await creator.getByTestId("ai-describe").fill(directions);
+  await creator.getByTestId("ai-full-editor").click();
+  await expect(creator.getByTestId("ai-error")).toContainText("set an Image Generator");
 });
 
-test("Creator: text-only directions fill the template's own boxes, never adding one; empty ones open it as is", async ({ page, request }) => {
+test("Creator: text-only directions from Claude fill the template's own boxes, never adding one; empty ones open it as is", async ({ page, request }) => {
   const username = scoped("aicaptioner");
   const owner = await apiUser(request, username);
   const template = await apiTemplate(request, owner, { name: scoped("ai-pick") });
   await page.goto(`/u/${username}?tab=ai`);
   await signIn(page, username);
-  await addAgent(page, { name: "Stub Pal", provider: "openai", key: AI_STUB_KEY });
+  await setAi(page, "text", { provider: "anthropic", key: AI_STUB_KEY });
   await page.getByTestId("nav-create").click();
   const creator = page.getByTestId("ai-creator");
   await pickTemplate(creator, template);
 
   // A provider refusal is shown; the page stays put.
   await creator.getByTestId("ai-describe").fill(`nope ${AI_STUB_REFUSE}`);
-  await creator.getByTestId("ai-create").click();
-  await expect(creator.getByTestId("ai-error")).toContainText("OpenAI");
+  await creator.getByTestId("ai-full-editor").click();
+  await expect(creator.getByTestId("ai-error")).toContainText("Claude");
   await expect(page).toHaveURL(/\/create$/);
 
   // Two boxes, three lines: the agent can't add a box, so the last line is dropped.
   await creator.getByTestId("ai-describe").fill("me reading the docs\nme after reading the docs\nsame bug");
-  await creator.getByTestId("ai-create").click();
+  await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("layer-text")).toHaveCount(2);
@@ -130,8 +150,61 @@ test("Creator: text-only directions fill the template's own boxes, never adding 
   await page.goto("/create");
   await pickTemplate(creator, template);
   await creator.getByTestId("ai-describe").fill("");
-  await creator.getByTestId("ai-create").click();
+  await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("TOP TEXT");
+});
+
+test("Creator: Publish posts the agent's meme directly, an edited image saved as a new template first; placeholder text never posts", async ({ page, request }) => {
+  const username = scoped("aipublisher");
+  const owner = await apiUser(request, username);
+  const template = await apiTemplate(request, owner, { name: scoped("ai-publish-base"), tags: ["office"] });
+  await page.goto(`/u/${username}?tab=ai`);
+  await signIn(page, username);
+  await setAi(page, "text", { provider: "openai", key: AI_STUB_KEY });
+  await setAi(page, "image", { provider: "gemini", key: AI_STUB_KEY });
+  await page.getByTestId("nav-create").click();
+  const creator = page.getByTestId("ai-creator");
+  await pickTemplate(creator, template);
+  // Nothing typed (just the placeholder), or the placeholder's own text, can't be published.
+  await expect(creator.getByTestId("ai-describe")).toHaveValue("");
+  await expect(creator.getByTestId("ai-publish")).toBeDisabled();
+  await creator.getByTestId("ai-describe").fill("Top text: TOP TEXT\nBottom text: BOTTOM TEXT");
+  await expect(creator.getByTestId("ai-publish")).toBeDisabled();
+
+  await creator.getByTestId("ai-describe").fill("Top text: when the build passes\nBottom text: first try\nmod: put a party hat on it");
+  await creator.getByTestId("ai-publish").click();
+  const meme = await apiGet<Meme>(request, `/api/memes/${await memeIdFromUrl(page)}`, owner);
+  const made = await apiGet<Template>(request, `/api/templates/${meme.templateId}`, owner);
+  expect([made.name, made.tags, meme.title, meme.tags, meme.visibility]).toEqual([
+    "put a party hat on it",
+    ["office"],
+    "put a party hat on it",
+    ["office"],
+    "public",
+  ]);
+  expect(meme.postedAt).not.toBeNull();
+  expect(meme.layers.map((l) => (l as TextLayer).text)).toEqual(["when the build passes", "first try"]);
+  expect(made.defaultLayers.map((l) => (l as TextLayer).text)).toEqual(["when the build passes", "first try"]);
+  expect([meme.outputAsset.kind, meme.sourceAsset.width, meme.sourceAsset.height]).toEqual(["image", AI_STUB_RESULT.width, AI_STUB_RESULT.height]);
+});
+
+test("Creator: the canvas is capped in height; a template that would pass it scales down at its own aspect", async ({ page, request }) => {
+  const username = scoped("aicanvas");
+  const owner = await apiUser(request, username);
+  // Square: at this width the preview column is wider than the cap, so the height binds.
+  const template = await apiTemplate(request, owner, { name: scoped("ai-square"), file: "panel-a.jpg" });
+  await page.setViewportSize({ width: 1800, height: 1000 });
+  await page.goto("/create");
+  await signIn(page, username);
+  const creator = page.getByTestId("ai-creator");
+  await pickTemplate(creator, template);
+  const canvas = creator.getByTestId("ai-canvas");
+  const box = (await canvas.boundingBox())!;
+  const cap = await canvas.evaluate((el) => parseFloat(getComputedStyle(el).maxHeight));
+  const column = await canvas.evaluate((el) => el.parentElement!.clientWidth);
+  expect(column).toBeGreaterThan(cap);
+  expect(box.height).toBeCloseTo(cap, 0);
+  expect(box.width).toBeCloseTo(box.height, 0);
 });

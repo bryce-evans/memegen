@@ -12,7 +12,7 @@ import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
 /**
- * Two tab groups under the name: the account (Profile: stats and badges; AI agents, owner only), then the content
+ * Two tab groups under the name: the account (Profile: stats and badges; API Keys, owner only), then the content
  * (Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own).
  */
 const ACCOUNT_TABS = ["profile", "ai"] as const;
@@ -22,7 +22,7 @@ type ProfileTab = (typeof ACCOUNT_TABS)[number] | (typeof CONTENT_TABS)[number];
 type MemeTab = Exclude<ProfileTab, "profile" | "ai" | "templates">;
 const TAB_LABELS: Record<ProfileTab, string> = {
   profile: "Profile",
-  ai: "AI agents",
+  ai: "API Keys",
   memes: "Memes",
   templates: "Templates",
   favorites: "Favorites",

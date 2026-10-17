@@ -284,19 +284,18 @@ export async function generateAiImage({ provider, prompt, model }: AiImageFields
 }
 
 /**
- * A `quick-creator/1` request (the user's directions and the template's text boxes), the agent's instructions, and
- * optionally the still image go to `provider` with the user's own `apiKey`; resolves to the agent's checked edit.
+ * A `quick-creator/1` request (the user's directions and the template's text boxes) and optionally the still image go
+ * to `provider` with the user's own `apiKey`; resolves to the agent's checked edit.
  * Nothing is stored.
  */
 export async function requestAiEdit(
-  { provider, instructions = "", model, request }: AiEditFields,
+  { provider, model, request }: AiEditFields,
   image: Blob | null,
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<AiEdit> {
   const form = new FormData();
   form.append("provider", provider);
-  form.append("instructions", instructions);
   if (model) form.append("model", model);
   form.append("request", JSON.stringify(request));
   if (image) form.append("image", image, "image");

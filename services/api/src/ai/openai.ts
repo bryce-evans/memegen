@@ -1,5 +1,5 @@
 import { EDIT_JSON_SCHEMA, editSystemPrompt, editUserPrompt, parseEditJson } from "./quickEdit.ts";
-import { AiProviderError, providerError, type AiEditCall, type AiImageRequest, type AiProvider } from "./types.ts";
+import { AiProviderError, providerError, type AiEditCall, type AiImageProvider, type AiImageRequest } from "./types.ts";
 
 interface ChatCompletionResponse {
   choices?: { message?: { content?: string | null; refusal?: string | null } }[];
@@ -9,7 +9,7 @@ interface ChatCompletionResponse {
  * OpenAI: GPT Image edits at `POST {baseUrl}/images/edits` (multipart; GPT image models always answer with base64),
  * and Quick Creator edits at `POST {baseUrl}/chat/completions` with a strict JSON schema.
  */
-export class OpenAiProvider implements AiProvider {
+export class OpenAiProvider implements AiImageProvider {
   readonly id = "openai";
   readonly label = "OpenAI";
   readonly baseUrl: string;
@@ -40,7 +40,7 @@ export class OpenAiProvider implements AiProvider {
     return Buffer.from(b64, "base64");
   }
 
-  async quickEdit({ apiKey, instructions, request, image, model, signal }: AiEditCall): Promise<unknown> {
+  async quickEdit({ apiKey, request, image, model, signal }: AiEditCall): Promise<unknown> {
     const content: unknown[] = [{ type: "text", text: editUserPrompt({ request, image }) }];
     if (image) content.push({ type: "image_url", image_url: { url: `data:${image.mime};base64,${Buffer.from(image.data).toString("base64")}` } });
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -49,7 +49,7 @@ export class OpenAiProvider implements AiProvider {
       body: JSON.stringify({
         model: model ?? this.textModel,
         messages: [
-          { role: "system", content: editSystemPrompt(instructions) },
+          { role: "system", content: editSystemPrompt() },
           { role: "user", content },
         ],
         response_format: { type: "json_schema", json_schema: { name: "quick_creator_edit", strict: true, schema: EDIT_JSON_SCHEMA } },

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { AI_KEY_HEADER, AI_PROMPT_MAX_LENGTH, AI_PROVIDER_IDS, sniff, type AiEdit, type AiEditRequest, type User } from "@memegen/shared";
+import { AI_IMAGE_PROVIDER_IDS, AI_KEY_HEADER, AI_PROMPT_MAX_LENGTH, AI_PROVIDER_IDS, sniff, type AiEdit, type AiEditRequest, type User } from "@memegen/shared";
 import { HeaderAuthProvider, type Sql } from "@memegen/server-kit";
 import { AI_STUB_KEY, AI_STUB_REFUSE, AI_STUB_RESULT, encodePng, freshTestDb, startAiStub, type AiStub } from "@memegen/server-kit/testing";
 import { createAiProviders } from "./ai/registry.ts";
@@ -16,7 +16,11 @@ let user: User;
 before(async () => {
   sql = await freshTestDb();
   stub = await startAiStub();
-  app = createApiApp(sql, new HeaderAuthProvider(sql), createAiProviders({ OPENAI_BASE_URL: stub.urls.openai, GEMINI_BASE_URL: stub.urls.gemini }));
+  app = createApiApp(
+    sql,
+    new HeaderAuthProvider(sql),
+    createAiProviders({ OPENAI_BASE_URL: stub.urls.openai, GEMINI_BASE_URL: stub.urls.gemini, ANTHROPIC_BASE_URL: stub.urls.anthropic }),
+  );
   const res = await app.request("/api/session", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: "alice" }) });
   const session: { user: User } = await res.json();
   user = session.user;
@@ -64,7 +68,7 @@ async function errorOf(res: Response): Promise<string> {
   return body && typeof body === "object" && "error" in body ? String(body.error) : "";
 }
 
-for (const provider of AI_PROVIDER_IDS) {
+for (const provider of AI_IMAGE_PROVIDER_IDS) {
   test(`${provider}: the prompt, the agent's image model, and the background reach the provider; its image comes back as bytes`, async () => {
     stub.last = null;
     const res = await generate({ provider, prompt: "  add a hat  ", model: "custom-image-1" });
@@ -84,11 +88,13 @@ for (const provider of AI_PROVIDER_IDS) {
     assert.equal(refused.status, 422);
     assert.match(await errorOf(refused), /safety|can't make/);
   });
+}
 
-  test(`${provider}: the agent edits the listed boxes, fonts, and top section, and asks for an image edit, following its own instructions and model`, async () => {
+for (const provider of AI_PROVIDER_IDS) {
+  test(`${provider}: the agent edits the listed boxes, fonts, and top section, and asks for an image edit, on the chosen model`, async () => {
     stub.last = null;
     const directions = "Top text: when the build passes\nfont: comic\ntop section: nobody:\nmod: add a party hat";
-    const res = await quickEdit({ provider, instructions: " deadpan, lowercase ", model: "custom-text-1", request: editRequest(directions) });
+    const res = await quickEdit({ provider, model: "custom-text-1", request: editRequest(directions) });
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("cache-control"), "no-store");
     assert.deepEqual((await res.json()) as AiEdit, {
@@ -99,7 +105,7 @@ for (const provider of AI_PROVIDER_IDS) {
       topSection: "nobody:",
       imageEdit: "add a party hat",
     });
-    assert.deepEqual(stub.last, { kind: "edit", directions, boxIds: ["top", "bottom"], instructions: "deadpan, lowercase", model: "custom-text-1", hasImage: true });
+    assert.deepEqual(stub.last, { kind: "edit", directions, boxIds: ["top", "bottom"], model: "custom-text-1", hasImage: true });
 
     // Without the image (GIF/video templates), the agent can't change the picture.
     const textOnly = await quickEdit({ provider, request: editRequest("first try\nmod: add a party hat") }, { image: null });
@@ -111,7 +117,7 @@ for (const provider of AI_PROVIDER_IDS) {
   test(`${provider}: a rejected key or refused directions are a 422, never a 401`, async () => {
     const badKey = await quickEdit({ provider, request: editRequest("hello") }, { key: "wrong" });
     assert.equal(badKey.status, 422);
-    assert.match(await errorOf(badKey), /API key/);
+    assert.match(await errorOf(badKey), /API key|x-api-key/);
     const refused = await quickEdit({ provider, request: editRequest(`hello ${AI_STUB_REFUSE}`) });
     assert.equal(refused.status, 422);
     assert.match(await errorOf(refused), /can't help|blocked/);
@@ -124,6 +130,8 @@ test("AI images need a signed-in user, a key, a known provider, a prompt, and a 
   assert.equal((await generate(ok, { key: null })).status, 400);
   assert.equal((await generate(ok, { key: "  " })).status, 400);
   assert.equal((await generate({ provider: "dall-e", prompt: "hat" })).status, 400);
+  // Text-only providers can't generate images.
+  assert.equal((await generate({ provider: "anthropic", prompt: "hat" })).status, 400);
   assert.equal((await generate({ provider: "openai", prompt: "   " })).status, 400);
   assert.equal((await generate(ok, { image: null })).status, 400);
   assert.equal((await generate(ok, { image: GIF })).status, 415);

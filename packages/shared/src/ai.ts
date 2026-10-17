@@ -4,24 +4,27 @@ import { LAYER_NAME_MAX_LENGTH, TEXT_MAX_LENGTH } from "./limits.ts";
 import { topSectionLayer } from "./section.ts";
 import type { Layer, TextLayer } from "./types.ts";
 
-/** Model providers a user can bring their own API key for; the API holds one adapter per id. */
+/**
+ * Model providers a user can bring their own API key for; the API holds one adapter per id. Every provider can be the
+ * Agent Provider (Quick Creator edits); only those with `image` can be the Image Generator.
+ */
 export const AI_PROVIDERS = [
-  { id: "openai", label: "OpenAI", keyUrl: "https://platform.openai.com/api-keys" },
-  { id: "gemini", label: "Google Gemini", keyUrl: "https://aistudio.google.com/apikey" },
+  { id: "openai", label: "OpenAI", keyUrl: "https://platform.openai.com/api-keys", image: true },
+  { id: "gemini", label: "Google Gemini", keyUrl: "https://aistudio.google.com/apikey", image: true },
+  { id: "anthropic", label: "Anthropic Claude", keyUrl: "https://console.anthropic.com/settings/keys", image: false },
 ] as const;
 
 export type AiProviderId = (typeof AI_PROVIDERS)[number]["id"];
 export const AI_PROVIDER_IDS = AI_PROVIDERS.map((p) => p.id) as [AiProviderId, ...AiProviderId[]];
+/** Providers that generate images (`POST /api/ai/images`). */
+export type AiImageProviderId = Extract<(typeof AI_PROVIDERS)[number], { image: true }>["id"];
+export const AI_IMAGE_PROVIDER_IDS = AI_PROVIDERS.flatMap((p) => (p.image ? [p.id] : [])) as [AiImageProviderId, ...AiImageProviderId[]];
 
 /** Request header carrying the caller's own provider API key. The API forwards it and never stores it. */
 export const AI_KEY_HEADER = "x-ai-key";
 
 /** Characters in one AI image prompt. */
 export const AI_PROMPT_MAX_LENGTH = 4000;
-/** Characters in an agent's own instructions (its style and voice), sent with every edit request. */
-export const AI_INSTRUCTIONS_MAX_LENGTH = 2000;
-/** Characters in an agent's name. */
-export const AI_AGENT_NAME_MAX_LENGTH = 60;
 
 /** A provider model id overriding the server's default ("gpt-5-mini", "gemini-2.5-flash"); blank means the default. */
 export const aiModelSchema = z
@@ -33,11 +36,11 @@ export const aiModelSchema = z
   .optional();
 
 /**
- * Text fields of `POST /api/ai/images` (multipart): the provider, the prompt, and optionally the image model. The
+ * Text fields of `POST /api/ai/images` (multipart): an image provider, the prompt, and optionally the image model. The
  * `image` file field is the background the model sees as context: a still png/jpg/webp within the upload byte cap.
  */
 export const aiImageFieldsSchema = z.object({
-  provider: z.enum(AI_PROVIDER_IDS),
+  provider: z.enum(AI_IMAGE_PROVIDER_IDS),
   prompt: z.string().trim().min(1).max(AI_PROMPT_MAX_LENGTH),
   model: aiModelSchema,
 });
@@ -77,13 +80,12 @@ export const aiEditRequestSchema = z.object({
 export type AiEditRequest = z.output<typeof aiEditRequestSchema>;
 
 /**
- * Text fields of `POST /api/ai/edit` (multipart): the provider, the agent's own instructions, an optional text model,
+ * Text fields of `POST /api/ai/edit` (multipart): the provider, an optional text model,
  * and `request` (JSON, `aiEditRequestSchema`). The optional `image` file is the still media; without it, `imageEdit`
  * is always null.
  */
 export const aiEditFieldsSchema = z.object({
   provider: z.enum(AI_PROVIDER_IDS),
-  instructions: z.string().trim().max(AI_INSTRUCTIONS_MAX_LENGTH).default(""),
   model: aiModelSchema,
   request: aiEditRequestSchema,
 });

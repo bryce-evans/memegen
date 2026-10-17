@@ -205,6 +205,11 @@
   }
 }
 
+/* The header search's rotating placeholder: fainter than other placeholders, a hint rather than a label. */
+.site-search ::placeholder {
+  color: color-mix(in srgb, var(--ui-color-text-muted) 60%, transparent);
+}
+
 .tag-item.team,
 .tag-item.team .ui-nav-item-trailing {
   color: var(--ui-color-success);

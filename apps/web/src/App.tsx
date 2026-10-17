@@ -35,7 +35,10 @@ const BRAND = "memegen";
 /** Prod pins this skin (`?skin=` and stored choices ignored); dev lets the sign-in page's dev tools switch it. */
 const SKIN = "default";
 
-/** The header search's placeholder: one picked at random each time the page loads. */
+/**
+ * The header search's placeholders: a random one when the page loads, then every `CYCLE_MS` the shown one is erased
+ * from the end a character at a time (backspacing), and after a pause a different random one types itself out.
+ */
 const SEARCH_PLACEHOLDERS = [
   "all your memes are belong to us",
   "one does not simply search...",
@@ -55,7 +58,55 @@ const SEARCH_PLACEHOLDERS = [
   "gimme the good stuff",
   "y'all got any more of them templates",
 ];
-const searchPlaceholder = SEARCH_PLACEHOLDERS[Math.floor(Math.random() * SEARCH_PLACEHOLDERS.length)];
+const randomPlaceholder = (except?: string) => {
+  const choices = SEARCH_PLACEHOLDERS.filter((p) => p !== except);
+  return choices[Math.floor(Math.random() * choices.length)]!;
+};
+const firstPlaceholder = randomPlaceholder();
+const CYCLE_MS = 90_000;
+const ERASE_MS = 700;
+const PAUSE_MS = 500;
+const TYPE_MS = 700;
+
+/** The search placeholder as it cycles; with reduced motion, the next phrase just replaces the last. */
+function useCyclingPlaceholder(): string {
+  const [text, setText] = useState(firstPlaceholder);
+  useEffect(() => {
+    let cancelled = false;
+    let timer = 0;
+    const sleep = (ms: number) => new Promise<void>((resolve) => (timer = window.setTimeout(resolve, ms)));
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    void (async () => {
+      let shown = firstPlaceholder;
+      for (;;) {
+        await sleep(CYCLE_MS);
+        if (cancelled) return;
+        const next = randomPlaceholder(shown);
+        if (reducedMotion) {
+          setText(next);
+        } else {
+          for (let i = shown.length - 1; i >= 0; i--) {
+            await sleep(ERASE_MS / shown.length);
+            if (cancelled) return;
+            setText(shown.slice(0, i));
+          }
+          await sleep(PAUSE_MS);
+          for (let i = 1; i <= next.length; i++) {
+            await sleep(TYPE_MS / next.length);
+            if (cancelled) return;
+            setText(next.slice(0, i));
+          }
+        }
+        shown = next;
+      }
+    })();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
+  return text;
+}
 
 /** Meme search in the header: submitting opens `/search?q=`; on that page the box shows the current query. */
 function SiteSearch() {
@@ -65,6 +116,7 @@ function SiteSearch() {
   const current = pathname === "/search" ? (params.get("q") ?? "") : "";
   const [value, setValue] = useState(current);
   useEffect(() => setValue(current), [current]);
+  const placeholder = useCyclingPlaceholder();
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -76,7 +128,7 @@ function SiteSearch() {
     <form role="search" className="site-search" onSubmit={submit}>
       <TextField
         type="search"
-        placeholder={searchPlaceholder}
+        placeholder={placeholder}
         aria-label="Search memes"
         value={value}
         onChange={(e) => setValue(e.target.value)}

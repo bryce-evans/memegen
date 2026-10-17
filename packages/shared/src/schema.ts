@@ -286,13 +286,12 @@ export const setTagsSchema = z.object({ tags: tagListSchema });
 export const createTagSchema = z.object({
   name: z.string().trim().min(1).max(TAG_NAME_MAX_LENGTH),
   kind: z.enum(TAG_KINDS).default("topic"),
-  description: z.string().trim().max(300).default(""),
 });
 
 export const tagsQuerySchema = z.object({
   q: z.string().trim().max(TAG_NAME_MAX_LENGTH).default(""),
-  sort: z.enum(TAG_SORTS).default("uses"),
   kind: z.enum(TAG_KINDS).optional(),
+  sort: z.enum(TAG_SORTS).default("uses"),
   limit: limitSchema(100, 200),
 });
 

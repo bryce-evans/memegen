@@ -252,10 +252,6 @@
 .tag-head .ui-page-header {
   margin-bottom: var(--ui-space-3);
 }
-.tag-name {
-  font-weight: var(--ui-font-weight-regular);
-  color: var(--ui-color-text-muted);
-}
 
 /* ---- votes ---------------------------------------------------------------- */
 
@@ -384,7 +380,6 @@
   grid-row: 1 / span 2;
   margin: 0;
 }
-
 /* The title shrinks (with its ellipsis) so a multi-panel icon after it always shows. */
 .template-card-title {
   display: flex;
@@ -395,6 +390,7 @@
 .template-card-title .ui-card-title {
   min-width: 0;
 }
+
 /* ---- comments ------------------------------------------------------------- */
 
 .comment-list,

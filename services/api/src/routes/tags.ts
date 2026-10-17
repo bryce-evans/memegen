@@ -26,14 +26,14 @@ export function register(app: ApiApp, sql: Sql): void {
     return c.json(toTag(row));
   });
 
-  /** Explicit creation, e.g. a `team` tag with a description. Tagging also creates topic tags implicitly. */
+  /** Explicit creation, e.g. a `team` tag. Tagging also creates topic tags implicitly. */
   app.post("/api/tags", async (c) => {
     const user = requireUser(c);
     const body = await parseJson(c, createTagSchema);
     const slug = tagSlug(body.name);
     if (!slug) throw new HttpError(400, "tag name needs at least one letter or digit");
     const [row] = await sql<{ slug: string }[]>`
-      insert into tags ${sql({ slug, name: body.name, kind: body.kind, description: body.description, created_by: user.id })}
+      insert into tags ${sql({ slug, name: body.name, kind: body.kind, created_by: user.id })}
       on conflict (slug) do nothing returning slug`;
     if (!row) throw new HttpError(409, `tag "${slug}" already exists`);
     const [tag] = await sql<TagRow[]>`${tagSelect(sql, user.id)} where g.slug = ${slug}`;

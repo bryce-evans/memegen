@@ -193,7 +193,6 @@ export interface Tag {
   slug: string;
   name: string;
   kind: TagKind;
-  description: string;
   /** Visible top-level templates carrying the tag (directly or via a variation). */
   templateCount: number;
   /** Posted public memes carrying the tag (directly or via their template). */

@@ -7,7 +7,6 @@
 export const STARTER_TAG = {
   slug: "getting-started",
   name: "Getting started",
-  description: "Examples from memegen to show what you can make",
 };
 
 export interface StarterMeme {

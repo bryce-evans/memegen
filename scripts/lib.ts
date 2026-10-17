@@ -90,11 +90,11 @@ export async function castVotes(
 /** Creates the tag, or finds it when the slug exists; returns its id. `createdBy` null: no creator. */
 export async function upsertTag(
   sql: Sql,
-  t: { slug: string; name: string; kind: TagKind; description: string; createdBy: string | null },
+  t: { slug: string; name: string; kind: TagKind; createdBy: string | null },
 ): Promise<string> {
   const [row] = await sql<{ id: string }[]>`
-    insert into tags (slug, name, kind, description, created_by)
-    values (${t.slug}, ${t.name}, ${t.kind}, ${t.description}, ${t.createdBy})
+    insert into tags (slug, name, kind, created_by)
+    values (${t.slug}, ${t.name}, ${t.kind}, ${t.createdBy})
     on conflict (slug) do update set slug = excluded.slug returning id`;
   return row!.id;
 }

@@ -111,15 +111,15 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
   expect(meme.tags).toEqual([teamSlug]);
 
-  // The meme is found under the template's tag; the parent template too.
+  // The meme is found under the template's tag; tag pages list memes only, not templates.
   await page.goto("/t/movie");
   await expect(page.getByTestId("tag-title")).toContainText(/movie/i);
-  await expect(page.getByTestId("tag-templates")).toContainText(base);
   await expect(memeCard(page.getByTestId("tag-memes"), id)).toBeVisible();
+  await expect(page.getByTestId("template-card")).toHaveCount(0);
 
   // And under the new team tag.
   await page.goto(`/t/${teamSlug}`);
-  await expect(page.getByTestId("tag-title")).toContainText(teamTag);
+  await expect(page.getByTestId("tag-title")).toHaveText(`#${teamSlug}team`);
   await expect(memeCard(page.getByTestId("tag-memes"), id)).toBeVisible();
 
   // The use counts toward the parent template (the variation rolls up). Checked on its own usage series: the Hot

@@ -248,7 +248,7 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | GET | `/api/gallery?period=&sort=&tag=&q=&offset=&limit=` | `Page<Meme>`; `q` searches title, template (or parent) name, tags incl. inherited ones, and author username |
 | GET | `/api/tags?q=&kind=&sort=&limit=` | `Tag[]` with `templateCount`/`memeCount`; `sort=uses` (default) most used first (templates + memes), `sort=memes` on the most listed memes first, tags on none left out (the side column's Trending: top 5 topic tags, all time) |
 | GET | `/api/tags/:slug` | `Tag` |
-| POST | `/api/tags` | `{name, kind?, description?}` → 201 `Tag`; 409 if slug exists |
+| POST | `/api/tags` | `{name, kind?}` → 201 `Tag`; 409 if slug exists |
 | POST | `/api/templates/:id/tags` | `{tags: string[]}` adds non-base tags (any signed-in user) → `Template` |
 | GET | `/api/stickers?offset=&limit=` | `Page<Sticker>` `{id, name, owner, asset, createdAt, useCount, savedCount}`, most posted first, then most saved, then newest |
 | POST | `/api/stickers` | `{name, assetId}` → 201 `Sticker`; the asset must be the caller's PNG, ≤ 512×512 (422 with `details`); 409 if it already is a sticker |

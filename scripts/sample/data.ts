@@ -23,9 +23,9 @@ export const SAMPLE_USERS = [
 export type SampleUser = (typeof SAMPLE_USERS)[number];
 
 /** Topic tags people created while posting; built-in `oldschool`/`movie` come from the template import. */
-export const SAMPLE_TAGS: { slug: string; name: string; description: string; createdBy: SampleUser }[] = [
-  { slug: "programming", name: "Programming", description: "Code, deploys, and the bugs in between", createdBy: "dana" },
-  { slug: "office", name: "Office", description: "Meetings, standups, and the coffee machine", createdBy: "harper" },
+export const SAMPLE_TAGS: { slug: string; name: string; createdBy: SampleUser }[] = [
+  { slug: "programming", name: "Programming", createdBy: "dana" },
+  { slug: "office", name: "Office", createdBy: "harper" },
 ];
 
 export interface SampleComment {

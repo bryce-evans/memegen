@@ -281,7 +281,6 @@ export interface TagRow {
   slug: string;
   name: string;
   kind: "topic" | "team";
-  description: string;
   template_count: number;
   meme_count: number;
 }
@@ -289,7 +288,7 @@ export interface TagRow {
 /** Tags with counts of what a tag search would return for `viewerId`. Append where/order. */
 export function tagSelect(sql: Sql, viewerId: string | null) {
   return sql`
-    select g.slug, g.name, g.kind, g.description,
+    select g.slug, g.name, g.kind,
       (select count(*)::int from template_tag_matches x join templates t on t.id = x.template_id
         where x.tag_id = g.id and ${templateVisibleTo(sql, viewerId)}) as template_count,
       (select count(*)::int from meme_tag_matches x join memes m on m.id = x.meme_id
@@ -302,7 +301,6 @@ export function toTag(r: TagRow): Tag {
     slug: r.slug,
     name: r.name,
     kind: r.kind,
-    description: r.description,
     templateCount: r.template_count,
     memeCount: r.meme_count,
   };

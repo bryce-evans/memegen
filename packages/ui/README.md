@@ -79,7 +79,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `Panel` | titled surface (`section`) | `heading`, `headingActions`, `variant` (`default`/`inset`/`flush`: the surface only, no padding or margin) |
 | `Dialog` | modal native `<dialog>` (`showModal`: inert page, focus kept inside, Escape closes) | `open`, `onClose` (Escape, close button, backdrop), `heading`, `closeLabel` |
 | `Text` | `p`/`span`/`div` | `tone`, `size`, `numeric` |
-| `Icon` | stroke SVG (`--ui-icon-stroke`) | `name`, `label` |
+| `Icon` | stroke SVG (`--ui-icon-stroke`; solid parts `ui-icon-solid`) | `name`, `label`, `tooltip` (hover text shown at once above the icon, `role=tooltip`; the accessible name when there's no `label`), `gradient` (orange → yellow, `--ui-color-special-end` → `--ui-color-special-hover-end`, the same in every skin) |
 | `SkinSwitcher` | native `<select>` of registered skins | select props |
 
 `useNarrowScreen()` is true at the narrow-screen breakpoint (≤ 760px, the same width as the CSS), for apps that render different content there.

@@ -380,6 +380,16 @@
   margin: 0;
 }
 
+/* The title shrinks (with its ellipsis) so a multi-panel icon after it always shows. */
+.template-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.template-card-title .ui-card-title {
+  min-width: 0;
+}
 /* ---- comments ------------------------------------------------------------- */
 
 .comment-list,

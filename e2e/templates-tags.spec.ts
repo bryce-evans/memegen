@@ -67,6 +67,7 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await expect(card).toHaveCount(1);
   await expect(card.getByTestId("template-author")).toContainText(`@${curator}`);
   await expect(card.getByTestId("template-use-count")).toHaveText("0");
+  await expect(card.getByTestId("template-multi-panel")).toHaveCount(0);
   await expect(card.getByTestId("template-use-count")).toHaveAttribute("aria-label", "used 0 times");
   // The gallery card is just the template and Use: tags, usage and variations live in the editor.
   await expect(card.getByTestId("tag-chip")).toHaveCount(0);

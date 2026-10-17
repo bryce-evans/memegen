@@ -1,8 +1,11 @@
-import type { ComponentPropsWithRef, ReactNode } from "react";
+import { useId, type ComponentPropsWithRef, type CSSProperties, type ReactNode } from "react";
 import { cx } from "../cx.ts";
 import { skinnable } from "../skin.tsx";
 
-/** Stroke icons on a 24px grid; stroke width comes from `--ui-icon-stroke` so skins can go thin or chunky. */
+/**
+ * Stroke icons on a 24px grid; stroke width comes from `--ui-icon-stroke` so skins can go thin or chunky. Solid parts
+ * carry `ui-icon-solid` (filled in the icon's paint, no stroke).
+ */
 const PATHS = {
   grid: (
     <>
@@ -69,6 +72,13 @@ const PATHS = {
   /** Curved double-headed arrow: swap two things' places. */
   swap: <path d="M4 16a8 8 0 0 1 16 0M1 13l3 3 3-3M17 13l3 3 3-3" />,
   sparkle: <path d="M12 3.5c.6 4.2 2.6 6.4 7 7.5-4.4 1.1-6.4 3.3-7 7.5-.6-4.2-2.6-6.4-7-7.5 4.4-1.1 6.4-3.3 7-7.5z" />,
+  /** A solid square over the edge of another: several panels (a multi-panel template). */
+  panels: (
+    <>
+      <rect className="ui-icon-solid" x="3" y="3" width="13.5" height="13.5" rx="3.25" />
+      <path d="M20 8v8.25a4.25 4.25 0 0 1-4.25 4.25H8" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof PATHS;
@@ -77,25 +87,59 @@ export interface IconProps extends Omit<ComponentPropsWithRef<"svg">, "children"
   name: IconName;
   /** Accessible name; omit for decorative icons (hidden from assistive tech). */
   label?: string;
+  /**
+   * Paint it in the brand gradient's warm end, orange to yellow (`--ui-color-special-end` →
+   * `--ui-color-special-hover-end`), the same in every skin, instead of the current text color.
+   */
+  gradient?: boolean;
+  /**
+   * Hover tooltip, shown at once (no native-title delay) above the icon; also the accessible name when `label` is
+   * omitted. The icon is then wrapped in a `ui-tooltip-anchor` span.
+   */
+  tooltip?: string;
 }
 
-function IconBase({ name, label, className, ...rest }: IconProps) {
-  return (
+function IconBase({ name, label, gradient = false, tooltip, className, style, ...rest }: IconProps) {
+  const id = useId();
+  const gradientId = `ui-icon-gradient${id}`;
+  const tooltipId = `ui-tooltip${id}`;
+  const paint = gradient ? ({ "--ui-icon-paint": `url(#${gradientId})` } as CSSProperties) : undefined;
+  const named = Boolean(label ?? tooltip);
+  const svg = (
     <svg
       viewBox="0 0 24 24"
       className={cx("ui-icon", className)}
+      style={paint ? { ...paint, ...style } : style}
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      role={label ? "img" : undefined}
+      role={named ? "img" : undefined}
       aria-label={label}
-      aria-hidden={label ? undefined : true}
+      aria-labelledby={label === undefined && tooltip ? tooltipId : undefined}
+      aria-hidden={named ? undefined : true}
       focusable="false"
       {...rest}
     >
+      {gradient && (
+        <defs>
+          <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1="3" y1="21" x2="21" y2="3">
+            <stop offset="0" style={{ stopColor: "var(--ui-color-special-end)" }} />
+            <stop offset="1" style={{ stopColor: "var(--ui-color-special-hover-end)" }} />
+          </linearGradient>
+        </defs>
+      )}
       {PATHS[name]}
     </svg>
+  );
+  if (!tooltip) return svg;
+  return (
+    <span className="ui-tooltip-anchor">
+      {svg}
+      <span role="tooltip" id={tooltipId} className="ui-tooltip">
+        {tooltip}
+      </span>
+    </span>
   );
 }
 

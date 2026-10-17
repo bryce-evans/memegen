@@ -77,8 +77,41 @@ textarea {
   width: var(--ui-icon-size);
   height: var(--ui-icon-size);
   flex: none;
+  stroke: var(--ui-icon-paint, currentColor);
   stroke-width: var(--ui-icon-stroke);
   vertical-align: -0.15em;
+}
+/* Solid parts of an icon fill in its paint (the text color, or `gradient`'s url) and take no stroke. */
+.ui-icon-solid {
+  fill: var(--ui-icon-paint, currentColor);
+  stroke: none;
+}
+/* An icon's `tooltip`: shown the moment the pointer is over the icon (no delay), centered above it. */
+.ui-tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.ui-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--ui-space-1));
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  visibility: hidden;
+  padding: var(--ui-space-1) var(--ui-space-2);
+  border: var(--ui-border-width) solid var(--ui-color-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-surface-raised);
+  box-shadow: var(--ui-shadow-2);
+  color: var(--ui-color-text);
+  font-size: var(--ui-font-size-xs);
+  font-weight: var(--ui-font-weight-regular);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ui-tooltip-anchor:hover .ui-tooltip {
+  visibility: visible;
 }
 
 /* ---- app shell ------------------------------------------------------------ */

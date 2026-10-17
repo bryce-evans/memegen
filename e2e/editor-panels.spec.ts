@@ -121,4 +121,11 @@ test("multi-panel: build a template from an image pack, make a meme with more pa
     await expect(grid).toHaveAttribute("aria-busy", "false");
     await expect(card).toHaveCount(shown);
   }
+  // Its card marks it as an image pack template beside the name; hovering the mark says so.
+  const icon = card.getByTestId("template-multi-panel");
+  await expect(icon).toBeVisible();
+  await expect(card.getByRole("tooltip")).toBeHidden();
+  await icon.hover();
+  await expect(card.getByRole("tooltip")).toHaveText("Image pack template");
+  await expect(icon).toHaveAccessibleName("Image pack template");
 });

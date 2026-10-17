@@ -35,9 +35,12 @@ function TemplateCard({ template, editable = false }: { template: Template; edit
         )
       }
     >
-      <CardTitle as={Link} to={to}>
-        {template.name}
-      </CardTitle>
+      <div className="template-card-title">
+        <CardTitle as={Link} to={to}>
+          {template.name}
+        </CardTitle>
+        {template.kind === "multi" && <Icon name="panels" gradient tooltip="Image pack template" data-testid="template-multi-panel" />}
+      </div>
       <TemplateMeta template={template} />
     </Card>
   );

@@ -58,6 +58,8 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
   const [boxes, setBoxes] = useState<LayerBox[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  // A rotate drag is on: the whole stage shows the rotate cursor, so it stays while the pointer leaves the handle.
+  const [rotating, setRotating] = useState(false);
   const t = media.times[frame] ?? 0;
   // Drawn at displayed size × device pixels; layout is in fractions, so the result matches the export. A top section
   // adds its band (sized by its text) above the media.
@@ -148,7 +150,7 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
   }
 
   /** Start rotating (the handle above the box) around the layer's center. */
-  function startRotate(e: PointerEvent<HTMLDivElement>, layer: ImageLayer, box: LayerBox) {
+  function startRotate(e: PointerEvent<HTMLDivElement>, layer: Layer, box: LayerBox) {
     e.stopPropagation();
     e.preventDefault();
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -165,6 +167,7 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
       angle0: layer.angle,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
+    setRotating(true);
   }
 
   function moveDrag(e: PointerEvent<HTMLDivElement>) {
@@ -213,13 +216,15 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
   }
 
   function endDrag(e: PointerEvent<HTMLDivElement>) {
-    if (drag.current?.pointerId === e.pointerId) drag.current = null;
+    if (drag.current?.pointerId !== e.pointerId) return;
+    drag.current = null;
+    setRotating(false);
   }
 
   const labels = layerLabels(layers);
   return (
     <div className="stage">
-      <div className="stage-inner" style={{ "--stage-aspect": aspect } as CSSProperties} onPointerDown={() => onSelect(null)}>
+      <div className={cx("stage-inner", rotating && "rotating")} style={{ "--stage-aspect": aspect } as CSSProperties} onPointerDown={() => onSelect(null)}>
         <canvas
           ref={canvasRef}
           width={pixelWidth}
@@ -275,8 +280,8 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
           );
         })}
         {boxes.map((box) => {
-          // The selected text layer's box (its text shrinks to fit it), with corner handles to resize it. The top
-          // section's text fills its band, so it has no box to resize.
+          // The selected text layer's box (its text shrinks to fit it), with corner handles to resize it and a handle
+          // above it to rotate it. The top section's text fills its band, so it has neither.
           const layer = layers.find((l) => l.id === box.layerId);
           if (box.layerId !== selectedId || layer?.type !== "text" || layer.topSection) return null;
           const area = layerArea(layer, pixelWidth, pixelHeight, pixelHeight - mediaPixelHeight);
@@ -308,6 +313,15 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
                   onPointerCancel={endDrag}
                 />
               ))}
+              <div
+                className="transform-handle rotate"
+                data-testid="text-box-rotate-handle"
+                title="Drag to rotate (Shift snaps to 15°)"
+                onPointerDown={(e) => startRotate(e, layer, box)}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+              />
             </div>
           );
         })}

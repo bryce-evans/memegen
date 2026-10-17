@@ -239,6 +239,13 @@ export function LayerPanel(props: LayerPanelProps) {
                     value={layer.text}
                     maxLength={TEXT_MAX_LENGTH}
                     onFocus={() => onSelect(layer.id)}
+                    // ⌘⌫ / ⌘⌦ removes the whole text box instead of clearing its text. Pressing a box on the stage
+                    // focuses this field, so this also covers boxes selected there.
+                    onKeyDown={(e) => {
+                      if (!e.metaKey || (e.key !== "Backspace" && e.key !== "Delete")) return;
+                      e.preventDefault();
+                      onRemove(layer.id);
+                    }}
                     onChange={(e) => {
                       const text = e.target.value;
                       onUpdate(layer.id, (l) => (l.type === "text" ? { ...l, text } : l));

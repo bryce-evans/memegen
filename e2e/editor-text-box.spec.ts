@@ -44,3 +44,30 @@ test("text boxes: raising the max size grows the box to show it; corner handles 
   expect(saved.maxWidth).toBeCloseTo(0.48, 1);
   expect(saved.maxHeight).toBeCloseTo(boxHeight, 1);
 });
+
+test("text boxes: the selected box's handle rotates it; ⌘⌫ removes the box rather than clearing its text", async ({ page, request }) => {
+  await editFixture(page, request, scoped("boxturner"), "still.png");
+  const items = page.getByTestId("layer-item");
+  const count = await items.count();
+  const layer = items.first();
+  const layerId = (await layer.getAttribute("data-layer-id"))!;
+  const textBox = page.getByTestId("layer-box").first();
+  await layer.getByTestId("layer-settings-toggle").click();
+
+  await textBox.click();
+  const box = (await textBox.boundingBox())!;
+  const mid = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const knob = (await page.getByTestId("text-box-rotate-handle").boundingBox())!;
+  await page.mouse.move(knob.x + knob.width / 2, knob.y + knob.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(mid.x + 150, mid.y, { steps: 5 }); // from straight above the center to its right: +90°
+  await page.mouse.up();
+  await expect.poll(async () => Math.abs(Number(await layer.getByTestId("layer-angle").inputValue()) - 90)).toBeLessThanOrEqual(1);
+
+  // Pressing the box focuses its text; ⌘⌫ there removes the whole layer.
+  await textBox.click();
+  await expect(layer.getByTestId("layer-text")).toBeFocused();
+  await page.keyboard.press("Meta+Backspace");
+  await expect(items).toHaveCount(count - 1);
+  await expect(page.locator(`[data-testid="layer-item"][data-layer-id="${layerId}"]`)).toHaveCount(0);
+});

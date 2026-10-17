@@ -425,32 +425,35 @@ export function AiCreator() {
             }}
             data-testid="ai-template-search"
           />
-          {results.error !== null && <ErrorView error={results.error} />}
-          {results.data && results.data.items.length === 0 && (
-            <Text size="sm" tone="muted">
-              No templates match “{q}”.
-            </Text>
-          )}
-          {results.data && results.data.items.length > 0 && (
-            <div className="ai-template-options">
-              {results.data.items.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className="ai-template-option"
-                  title={`Use “${t.name}”`}
-                  aria-pressed={t.id === source?.id}
-                  onClick={() => choose(t)}
-                  disabled={create.busy}
-                  data-testid="ai-template-option"
-                  data-template-id={t.id}
-                >
-                  <MediaView asset={t.asset} alt={t.name} />
-                  <span className="ai-template-option-name">{t.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Always rendered, one result row tall, so results arriving or clearing never move the form below. */}
+          <div className="ai-template-results" data-testid="ai-template-results">
+            {results.error !== null && <ErrorView error={results.error} />}
+            {results.data && results.data.items.length === 0 && (
+              <Text size="sm" tone="muted">
+                No templates match “{q}”.
+              </Text>
+            )}
+            {results.data && results.data.items.length > 0 && (
+              <div className="ai-template-options">
+                {results.data.items.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="ai-template-option"
+                    title={`Use “${t.name}”`}
+                    aria-pressed={t.id === source?.id}
+                    onClick={() => choose(t)}
+                    disabled={create.busy}
+                    data-testid="ai-template-option"
+                    data-template-id={t.id}
+                  >
+                    <MediaView asset={t.asset} alt={t.name} />
+                    <span className="ai-template-option-name">{t.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <TextArea
             label={
               <>

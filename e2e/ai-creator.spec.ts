@@ -45,6 +45,36 @@ test("Creator: starts on a random template, its name searched and its boxes' tex
   await expect(creator.getByTestId("ai-describe")).toHaveValue("");
 });
 
+test("Creator: searching, results, and templates of other shapes never resize the card or move its buttons", async ({ page, request }) => {
+  const username = scoped("creatorlayout");
+  const owner = await apiUser(request, username);
+  const wide = await apiTemplate(request, owner, { name: scoped("layout-wide") });
+  const square = await apiTemplate(request, owner, { name: scoped("layout-square"), file: "panel-a.jpg" });
+  await page.goto("/create");
+  await signIn(page, username);
+  const creator = page.getByTestId("ai-creator");
+  const search = creator.getByTestId("ai-template-search");
+  const layout = async () => {
+    const boxes = await Promise.all(
+      [creator, search, creator.getByTestId("ai-describe"), creator.getByTestId("ai-update"), creator.getByTestId("ai-publish")].map((l) => l.boundingBox()),
+    );
+    return boxes.map((b) => b && { x: Math.round(b.x), y: Math.round(b.y), height: Math.round(b.height) });
+  };
+
+  await pickTemplate(creator, wide);
+  const settled = await layout();
+  await search.fill(scoped("layout-none"));
+  await expect(creator.getByTestId("ai-template-results")).toContainText("No templates match");
+  expect(await layout()).toEqual(settled);
+  await search.fill(square.name);
+  await expect(creator.getByTestId("ai-template-option")).toHaveCount(1);
+  expect(await layout()).toEqual(settled);
+  await creator.getByTestId("ai-template-option").click();
+  await expect(creator.getByTestId("ai-canvas")).toHaveAttribute("data-template-id", square.id);
+  await expect(creator.getByTestId("ai-canvas")).toHaveAttribute("data-ready", "true");
+  expect(await layout()).toEqual(settled);
+});
+
 test("Creator: AI set in the profile; the Agent Provider rewrites the template's own boxes, the Image Generator edits the image into a new template", async ({ page, request }) => {
   const username = scoped("aiartist");
   const owner = await apiUser(request, username);

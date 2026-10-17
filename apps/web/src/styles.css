@@ -529,7 +529,14 @@
  * Create start view: four cards, top to bottom: the Creator (a canvas of the chosen template beside its form), Upload
  * (three tiles; Template on pixel-art that plays on hover), Hot templates, then all templates.
  */
+/*
+ * Fixed footprint: the preview is always as tall as the canvas's cap and the search results always one row tall, so
+ * picking a template, drawing it, or getting results never resizes the card or moves its buttons.
+ */
 .ai-creator-body {
+  --ai-creator-preview-height: 24rem;
+  --ai-template-thumb-width: 104px;
+  --ai-template-thumb-height: 78px;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: var(--ui-space-6);
@@ -537,6 +544,9 @@
 }
 .ai-creator-preview {
   min-width: 0;
+  min-height: var(--ai-creator-preview-height);
+  display: grid;
+  place-items: center;
 }
 /* Capped: tall templates scale down to fit (TemplateCanvas draws at the fitted size), centered in the column. */
 .ai-creator-canvas {
@@ -544,7 +554,7 @@
   width: auto;
   height: auto;
   max-width: 100%;
-  max-height: 24rem;
+  max-height: var(--ai-creator-preview-height);
   margin-inline: auto;
   border-radius: var(--ui-radius-media);
   background: var(--ui-color-media-bg);
@@ -562,6 +572,13 @@
   color: inherit;
   text-decoration: underline;
 }
+/* One option row: thumbnail, gap, one name line, the row's bottom padding. */
+.ai-template-results {
+  min-height: calc(
+    var(--ai-template-thumb-height) + var(--ui-space-1) + var(--ui-font-size-sm) * var(--ui-line-height) +
+      var(--ui-space-2)
+  );
+}
 .ai-template-options {
   display: flex;
   gap: var(--ui-space-3);
@@ -569,8 +586,8 @@
   padding-bottom: var(--ui-space-2);
 }
 .ai-template-option {
-  flex: 0 0 104px;
-  width: 104px;
+  flex: 0 0 var(--ai-template-thumb-width);
+  width: var(--ai-template-thumb-width);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -585,8 +602,8 @@
 }
 .ai-template-option img,
 .ai-template-option video {
-  width: 104px;
-  height: 78px;
+  width: var(--ai-template-thumb-width);
+  height: var(--ai-template-thumb-height);
   object-fit: cover;
   border-radius: var(--ui-radius-sm);
   background: var(--ui-color-media-bg);
@@ -963,8 +980,8 @@
 .handle.overflow {
   border-color: var(--ui-color-danger);
 }
-/* The selected text layer's box (its text shrinks to fit inside); only its corner handles take the pointer, so the
-   text under it stays draggable. */
+/* The selected text layer's box (its text shrinks to fit inside); only its handles take the pointer, so the text
+   under it stays draggable. */
 .text-box-frame {
   position: absolute;
   border: 1px dashed var(--ui-color-primary);
@@ -973,8 +990,8 @@
 .text-box-frame .transform-handle {
   pointer-events: auto;
 }
-/* Scale (corners) and rotate (above the top edge) handles on the selected image layer, and resize (corners) handles
-   on the selected text layer's box; they turn with the layer. */
+/* Scale (corners) and rotate (above the top edge) handles on the selected image layer, and resize (corners) and rotate
+   handles on the selected text layer's box; they turn with the layer. */
 .transform-handle {
   position: absolute;
   width: 12px;
@@ -1004,12 +1021,17 @@
   left: -7px;
   cursor: nesw-resize;
 }
+/* Circular-arrow cursor over the rotate handle and, while a rotate drag is on, anywhere on the stage. */
 .transform-handle.rotate {
   top: -30px;
   left: 50%;
   translate: -50% 0;
   border-radius: 50%;
-  cursor: grab;
+  cursor: url("./assets/cursors/rotate.svg") 12 12, grab;
+}
+.stage-inner.rotating,
+.stage-inner.rotating * {
+  cursor: url("./assets/cursors/rotate.svg") 12 12, grab;
 }
 .transform-handle.rotate::after {
   content: "";

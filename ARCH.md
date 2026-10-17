@@ -246,7 +246,7 @@ All JSON. Errors: `{ error: string, details?: string[] }` with 4xx/5xx (validati
 | POST | `/api/memes/:id/comments` | `{body, parentId?}` → 201 `Comment`; posted public memes only |
 | DELETE | `/api/comments/:id` | comment author or the meme's owner; blanked if it has replies, else removed |
 | GET | `/api/gallery?period=&sort=&tag=&q=&offset=&limit=` | `Page<Meme>`; `q` searches title, template (or parent) name, tags incl. inherited ones, and author username |
-| GET | `/api/tags?q=&kind=&limit=` | `Tag[]` with `templateCount`/`memeCount`, most used first |
+| GET | `/api/tags?q=&kind=&sort=&limit=` | `Tag[]` with `templateCount`/`memeCount`; `sort=uses` (default) most used first (templates + memes), `sort=memes` on the most listed memes first, tags on none left out (the side column's Trending: top 5 topic tags, all time) |
 | GET | `/api/tags/:slug` | `Tag` |
 | POST | `/api/tags` | `{name, kind?, description?}` → 201 `Tag`; 409 if slug exists |
 | POST | `/api/templates/:id/tags` | `{tags: string[]}` adds non-base tags (any signed-in user) → `Template` |

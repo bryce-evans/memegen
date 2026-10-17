@@ -6,14 +6,15 @@ import { tagMatches, tagSelect, toTag, type TagRow } from "../rows.ts";
 /** Tag search, lookup, and explicit creation. */
 export function register(app: ApiApp, sql: Sql): void {
   app.get("/api/tags", async (c) => {
-    const { q, kind, limit } = parse(tagsQuerySchema, c.req.query());
+    const { q, kind, sort, limit } = parse(tagsQuerySchema, c.req.query());
     const viewerId = c.get("user")?.id ?? null;
     const rows = await sql<TagRow[]>`
       select * from (${tagSelect(sql, viewerId)}) s
       where true
       ${q ? sql`and ${tagMatches(sql, q, "s")}` : sql``}
       ${kind ? sql`and s.kind = ${kind}` : sql``}
-      order by s.template_count + s.meme_count desc, s.slug
+      ${sort === "memes" ? sql`and s.meme_count > 0` : sql``}
+      order by ${sort === "memes" ? sql`s.meme_count` : sql`s.template_count + s.meme_count`} desc, s.slug
       limit ${limit}`;
     return c.json(rows.map(toTag));
   });

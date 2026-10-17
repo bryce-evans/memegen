@@ -185,6 +185,9 @@ export interface Sticker {
 export const TAG_KINDS = ["topic", "team"] as const;
 /** `team`: an org/group's own memes (e.g. "google"); `topic`: genre such as "oldschool" or "movie". */
 export type TagKind = (typeof TAG_KINDS)[number];
+/** Tag list order: `uses` = templates + memes (most used first); `memes` = memes only, tags on no meme left out. */
+export const TAG_SORTS = ["uses", "memes"] as const;
+export type TagSort = (typeof TAG_SORTS)[number];
 
 export interface Tag {
   slug: string;

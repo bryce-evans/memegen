@@ -23,6 +23,7 @@ import type {
   TemplateUsage,
   Tag,
   TagKind,
+  TagSort,
   UpdateMemeInput,
   UpdateTemplateInput,
   UploadLimits,
@@ -210,8 +211,8 @@ export const updateTemplate = (id: string, changes: Together<UpdateTemplateInput
 export const addTemplateTags = (id: string, tags: string[]) =>
   request<Template>(`/api/templates/${id}/tags`, { method: "POST", json: { tags } });
 
-export const listTags = ({ q, kind, limit }: { q?: string; kind?: TagKind; limit?: number } = {}) =>
-  request<Tag[]>(`/api/tags${qs({ q, kind, limit })}`);
+export const listTags = ({ q, kind, sort, limit }: { q?: string; kind?: TagKind; sort?: TagSort; limit?: number } = {}) =>
+  request<Tag[]>(`/api/tags${qs({ q, kind, sort, limit })}`);
 
 export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURIComponent(slug)}`);
 

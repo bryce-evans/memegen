@@ -22,6 +22,7 @@ import {
   PERIODS,
   RESERVED_USERNAMES,
   TAG_KINDS,
+  TAG_SORTS,
   TEMPLATE_KINDS,
   TEXT_ALIGNS,
   TEXT_STYLES,
@@ -290,6 +291,7 @@ export const createTagSchema = z.object({
 
 export const tagsQuerySchema = z.object({
   q: z.string().trim().max(TAG_NAME_MAX_LENGTH).default(""),
+  sort: z.enum(TAG_SORTS).default("uses"),
   kind: z.enum(TAG_KINDS).optional(),
   limit: limitSchema(100, 200),
 });

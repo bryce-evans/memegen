@@ -725,6 +725,17 @@ test("tags: normalized, inherited from templates (and variations), filter templa
   assert.equal((await call("POST", `/api/templates/${plain.id}/tags`, null, { tags: ["x"] })).status, 401);
 });
 
+test("tags by memes: only meme use counts (not templates); tags on no meme are left out", async () => {
+  const alice = await signIn("alice");
+  for (const name of ["A", "B", "C"]) await makeTemplate(alice, { name, tags: ["trend-templated"] });
+  const plain = await makeTemplate(alice, { name: "Untagged" });
+  for (const tag of ["trend-memed", "trend-memed", "trend-once"]) await makeMeme(alice, { templateId: plain.id, tags: [tag] });
+  const slugs = async (sort: string) => (await call<Tag[]>("GET", `/api/tags?q=trend&sort=${sort}`, null)).body.map((t) => t.slug);
+  assert.deepEqual(await slugs("uses"), ["trend-templated", "trend-memed", "trend-once"]);
+  assert.deepEqual(await slugs("memes"), ["trend-memed", "trend-once"]);
+  assert.equal((await call("GET", "/api/tags?sort=hot", null)).status, 400);
+});
+
 test("gallery search: title, template or parent template name, own or template tags, author; listed memes only", async () => {
   const alice = await signIn("alice");
   const bob = await signIn("bob");

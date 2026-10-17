@@ -22,6 +22,7 @@ import {
 import { AuthProvider, useAuth, useUser } from "./auth.tsx";
 import { GalleryFilters, feedKindFor } from "./components/feed.tsx";
 import { TagSidebar } from "./components/tagNav.tsx";
+import { useStoredDarkMode } from "./darkMode.ts";
 import { DEV_MODE } from "./mode.ts";
 import { Editor } from "./pages/Editor.tsx";
 import { Popular, Recent, Search } from "./pages/Gallery.tsx";
@@ -63,7 +64,7 @@ const randomPlaceholder = (except?: string) => {
   return choices[Math.floor(Math.random() * choices.length)]!;
 };
 const firstPlaceholder = randomPlaceholder();
-const CYCLE_MS = 90_000;
+const CYCLE_MS = 6 * 60_000;
 const ERASE_MS = 700;
 const PAUSE_MS = 500;
 const TYPE_MS = 700;
@@ -248,6 +249,7 @@ function Root() {
   const { user } = useAuth();
   // The tab icon is the wordmark's first letter, drawn in the skin's wordmark style.
   useSkinFavicon(BRAND[0]!);
+  useStoredDarkMode(user?.id ?? null);
   if (!user) return <SignIn brand={BRAND} />;
   return (
     <AppShell header={<SiteHeader />} sidebar={<SideColumn />}>

@@ -38,6 +38,12 @@ export interface Skin {
    * (e.g. Spectrum's `spectrum spectrum--dark spectrum--medium`).
    */
   rootClassName?: string;
+  /**
+   * A dark variant the app can turn on (`SkinProvider` `setDark`). While on, `<html>` gets `data-theme="dark"` (the
+   * skin's CSS scopes its dark overrides to `:root[data-skin="<id>"][data-theme="dark"]`) and `rootClassName` here
+   * replaces the skin's own. Skins without one ignore dark mode.
+   */
+  dark?: { rootClassName?: string };
 }
 
 const DEFAULT_LAYOUT: SkinLayout = { filters: "sidebar" };
@@ -78,6 +84,7 @@ const BUILTIN_SKINS = {
     label: "Painted",
     layout: { filters: "header" },
     rootClassName: "spectrum spectrum--light spectrum--medium",
+    dark: { rootClassName: "spectrum spectrum--dark spectrum--medium" },
   },
 } satisfies Record<string, Omit<Skin, "id">>;
 
@@ -130,6 +137,12 @@ export interface SkinContextValue {
   definition: Skin;
   /** The active skin's layout hints, with defaults filled in. */
   layout: SkinLayout;
+  /** Dark mode is on and the active skin has a dark variant, so it shows. */
+  dark: boolean;
+  /** The active skin has a dark variant (`Skin.dark`), so `setDark` changes how it looks. */
+  hasDark: boolean;
+  /** Turn dark mode on or off; the app decides where the choice is kept. Off by default. */
+  setDark: (on: boolean) => void;
 }
 
 const SkinContext = createContext<SkinContextValue | null>(null);
@@ -149,15 +162,20 @@ export function SkinProvider({
 }) {
   const skins = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const [skin, setSkinState] = useState<SkinId>(() => locked ?? initialSkin(fallback));
+  const [darkMode, setDark] = useState(false);
 
-  const rootClassName = skins.find((s) => s.id === skin)?.rootClassName;
+  const definition = useMemo<Skin>(() => skins.find((s) => s.id === skin) ?? { id: skin, label: skin }, [skins, skin]);
+  const dark = darkMode && definition.dark !== undefined;
+  const rootClassName = dark ? (definition.dark?.rootClassName ?? definition.rootClassName) : definition.rootClassName;
   useLayoutEffect(() => {
     const root = document.documentElement;
     root.dataset.skin = skin;
+    if (dark) root.dataset.theme = "dark";
+    else delete root.dataset.theme;
     const classes = rootClassName?.split(/\s+/).filter(Boolean) ?? [];
     root.classList.add(...classes);
     return () => root.classList.remove(...classes);
-  }, [skin, rootClassName]);
+  }, [skin, dark, rootClassName]);
 
   // Persist the initial pick too, so a `?skin=` link sticks after navigating away from it.
   useEffect(() => {
@@ -178,10 +196,10 @@ export function SkinProvider({
     [locked],
   );
 
-  const value = useMemo<SkinContextValue>(() => {
-    const definition = skins.find((s) => s.id === skin) ?? { id: skin, label: skin };
-    return { skin, setSkin, skins, definition, layout: { ...DEFAULT_LAYOUT, ...definition.layout } };
-  }, [skin, setSkin, skins]);
+  const value = useMemo<SkinContextValue>(
+    () => ({ skin, setSkin, skins, definition, layout: { ...DEFAULT_LAYOUT, ...definition.layout }, dark, hasDark: definition.dark !== undefined, setDark }),
+    [skin, setSkin, skins, definition, dark],
+  );
 
   return <SkinContext.Provider value={value}>{children}</SkinContext.Provider>;
 }

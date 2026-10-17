@@ -75,7 +75,7 @@ async function drawWordmarkLetter(letter: string): Promise<string> {
  * skin's wordmark style. Call once inside `<SkinProvider>`.
  */
 export function useSkinFavicon(letter: string): void {
-  const { skin } = useSkin();
+  const { skin, dark } = useSkin();
   useEffect(() => {
     let cancelled = false;
     void drawWordmarkLetter(letter).then(
@@ -96,5 +96,5 @@ export function useSkinFavicon(letter: string): void {
     return () => {
       cancelled = true;
     };
-  }, [skin, letter]);
+  }, [skin, dark, letter]);
 }

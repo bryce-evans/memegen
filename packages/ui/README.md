@@ -12,7 +12,7 @@ Skinnable React components and design tokens for the memegen web app. One compon
 | `spectrum` | Real Adobe Spectrum 2, styled like Firefly: `@spectrum-css/tokens` values, dark, pill buttons, accent-blue "new" action, raised content sheet |
 | `painted` | `spectrum` in Spectrum 2 light over a fixed watercolor wash with paper grain: tall frosted header (50% white + blur), translucent white surfaces instead of grays, black primary buttons and white ones for the rest, large painted-ink wordmark on a swatch of brush strokes (on the sign-in card its warm and cool under-lights drift gently, like a sign lit from below) |
 
-`matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple`, `google`, and `painted` are light only.
+`matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple` and `google` are light only. `painted` is light with a dark variant (`Skin.dark`): `spectrum--dark`, a flat #282828 page with a faint wash, and a darker wordmark swatch behind brighter letters.
 
 `spectrum` puts Spectrum's token classes (`spectrum spectrum--dark spectrum--medium`) on `<html>` through `Skin.rootClassName`, so `--spectrum-*` properties exist only while it is active. Its font stack prefers Adobe Clean (licensed through Adobe Fonts, so never bundled; used when installed) and falls back to the bundled Source Sans 3 (OFL, `@fontsource-variable/source-sans-3`). `painted` uses `spectrum--light` instead and shares every `spectrum.css` rule (its selectors match both ids); `painted.css` loads after it and overrides only what differs. Its wordmark prefers Radlush Extra Bold (commercial, never bundled; matched through a `local()` `@font-face` when installed) and falls back to the bundled Archivo at 900 (OFL, `@fontsource-variable/archivo`).
 
@@ -30,7 +30,7 @@ import { SkinProvider, SkinSwitcher } from "@memegen/ui";
 </SkinProvider>;
 ```
 
-`SkinProvider` picks the skin from `?skin=<id>`, then `localStorage["memegen.skin"]`, then `fallback` (`"default"`); it persists every change to that key and sets `data-skin="<id>"` on `<html>`. Pass `locked="<id>"` to pin one skin instead: no URL or storage lookup, nothing persisted, `setSkin` ignored (the memegen app runs locked to `default`). `useSkin()` returns `{ skin, setSkin, skins, definition, layout }`.
+`SkinProvider` picks the skin from `?skin=<id>`, then `localStorage["memegen.skin"]`, then `fallback` (`"default"`); it persists every change to that key and sets `data-skin="<id>"` on `<html>`. Pass `locked="<id>"` to pin one skin instead: no URL or storage lookup, nothing persisted, `setSkin` ignored (the memegen app runs locked to `default`). `useSkin()` returns `{ skin, setSkin, skins, definition, layout, dark, hasDark, setDark }`. Dark mode starts off and is never stored here (the app decides where to keep it); `setDark(true)` shows the active skin's dark variant when it has one (`hasDark`): `data-theme="dark"` on `<html>`, and `Skin.dark.rootClassName` in place of `rootClassName`. Skins scope their dark CSS to `:root[data-skin="<id>"][data-theme="dark"]`.
 
 ## How skins work
 

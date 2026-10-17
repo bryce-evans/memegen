@@ -286,3 +286,55 @@
     padding-inline: var(--spectrum-spacing-300, 16px);
   }
 }
+
+/* ---- dark: `Skin.dark` swaps in `spectrum--dark`; this restates what painted sets in white ---------------------- */
+
+/* A flat #282828 page. The wash keeps its six shapes, in dark grays and teals, at 30% opacity with no paper grain,
+   so it is only a faint texture. The wordmark's brush strokes are dark, quiet versions of the light ones, and its
+   inks are a little lighter so the word stands out. Dark mode is off while signed out, so the sign-in card's
+   flowing wordmark (`--painted-brand-paint-flowing`) has no dark version. */
+:root[data-skin="painted"][data-theme="dark"] {
+  color-scheme: dark;
+  --ui-color-bg: #282828;
+  --ui-color-state-hover: rgb(255 255 255 / 0.06);
+  --ui-color-state-press: rgb(255 255 255 / 0.12);
+  --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.4);
+  --ui-shadow-3: 0 8px 32px rgb(0 0 0 / 0.5);
+  --painted-main-sheet: rgb(20 20 20 / 0.25);
+  --painted-sheet: rgb(18 18 18 / 0.6);
+  --painted-fill: rgb(255 255 255 / 0.08);
+  --painted-field: rgb(12 12 12 / 0.6);
+  --painted-fill-strong: rgb(255 255 255 / 0.14);
+  --painted-header-sheet: rgb(34 34 34 / 0.6);
+  --painted-backdrop-opacity: 0.3;
+  --painted-grain: none;
+  --painted-wash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='1100' viewBox='0 -220 1600 1100'%3E%3Cdefs%3E%3Cfilter id='paint' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.008 .018' numOctaves='3' seed='12' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='95'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23paint)' fill='none' stroke-linecap='round'%3E%3Cpath d='M-160 260 Q350 -70 780 70 T1750 100' stroke='%231f1f1f' stroke-width='360'/%3E%3Cpath d='M-130 630 Q280 330 770 390 T1720 260' stroke='%23202020' stroke-width='230'/%3E%3Cpath d='M-100 1030 Q350 690 790 770 T1720 920' stroke='%231f1f1f' stroke-width='330'/%3E%3Cpath d='M-90 810 Q340 580 610 640 M1080 110 Q1350 -10 1720 50' stroke='%23002f35' stroke-width='55'/%3E%3Cpath d='M-130 480 Q260 130 590 240 M960 1000 Q1220 760 1700 720' stroke='%23222222' stroke-width='24'/%3E%3Cpath d='M-80 870 Q180 680 340 710 M1220 210 Q1490 10 1650 100' stroke='%2317332c' stroke-width='38'/%3E%3C/g%3E%3C/svg%3E");
+  /* Wordmark inks and brush strokes. */
+  --painted-ink-yellow: #ffde61;
+  --painted-ink-amber: #ffae54;
+  --painted-ink-orange: #ff894b;
+  --painted-ink-flame: #ff4d1f;
+  --painted-ink-red: #ff3a2e;
+  --painted-ink-dark-red: #f2333b;
+  --painted-brand-paint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 150'%3E%3Cdefs%3E%3Cfilter id='brush' x='-20%25' y='-30%25' width='140%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.025 .08' numOctaves='3' seed='7' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='18'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23brush)' fill='none' stroke-linecap='square'%3E%3Cpath d='M22 88 Q80 36 153 58 T289 42 T435 51' stroke='%2300464e' stroke-width='39'/%3E%3Cpath d='M25 111 Q160 74 237 86 T425 65' stroke='%23542a3a' stroke-width='32'/%3E%3Cpath d='M52 124 Q198 114 281 91 T432 98' stroke='%2328180e' stroke-width='17'/%3E%3Cpath d='M9 62 Q128 19 220 40 M278 133 L449 75' stroke='%2317332c' stroke-width='10'/%3E%3Cpath d='M73 29 L179 17 M326 26 L435 12' stroke='%23512a47' stroke-width='7'/%3E%3C/g%3E%3C/svg%3E");
+}
+/* The cool light under the "M" at half strength, so it shades the red without turning it purple. */
+:root[data-skin="painted"][data-theme="dark"] .ui-wordmark {
+  --painted-wordmark-cool-light: radial-gradient(
+    ellipse 46% 50% at var(--painted-cool-x) var(--painted-cool-y),
+    rgb(70 117 199 / 0.5) 45%,
+    rgb(77 78 139 / 0.5) 56%,
+    rgb(225 35 45 / 0) 120%
+  );
+}
+:root[data-skin="painted"][data-theme="dark"] .ui-dialog {
+  background-color: rgb(30 30 30 / 0.92);
+}
+/* Primary is a light pill with dark text (Spectrum's gray-900 is near white here); secondary hovers a little
+   lighter rather than to white. */
+:root[data-skin="painted"][data-theme="dark"] .ui-button--primary {
+  --ui-button-fg: var(--spectrum-gray-50);
+}
+:root[data-skin="painted"][data-theme="dark"] .ui-button--secondary {
+  --ui-button-hover-bg: rgb(255 255 255 / 0.22);
+}

@@ -81,6 +81,7 @@ Triggers keep derived state consistent across every write path (API, seeds, snap
 
 - All web UI is built from `@memegen/ui`; app CSS is layout-only and reads tokens.
 - A skin is token overrides plus optional component replacements and layout hints. Only one arrangement renders at a time, so test ids stay unique. See `packages/ui/README.md`.
+- Dark mode is a per-skin variant (`Skin.dark`), not a second token set: the app keeps the choice per user in `localStorage` and turns it on through `SkinProvider`, which sets `data-theme="dark"` on `<html>` for skins that have one. Today only `painted` does; skins without a variant ignore it, and the profile's Settings tab hides.
 
 ### Migrations are the schema version
 

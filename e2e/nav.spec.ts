@@ -48,6 +48,39 @@ test("dev tools: the sign-in page's skin switcher restyles the app, and the choi
   await expect(root).toHaveAttribute("data-skin", "google");
 });
 
+test("dark mode: a profile setting for skins with a dark variant, kept in this browser per user", async ({ page }) => {
+  const username = scoped("nightowl");
+  await page.goto("/");
+  const root = page.locator("html");
+  await signIn(page, username);
+
+  // The default skin has no dark variant, so there is nothing to set.
+  await page.goto(`/u/${username}`);
+  await expect(page.getByTestId("profile-tab-profile")).toBeVisible();
+  await expect(page.getByTestId("profile-tab-settings")).toHaveCount(0);
+
+  await page.goto(`/u/${username}?tab=settings&skin=painted`);
+  await expect(root).toHaveAttribute("data-skin", "painted");
+  await expect(page.getByTestId("dark-mode-off")).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("dark-mode-on").click();
+  await expect(root).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(root).toHaveAttribute("data-theme", "dark");
+
+  // Another user in the same browser starts light, and the first gets theirs back.
+  await page.getByTestId("sign-out").click();
+  await expect(root).not.toHaveAttribute("data-theme", "dark");
+  await signIn(page, scoped("earlybird"));
+  await expect(root).not.toHaveAttribute("data-theme", "dark");
+  await page.getByTestId("sign-out").click();
+  await signIn(page, username);
+  await expect(root).toHaveAttribute("data-theme", "dark");
+
+  await page.goto(`/u/${username}?tab=settings`);
+  await page.getByTestId("dark-mode-off").click();
+  await expect(root).not.toHaveAttribute("data-theme", "dark");
+});
+
 test("sidebar nav: entries in order, each opens its page", async ({ page }) => {
   const username = scoped("navigator");
   await page.goto("/");

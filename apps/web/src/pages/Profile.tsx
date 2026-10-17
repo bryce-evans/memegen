@@ -1,6 +1,6 @@
 import { useParams, useSearchParams } from "react-router-dom";
 import type { Meme, Page, Template, UserProfile } from "@memegen/shared";
-import { EmptyState, Icon, PageHeader, SegmentedControl, Spinner, Stat, StatGroup, Text } from "@memegen/ui";
+import { EmptyState, Icon, PageHeader, Panel, SegmentedControl, Spinner, Stat, StatGroup, Text, useSkin } from "@memegen/ui";
 import { getMyActivity, getMyFavorites, getUser, getUserMemes, getUserTemplates, type PageParams } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { AiAgentsPanel } from "../components/ai.tsx";
@@ -8,21 +8,24 @@ import { ErrorView } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
 import { TemplateGrid } from "../components/templates.tsx";
 import { STAT_HINTS, STAT_LABELS, UserBadges } from "../components/users.tsx";
+import { useDarkModeSetting } from "../darkMode.ts";
 import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
 /**
- * Two tab groups under the name: the account (Profile: stats and badges; API Keys, owner only), then the content
- * (Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own).
+ * Two tab groups under the name: the account (Profile: stats and badges; Settings and API Keys, owner only; Settings
+ * only while the skin has a dark variant, its one setting), then the content (Memes and Templates are public;
+ * Favorites and Recent activity (votes) are the owner's own).
  */
-const ACCOUNT_TABS = ["profile", "ai"] as const;
+const ACCOUNT_TABS = ["profile", "settings", "ai"] as const;
 const PUBLIC_CONTENT_TABS = ["memes", "templates"] as const;
 const CONTENT_TABS = [...PUBLIC_CONTENT_TABS, "favorites", "activity"] as const;
 type ProfileTab = (typeof ACCOUNT_TABS)[number] | (typeof CONTENT_TABS)[number];
-type MemeTab = Exclude<ProfileTab, "profile" | "ai" | "templates">;
+type MemeTab = Exclude<ProfileTab, "profile" | "ai" | "settings" | "templates">;
 const TAB_LABELS: Record<ProfileTab, string> = {
   profile: "Profile",
   ai: "API Keys",
+  settings: "Settings",
   memes: "Memes",
   templates: "Templates",
   favorites: "Favorites",
@@ -37,9 +40,10 @@ export function Profile() {
   const { username = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const user = useUser();
+  const { hasDark } = useSkin();
   const { data: profile, error } = useAsync(username, () => getUser(username));
   const isOwner = user.username === username;
-  const accountTabs: readonly ProfileTab[] = isOwner ? ACCOUNT_TABS : ["profile"];
+  const accountTabs: readonly ProfileTab[] = isOwner ? ACCOUNT_TABS.filter((t) => t !== "settings" || hasDark) : ["profile"];
   const contentTabs: readonly ProfileTab[] = isOwner ? CONTENT_TABS : PUBLIC_CONTENT_TABS;
   const tabParam = params.get("tab");
   const tab: ProfileTab = [...accountTabs, ...contentTabs].find((t) => t === tabParam) ?? "profile";
@@ -61,6 +65,8 @@ export function Profile() {
         profile ? <ProfileOverview profile={profile} /> : <Spinner label="Loading…" />
       ) : tab === "ai" ? (
         <AiAgentsPanel />
+      ) : tab === "settings" ? (
+        <ProfileSettings userId={user.id} />
       ) : tab === "templates" ? (
         <ProfileTemplates username={username} editable={isOwner} />
       ) : (
@@ -88,6 +94,27 @@ function ProfileOverview({ profile }: { profile: UserProfile }) {
       <UserBadges stats={profile.stats} />
       <Text tone="muted">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</Text>
     </div>
+  );
+}
+
+/** The owner's browser-local settings: dark mode, for skins that have a dark variant. */
+function ProfileSettings({ userId }: { userId: string }) {
+  const { on, set } = useDarkModeSetting(userId);
+  return (
+    <Panel heading="Appearance" data-testid="profile-settings">
+      <SegmentedControl
+        aria-label="Dark mode"
+        value={on ? "dark" : "light"}
+        onChange={(value) => set(value === "dark")}
+        options={[
+          { value: "light", label: "Light", testId: "dark-mode-off" },
+          { value: "dark", label: "Dark", testId: "dark-mode-on" },
+        ]}
+      />
+      <Text size="sm" tone="muted">
+        Saved in this browser for your account.
+      </Text>
+    </Panel>
   );
 }
 

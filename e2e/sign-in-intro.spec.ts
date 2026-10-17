@@ -1,7 +1,7 @@
 import { signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
-test("sign-in intro: every meme sprite loads, the burst plays through, and the login stays usable over it", async ({
+test("sign-in intro: every meme sprite, confetti piece, and streamer loads, the burst plays through, and the login stays usable over it", async ({
   page,
 }) => {
   await page.goto("/");
@@ -12,6 +12,10 @@ test("sign-in intro: every meme sprite loads, the burst plays through, and the l
   const widths = await intro.getByTestId("intro-image").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).naturalWidth));
   expect(widths).toHaveLength(14);
   for (const width of widths) expect(width).toBeGreaterThan(0);
+
+  const particles = await intro.getByTestId("intro-particle").evaluateAll((imgs) => imgs.map((img) => (img as HTMLImageElement).naturalWidth));
+  expect(particles.length).toBeGreaterThan(100);
+  for (const width of particles) expect(width).toBeGreaterThan(0);
 
   const username = scoped("intro-viewer");
   await signIn(page, username);

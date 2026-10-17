@@ -4,6 +4,11 @@ import catMeme from "../assets/intro/cat-meme.png";
 import chad from "../assets/intro/chad.png";
 import coffeeMug from "../assets/intro/coffee-mug.png";
 import cheers from "../assets/intro/cheers.png";
+import confettiCircle from "../assets/intro/confetti-circle.svg";
+import confettiRect from "../assets/intro/confetti-rect.svg";
+import confettiSquiggle from "../assets/intro/confetti-squiggle.svg";
+import confettiStar from "../assets/intro/confetti-star.svg";
+import confettiTriangle from "../assets/intro/confetti-triangle.svg";
 import datBoi from "../assets/intro/dat-boi.png";
 import doge from "../assets/intro/doge.png";
 import nyanCat from "../assets/intro/nyan-cat.png";
@@ -11,6 +16,8 @@ import pepe from "../assets/intro/pepe.png";
 import pooh from "../assets/intro/pooh.png";
 import soyjack1 from "../assets/intro/soyjack1.png";
 import soyjack2 from "../assets/intro/soyjack2.png";
+import streamerCurl from "../assets/intro/streamer-curl.svg";
+import streamerWave from "../assets/intro/streamer-wave.svg";
 import thisIsFine from "../assets/intro/this-is-fine.png";
 import thisIsFineFire from "../assets/intro/this-is-fine-fire.png";
 
@@ -88,26 +95,121 @@ function partStyle({ share, dx, dy, scale, rotate }: Part): CSSProperties {
   } as CSSProperties;
 }
 
-/** Every image, dat boi and nyan cat included; the burst starts once all have loaded (or failed), so none pops in mid-flight. */
+/**
+ * Every meme image, dat boi and nyan cat included. The burst starts once these, the confetti, and streamers have all
+ * loaded (or failed), so none pops in mid-flight.
+ */
 const IMAGE_COUNT = SCATTERED.length + GROUPS.reduce((n, g) => n + g.parts.length, 0) + 2;
 
-function landingStyle({ x, y, size, spin }: Landing, delay: number): CSSProperties {
+function landingStyle({ x, y, size, spin }: Landing, motion: CSSProperties | undefined): CSSProperties {
   return {
     "--x": `${x}vmin`,
     "--y": `${y}vmin`,
     "--size": `${size}vmin`,
     "--spin": `${spin}deg`,
-    "--delay": `${delay}s`,
+    ...motion,
   } as CSSProperties;
 }
 
 /** Each bouncing sprite (scattered, groups, dat boi) starts up to this many seconds late, so they don't bounce in unison. */
 const MAX_DELAY_S = 0.08;
 
-/** A random start delay per bouncing sprite, by name; drawn once per mount so re-renders never shift a running animation. */
-function randomDelays(): Map<string, number> {
-  const names = [...SCATTERED.map((s) => s.name), ...GROUPS.map((g) => g.name), "dat-boi"];
-  return new Map(names.map((name) => [name, Math.random() * MAX_DELAY_S]));
+/**
+ * Each bouncing sprite's random motion, by name, drawn once per mount so re-renders never shift a running animation:
+ * its start `--delay`, and a wobble of 0.7–1.125° either way over a 7–14 s period, starting anywhere in its cycle.
+ * Dat boi wobbles just 0.25°: big and pivoting far below his wheel, any more swings him wildly.
+ */
+function randomMotion(): Map<string, CSSProperties> {
+  const names = [
+    ...SCATTERED.map((s) => s.name),
+    ...GROUPS.flatMap((g) => [g.name, ...g.parts.map((p) => p.name)]),
+    "dat-boi",
+  ];
+  return new Map(
+    names.map((name) => {
+      const period = random(7, 14);
+      const motion = {
+        "--delay": `${random(0, MAX_DELAY_S)}s`,
+        "--wobble": `${name === "dat-boi" ? 0.25 : random(0.7, 1.125)}deg`,
+        "--wobble-period": `${period}s`,
+        "--wobble-delay": `${-random(0, period)}s`,
+      } as CSSProperties;
+      return [name, motion];
+    }),
+  );
+}
+
+/** Confetti and streamers explode out of the center with the memes, painted behind them. */
+const CONFETTI_COUNT = 270;
+const STREAMER_COUNT = 11;
+
+/** A particle image and its width relative to its kind's random `size`. */
+interface ParticleSource {
+  src: string;
+  scale: number;
+}
+type Sources = [ParticleSource, ...ParticleSource[]];
+/** The rectangle reads as big beside the other shapes at the same width, so it's drawn smaller. */
+const CONFETTI: Sources = [
+  { src: confettiRect, scale: 0.6 },
+  { src: confettiCircle, scale: 1 },
+  { src: confettiSquiggle, scale: 1 },
+  { src: confettiStar, scale: 1 },
+  { src: confettiTriangle, scale: 1 },
+];
+const STREAMERS: Sources = [
+  { src: streamerWave, scale: 1 },
+  { src: streamerCurl, scale: 1 },
+];
+
+interface Particle {
+  kind: "confetti" | "streamer";
+  src: string;
+  style: CSSProperties;
+}
+
+function random(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+/**
+ * Confetti and streamers, drawn once per mount: each flies from the center to a random landing spread over the whole
+ * viewport (out to just past its edges, sparse near the center, where the card hides them), tinted by a random hue,
+ * then flutters back and forth every `flutter` seconds (half a cycle). Confetti lands at any `spin`; streamers point
+ * along their flight, straight out from the center, `spin` only nudging them off it.
+ */
+function randomParticles(): Particle[] {
+  const make = (
+    kind: Particle["kind"],
+    sources: Sources,
+    size: [number, number],
+    spin: number,
+    flutter: [number, number],
+  ): Particle => {
+    const angle = random(0, 2 * Math.PI);
+    // sqrt: even density by area, out to 105% of the half-viewport.
+    const reach = Math.sqrt(random(0.06, 1.1));
+    const source = sources[Math.floor(Math.random() * sources.length)] ?? sources[0];
+    return {
+      kind,
+      src: source.src,
+      style: {
+        "--x": `${Math.cos(angle) * reach * 50}vw`,
+        "--y": `${Math.sin(angle) * reach * 50}vh`,
+        "--size": `${random(...size) * source.scale}vmin`,
+        "--spin": `${random(-spin, spin)}deg`,
+        "--hue": `${random(0, 360)}deg`,
+        "--duration": `${random(0.8, 1.3)}s`,
+        "--delay": `${random(0, 0.12)}s`,
+        "--flutter": `${random(...flutter)}s`,
+        "--flutter-delay": `${-random(0, flutter[1])}s`,
+      } as CSSProperties,
+    };
+  };
+  return [
+    ...Array.from({ length: STREAMER_COUNT }, () => make("streamer", STREAMERS, [3, 5], 12, [1.4, 2.6])),
+    ...Array.from({ length: CONFETTI_COUNT }, () => make("confetti", CONFETTI, [1.2, 2.4], 304, [5.6, 10.4])),
+  ];
 }
 
 /** Nyan cat flies up and to the left, this many degrees above horizontal. */
@@ -136,16 +238,17 @@ function nyanLength(pin: { x: number; y: number }, width: number): number {
 
 /**
  * Sign-in intro around `children` (the sign-in card), all at once: memes explode out of the center from behind the
- * card and settle around the page, dat boi pops up behind its top-right corner, and nyan cat shoots out of its
- * top-left corner.
+ * card and settle around the page in a shower of confetti and streamers, dat boi pops up behind the card's top-right
+ * corner, and nyan cat shoots out of its top-left corner.
  */
 export function IntroBurst({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(0);
   const [done, setDone] = useState(false);
   const onLoad = () => setLoaded((n) => n + 1);
-  const ready = loaded >= IMAGE_COUNT;
+  const [motion] = useState(randomMotion);
+  const [particles] = useState(randomParticles);
+  const ready = loaded >= IMAGE_COUNT + particles.length;
   const nyan = useRef<HTMLDivElement>(null);
-  const [delays] = useState(randomDelays);
 
   // Size nyan cat's flight before the first paint, and again whenever the window or the card moves its pin.
   useLayoutEffect(() => {
@@ -172,6 +275,18 @@ export function IntroBurst({ children }: { children: ReactNode }) {
   return (
     <div className="intro-stage" data-testid="intro-burst" data-ready={ready} data-done={done}>
       <div className="intro-scatter" aria-hidden="true">
+        {particles.map((p, i) => (
+          <img
+            key={`${p.kind}-${i}`}
+            className={`intro-particle intro-${p.kind}`}
+            data-testid="intro-particle"
+            src={p.src}
+            alt=""
+            style={p.style}
+            onLoad={onLoad}
+            onError={onLoad}
+          />
+        ))}
         {SCATTERED.map((s) => (
           <img
             key={s.name}
@@ -180,13 +295,13 @@ export function IntroBurst({ children }: { children: ReactNode }) {
             data-sprite={s.name}
             src={s.src}
             alt=""
-            style={landingStyle(s, delays.get(s.name) ?? 0)}
+            style={landingStyle(s, motion.get(s.name))}
             onLoad={onLoad}
             onError={onLoad}
           />
         ))}
         {GROUPS.map((g) => (
-          <div key={g.name} className="intro-sprite intro-group" data-sprite={g.name} style={landingStyle(g, delays.get(g.name) ?? 0)}>
+          <div key={g.name} className="intro-sprite intro-group" data-sprite={g.name} style={landingStyle(g, motion.get(g.name))}>
             {g.parts.map((p) => (
               <img
                 key={p.name}
@@ -194,7 +309,7 @@ export function IntroBurst({ children }: { children: ReactNode }) {
                 data-sprite={p.name}
                 src={p.src}
                 alt=""
-                style={partStyle(p)}
+                style={{ ...partStyle(p), ...motion.get(p.name) }}
                 onLoad={onLoad}
                 onError={onLoad}
               />
@@ -208,7 +323,7 @@ export function IntroBurst({ children }: { children: ReactNode }) {
           alt=""
           data-testid="intro-image"
           data-sprite="dat-boi"
-          style={{ "--delay": `${delays.get("dat-boi") ?? 0}s` } as CSSProperties}
+          style={motion.get("dat-boi")}
           onLoad={onLoad}
           onError={onLoad}
         />

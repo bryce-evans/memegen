@@ -9,13 +9,15 @@ export interface PanelStageProps {
   images: AssetImages;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** Show just the finished meme: no panel boxes or selection, no transparency checkerboard. */
+  preview?: boolean;
 }
 
 /**
  * Multi-panel preview, drawn by the export's compositor at displayed size × device pixels. Panels can only be
  * selected (to edit their caption or image reference); pack images are never moved, cropped or resized.
  */
-export function PanelStage({ set, images, selectedId, onSelect }: PanelStageProps) {
+export function PanelStage({ set, images, selectedId, onSelect, preview = false }: PanelStageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [boxes, setBoxes] = useState<PanelBox[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +49,12 @@ export function PanelStage({ set, images, selectedId, onSelect }: PanelStageProp
   }
 
   return (
-    <div className="stage">
-      <div className="stage-inner" style={{ "--stage-aspect": aspect } as CSSProperties} onPointerDown={() => onSelect(null)}>
+    <div className="stage" data-testid="stage" data-preview={preview || undefined}>
+      <div
+        className="stage-inner"
+        style={{ "--stage-aspect": aspect } as CSSProperties}
+        onPointerDown={preview ? undefined : () => onSelect(null)}
+      >
         <canvas
           ref={canvasRef}
           width={pixelWidth}
@@ -57,7 +63,7 @@ export function PanelStage({ set, images, selectedId, onSelect }: PanelStageProp
           data-testid="stage-canvas"
           data-ready={ready ? "true" : undefined}
         />
-        {boxes.map((box, i) => (
+        {!preview && boxes.map((box, i) => (
           <div
             key={box.panelId}
             data-testid="panel-box"

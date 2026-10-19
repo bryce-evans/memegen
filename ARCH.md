@@ -48,7 +48,7 @@ Dependency rules:
 ### Rendering is client-side
 
 - Servers never decode or encode frames. `packages/render` handles stills (canvas → PNG/JPEG), GIFs (`gifuct-js` → `gifenc`), and MP4/MOV (`mediabunny`/WebCodecs → H.264, audio passed through).
-- Preview equals output: the editor stage, loop preview, and every export use the same `layoutText`/`drawText` (shared) and `composeFrame` (render).
+- Preview equals output: the editor stage, loop preview, and every export use the same `layoutText`/`drawText` (shared) and `composeFrame` (render). The stage's handles and transparency checkerboard are DOM/CSS over the canvas, so its Preview box (beside a template's title) just drops them to show the finished meme.
 - Layout is stored in fractions of the media, so it is resolution-independent; text is rasterized at the size shown or exported.
 - Trade-off: export speed depends on the client. A server renderer could reuse the same TS without changing the data model.
 

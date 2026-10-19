@@ -22,7 +22,7 @@ import type {
   TextProps,
   WordmarkProps,
 } from "./components/display.tsx";
-import type { ColorFieldProps, FieldProps, SelectFieldProps, SliderProps, TextAreaProps, TextFieldProps } from "./components/fields.tsx";
+import type { CheckboxProps, ColorFieldProps, FieldProps, SelectFieldProps, SliderProps, TextAreaProps, TextFieldProps } from "./components/fields.tsx";
 import type { IconProps } from "./components/Icon.tsx";
 import type {
   AppShellProps,
@@ -53,6 +53,7 @@ export interface ComponentOverrides {
   CardTitle: ComponentType<CardTitleProps>;
   Chip: ComponentType<ChipProps>;
   ChipGroup: ComponentType<ChipGroupProps>;
+  Checkbox: ComponentType<CheckboxProps>;
   ColorField: ComponentType<ColorFieldProps>;
   Dialog: ComponentType<DialogProps>;
   Dropdown: ComponentType<DropdownProps>;

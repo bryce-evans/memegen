@@ -155,3 +155,20 @@ function ColorFieldBase(props: ColorFieldProps) {
 }
 
 export const ColorField = skinnable("ColorField", ColorFieldBase);
+
+export interface CheckboxProps extends Omit<ComponentPropsWithRef<"input">, "type"> {
+  /** Text beside the box; clicking it toggles the box. */
+  label: ReactNode;
+}
+
+/** Native checkbox with its label beside it. Input props (`checked`, `onChange`, `data-testid`…) go to the input. */
+function CheckboxBase({ label, className, ...input }: CheckboxProps) {
+  return (
+    <label className={cx("ui-checkbox", className)}>
+      <input type="checkbox" className="ui-checkbox-input" {...input} />
+      <span className="ui-checkbox-label">{label}</span>
+    </label>
+  );
+}
+
+export const Checkbox = skinnable("Checkbox", CheckboxBase);

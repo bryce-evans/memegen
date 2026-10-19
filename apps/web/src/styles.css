@@ -1101,6 +1101,10 @@
   border: var(--ui-border-width) solid var(--ui-color-border);
   border-radius: var(--ui-radius-card);
 }
+/* Preview: the finished meme on the plain card surface; the border stays. */
+.stage[data-preview] {
+  background: var(--ui-color-surface);
+}
 /* As wide as the column allows, but never taller than 68vh; `--stage-aspect` (width / height) is set by the stage. */
 .stage-inner {
   position: relative;

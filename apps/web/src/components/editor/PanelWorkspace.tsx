@@ -38,6 +38,8 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
   const [set, setSet] = useState<PanelSet>(session.set);
   const [pack, setPack] = useState<Asset[]>(session.pack);
   const [images, setImages] = useState(session.images);
+  // The stage shows just the finished meme (no panel boxes or checkerboard); toggled beside the template's title.
+  const [preview, setPreview] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(session.set.panels[0]?.id ?? null);
   const panels = set.panels;
   const setPanels = (update: (ps: Panel[]) => Panel[]) => setSet((s) => ({ ...s, panels: update(s.panels) }));
@@ -88,8 +90,8 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
       {authoring && <PageHeader title={EDITOR_TITLES[source.kind]} titleProps={{ "data-testid": "editor-title" }} />}
       <section className="editor">
         <div className="editor-main">
-          <PanelStage set={set} images={images} selectedId={selectedId} onSelect={setSelectedId} />
-          {source.kind === "template" && <TemplateDetails template={source.template} />}
+          <PanelStage set={set} images={images} selectedId={selectedId} onSelect={setSelectedId} preview={preview} />
+          {source.kind === "template" && <TemplateDetails template={source.template} preview={preview} onPreviewChange={setPreview} />}
         </div>
         <div className="editor-side">
           {authoring && (

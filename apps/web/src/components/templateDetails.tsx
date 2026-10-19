@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PERIODS, type Period, type Template } from "@memegen/shared";
-import { Inline, Panel, SelectField, Text } from "@memegen/ui";
+import { Checkbox, Inline, Panel, SelectField, Text } from "@memegen/ui";
 import { addTemplateTags, getTemplateUsage } from "../api.ts";
 import { PERIOD_LABELS, plural } from "../format.ts";
 import { useAsync } from "../useAsync.ts";
@@ -10,13 +10,31 @@ import { TagEditor } from "./tagInputs.tsx";
 import { TagChips } from "./tags.tsx";
 import { TemplateMeta } from "./templates.tsx";
 
-/** Under the editor stage when a template is open: its tags (anyone can add), usage, and variations. */
-export function TemplateDetails({ template }: { template: Template }) {
+/**
+ * Under the editor stage when a template is open: its tags (anyone can add), usage, and variations. The Preview box
+ * beside the title shows the stage as the finished meme.
+ */
+export function TemplateDetails({
+  template,
+  preview,
+  onPreviewChange,
+}: {
+  template: Template;
+  preview: boolean;
+  onPreviewChange: (preview: boolean) => void;
+}) {
   // Base tags come from the author and always stay; added tags sit beside them.
   const [tagged, setTagged] = useState({ tags: template.tags, baseTags: template.baseTags });
 
   return (
-    <Panel heading={template.name} className="template-details" data-testid="template-details">
+    <Panel
+      heading={template.name}
+      headingActions={
+        <Checkbox label="Preview" checked={preview} onChange={(e) => onPreviewChange(e.target.checked)} data-testid="stage-preview" />
+      }
+      className="template-details"
+      data-testid="template-details"
+    >
       <TemplateMeta template={template} />
       <div className="template-details-tags">
         <TagChips slugs={tagged.tags} base={tagged.baseTags} />

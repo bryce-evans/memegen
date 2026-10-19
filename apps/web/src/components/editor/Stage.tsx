@@ -30,6 +30,8 @@ export interface StageProps {
   onRotate: (id: string, angle: number) => void;
   /** A text layer's box was pressed: focus its text field so typing edits it. */
   onEditText: (id: string) => void;
+  /** Show just the finished meme: no layer boxes or handles, no pointer editing, no transparency checkerboard. */
+  preview?: boolean;
 }
 
 /**
@@ -51,7 +53,21 @@ const CORNERS: readonly Corner[] = ["nw", "ne", "se", "sw"];
 /** Shift-rotate snaps to this many degrees. */
 const ROTATE_SNAP = 15;
 
-export function Stage({ media, layers, images, frame, selectedId, fontsVersion, onSelect, onMove, onResize, onResizeText, onRotate, onEditText }: StageProps) {
+export function Stage({
+  media,
+  layers,
+  images,
+  frame,
+  selectedId,
+  fontsVersion,
+  onSelect,
+  onMove,
+  onResize,
+  onResizeText,
+  onRotate,
+  onEditText,
+  preview = false,
+}: StageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameCache = useRef<{ index: number; image: CanvasImageSource } | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -223,8 +239,12 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
 
   const labels = layerLabels(layers);
   return (
-    <div className="stage">
-      <div className={cx("stage-inner", rotating && "rotating")} style={{ "--stage-aspect": aspect } as CSSProperties} onPointerDown={() => onSelect(null)}>
+    <div className="stage" data-testid="stage" data-preview={preview || undefined}>
+      <div
+        className={cx("stage-inner", rotating && "rotating")}
+        style={{ "--stage-aspect": aspect } as CSSProperties}
+        onPointerDown={preview ? undefined : () => onSelect(null)}
+      >
         <canvas
           ref={canvasRef}
           width={pixelWidth}
@@ -233,7 +253,7 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
           data-testid="stage-canvas"
           data-ready={ready ? "true" : undefined}
         />
-        {boxes.map((box) => {
+        {!preview && boxes.map((box) => {
           const index = layers.findIndex((l) => l.id === box.layerId);
           const layer = layers[index];
           if (!layer) return null;
@@ -279,7 +299,7 @@ export function Stage({ media, layers, images, frame, selectedId, fontsVersion, 
             </div>
           );
         })}
-        {boxes.map((box) => {
+        {!preview && boxes.map((box) => {
           // The selected text layer's box (its text shrinks to fit it), with corner handles to resize it and a handle
           // above it to rotate it. The top section's text fills its band, so it has neither.
           const layer = layers.find((l) => l.id === box.layerId);

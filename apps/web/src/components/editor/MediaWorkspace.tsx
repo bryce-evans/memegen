@@ -49,6 +49,8 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
   const [addImageError, setAddImageError] = useState<unknown>(null);
   /** Set by pressing a text box on the stage; the Layers panel focuses that layer's text field. */
   const [editText, setEditText] = useState<{ id: string } | null>(null);
+  // The stage shows just the finished meme (no handles or checkerboard); toggled beside the template's title.
+  const [preview, setPreview] = useState(false);
   const animated = media.kind !== "image";
   const t = media.times[playback.frame] ?? 0;
   const selectedLayer = layers.find((l) => l.id === selectedId) ?? null;
@@ -144,6 +146,7 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
             }}
             onRotate={(id, angle) => updateLayer(id, (l) => rotateTo(l, angle))}
             onEditText={(id) => setEditText({ id })}
+            preview={preview}
           />
           {assets.fontError && (
             <Alert tone="danger" data-testid="editor-error">
@@ -165,7 +168,7 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
               onUpdateLayer={updateLayer}
             />
           )}
-          {source.kind === "template" && <TemplateDetails template={source.template} />}
+          {source.kind === "template" && <TemplateDetails template={source.template} preview={preview} onPreviewChange={setPreview} />}
         </div>
         <div className="editor-side">
           <LayerPanel

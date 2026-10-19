@@ -71,3 +71,25 @@ test("text boxes: the selected box's handle rotates it; ⌘⌫ removes the box r
   await expect(items).toHaveCount(count - 1);
   await expect(page.locator(`[data-testid="layer-item"][data-layer-id="${layerId}"]`)).toHaveCount(0);
 });
+
+test("preview: the box beside the template's title hides every box and handle, and unchecking brings them back", async ({ page, request }) => {
+  await editFixture(page, request, scoped("previewer"), "still.png");
+  const stage = page.getByTestId("stage");
+  const boxes = page.getByTestId("layer-box");
+  const count = await boxes.count();
+  await boxes.first().click();
+  await expect(page.getByTestId("text-box-frame")).toBeVisible();
+
+  const preview = page.getByTestId("template-details").getByTestId("stage-preview");
+  await preview.check();
+  await expect(stage).toHaveAttribute("data-preview", "true");
+  await expect(boxes).toHaveCount(0);
+  await expect(page.getByTestId("text-box-frame")).toHaveCount(0);
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+
+  // Unchecked, editing picks up where it left off: the same boxes, the selected one still framed.
+  await preview.uncheck();
+  await expect(stage).not.toHaveAttribute("data-preview");
+  await expect(boxes).toHaveCount(count);
+  await expect(page.getByTestId("text-box-frame")).toBeVisible();
+});

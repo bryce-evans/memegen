@@ -65,6 +65,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `TextField`, `TextArea` | `<input>`, `<textarea>` | `label`, `description`, `error`, `size` |
 | `SelectField` | native `<select>` + skinned chevron | `label`, `description`, `error`, `size` |
 | `Slider` | native `<input type=range>` (filled track) | `label`, … |
+| `Checkbox` | native `<input type=checkbox>` with its label beside it (`accent-color` primary) | `label`; input props (`checked`, `onChange`, `data-testid`…) go to the input |
 | `ColorField` | native `<input type=color>` | `label`, … |
 | `Card`, `CardTitle`, `CardMeta`, `MediaGrid` | `<article>` with media/body/actions slots; grid | `media`, `actions`, `borderless`; `CardTitle` is polymorphic |
 | `Chip`, `ChipGroup` | tag chip (`as`, default `span`) | `variant` (`default`/`suggest`), `onRemove`, `removeLabel` |

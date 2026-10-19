@@ -7,7 +7,6 @@ import type {
   Comment,
   CreateMemeInput,
   CreateStickerInput,
-  CreateTagInput,
   CreateTemplateInput,
   GallerySort,
   HotTemplate,
@@ -216,9 +215,6 @@ export const listTags = ({ q, kind, sort, limit }: { q?: string; kind?: TagKind;
   request<Tag[]>(`/api/tags${qs({ q, kind, sort, limit })}`);
 
 export const getTag = (slug: string) => request<Tag>(`/api/tags/${encodeURIComponent(slug)}`);
-
-export const createTag = (input: CreateTagInput) =>
-  request<Tag>("/api/tags", { method: "POST", json: input });
 
 /** The sticker library: most posted first, then most saved, then newest. */
 export const listStickers = ({ offset, limit }: PageParams = {}) =>

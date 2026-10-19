@@ -115,7 +115,8 @@ export interface UserProfile {
 export const SYSTEM_USERNAME = "memegen";
 export const RESERVED_USERNAMES: readonly string[] = [SYSTEM_USERNAME];
 
-export const LEADERBOARD_SORTS = ["hScore", "highScore", "memeCount"] as const;
+/** In display order: the leaderboard's "Rank by" control and its stat columns both follow it. */
+export const LEADERBOARD_SORTS = ["memeCount", "highScore", "hScore"] as const;
 export type LeaderboardSort = (typeof LEADERBOARD_SORTS)[number];
 
 export interface LeaderboardEntry {

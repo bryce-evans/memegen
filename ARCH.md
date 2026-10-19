@@ -110,7 +110,7 @@ erDiagram
 - **Meme**: always made from a template; stores its own layers (or panels), source, and rendered output asset, so it can be re-edited. Saved = row exists; posted = `posted_at` set; listed = posted and public.
 - **Layer**: discriminated union `text | image` sharing placement, opacity, a visibility window, and keyframes. Animation rules are pure functions in `packages/shared/src/animation.ts`.
 - **Tag**: `topic | team`; memes inherit their template's tags, variations roll up to the parent.
-- **Votes/stats**: one ±1 vote per user per meme; user stats and leaderboard share one SQL definition; badges are computed client-side from public stats.
+- **Votes/stats**: one ±1 vote per user per meme; user stats and leaderboard share one SQL definition; badges are computed client-side from public stats. Each badge is one stat's tier (`BadgeDef.stat`, `.tier`, via `badgeFor`): a star in the tier's color (`--ui-color-tier-*`) follows that stat's figure everywhere (leaderboard, user search, profile), and profile stat tiles take the tier's color as their outline. The leaderboard's stat column headings are its sort buttons; `LEADERBOARD_SORTS` is in column order.
 
 ## Interfaces
 

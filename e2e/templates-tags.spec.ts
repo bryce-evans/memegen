@@ -14,14 +14,14 @@ import {
   templateCard,
 } from "./helpers.ts";
 
-test("templates: add one, add a variation, add tags, use the variation with a new team tag, find it all by tag", async ({
+test("templates: add one, add a variation, add tags, use the variation with a brand-new tag, find it all by tag", async ({
   page,
   request,
 }) => {
   const curator = scoped("curator");
   const base = scoped("E2E Base");
-  const teamTag = scoped("Adobe Memes");
-  const teamSlug = tagSlug(teamTag);
+  const newTag = scoped("Adobe Memes");
+  const newSlug = tagSlug(newTag);
   await page.goto("/");
   await signIn(page, curator);
   await page.getByTestId("nav-create").click();
@@ -99,17 +99,16 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await expect(page.getByTestId("timeline-frame")).toHaveCount(12);
   await page.getByTestId("meme-title").fill("From variation");
 
-  // Team tags for an org's own memes: created while saving, and put on the meme.
-  await page.getByTestId("new-tag-name").fill(teamTag);
-  await page.getByTestId("new-tag-kind").selectOption("team");
-  await page.getByTestId("new-tag-submit").click();
-  await expect(inputTagChip(page, teamSlug)).toBeVisible();
+  // A brand-new tag is just typed into Tags: it's created when the meme saves, and put on the meme.
+  await page.getByTestId("meme-tags").fill(newTag);
+  await page.getByTestId("meme-tags").press("Enter");
+  await expect(inputTagChip(page, newSlug)).toBeVisible();
   await page.getByTestId("post-meme").click();
   const id = await memeIdFromUrl(page);
 
   // The template's tags are inherited, not copied.
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
-  expect(meme.tags).toEqual([teamSlug]);
+  expect(meme.tags).toEqual([newSlug]);
 
   // The meme is found under the template's tag; tag pages list memes only, not templates.
   await page.goto("/t/movie");
@@ -117,9 +116,9 @@ test("templates: add one, add a variation, add tags, use the variation with a ne
   await expect(memeCard(page.getByTestId("tag-memes"), id)).toBeVisible();
   await expect(page.getByTestId("template-card")).toHaveCount(0);
 
-  // And under the new team tag.
-  await page.goto(`/t/${teamSlug}`);
-  await expect(page.getByTestId("tag-title")).toHaveText(`#${teamSlug}team`);
+  // And under the new tag.
+  await page.goto(`/t/${newSlug}`);
+  await expect(page.getByTestId("tag-title")).toContainText(`#${newSlug}`);
   await expect(memeCard(page.getByTestId("tag-memes"), id)).toBeVisible();
 
   // The use counts toward the parent template (the variation rolls up). Checked on its own usage series: the Hot

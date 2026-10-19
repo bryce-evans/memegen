@@ -3,7 +3,7 @@ import { MOCK_EXPECT, MOCK_TEMPLATES } from "./mock/data.ts";
 import { apiGet, apiMeme, apiTemplate, apiUser, loadAll, memeCard, mockTitles, openFeed, signIn, templateCard } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
-test("profile: open an author from the gallery and see their stats and badges, then their public memes", async ({ page }) => {
+test("profile: open an author from the gallery and see their stats and tiers, then their public memes", async ({ page }) => {
   await page.goto("/recent");
   await signIn(page, scoped("visitor"));
   await openFeed(page, { feed: "popular", period: "week" });
@@ -15,14 +15,13 @@ test("profile: open an author from the gallery and see their stats and badges, t
   await expect(page.getByTestId("stat-high-score")).toHaveText(String(MOCK_EXPECT.aliceStats.highScore));
   await expect(page.getByTestId("stat-h-score")).toHaveText(String(MOCK_EXPECT.aliceStats.hScore));
 
-  // 6 memes / high score 8 / h-score 3: bronze meme maker and bronze h-score, no high-score badge yet.
-  const badges = page.getByTestId("profile-badge");
-  await expect(badges).toHaveCount(2);
-  expect(await badges.evaluateAll((els) => els.map((el) => el.getAttribute("data-badge")))).toEqual([
-    "memeCount-bronze",
-    "hScore-bronze",
+  // 6 memes / high score 8 / h-score 3: bronze meme maker and bronze h-score, no high-score tier yet.
+  const tiles = page.getByTestId("profile-stat");
+  expect(await tiles.evaluateAll((els) => els.map((el) => [el.getAttribute("data-stat"), el.getAttribute("data-tier")]))).toEqual([
+    ["memeCount", "bronze"],
+    ["highScore", null],
+    ["hScore", "bronze"],
   ]);
-  await expect(badges.first()).toHaveAttribute("title", /\S/);
 
   // Visitors get Profile, Memes, and Templates: AI keys, Favorites, and Recent activity are the owner's own.
   await expect(page.getByTestId("profile-tab-ai")).toHaveCount(0);

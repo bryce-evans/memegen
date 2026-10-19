@@ -1,7 +1,7 @@
-import { useId, useState, type Dispatch, type FormEvent, type KeyboardEvent, type SetStateAction } from "react";
-import { MAX_TAGS, TAG_KINDS, TAG_NAME_MAX_LENGTH, tagSlug, type Tag, type TagKind } from "@memegen/shared";
-import { Button, Chip, ChipGroup, Field, Icon, Inline, SelectField, Text, TextField } from "@memegen/ui";
-import { ApiError, createTag, listTags } from "../api.ts";
+import { useId, useState, type Dispatch, type KeyboardEvent, type SetStateAction } from "react";
+import { MAX_TAGS, tagSlug, type Tag } from "@memegen/shared";
+import { Button, Chip, ChipGroup, Field, Icon, Inline, Text, TextField } from "@memegen/ui";
+import { listTags } from "../api.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
@@ -109,8 +109,8 @@ function TagInput(props: {
 }
 
 /**
- * A labelled tag input for forms; `allowCreate` adds the New tag form, whose created tag is added to the value.
- * `testId` goes on the input; `onChange` is a state setter so a tag created mid-edit can't drop other changes.
+ * A labelled tag input for forms. Tags are loose words: any new one is created when the form saves.
+ * `testId` goes on the input.
  */
 export function TagField(props: {
   value: string[];
@@ -120,79 +120,11 @@ export function TagField(props: {
   description?: string;
   testId: string;
   disabled?: boolean;
-  allowCreate?: boolean;
 }) {
-  const { value, onChange, suggestions, label = "Tags", description, testId, disabled = false, allowCreate = false } = props;
+  const { value, onChange, suggestions, label = "Tags", description, testId, disabled = false } = props;
   return (
-    <>
-      <Field as="div" label={label} description={description}>
-        <TagInput value={value} onChange={onChange} suggestions={suggestions} testId={testId} disabled={disabled} />
-      </Field>
-      {allowCreate && (
-        <NewTagForm disabled={disabled} onCreated={(slug) => onChange((tags) => (tags.includes(slug) ? tags : [...tags, slug]))} />
-      )}
-    </>
-  );
-}
-
-/** Create a tag (e.g. a team) and hand back its slug; an existing tag of that name is just handed back. */
-function NewTagForm({ disabled, onCreated }: { disabled: boolean; onCreated: (slug: string) => void }) {
-  const [name, setName] = useState("");
-  const [kind, setKind] = useState<TagKind>("team");
-  const { busy, error, run } = useAction();
-  const off = disabled || busy;
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    void run(async () => {
-      let slug: string;
-      try {
-        slug = (await createTag({ name: trimmed, kind })).slug;
-      } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) throw err;
-        slug = tagSlug(trimmed);
-      }
-      setName("");
-      onCreated(slug);
-    });
-  }
-
-  return (
-    <Field as="div" label="New tag">
-      <form className="new-tag" onSubmit={submit}>
-        <TextField
-          size="sm"
-          className="new-tag-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Tag name"
-          aria-label="Tag name"
-          maxLength={TAG_NAME_MAX_LENGTH}
-          disabled={off}
-          data-testid="new-tag-name"
-        />
-        <SelectField
-          size="sm"
-          className="new-tag-kind"
-          value={kind}
-          onChange={(e) => setKind(e.target.value as TagKind)}
-          disabled={off}
-          data-testid="new-tag-kind"
-          aria-label="Tag kind"
-        >
-          {TAG_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </SelectField>
-        <Button size="sm" type="submit" disabled={off || !name.trim()} data-testid="new-tag-submit">
-          Create tag
-        </Button>
-      </form>
-      {error !== null && <ErrorView error={error} />}
+    <Field as="div" label={label} description={description}>
+      <TagInput value={value} onChange={onChange} suggestions={suggestions} testId={testId} disabled={disabled} />
     </Field>
   );
 }

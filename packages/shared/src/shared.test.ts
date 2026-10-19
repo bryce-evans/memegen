@@ -6,7 +6,7 @@ import { DEFAULT_LIMITS, IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, limitViolations, STIL
 import { growTextBox, layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { layerSchema, layersSchema, sessionSchema } from "./schema.ts";
 import { canMoveLayer, composedHeight, layerArea, layoutTopSection, moveById, moveLayer, topSectionPx } from "./section.ts";
-import { badgesFor } from "./badges.ts";
+import { badgeFor } from "./badges.ts";
 import { panelGrid, panelRules } from "./panels.ts";
 import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
 import { aiEditTarget, aiImageUpdate, applyAiEdit, type AiEdit } from "./ai.ts";
@@ -129,8 +129,10 @@ test("imageLayerSchema accepts widths from IMAGE_WIDTH_MIN to IMAGE_WIDTH_MAX, n
 });
 
 test("badges: only the highest reached tier per stat shows, at exact thresholds", () => {
-  const ids = (memeCount: number, highScore: number, hScore: number) =>
-    badgesFor({ memeCount, highScore, hScore }).map((b) => b.id);
+  const ids = (memeCount: number, highScore: number, hScore: number) => {
+    const stats = { memeCount, highScore, hScore };
+    return (["memeCount", "highScore", "hScore"] as const).flatMap((stat) => badgeFor(stats, stat)?.id ?? []);
+  };
   assert.deepEqual(ids(2, 9, 1), []);
   assert.deepEqual(ids(3, 10, 2), ["memeCount-bronze", "highScore-bronze", "hScore-bronze"]);
   assert.deepEqual(ids(9, 24, 4), ["memeCount-bronze", "highScore-bronze", "hScore-bronze"]);

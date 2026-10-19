@@ -109,7 +109,7 @@ export function SavePanel(props: SavePanelProps) {
             <option value="public">Public</option>
             <option value="private">Private (only you)</option>
           </SelectField>
-          <TagField value={tags} onChange={setTags} suggestions={templateTags} testId="meme-tags" disabled={busy} allowCreate />
+          <TagField value={tags} onChange={setTags} suggestions={templateTags} testId="meme-tags" disabled={busy} />
         </>
       )}
       <Inline className="save-actions">

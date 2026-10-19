@@ -7,7 +7,7 @@ import { AiAgentsPanel } from "../components/ai.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
 import { TemplateGrid } from "../components/templates.tsx";
-import { STAT_HINTS, STAT_LABELS, UserBadges } from "../components/users.tsx";
+import { TieredStat } from "../components/users.tsx";
 import { useDarkModeSetting } from "../darkMode.ts";
 import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
@@ -76,14 +76,14 @@ export function Profile() {
   );
 }
 
-/** Stats, badges, and join date. */
+/** Stats (tiered ones outlined and starred in their tier's color) and join date. */
 function ProfileOverview({ profile }: { profile: UserProfile }) {
   return (
     <div data-testid="profile-overview">
       <StatGroup className="profile-stats">
-        <Stat label={STAT_LABELS.memeCount} value={profile.stats.memeCount} valueProps={{ "data-testid": "stat-meme-count" }} />
-        <Stat label={STAT_LABELS.highScore} value={profile.stats.highScore} valueProps={{ "data-testid": "stat-high-score" }} />
-        <Stat label={STAT_LABELS.hScore} hint={STAT_HINTS.hScore} value={profile.stats.hScore} valueProps={{ "data-testid": "stat-h-score" }} />
+        <TieredStat stats={profile.stats} stat="memeCount" testId="stat-meme-count" />
+        <TieredStat stats={profile.stats} stat="highScore" testId="stat-high-score" />
+        <TieredStat stats={profile.stats} stat="hScore" testId="stat-h-score" />
         <Stat
           label="Templates"
           hint="Public templates this user added, variations included"
@@ -91,7 +91,6 @@ function ProfileOverview({ profile }: { profile: UserProfile }) {
           valueProps={{ "data-testid": "stat-template-count" }}
         />
       </StatGroup>
-      <UserBadges stats={profile.stats} />
       <Text tone="muted">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</Text>
     </div>
   );

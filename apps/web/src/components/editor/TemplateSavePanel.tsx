@@ -52,7 +52,6 @@ export function TemplateSavePanel({ defaultName, what, note, ready, create: writ
         testId="template-tags"
         description="Base tags always stay on the template; others can add more."
         disabled={busy}
-        allowCreate
       />
       <Text size="sm" tone="muted">
         {note}

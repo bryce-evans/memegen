@@ -284,18 +284,6 @@
 
 /* ---- tags ----------------------------------------------------------------- */
 
-.new-tag {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ui-space-2);
-}
-.new-tag-name {
-  flex: 1 1 8rem;
-}
-.new-tag-kind {
-  flex: 0 1 7rem;
-}
 .tag-chip-base {
   font-weight: var(--ui-font-weight-semibold);
 }
@@ -502,13 +490,141 @@
 
 /* ---- leaderboard ---------------------------------------------------------- */
 
-/* Rank and figures sit right; the user column takes the slack. */
+/* Rank | name (takes the slack, ellipsized) | stat columns, each heading on one line with room between. */
 .leaderboard :is(th, td) {
-  text-align: right;
+  padding-block: var(--ui-space-4);
+  vertical-align: middle;
 }
-.leaderboard :is(th, td):nth-child(2) {
+.leaderboard thead th {
+  padding-block: var(--ui-space-3);
+  text-align: right;
+  white-space: nowrap;
+}
+.leaderboard tbody tr {
+  transition: background-color var(--ui-duration-fast) var(--ui-easing-standard);
+}
+.leaderboard tbody tr:hover {
+  background: var(--ui-color-state-hover);
+}
+/* The signed-in user's own row. */
+.leaderboard tbody tr[aria-current="true"] {
+  background: var(--ui-color-tonal);
+}
+.leaderboard :is(th, td):first-child {
+  width: 3rem;
+  text-align: center;
+}
+.leaderboard-rank-chip {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding-inline: var(--ui-space-2);
+  border-radius: var(--ui-radius-pill);
+  font-size: var(--ui-font-size-lg);
+  font-weight: var(--ui-font-weight-bold);
+  color: var(--ui-color-text-muted);
+}
+/* Podium: first gets the primary fill, second and third a tonal one. */
+.leaderboard tr[data-podium="1"] .leaderboard-rank-chip {
+  background: var(--ui-color-primary);
+  color: var(--ui-color-on-primary);
+}
+.leaderboard tr:is([data-podium="2"], [data-podium="3"]) .leaderboard-rank-chip {
+  background: var(--ui-color-surface-raised);
+  color: var(--ui-color-text);
+  box-shadow: inset 0 0 0 var(--ui-border-width) var(--ui-color-border);
+}
+/* `max-width: 0` lets the 100%-wide name column shrink so long names ellipsize instead of squeezing the stats. */
+.leaderboard-user {
   width: 100%;
+  max-width: 0;
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.leaderboard-name {
+  font-family: var(--ui-font-family-display);
+  font-size: 16pt;
+  font-weight: var(--ui-font-weight-bold);
+  letter-spacing: var(--ui-letter-spacing-heading);
+  color: var(--ui-color-text);
+  text-decoration: none;
+}
+.leaderboard-name:hover {
+  color: var(--ui-color-link);
+}
+.leaderboard-you {
+  margin-left: var(--ui-space-3);
+  vertical-align: middle;
+}
+/* Scoped under `.leaderboard` to outrank `.ui-table td`. */
+.leaderboard .leaderboard-stat {
+  padding-inline: var(--ui-space-6);
+  text-align: right;
+  white-space: nowrap;
+  font-size: var(--ui-font-size-lg);
+  color: var(--ui-color-text-muted);
+}
+/* Stat headings are the sort buttons; the cell's padding plus the button's lines its edge up with the figures. */
+.leaderboard thead th:not(:first-child, :nth-child(2)) {
+  padding-inline: var(--ui-space-3);
+}
+.leaderboard-sort {
+  gap: var(--ui-space-2);
+  white-space: nowrap;
+}
+/* Every heading keeps the arrow's room, so labels don't shift when the sort moves; only the ranked one shows it. */
+.leaderboard-sort:not([aria-pressed="true"]) .leaderboard-sort-arrow {
+  visibility: hidden;
+}
+/* The column the board is ranked by stands out. */
+.leaderboard .leaderboard-stat[data-sorted] {
+  font-size: var(--ui-font-size-xl);
+  font-weight: var(--ui-font-weight-bold);
+  color: var(--ui-color-text);
+}
+/*
+ * Narrow: names wrap between words only (min-width keeps them from breaking mid-name), stat headings wrap onto two
+ * lines, and the stat columns tighten so the board fits the screen.
+ */
+@media (max-width: 760px) {
+  .leaderboard :is(th, td):first-child {
+    width: 2.5rem;
+    padding-inline: 0;
+  }
+  .leaderboard-user {
+    min-width: 6.5rem;
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .leaderboard .leaderboard-stat {
+    padding-inline: var(--ui-space-2);
+    font-size: var(--ui-font-size-md);
+  }
+  .leaderboard .leaderboard-stat[data-sorted] {
+    font-size: var(--ui-font-size-lg);
+  }
+  .leaderboard thead th:not(:first-child, :nth-child(2)) {
+    padding-inline: 0;
+    white-space: normal;
+  }
+  .leaderboard-sort {
+    padding-inline: var(--ui-space-2);
+    padding-block: var(--ui-space-1);
+    white-space: normal;
+    text-align: right;
+    line-height: 1.15;
+  }
+  /* No room to reserve on a phone: only the ranked heading carries its arrow. */
+  .leaderboard-sort:not([aria-pressed="true"]) .leaderboard-sort-arrow {
+    display: none;
+  }
+  .leaderboard-sort-word {
+    white-space: nowrap;
+  }
 }
 /* User search results: figures right, the user column takes the slack. */
 .user-list :is(th, td) {
@@ -519,8 +635,29 @@
   width: 100%;
   text-align: left;
 }
-.user-badge-icon {
-  margin-left: var(--ui-space-1);
+/* A stat's figure, then a solid star in its tier's color; untiered figures keep an invisible one so numbers align. */
+.stat-star {
+  margin-left: var(--ui-space-2);
+  vertical-align: -0.15em;
+  fill: currentColor;
+}
+.stat-star:not([data-tier]) {
+  visibility: hidden;
+}
+.stat-star[data-tier="bronze"] {
+  color: var(--ui-color-tier-bronze);
+}
+.stat-star[data-tier="silver"] {
+  color: var(--ui-color-tier-silver);
+}
+.stat-star[data-tier="gold"] {
+  color: var(--ui-color-tier-gold);
+}
+.stat-star[data-tier="platinum"] {
+  color: var(--ui-color-tier-platinum);
+}
+.stat-star[data-tier="diamond"] {
+  color: var(--ui-color-tier-diamond);
 }
 
 /* ---- templates ------------------------------------------------------------ */
@@ -906,13 +1043,25 @@
 .profile-head .ui-page-header {
   margin-bottom: var(--ui-space-3);
 }
-.user-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ui-space-2);
-  margin: var(--ui-space-3) 0;
-  padding: 0;
-  list-style: none;
+/* A tiered stat tile's outline takes its tier's color, doubled by an inset ring so it reads at a glance. */
+.tiered-stat[data-tier] {
+  border-color: var(--tier-color);
+  box-shadow: inset 0 0 0 var(--ui-border-width) var(--tier-color);
+}
+.tiered-stat[data-tier="bronze"] {
+  --tier-color: var(--ui-color-tier-bronze);
+}
+.tiered-stat[data-tier="silver"] {
+  --tier-color: var(--ui-color-tier-silver);
+}
+.tiered-stat[data-tier="gold"] {
+  --tier-color: var(--ui-color-tier-gold);
+}
+.tiered-stat[data-tier="platinum"] {
+  --tier-color: var(--ui-color-tier-platinum);
+}
+.tiered-stat[data-tier="diamond"] {
+  --tier-color: var(--ui-color-tier-diamond);
 }
 /* Account tabs, then the content tabs as a separate group, right under the name. */
 .profile-nav {

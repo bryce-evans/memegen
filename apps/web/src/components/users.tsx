@@ -1,44 +1,64 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { badgesFor, type UserStats, type UserSummary } from "@memegen/shared";
-import { Badge, Table } from "@memegen/ui";
+import { badgeFor, type UserStats, type UserSummary } from "@memegen/shared";
+import { Icon, Stat, Table } from "@memegen/ui";
 import type { Paged } from "../usePaged.ts";
 import { PagedList } from "./common.tsx";
 
 /** Names of the public user stats (leaderboard columns and sorts, profile tiles). */
-export const STAT_LABELS: Record<keyof UserStats, string> = { memeCount: "Memes", highScore: "High score", hScore: "h-score" };
+export const STAT_LABELS: Record<keyof UserStats, string> = { memeCount: "Posts", highScore: "High score", hScore: "h-score" };
 
 /** Tooltips for stats whose name needs explaining. */
 export const STAT_HINTS: Partial<Record<keyof UserStats, string>> = { hScore: "h memes with a score of at least h" };
 
+interface StatFigureProps {
+  stats: UserStats;
+  stat: keyof UserStats;
+  testId?: string;
+  /** Keep an invisible star when there's no tier, so a table column's numbers stay aligned. */
+  reserve?: boolean;
+}
+
 /**
- * The badges a user's stats earn: `compact` as bare icons after a name (leaderboard rows; label and description in
- * the tooltip), otherwise as a labelled list (profile).
+ * A stat's figure followed by a star in the color of the tier it earns (label and description in the tooltip). The
+ * figure has its own element (`testId`) so it reads as a bare number.
  */
-export function UserBadges({ stats, compact = false }: { stats: UserStats; compact?: boolean }) {
-  const badges = badgesFor(stats);
-  if (badges.length === 0) return null;
-  if (compact) {
-    return badges.map((b) => (
-      <span key={b.id} className="user-badge-icon" role="img" aria-label={b.label} title={`${b.label}: ${b.description}`}>
-        {b.icon}
-      </span>
-    ));
-  }
+export function StatFigure({ stats, stat, testId, reserve = true }: StatFigureProps) {
+  const badge = badgeFor(stats, stat);
   return (
-    <ul className="user-badges" aria-label="Badges">
-      {badges.map((b) => (
-        <li key={b.id}>
-          <Badge tone="warning" title={b.description} data-testid="profile-badge" data-badge={b.id}>
-            <span aria-hidden>{b.icon}</span> {b.label}
-          </Badge>
-        </li>
-      ))}
-    </ul>
+    <span className="stat-figure">
+      <span data-testid={testId}>{stats[stat]}</span>
+      {badge ? (
+        <Icon
+          name="star"
+          className="stat-star"
+          data-tier={badge.tier}
+          label={badge.label}
+          tooltip={`${badge.label}: ${badge.description}`}
+        />
+      ) : (
+        reserve && <Icon name="star" className="stat-star" />
+      )}
+    </span>
   );
 }
 
-/** A paged list of users (search results): each name linking to its profile, with badges and public stats. */
+/** A profile stat tile outlined in the color of the tier the stat earns (if any), its figure starred to match. */
+export function TieredStat({ stats, stat, testId }: { stats: UserStats; stat: keyof UserStats; testId: string }) {
+  return (
+    <Stat
+      className="tiered-stat"
+      data-testid="profile-stat"
+      data-stat={stat}
+      data-tier={badgeFor(stats, stat)?.tier}
+      label={STAT_LABELS[stat]}
+      hint={STAT_HINTS[stat]}
+      value={<StatFigure stats={stats} stat={stat} testId={testId} reserve={false} />}
+    />
+  );
+}
+
+/** A paged list of users (search results): each name linking to its profile, with starred public stats. */
 export function UserList({ list, empty }: { list: Paged<UserSummary>; empty: ReactNode }) {
   return (
     <PagedList list={list} empty={empty} paging="sentinel">
@@ -60,11 +80,16 @@ export function UserList({ list, empty }: { list: Paged<UserSummary>; empty: Rea
                 <tr key={id} data-testid="user-row" data-username={username}>
                   <td>
                     <Link to={`/u/${encodeURIComponent(username)}`}>@{username}</Link>
-                    <UserBadges stats={stats} compact />
                   </td>
-                  <td>{stats.memeCount}</td>
-                  <td>{stats.highScore}</td>
-                  <td>{stats.hScore}</td>
+                  <td>
+                    <StatFigure stats={stats} stat="memeCount" />
+                  </td>
+                  <td>
+                    <StatFigure stats={stats} stat="highScore" />
+                  </td>
+                  <td>
+                    <StatFigure stats={stats} stat="hScore" />
+                  </td>
                 </tr>
               ))}
             </tbody>

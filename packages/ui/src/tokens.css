@@ -26,6 +26,12 @@
   --ui-color-special-end: rgb(252 176 69);
   --ui-color-special-hover-end: rgb(253 224 71);
   --ui-color-on-special: #ffffff;
+  /* Badge tiers (metals and gems), the same in every skin: mid-tones that read on light and dark pages. */
+  --ui-color-tier-bronze: #c27a3e;
+  --ui-color-tier-silver: #9ea7b3;
+  --ui-color-tier-gold: #e5b021;
+  --ui-color-tier-platinum: #8fb8c9;
+  --ui-color-tier-diamond: #3fb7e8;
   /* Tonal (selected/secondary-emphasis) fill and its text. */
   --ui-color-tonal: #2a2f3a;
   --ui-color-on-tonal: var(--ui-color-text);

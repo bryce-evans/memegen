@@ -62,6 +62,9 @@
   --ui-header-backdrop: blur(8px);
   --ui-color-sidebar-bg: transparent;
   --ui-color-input-bg: var(--ui-color-bg);
+  /* Tooltips float over anything (photos included), so their fill must be opaque; skins with translucent surfaces
+     set a solid one. */
+  --ui-color-tooltip-bg: var(--ui-color-surface-raised);
   /* Letterbox behind media (images/videos/canvas). */
   --ui-color-media-bg: #000;
   /* Two tones of the transparency checkerboard behind the editor stage. */

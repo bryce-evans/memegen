@@ -30,6 +30,8 @@
   --ui-color-surface: var(--painted-sheet);
   --ui-color-surface-raised: var(--painted-fill);
   --ui-color-input-bg: var(--painted-field);
+  /* Surfaces are translucent here; a tooltip over a photo needs a solid fill to stay legible. */
+  --ui-color-tooltip-bg: var(--spectrum-gray-50);
   --ui-color-state-hover: rgb(0 0 0 / 0.04);
   --ui-color-state-press: rgb(0 0 0 / 0.08);
   --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.12);
@@ -298,6 +300,7 @@
   --ui-color-bg: #282828;
   --ui-color-state-hover: rgb(255 255 255 / 0.06);
   --ui-color-state-press: rgb(255 255 255 / 0.12);
+  --ui-color-tooltip-bg: #333333;
   --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.4);
   --ui-shadow-3: 0 8px 32px rgb(0 0 0 / 0.5);
   --painted-main-sheet: rgb(20 20 20 / 0.25);

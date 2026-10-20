@@ -102,7 +102,7 @@ textarea {
   padding: var(--ui-space-1) var(--ui-space-2);
   border: var(--ui-border-width) solid var(--ui-color-border);
   border-radius: var(--ui-radius-sm);
-  background: var(--ui-color-surface-raised);
+  background: var(--ui-color-tooltip-bg);
   box-shadow: var(--ui-shadow-2);
   color: var(--ui-color-text);
   font-size: var(--ui-font-size-xs);

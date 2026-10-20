@@ -2,7 +2,7 @@ import { useRef, useState, type ComponentPropsWithoutRef, type FocusEvent, type 
 import { Link, useNavigate } from "react-router-dom";
 import { MEDIA_ACCEPT, PERIODS, STICKER_ACCEPT, STICKER_MAX_DIMENSION, type Period, type Sticker, type Template, type TemplateKind, type UploadLimits } from "@memegen/shared";
 import { cx, EmptyState, FileButton, Icon, LinkButton, Panel, SegmentedControl, Spinner, Text, TextField } from "@memegen/ui";
-import { countTemplates, createSticker, getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
+import { createSticker, getHotTemplates, listTemplates, uploadAsset } from "../api.ts";
 import { nameFromFile, precheckMedia, precheckSticker } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
@@ -19,8 +19,8 @@ import bigBrain3 from "../assets/create/big-brain-3.mp4";
 import bigBrain3Poster from "../assets/create/big-brain-3-poster.jpg";
 import dealWithIt from "../assets/create/deal-with-it.png";
 import stickerPhoto from "../assets/create/shantanu.jpg";
-import { PERIOD_LABELS, plural } from "../format.ts";
-import { TemplateGrid } from "./templates.tsx";
+import { PERIOD_LABELS } from "../format.ts";
+import { TemplateGrid, useTemplateSearchPlaceholder } from "./templates.tsx";
 
 type KindFilter = TemplateKind | "all";
 
@@ -40,7 +40,7 @@ export function TemplateBrowser({ search, onSearchChange }: { search: string; on
   const q = useDebounced(search.trim(), 300);
   const filterKind = kind === "all" ? undefined : kind;
   const list = usePaged<Template>(`${kind}:${q}`, (offset) => listTemplates({ q, kind: filterKind, offset }));
-  const total = useAsync("template-count", countTemplates).data?.count;
+  const placeholder = useTemplateSearchPlaceholder();
 
   return (
     <Panel
@@ -51,7 +51,7 @@ export function TemplateBrowser({ search, onSearchChange }: { search: string; on
       <TextField
         type="search"
         className="template-start-search"
-        placeholder={total === undefined ? "Search templates…" : `Search ${plural(total, "template")}`}
+        placeholder={placeholder}
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         aria-label="Search templates"

@@ -1,26 +1,44 @@
 import { useState, type FormEvent } from "react";
-import { Button, Panel, SkinSwitcher, Stack, TextField, Wordmark } from "@memegen/ui";
+import { Button, Panel, SelectField, SkinSwitcher, Stack, TextField, Wordmark } from "@memegen/ui";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
-import { IntroBurst } from "../components/IntroBurst.tsx";
+import { Intro } from "../components/Intro.tsx";
+import { useIntroChoice } from "../introChoice.ts";
+import { INTROS, type IntroKind } from "../intros.ts";
 import { DEV_MODE } from "../mode.ts";
 import { useAction } from "../useAction.ts";
 
 /** Shown at every URL while signed out; the app replaces it in place once a user is stored. */
 export function SignIn({ brand }: { brand: string }) {
+  const { intro, setIntro } = useIntroChoice();
   return (
     <main className="sign-in-page" data-testid="sign-in-page">
-      <IntroBurst>
-        <Panel className="sign-in">
+      <Intro kind={intro}>
+        <Panel className="sign-in" data-testid="sign-in-card">
           <Stack gap="lg" align="center">
             <Wordmark text={brand} />
             {DEV_MODE ? <LoginForm /> : <SsoPlaceholder />}
           </Stack>
         </Panel>
-      </IntroBurst>
+      </Intro>
       {DEV_MODE && (
         <Panel className="dev-tools" heading="Dev tools" data-testid="dev-tools">
-          <SkinSwitcher data-testid="dev-skin" />
+          <Stack gap="sm">
+            <SkinSwitcher data-testid="dev-skin" />
+            <SelectField
+              size="sm"
+              aria-label="Intro"
+              value={intro}
+              onChange={(e) => setIntro(e.target.value as IntroKind)}
+              data-testid="dev-intro"
+            >
+              {INTROS.map((kind) => (
+                <option key={kind} value={kind}>
+                  Intro: {kind}
+                </option>
+              ))}
+            </SelectField>
+          </Stack>
         </Panel>
       )}
     </main>

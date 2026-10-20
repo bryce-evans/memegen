@@ -1,6 +1,7 @@
 import { useId, type ComponentPropsWithRef, type CSSProperties, type ReactNode } from "react";
 import { cx } from "../cx.ts";
 import { skinnable } from "../skin.tsx";
+import { Tooltip } from "./Tooltip.tsx";
 
 /**
  * Stroke icons on a 24px grid; stroke width comes from `--ui-icon-stroke` so skins can go thin or chunky. Solid parts
@@ -69,6 +70,13 @@ const PATHS = {
   up: <path d="M12 19V5m-6 6 6-6 6 6" />,
   down: <path d="M12 5v14m-6-6 6 6 6-6" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  /** Two chain links: a link to share. */
+  link: (
+    <>
+      <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1" />
+      <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />
+    </>
+  ),
   /** Curved double-headed arrow: swap two things' places. */
   swap: <path d="M4 16a8 8 0 0 1 16 0M1 13l3 3 3-3M17 13l3 3 3-3" />,
   sparkle: <path d="M12 3.5c.6 4.2 2.6 6.4 7 7.5-4.4 1.1-6.4 3.3-7 7.5-.6-4.2-2.6-6.4-7-7.5 4.4-1.1 6.4-3.3 7-7.5z" />,
@@ -94,7 +102,7 @@ export interface IconProps extends Omit<ComponentPropsWithRef<"svg">, "children"
   gradient?: boolean;
   /**
    * Hover tooltip, shown at once (no native-title delay) above the icon; also the accessible name when `label` is
-   * omitted. The icon is then wrapped in a `ui-tooltip-anchor` span.
+   * omitted. The icon is then wrapped in a `Tooltip`.
    */
   tooltip?: string;
 }
@@ -134,12 +142,9 @@ function IconBase({ name, label, gradient = false, tooltip, className, style, ..
   );
   if (!tooltip) return svg;
   return (
-    <span className="ui-tooltip-anchor">
+    <Tooltip content={tooltip} tooltipId={tooltipId}>
       {svg}
-      <span role="tooltip" id={tooltipId} className="ui-tooltip">
-        {tooltip}
-      </span>
-    </span>
+    </Tooltip>
   );
 }
 

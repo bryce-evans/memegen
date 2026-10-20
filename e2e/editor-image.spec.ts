@@ -31,7 +31,7 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   await page.getByTestId("save-draft").click();
 
   const id = await memeIdFromUrl(page);
-  await expect(page.getByTestId("meme-status")).toContainText("draft");
+  await expect(page.getByTestId("draft-badge")).toBeVisible();
   await expect(page.getByTestId("meme-title")).toHaveText("E2E still");
 
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, user);
@@ -47,7 +47,7 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   // Drafts never reach the gallery; posting publishes, with the author's upvote already cast. Tags show on the meme's
   // page, not on gallery cards.
   await page.getByTestId("post-meme").click();
-  await expect(page.getByTestId("meme-status")).toContainText("posted");
+  await expect(page.getByTestId("draft-badge")).toHaveCount(0);
   await expect(page.getByTestId("vote-up")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("upvote-count")).toHaveText("1");
   await expect(tagChip(page, "movie")).toBeVisible();

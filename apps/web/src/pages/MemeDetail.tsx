@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
-import { Button, Icon, Inline, LinkButton, Spinner, Text } from "@memegen/ui";
+import { Button, Icon, Inline, LinkButton, Panel, Spinner, Text } from "@memegen/ui";
 import { contentUrl, deleteMeme, getMeme, postMeme, updateMeme } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { Comments } from "../components/comments.tsx";
@@ -57,26 +57,19 @@ export function MemeDetail() {
         <Text>
           by <Link to={`/u/${meme.owner.username}`}>@{meme.owner.username}</Link> · <MemeAge meme={meme} /> <MemeBadges meme={meme} />
         </Text>
-        <Text tone="muted" size="sm" data-testid="meme-status">
-          {meme.postedAt ? `posted ${new Date(meme.postedAt).toLocaleString()}` : "draft"}
-          {" · "}
-          {meme.visibility}
-        </Text>
         <div className="detail-votes">
           <VoteButtons meme={meme} onChange={setMeme} />
           <FavoriteButton meme={meme} onChange={setMeme} />
         </div>
         <div className="detail-tags">
-          <TagChips slugs={meme.tags} />
-          {isOwner && (
-            <TagEditor
-              tags={meme.tags}
-              testId="edit-tags"
-              onSave={async (tags) => setMeme(await updateMeme(meme.id, { tags }))}
-            />
+          {isOwner ? (
+            <TagEditor tags={meme.tags} testId="edit-tags" onSave={async (tags) => setMeme(await updateMeme(meme.id, { tags }))} />
+          ) : (
+            <TagChips slugs={meme.tags} />
           )}
         </div>
         <Inline className="detail-links">
+          <ShareButton memeId={meme.id} />
           <LinkButton
             href={contentUrl(meme.outputAsset)}
             download={`${fileSlug(meme.title)}${assetExtension(meme.outputAsset)}`}
@@ -85,39 +78,69 @@ export function MemeDetail() {
           >
             Download
           </LinkButton>
+        </Inline>
+        <Inline className="detail-template">
           <LinkButton as={Link} variant="quiet" to={`/create?template=${meme.templateId}`} icon={<Icon name="image" />}>
             Make one with this template
           </LinkButton>
         </Inline>
         {isOwner && (
-          <Inline className="detail-actions">
-            {meme.postedAt === null && (
-              <Button variant="primary" disabled={busy} data-testid="post-meme" onClick={() => act(() => postMeme(meme.id))}>
-                Post
+          <Panel variant="inset" heading="Only visible to you" className="detail-owner" data-testid="owner-actions">
+            <Inline>
+              {meme.postedAt === null && (
+                <Button variant="primary" disabled={busy} data-testid="post-meme" onClick={() => act(() => postMeme(meme.id))}>
+                  Post
+                </Button>
+              )}
+              <Button
+                disabled={busy}
+                data-testid="visibility-toggle"
+                onClick={() =>
+                  act(() => updateMeme(meme.id, { visibility: meme.visibility === "public" ? "private" : "public" }))
+                }
+              >
+                Make {meme.visibility === "public" ? "private" : "public"}
               </Button>
-            )}
-            <Button
-              disabled={busy}
-              data-testid="visibility-toggle"
-              onClick={() =>
-                act(() => updateMeme(meme.id, { visibility: meme.visibility === "public" ? "private" : "public" }))
-              }
-            >
-              Make {meme.visibility === "public" ? "private" : "public"}
-            </Button>
-            <Button disabled={busy} data-testid="edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
-              Edit
-            </Button>
-            <Button variant="danger" disabled={busy} data-testid="delete-meme" onClick={() => remove(meme)}>
-              Delete
-            </Button>
-          </Inline>
+              <Button disabled={busy} data-testid="edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
+                Edit
+              </Button>
+              <Button variant="danger" disabled={busy} data-testid="delete-meme" onClick={() => remove(meme)}>
+                Delete
+              </Button>
+            </Inline>
+            {actionError !== null && <ErrorView error={actionError} />}
+          </Panel>
         )}
-        {actionError !== null && <ErrorView error={actionError} />}
       </aside>
       <div className="detail-comments">
         <Comments meme={meme} onCountChange={(delta) => setMeme((m) => m && { ...m, commentCount: m.commentCount + delta })} />
       </div>
     </section>
+  );
+}
+
+/** Copies the meme's link to the clipboard, and says so on the button for a few seconds. */
+function ShareButton({ memeId }: { memeId: string }) {
+  // null: idle; true: copied; false: the browser refused (no clipboard permission).
+  const [copied, setCopied] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (copied === null) return;
+    const timer = setTimeout(() => setCopied(null), 2500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  return (
+    <Button
+      icon={<Icon name={copied ? "check" : "link"} />}
+      aria-live="polite"
+      data-testid="share-meme"
+      onClick={() =>
+        navigator.clipboard.writeText(`${window.location.origin}/m/${memeId}`).then(
+          () => setCopied(true),
+          () => setCopied(false),
+        )
+      }
+    >
+      {copied === true ? "Copied link to clipboard!" : copied === false ? "Couldn't copy the link" : "Share"}
+    </Button>
   );
 }

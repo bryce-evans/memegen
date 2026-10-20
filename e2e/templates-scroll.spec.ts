@@ -13,10 +13,13 @@ test("templates: the create page lists newest first and loads more matches as th
 
   await page.goto("/create");
   await signIn(page, scoped("scroll-viewer"));
-  // The search box counts every template there is to search (other specs add theirs concurrently, so at least ours).
+  // Both template search boxes (All templates and the Quick Creator) count every template there is to search (other
+  // specs add theirs concurrently, so at least ours).
   const search = page.getByTestId("template-search");
-  await expect(search).toHaveAttribute("placeholder", /^Search \d+ templates$/);
-  expect(Number(/\d+/.exec((await search.getAttribute("placeholder"))!)![0])).toBeGreaterThanOrEqual(total);
+  for (const box of [search, page.getByTestId("ai-template-search")]) {
+    await expect(box).toHaveAttribute("placeholder", /^Search \d+ templates$/);
+    expect(Number(/\d+/.exec((await box.getAttribute("placeholder"))!)![0])).toBeGreaterThanOrEqual(total);
+  }
   await search.fill(prefix);
   // The search is debounced; wait until the grid shows it, or the unfiltered list could satisfy the count.
   const grid = page.getByTestId("template-grid");
@@ -41,4 +44,19 @@ test("templates: the create page lists newest first and loads more matches as th
   expect(names.slice(0, total).every((name) => name.includes(prefix))).toBe(true);
   await expect(sentinel).toHaveCount(0);
   await expect(page.getByTestId("load-more")).toHaveCount(0);
+
+  // Justified rows: every row but the last fills the grid edge to edge, with no gap at its end.
+  const rowGaps = await grid.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const right = el.getBoundingClientRect().right - parseFloat(style.paddingRight);
+    const ends = new Map<number, number>();
+    for (const card of el.querySelectorAll('[data-testid="template-card"]')) {
+      const box = card.getBoundingClientRect();
+      const top = Math.round(box.top);
+      ends.set(top, Math.max(ends.get(top) ?? 0, box.right));
+    }
+    return [...ends.values()].map((end) => right - end);
+  });
+  expect(rowGaps.length).toBeGreaterThan(2);
+  for (const gap of rowGaps.slice(0, -1)) expect(gap).toBeLessThan(2);
 });

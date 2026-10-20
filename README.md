@@ -55,7 +55,7 @@ Open http://localhost:5173 and sign in with any username (there are no passwords
 | A profile | http://localhost:5173/u/dana |
 | A tag page | http://localhost:5173/t/oldschool |
 
-In dev, a **Dev tools** panel on the sign-in page switches skins.
+In dev, a **Dev tools** panel on the sign-in page switches skins and previews the sign-in intros (kept in your browser).
 
 ## Commands
 
@@ -89,6 +89,7 @@ Main keys (see `config/dev.env` and `config/prod.env.example` for all of them):
 - `STORAGE_PROVIDER`: `local` (files in `.data/storage`) or `s3` (`S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, …).
 - `MAX_*`: upload caps. Defaults are 20 MB per file. Longest edge: images 4096 px, GIFs 1024 px, videos 1920 px. Frames: GIFs 500, videos 1800.
 - `INTERNAL_TOKEN`: guards the API's `/internal/*` routes.
+- `INTRO`: the sign-in page's intro, baked into the web build. `basic` (default) shows the card alone; `party` explodes memes, confetti, and streamers out from behind it; `nyan` flies nyan cat in a straight line from the bottom right, behind the card, and out of its top-left corner, leaving its rainbow behind.
 - `OPENAI_IMAGE_MODEL` (default `gpt-image-2`), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`): default models for the Image Generator. `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `GEMINI_TEXT_MODEL` (default `gemini-2.5-flash`), `ANTHROPIC_TEXT_MODEL` (default `claude-haiku-5-5`): default models for the Agent Provider. Users may name their own models instead. Users bring their own API keys, so the server needs none. `OPENAI_BASE_URL`/`GEMINI_BASE_URL`/`ANTHROPIC_BASE_URL` point at a proxy or gateway.
 - `SEARCH_ENABLED`: `true` runs the template search sidecar on `SEARCH_PORT` (default 4002): CLIP image embeddings in a FAISS index, so template search also matches what's in the picture and new uploads are checked for duplicates. `false` searches tags and names only, and only byte-identical duplicates are caught. The first start downloads the model (about 600 MB) into `SEARCH_DATA_DIR` (default `.data/search`), which also caches the embeddings. `SEARCH_MODEL` picks another transformers.js CLIP export; `SEARCH_URL` points the API at a sidecar on another host.
 

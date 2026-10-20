@@ -1,6 +1,6 @@
-import { useEffect, useRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import type { Asset } from "@memegen/shared";
-import { Alert, Button, Spinner } from "@memegen/ui";
+import { Alert, Button, Spinner, Tooltip } from "@memegen/ui";
 import { ApiError, contentUrl } from "../api.ts";
 import { timeAgo } from "../time.ts";
 import type { Paged } from "../usePaged.ts";
@@ -36,12 +36,15 @@ export function MediaView({ asset, alt, testId, controls }: { asset: Asset; alt:
   return <img data-testid={testId} src={contentUrl(asset)} alt={alt} loading="lazy" />;
 }
 
-/** Relative time ("3m ago") with the full local date and time as its tooltip. */
+/** Relative time ("3m ago"), with the full local date and time ("Friday, October 17, 2026 at 1:08 PM") as a hover tooltip. */
 export function TimeAgo({ iso, ...rest }: { iso: string } & Omit<ComponentPropsWithoutRef<"time">, "dateTime" | "title" | "children">) {
+  const tooltipId = useId();
   return (
-    <time dateTime={iso} title={new Date(iso).toLocaleString()} {...rest}>
-      {timeAgo(iso)}
-    </time>
+    <Tooltip content={new Date(iso).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" })} tooltipId={tooltipId}>
+      <time dateTime={iso} aria-describedby={tooltipId} {...rest}>
+        {timeAgo(iso)}
+      </time>
+    </Tooltip>
   );
 }
 

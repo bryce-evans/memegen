@@ -203,9 +203,11 @@
   --ui-button-fg: var(--spectrum-gray-800);
   --ui-button-hover-bg: var(--spectrum-gray-200);
 }
+/* Solid red; hovered, a lighter red (not the gray every other button lightens to). */
 :root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button--danger {
   --ui-button-bg: var(--spectrum-negative-visual-color);
   --ui-button-fg: var(--spectrum-white);
+  --ui-button-hover-bg: color-mix(in srgb, var(--spectrum-negative-visual-color) 75%, var(--spectrum-white));
 }
 :root:is([data-skin="spectrum"], [data-skin="painted"]) .ui-button[aria-pressed="true"] {
   --ui-button-bg: var(--spectrum-gray-800);

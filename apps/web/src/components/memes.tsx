@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type CSSProperties, type RefObject } from "react";
+import { useRef, type ComponentPropsWithoutRef, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { isListed, type Asset, type Meme } from "@memegen/shared";
 import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, Text } from "@memegen/ui";
@@ -7,6 +7,7 @@ import { useUser } from "../auth.tsx";
 import { plural } from "../format.ts";
 import { useAction } from "../useAction.ts";
 import type { Paged } from "../usePaged.ts";
+import { justifyRows, useRowBox } from "../justifiedRows.ts";
 import { ErrorView, MediaView, PagedList, TimeAgo } from "./common.tsx";
 
 /** 👍/👎 with up/down counts (downvotes shown negative); clicking your current vote clears it. */
@@ -88,8 +89,16 @@ export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme
 export function MemeBadges({ meme }: { meme: Meme }) {
   return (
     <>
-      {meme.postedAt === null && <Badge tone="primary">Draft</Badge>}
-      {meme.visibility === "private" && <Badge tone="info">Private</Badge>}
+      {meme.postedAt === null && (
+        <Badge tone="primary" data-testid="draft-badge">
+          Draft
+        </Badge>
+      )}
+      {meme.visibility === "private" && (
+        <Badge tone="info" data-testid="private-badge">
+          Private
+        </Badge>
+      )}
     </>
   );
 }
@@ -101,78 +110,6 @@ export function MemeAge({ meme }: { meme: Meme }) {
 /** Width ÷ height, for the flowing meme rows; square when the asset has no dimensions. */
 function aspect(asset: Asset): number {
   return asset.width && asset.height ? asset.width / asset.height : 1;
-}
-
-/**
- * Justified rows: splits items (by aspect) into rows that exactly fill `width`, each as close to `target` height as
- * possible. A row closes at the first item that brings it to or below the target, keeping that item only if it lands
- * nearer the target than stopping before it. The last, unfilled row stays at the target instead of stretching.
- * Returns one height per item; an item's width is aspect × height. Half a pixel is held back so rounding never wraps.
- */
-function justifyRows(aspects: readonly number[], width: number, gap: number, target: number): number[] {
-  const heights: number[] = [];
-  let start = 0;
-  while (start < aspects.length) {
-    let n = 0;
-    let sum = 0;
-    let height = Infinity;
-    let full = false;
-    while (start + n < aspects.length) {
-      const nextSum = sum + aspects[start + n]!;
-      const nextHeight = (width - gap * n - 0.5) / nextSum;
-      if (nextHeight > target) {
-        n++;
-        sum = nextSum;
-        height = nextHeight;
-        continue;
-      }
-      // This item fills the row: keep it if that lands nearer the target than stopping before it.
-      if (n === 0 || target - nextHeight <= height - target) {
-        n++;
-        height = nextHeight;
-      }
-      full = true;
-      break;
-    }
-    for (let i = 0; i < n; i++) heights.push(full ? height : target);
-    start += n;
-  }
-  return heights;
-}
-
-/** CSS length (px or rem) in px. */
-function toPx(value: string): number {
-  const n = parseFloat(value);
-  return value.trim().endsWith("rem") ? n * parseFloat(getComputedStyle(document.documentElement).fontSize) : n;
-}
-
-interface RowBox {
-  width: number;
-  gap: number;
-  target: number;
-}
-
-/** The grid's content width, column gap, and target row height, re-measured on resize. */
-function useRowBox(ref: RefObject<HTMLDivElement | null>, mounted: boolean): RowBox | null {
-  const [box, setBox] = useState<RowBox | null>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!mounted || !el) return;
-    const measure = () => {
-      const style = getComputedStyle(el);
-      const next = {
-        width: el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
-        gap: parseFloat(style.columnGap) || 0,
-        target: toPx(style.getPropertyValue("--meme-row-height")),
-      };
-      setBox((prev) => (prev && prev.width === next.width && prev.gap === next.gap && prev.target === next.target ? prev : next));
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref, mounted]);
-  return box;
 }
 
 function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (meme: Meme) => void; height?: number }) {
@@ -220,7 +157,7 @@ function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (meme: Mem
 /** Memes flow in justified rows at their native aspect: one height per row, widths vary, nothing cropped. */
 function MemeGrid({ memes, onChange }: { memes: Meme[]; onChange: (meme: Meme) => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const box = useRowBox(ref, memes.length > 0);
+  const box = useRowBox(ref, memes.length > 0, "--meme-row-height");
   if (memes.length === 0) return null;
   const heights = box && box.width > 0 ? justifyRows(memes.map((m) => aspect(m.outputAsset)), box.width, box.gap, box.target) : null;
   return (

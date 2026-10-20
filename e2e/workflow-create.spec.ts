@@ -36,7 +36,7 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   // Save: a draft that shows on the author's profile but not in the gallery.
   await page.getByTestId("save-draft").click();
   const id = await memeIdFromUrl(page);
-  await expect(page.getByTestId("meme-status")).toContainText("draft");
+  await expect(page.getByTestId("draft-badge")).toBeVisible();
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`, await apiUser(request, username));
   expect(meme.layers.map((l) => (l.type === "text" ? l.text : l.type))).toEqual(["when the mock data", "just works"]);
   expect(meme.templateId).not.toBeNull();
@@ -48,7 +48,7 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   // Post it and find it at the top of Recent.
   await page.goto(`/m/${id}`);
   await page.getByTestId("post-meme").click();
-  await expect(page.getByTestId("meme-status")).toContainText("posted");
+  await expect(page.getByTestId("draft-badge")).toHaveCount(0);
   await openFeed(page, { feed: "recent" });
   const posted = memeCard(page, id);
   await expect(posted).toBeVisible();

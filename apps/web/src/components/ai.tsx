@@ -49,31 +49,38 @@ import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { ErrorView, MediaView } from "./common.tsx";
 import { defaultFontId, templateLayers } from "./editor/session.ts";
+import { useTemplateSearchPlaceholder } from "./templates.tsx";
 
-/** The settings' two roles, in sidebar order. */
-const ROLES: { role: AiRole; label: string }[] = [
-  { role: "image", label: "Image Generator" },
-  { role: "text", label: "Agent Provider" },
+/** The settings' two roles, in sidebar order, with what each is for. */
+const ROLES: { role: AiRole; label: string; description: string }[] = [
+  {
+    role: "text",
+    label: "Agent Provider",
+    description:
+      "The Agent Provider writes your memes in the Quick Creator on the Create page. It can also invoke the Image Generator to make changes to the image itself.",
+  },
+  {
+    role: "image",
+    label: "Image Generator",
+    description: "The Image Generator is used for AI edits to images. It is invoked via the Agent Provider, but can be a separate provider.",
+  },
 ];
 
 const providerLabel = (config: AiConfig | null) => AI_PROVIDERS.find((p) => p.id === config?.provider)?.label;
 
 /**
- * Profile (owner only): the user's two AI settings, the Image Generator and the Agent Provider, each a provider, the
+ * Profile (owner only): the user's two AI settings, the Agent Provider and the Image Generator, each a provider, the
  * user's own API key, and an optional model, kept in this browser. The sidebar picks one; the form edits it.
  */
 export function AiAgentsPanel() {
   const user = useUser();
   const { settings, save } = useAiSettings(user.id);
-  const [role, setRole] = useState<AiRole>("image");
+  const [role, setRole] = useState<AiRole>("text");
+  const description = ROLES.find((r) => r.role === role)!.description;
 
   return (
     <Panel heading="API Keys" data-testid="ai-agents">
-      <Text tone="muted">
-        The Agent Provider writes your memes in the Quick Creator on the Create page; the Image Generator makes the
-        changes it asks for to the picture. Both use your own API keys, which stay in this browser and are sent only
-        with your AI requests; memegen never stores them.
-      </Text>
+      <Text tone="muted">API keys stay in this browser and are sent only with your AI requests. Memegen never stores them.</Text>
       <div className="ai-settings">
         <NavList className="ai-settings-roles" aria-label="AI settings">
           {ROLES.map((r) => (
@@ -93,9 +100,23 @@ export function AiAgentsPanel() {
           ))}
         </NavList>
         {role === "text" ? (
-          <AiConfigForm key="text" label="Agent Provider" providers={ROLE_PROVIDER_IDS.text} current={settings.text} onSave={(c) => save("text", c)} />
+          <AiConfigForm
+            key="text"
+            label="Agent Provider"
+            description={description}
+            providers={ROLE_PROVIDER_IDS.text}
+            current={settings.text}
+            onSave={(c) => save("text", c)}
+          />
         ) : (
-          <AiConfigForm key="image" label="Image Generator" providers={ROLE_PROVIDER_IDS.image} current={settings.image} onSave={(c) => save("image", c)} />
+          <AiConfigForm
+            key="image"
+            label="Image Generator"
+            description={description}
+            providers={ROLE_PROVIDER_IDS.image}
+            current={settings.image}
+            onSave={(c) => save("image", c)}
+          />
         )}
       </div>
     </Panel>
@@ -105,11 +126,14 @@ export function AiAgentsPanel() {
 /** One role's provider (from those the role may use), key (blank keeps the stored one), and model; Clear unsets it. */
 function AiConfigForm<P extends AiProviderId>({
   label,
+  description,
   providers,
   current,
   onSave,
 }: {
   label: string;
+  /** What the role is for, shown above its fields. */
+  description: string;
   providers: readonly P[];
   current: AiConfig<P> | null;
   onSave: (config: AiConfig<P> | null) => void;
@@ -135,6 +159,9 @@ function AiConfigForm<P extends AiProviderId>({
       }}
     >
       <Stack>
+        <Text tone="muted" data-testid="ai-role-description">
+          {description}
+        </Text>
         <SelectField
           label="Provider"
           value={provider}
@@ -263,6 +290,7 @@ export function AiCreator() {
   const q = useDebounced(search.trim(), 300);
   const results = useAsync(`ai-templates:${q}`, () => (q ? listTemplates({ q, limit: PICKER_LIMIT }) : Promise.resolve(null)));
   const start = useAsync("ai-random-template", randomTemplate);
+  const searchPlaceholder = useTemplateSearchPlaceholder();
   const create = useAction();
   const words = description.trim();
   // Update needs the Agent Provider and typed directions other than the placeholder's own text; Publish needs an
@@ -417,7 +445,7 @@ export function AiCreator() {
           <TextField
             type="search"
             label="Template"
-            placeholder="Search templates…"
+            placeholder={searchPlaceholder}
             value={search}
             onChange={(e) => {
               touched.current = true;

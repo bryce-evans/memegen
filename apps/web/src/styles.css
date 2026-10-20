@@ -46,8 +46,10 @@
 }
 
 /*
- * Intro (IntroBurst.tsx), paused until every image has loaded, then all at once (bouncing sprites each start up to
- * 0.08s late, by their random --delay, so they don't bounce in unison):
+ * Sign-in intros (Intro.tsx), paused until every image has loaded (data-ready). `basic` is the card alone.
+ *
+ * `party` (IntroParty.tsx), all at once (bouncing sprites each start up to 0.08s late, by their random --delay, so
+ * they don't bounce in unison):
  * - scattered sprites grow out of nothing at the viewport center, behind the card, and fly to their landing
  *   (--x/--y/--spin) on a spring: past it by ~9% at 30% of the run, straight back, settled by the end;
  * - dat boi pops up from behind the card's top-right corner;
@@ -56,6 +58,10 @@
  * - nyan cat shoots out of its top-left corner, rainbow streaming behind (its end sets data-done);
  * - confetti and streamers (painted behind the memes) shoot out of the center to random landings over the whole
  *   viewport, then flutter in place: confetti spinning to its --spin, streamers pointing straight out from the center.
+ *
+ * `nyan`: nyan cat flies in a straight line, fast and at one speed, from off the screen's bottom or right edge, behind
+ * the card, and out of its top-left corner, stopping dead up and to the left of it, its rainbow left lying behind it
+ * (its end sets data-done).
  */
 .intro-stage {
   --intro-spring: linear(
@@ -149,32 +155,72 @@
     intro-wobble calc(var(--wobble-period) / 2) ease-in-out var(--wobble-delay) infinite alternate paused;
 }
 /*
- * The box is a strip as wide as the image, its bottom edge (the rainbow's tail) pinned just inside the card's top-left
- * corner and rotated to fly up and to the left at --nyan-angle above horizontal. Its length, --nyan-length, is set by
- * IntroBurst: the whole image when it fits, else cut so the cat stays on screen. The image's top (the cat) sits at the
- * far end and anything past the pin is clipped, so a shorter strip shows less rainbow, never less cat. The image slides
- * up through the strip, so the cat leads and the rainbow streams out after it.
+ * Nyan cat (Nyan.tsx) flies through a strip as wide as the cat, rotated about its bottom center (the base): from just
+ * past the base to the far end, --nyan-length (set by Nyan.tsx). The rainbow is fixed to the strip, its tile repeated
+ * in the original image's phase, and revealed from the base up to the cat's pop-tart as the cat goes: the trail and
+ * the cat share --nyan-duration and --nyan-easing and move by the same distance, so the rainbow's edge stays tucked
+ * under the cat while the rainbow itself never moves.
  */
 .intro-nyan {
-  position: absolute;
-  left: 1.5rem;
-  bottom: calc(100% - 1.5rem);
   /* 1.5× the original 3.5rem. */
-  width: 5.25rem;
-  aspect-ratio: 242 / 1689;
-  height: var(--nyan-length, auto);
+  --nyan-width: 5.25rem;
+  /* Where the rainbow starts below the cat's top: under its pop-tart (row 328 of 242 px wide). */
+  --nyan-trail-top: calc(var(--nyan-width) * 328 / 242);
+  --nyan-duration: 0.8s;
+  --nyan-easing: cubic-bezier(0.2, 0.7, 0.3, 1);
+  position: absolute;
+  width: var(--nyan-width);
+  height: var(--nyan-length, 0);
   overflow: hidden;
   translate: -50% 0;
   transform-origin: 50% 100%;
-  rotate: calc(var(--nyan-angle) - 90deg);
   pointer-events: none;
 }
-.intro-nyan > img {
+.intro-nyan-trail {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat-y;
+  background-size: 100% auto;
+  /* The tile follows the cat in the original strip at row 690. */
+  background-position: 0 calc(var(--nyan-width) * 690 / 242);
+  animation: intro-nyan-trail var(--nyan-duration) var(--nyan-easing) both paused;
+}
+.intro-nyan-cat {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: block;
   width: 100%;
-  animation: intro-nyan 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) both paused;
+  animation: intro-nyan-cat var(--nyan-duration) var(--nyan-easing) both paused;
 }
-.intro-stage[data-ready="true"] :is(.intro-sprite, .intro-group > img, .intro-particle, .intro-dat-boi > img, .intro-nyan > img) {
+/* Base just inside the card's top-left corner, flying up and to the left at --nyan-angle above horizontal. */
+.intro-nyan-corner {
+  left: 1.5rem;
+  bottom: calc(100% - 1.5rem);
+  rotate: calc(var(--nyan-angle) - 90deg);
+}
+/*
+ * `nyan` flies in a viewport-sized layer clipped (by Nyan.tsx) to everything outside the card, so the cat vanishes into
+ * the card's edge, even where the card is translucent, and reappears at its top-left corner.
+ */
+.intro-nyan-sky {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+/*
+ * Base off screen on its bottom or right edge (--nyan-x/--nyan-y), flying up and to the left at --nyan-angle above
+ * horizontal through the card's top-left corner: fast at one speed the whole way, stopping dead.
+ */
+.intro-nyan-flyby {
+  --nyan-duration: 0.4s;
+  --nyan-easing: linear;
+  left: var(--nyan-x);
+  top: calc(var(--nyan-y) - var(--nyan-length, 0px));
+  rotate: calc(var(--nyan-angle) - 90deg);
+}
+.intro-stage[data-ready="true"] :is(.intro-sprite, .intro-group > img, .intro-particle, .intro-dat-boi > img, .intro-nyan-trail, .intro-nyan-cat) {
   animation-play-state: running;
 }
 /* Half a period: alternating, it swings one way, then back. */
@@ -217,19 +263,30 @@
     scale: 0;
   }
 }
-@keyframes intro-nyan {
+/* The cat starts just past the base: exactly at it, the rotated strip's anti-aliased edge leaves a hairline. */
+@keyframes intro-nyan-cat {
   from {
-    transform: translateY(var(--nyan-length, 100%));
+    translate: 0 calc(var(--nyan-length, 0px) + 2px);
   }
   to {
-    transform: none;
+    translate: 0 0;
+  }
+}
+/* Reveals the fixed rainbow from the base up to just under the cat, wherever the cat is. */
+@keyframes intro-nyan-trail {
+  from {
+    clip-path: inset(calc(var(--nyan-length, 0px) + 2px + var(--nyan-trail-top)) 0 0 0);
+  }
+  to {
+    clip-path: inset(var(--nyan-trail-top) 0 0 0);
   }
 }
 /* Reduced motion: jump straight to the settled layout (still ending, so data-done is set), with no wobble or flutter. */
 @media (prefers-reduced-motion: reduce) {
   .intro-sprite,
   .intro-dat-boi > img,
-  .intro-nyan > img,
+  .intro-nyan-trail,
+  .intro-nyan-cat,
   .intro-particle {
     animation-duration: 1ms, 0s;
     animation-delay: 0s;
@@ -421,6 +478,41 @@
 }
 .meme-grid .meme-card.ui-card .ui-card-body :is(.ui-card-title, .ui-card-meta, .ui-card-meta a) {
   color: inherit;
+}
+/* Template gallery: justified rows like the meme feeds (JustifiedTemplates in templates.tsx gives each card a width
+   and media height, --template-width/--template-height, so every full row fills the line at close to the target
+   --template-row-height, which the code reads, so keep it a plain px/rem length). Until the first measurement a card
+   sits at the target height, as wide as its media's --template-ratio, floored at 60% of the grid's normal column
+   (room for the title and Use) and capped at the row. `:root:root` beats the masonry skin's grid rules. */
+:root:root .ui-media-grid.template-grid {
+  --template-row-height: 250px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  columns: auto;
+}
+:root:root .ui-media-grid.template-grid > .template-card {
+  flex: 0 0 auto;
+  margin: 0;
+  width: var(
+    --template-width,
+    clamp(calc(var(--ui-grid-min) * 0.6), calc(var(--template-row-height) * var(--template-ratio, 1)), 100%)
+  );
+  max-width: 100%;
+}
+.template-card .ui-card-media {
+  display: flex;
+  justify-content: center;
+}
+.template-card .ui-card-media > a {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.template-card .ui-card-media :is(img, video) {
+  width: 100%;
+  height: var(--template-height, var(--template-row-height));
+  max-height: none;
 }
 /* Template cards: Use/Edit sits to the right of the title and author lines (centered across both) instead of
    adding a row under them. Title and meta auto-place into the first column; the action spans both rows. */
@@ -1048,6 +1140,12 @@
 .detail-title {
   font-size: var(--ui-font-size-2xl);
 }
+/* As tall as the media beside it, so the owner-only panel can sit at its bottom, level with the image's. */
+.detail-side {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1055,9 +1153,18 @@
   gap: var(--ui-space-3);
   margin: var(--ui-space-3) 0;
 }
-.detail-links,
-.detail-actions {
-  margin: var(--ui-space-4) 0;
+/* Editing, the chip input takes the whole row. */
+.detail-tags > .tag-editor {
+  flex-basis: 100%;
+}
+.detail-links {
+  margin: var(--ui-space-4) 0 var(--ui-space-2);
+}
+.detail-template {
+  margin-bottom: var(--ui-space-4);
+}
+.detail-owner.ui-panel {
+  margin: auto 0 0;
 }
 .detail-comments {
   grid-column: 1 / -1;

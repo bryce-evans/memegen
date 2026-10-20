@@ -86,32 +86,29 @@ textarea {
   fill: var(--ui-icon-paint, currentColor);
   stroke: none;
 }
-/* An icon's `tooltip`: shown the moment the pointer is over the icon (no delay), centered above it. */
+/*
+ * `Tooltip` (and an icon's `tooltip`): a manual popover in the top layer, placed by Tooltip.tsx (fixed, centered above
+ * the anchor, kept inside the window). The UA's popover box rules (centered with `inset: 0; margin: auto`) are reset.
+ */
 .ui-tooltip-anchor {
-  position: relative;
   display: inline-flex;
   flex: none;
 }
 .ui-tooltip {
-  position: absolute;
-  bottom: calc(100% + var(--ui-space-1));
-  left: 50%;
-  z-index: 10;
-  transform: translateX(-50%);
-  visibility: hidden;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
   padding: var(--ui-space-1) var(--ui-space-2);
   border: var(--ui-border-width) solid var(--ui-color-border);
   border-radius: var(--ui-radius-sm);
   background: var(--ui-color-tooltip-bg);
   box-shadow: var(--ui-shadow-2);
-  color: var(--ui-color-text);
+  color: var(--ui-color-tooltip-text);
   font-size: var(--ui-font-size-xs);
   font-weight: var(--ui-font-weight-regular);
   white-space: nowrap;
   pointer-events: none;
-}
-.ui-tooltip-anchor:hover .ui-tooltip {
-  visibility: visible;
 }
 
 /* ---- app shell ------------------------------------------------------------ */
@@ -483,8 +480,11 @@ textarea {
   --ui-button-border: transparent;
   --ui-button-hover-border: transparent;
 }
+/* Hovered, a danger button stays red: a light red fill and a red border, never the neutral gray hover. */
 .ui-button--danger {
   --ui-button-fg: var(--ui-color-danger);
+  --ui-button-hover-bg: var(--ui-color-danger-container);
+  --ui-button-hover-border: var(--ui-color-danger);
 }
 /*
  * Special: the brand gradient, the same in every skin. Skins style `:root[data-skin] .ui-button` (0,3,0) and load

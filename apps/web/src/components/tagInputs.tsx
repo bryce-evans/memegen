@@ -6,6 +6,7 @@ import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { ErrorView } from "./common.tsx";
+import { TagChips } from "./tags.tsx";
 
 /** Debounced `/api/tags?q=` lookup; an empty query (or a failed lookup) → no suggestions. */
 function useTagSuggestions(query: string, limit = 8): Tag[] {
@@ -130,8 +131,8 @@ export function TagField(props: {
 }
 
 /**
- * Toggle button → chip input + Save; `onSave` returns once the server accepted the tags. The draft starts from
- * `tags` (pass `[]` to collect additions only).
+ * The tags as links beside an edit button, which swaps them for a chip input + Save (so they show once, in the
+ * input, while editing); `onSave` returns once the server accepted the tags. The draft starts from `tags`.
  */
 export function TagEditor(props: { tags: string[]; onSave: (tags: string[]) => Promise<void>; testId: string; label?: string }) {
   const { tags, onSave, testId, label = "Edit tags" } = props;
@@ -141,19 +142,22 @@ export function TagEditor(props: { tags: string[]; onSave: (tags: string[]) => P
 
   if (!editing) {
     return (
-      <Button
-        size="sm"
-        variant="quiet"
-        icon={<Icon name="tag" />}
-        data-testid={testId}
-        onClick={() => {
-          setDraft(tags);
-          setError(null);
-          setEditing(true);
-        }}
-      >
-        {label}
-      </Button>
+      <>
+        <TagChips slugs={tags} />
+        <Button
+          size="sm"
+          variant="quiet"
+          icon={<Icon name="tag" />}
+          data-testid={testId}
+          onClick={() => {
+            setDraft(tags);
+            setError(null);
+            setEditing(true);
+          }}
+        >
+          {label}
+        </Button>
+      </>
     );
   }
 

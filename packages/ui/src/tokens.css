@@ -63,8 +63,10 @@
   --ui-color-sidebar-bg: transparent;
   --ui-color-input-bg: var(--ui-color-bg);
   /* Tooltips float over anything (photos included), so their fill must be opaque; skins with translucent surfaces
-     set a solid one. */
+     set a solid one. Their text color is its own token, resolved here at the root, so a container that redefines
+     --ui-color-text (white text on a card's scrim) doesn't reach a tooltip opened inside it. */
   --ui-color-tooltip-bg: var(--ui-color-surface-raised);
+  --ui-color-tooltip-text: var(--ui-color-text);
   /* Letterbox behind media (images/videos/canvas). */
   --ui-color-media-bg: #000;
   /* Two tones of the transparency checkerboard behind the editor stage. */

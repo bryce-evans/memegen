@@ -1,15 +1,19 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { DEFAULT_INTRO, INTROS } from './src/intros.ts'
 
 // The services' URLs default to their ports on this host; set API_URL/STORAGE_URL only for split hosts.
 const apiUrl = process.env.API_URL || `http://localhost:${process.env.API_PORT || 4000}`
 const storageUrl = process.env.STORAGE_URL || `http://localhost:${process.env.STORAGE_PORT || 4001}`
 // run.sh exports MODE from the config; anything else (a bare `vite build`) gets prod, which has no dev login.
 const appMode = process.env.MODE === 'dev' ? 'dev' : 'prod'
+// The sign-in intro; a typo fails the build rather than silently falling back.
+const intro = process.env.INTRO || DEFAULT_INTRO
+if (!(INTROS as readonly string[]).includes(intro)) throw new Error(`INTRO must be one of ${INTROS.join(', ')} (got '${intro}')`)
 
 export default defineConfig({
   plugins: [react()],
-  define: { __MEMEGEN_MODE__: JSON.stringify(appMode) },
+  define: { __MEMEGEN_MODE__: JSON.stringify(appMode), __MEMEGEN_INTRO__: JSON.stringify(intro) },
   // Deps of linked workspace packages are found late; pre-bundle them so Vite doesn't
   // re-optimize and reload the page the first time the editor opens.
   optimizeDeps: {

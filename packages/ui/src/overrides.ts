@@ -37,6 +37,7 @@ import type {
   StackProps,
 } from "./components/layout.tsx";
 import type { SkinSwitcherProps } from "./components/SkinSwitcher.tsx";
+import type { TooltipProps } from "./components/Tooltip.tsx";
 
 /**
  * Every replaceable component and the props its replacement receives. Polymorphic components (`as`) pass the
@@ -86,5 +87,6 @@ export interface ComponentOverrides {
   Text: ComponentType<TextProps>;
   TextArea: ComponentType<TextAreaProps>;
   TextField: ComponentType<TextFieldProps>;
+  Tooltip: ComponentType<TooltipProps>;
   Wordmark: ComponentType<WordmarkProps>;
 }

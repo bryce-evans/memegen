@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { TEMPLATE_NAME_MAX_LENGTH, type Template } from "@memegen/shared";
-import { Button, Dialog, Inline, Panel, Text, TextField } from "@memegen/ui";
+import { Button, Callout, Dialog, Inline, Panel, Text, TextField } from "@memegen/ui";
+import { findTemplateDuplicates } from "../../api.ts";
 import { useAction } from "../../useAction.ts";
-import { ErrorView } from "../common.tsx";
+import { useAsync } from "../../useAsync.ts";
+import { ErrorView, MediaView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
 
 export interface TemplateSavePanelProps {
@@ -16,13 +18,15 @@ export interface TemplateSavePanelProps {
   ready: boolean;
   /** Writes the template (e.g. `POST /api/templates`). */
   create: (name: string, tags: string[]) => Promise<Template>;
+  /** The uploaded image: templates that already use it (or one like it) are listed before saving. */
+  assetId?: string;
 }
 
 /**
  * Template Editor's side panel: name and base tags for a new template. Saving asks "Add new template?" first, then
  * opens the new template in the editor.
  */
-export function TemplateSavePanel({ defaultName, what, note, ready, create: write }: TemplateSavePanelProps) {
+export function TemplateSavePanel({ defaultName, what, note, ready, create: write, assetId }: TemplateSavePanelProps) {
   const navigate = useNavigate();
   const [name, setName] = useState(defaultName);
   const [tags, setTags] = useState<string[]>([]);
@@ -56,6 +60,7 @@ export function TemplateSavePanel({ defaultName, what, note, ready, create: writ
       <Text size="sm" tone="muted">
         {note}
       </Text>
+      {assetId && <DuplicateTemplates assetId={assetId} />}
       <Inline className="save-actions">
         <Button variant="primary" disabled={busy || !ready || !name.trim()} onClick={() => setConfirming(true)} data-testid="template-save">
           Save template
@@ -82,5 +87,29 @@ export function TemplateSavePanel({ defaultName, what, note, ready, create: writ
         </Inline>
       </Dialog>
     </Panel>
+  );
+}
+
+/** Templates that already use this image (the same file, or one that looks alike), so an upload doesn't add a copy. */
+function DuplicateTemplates({ assetId }: { assetId: string }) {
+  const { data } = useAsync(`template-duplicates:${assetId}`, () => findTemplateDuplicates(assetId));
+  if (!data?.length) return null;
+  return (
+    <Callout tone="warning" data-testid="template-duplicates">
+      <Text size="sm">This image may already be a template:</Text>
+      <ul className="template-duplicates">
+        {data.map(({ template, exact, similarity }) => (
+          <li key={template.id} data-testid="template-duplicate" data-template-id={template.id} data-exact={exact}>
+            <Link to={`/create?template=${template.id}`}>
+              <MediaView asset={template.asset} alt="" />
+              <span>{template.name}</span>
+            </Link>
+            <Text size="sm" tone="muted">
+              {exact ? "same file" : similarity === null ? "looks alike" : `${Math.round(similarity * 100)}% alike`}
+            </Text>
+          </li>
+        ))}
+      </ul>
+    </Callout>
   );
 }

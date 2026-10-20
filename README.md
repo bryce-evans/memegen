@@ -4,7 +4,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 
 ## Features
 
-- **Templates**: about 260 built-in templates with variations, plus your own uploads. Search, filter by kind, see what's hot, and check each template's usage chart.
+- **Templates**: about 260 built-in templates with variations, plus your own uploads. Search by tag, name, or what's in the picture ("dog" finds doge), filter by kind, see what's hot, and check each template's usage chart. Uploading an image that's already a template (the same file, or a copy of the picture) lists the existing ones before you save.
 - **Editor**: text boxes that wrap and shrink to fit (drag their corners to resize, the handle above to rotate; ⌘⌫ in a box's text removes it), custom fonts, image layers (upload or paste a screenshot), and a shared sticker library.
 - **Animation**: for GIFs and videos, a frame-by-frame timeline with per-layer visibility windows, keyframes, and a live loop preview. Exports are GIF or MP4, and MP4s keep their audio.
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
@@ -42,7 +42,7 @@ git clone --depth 1 https://github.com/jacebrowning/memegen demo/jacebrowning-me
 bunx playwright install chromium     # the seed renders sample memes in headless Chromium
 ./run.sh config/dev.env setup        # install, create databases, migrate
 ./run.sh config/dev.env seed         # templates, then sample users/memes/votes/comments
-./run.sh config/dev.env dev          # storage :4001, API :4000, web :5173, all reloading on change
+./run.sh config/dev.env dev          # storage :4001, API :4000, search :4002, web :5173, all reloading on change
 ```
 
 Open http://localhost:5173 and sign in with any username (there are no passwords in dev). Some pages to try:
@@ -90,6 +90,7 @@ Main keys (see `config/dev.env` and `config/prod.env.example` for all of them):
 - `MAX_*`: upload caps. Defaults are 20 MB per file. Longest edge: images 4096 px, GIFs 1024 px, videos 1920 px. Frames: GIFs 500, videos 1800.
 - `INTERNAL_TOKEN`: guards the API's `/internal/*` routes.
 - `OPENAI_IMAGE_MODEL` (default `gpt-image-2`), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`): default models for the Image Generator. `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `GEMINI_TEXT_MODEL` (default `gemini-2.5-flash`), `ANTHROPIC_TEXT_MODEL` (default `claude-haiku-5-5`): default models for the Agent Provider. Users may name their own models instead. Users bring their own API keys, so the server needs none. `OPENAI_BASE_URL`/`GEMINI_BASE_URL`/`ANTHROPIC_BASE_URL` point at a proxy or gateway.
+- `SEARCH_ENABLED`: `true` runs the template search sidecar on `SEARCH_PORT` (default 4002): CLIP image embeddings in a FAISS index, so template search also matches what's in the picture and new uploads are checked for duplicates. `false` searches tags and names only, and only byte-identical duplicates are caught. The first start downloads the model (about 600 MB) into `SEARCH_DATA_DIR` (default `.data/search`), which also caches the embeddings. `SEARCH_MODEL` picks another transformers.js CLIP export; `SEARCH_URL` points the API at a sidecar on another host.
 
 ### Production
 
@@ -151,6 +152,8 @@ bun run typecheck
 
 The e2e suite runs in branded Google Chrome, because MP4 export needs its H.264/AAC support. `E2E_CHANNEL=chromium` uses Playwright's Chromium instead, but then the video spec fails. `ffprobe` must be on `PATH`.
 
+The unit tests and the e2e suite run the search sidecar's real CLIP model, so their first run downloads it into `.data/search` (shared with `dev`).
+
 Fixtures in `e2e/fixtures/` are gitignored. Recreate them once (needs ffmpeg and the `demo/` checkout from Quick start):
 
 ```sh
@@ -164,6 +167,8 @@ ffmpeg -f lavfi -i color=c=red:size=1100x60:rate=5:duration=0.4 too-wide.gif
 ffmpeg -f lavfi -i testsrc=size=400x400 -frames:v 1 panel-a.jpg
 ffmpeg -f lavfi -i color=c=blue:size=400x300 -frames:v 1 panel-b.jpg
 ffmpeg -f lavfi -i color=c=magenta:size=120x80 -frames:v 1 sticker.png
+ffmpeg -f lavfi -i mandelbrot=size=640x480 -frames:v 1 dup.png
+ffmpeg -i dup.png -q:v 4 dup.jpg
 cp ../../demo/jacebrowning-memegen/fonts/TitilliumWeb-Black.ttf .
 cp "../../demo/jacebrowning-memegen/fonts/SIL Open Font License.txt" OFL.txt
 cd ../..

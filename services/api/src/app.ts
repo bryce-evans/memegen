@@ -9,16 +9,24 @@ import * as memes from "./routes/memes.ts";
 import * as stickers from "./routes/stickers.ts";
 import * as tags from "./routes/tags.ts";
 import * as templates from "./routes/templates.ts";
+import type { TemplateSearch } from "./search.ts";
 import * as users from "./routes/users.ts";
 
 export type { ApiApp } from "./access.ts";
 
-export function createApiApp(sql: Sql, auth: AuthProvider, aiProviders: AiProviders = createAiProviders()): ApiApp {
+export function createApiApp(
+  sql: Sql,
+  auth: AuthProvider,
+  aiProviders: AiProviders = createAiProviders(),
+  /** The search sidecar (`templateSearch()`); null = name and tag search only. */
+  search: TemplateSearch | null = null,
+): ApiApp {
   const app = new Hono<Env>();
   installErrorHandler(app);
   installAuth(app, auth);
 
-  for (const routes of [users, templates, tags, memes, comments, gallery, stickers]) routes.register(app, sql);
+  for (const routes of [users, tags, memes, comments, gallery, stickers]) routes.register(app, sql);
+  templates.register(app, sql, search);
   ai.register(app, aiProviders, uploadLimitsFromEnv());
 
   app.get("/health", (c) => c.json({ ok: true }));

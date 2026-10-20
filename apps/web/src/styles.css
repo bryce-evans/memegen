@@ -951,6 +951,33 @@
 .usage {
   margin-top: var(--ui-space-3);
 }
+.template-duplicates {
+  display: grid;
+  gap: var(--ui-space-2);
+  margin: var(--ui-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.template-duplicates li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.template-duplicates a {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.template-duplicates img,
+.template-duplicates video {
+  flex: none;
+  width: var(--ui-space-8);
+  height: var(--ui-space-8);
+  object-fit: cover;
+  border-radius: var(--ui-radius-sm);
+}
 .sparkline {
   display: block;
   margin-top: var(--ui-space-2);

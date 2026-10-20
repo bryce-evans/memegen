@@ -10,6 +10,7 @@ const STORAGE_PORT = 4101;
 const WEB_PORT = 5174;
 /** The AI provider stub (`startAiStub`), started by global setup. */
 export const AI_STUB_PORT = 4102;
+const SEARCH_PORT = 4103;
 
 export const E2E_ENV = {
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? "postgres://localhost:5432/memegen_e2e",
@@ -28,6 +29,10 @@ export const E2E_ENV = {
   OPENAI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/openai/v1`,
   GEMINI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/gemini/v1beta`,
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/anthropic/v1`,
+  // The search sidecar runs (duplicate checks); its model and embedding cache are shared with dev (`.data/search`).
+  SEARCH_ENABLED: "true",
+  SEARCH_PORT: String(SEARCH_PORT),
+  SEARCH_URL: `http://localhost:${SEARCH_PORT}`,
 };
 
 const serverEnv = { ...process.env, ...E2E_ENV } as Record<string, string>;

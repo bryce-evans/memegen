@@ -1,10 +1,10 @@
 /**
- * The processes of a running stack: storage, api and web. Used by scripts/run.ts (dev and prod)
- * and by playwright.config.ts (e2e webServer).
+ * The processes of a running stack: storage, api, web, and (with `SEARCH_ENABLED=true`) the search sidecar. Used by
+ * scripts/run.ts (dev and prod) and by playwright.config.ts (e2e webServer).
  */
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { config } from "@memegen/server-kit";
+import { config, searchConfig } from "@memegen/server-kit";
 
 export interface Service {
   name: string;
@@ -37,6 +37,7 @@ export function services({ watch, web }: StackOptions, env: NodeJS.ProcessEnv = 
     // `env` (e2e passes its own) wins over the config defaults read from process.env.
     server("storage", Number(env.STORAGE_PORT) || config.storagePort),
     server("api", Number(env.API_PORT) || config.apiPort),
+    ...(env.SEARCH_ENABLED === "true" ? [server("search", Number(env.SEARCH_PORT) || searchConfig.port)] : []),
     web === "vite"
       ? { name: "web", command: "bunx", args: ["vite", "--port", webPort, "--strictPort"], cwd: join(ROOT, "apps/web"), port: Number(webPort) }
       : { name: "web", command: "node", args: ["scripts/serve-web.ts"], cwd: ROOT, port: Number(webPort) },

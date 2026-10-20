@@ -2,12 +2,14 @@ import {
   createTemplateSchema,
   hotTemplatesQuerySchema,
   setTagsSchema,
+  templateDuplicatesQuerySchema,
   templatesQuerySchema,
   templateUsageQuerySchema,
   updateTemplateSchema,
   type HotTemplate,
   type Period,
   type TemplateCount,
+  type TemplateDuplicate,
   type TemplateUsage,
 } from "@memegen/shared";
 import { HttpError, idParam, page, pageSql, parse, parseJson, type Sql } from "@memegen/server-kit";
@@ -26,11 +28,13 @@ import {
   containsPattern,
   periodStart,
   storedPanels,
+  tagMatches,
   templateSelect,
   templateVisibleTo,
   withVariations,
   type TemplateRow,
 } from "../rows.ts";
+import type { TemplateSearch } from "../search.ts";
 
 /** Time-series granularity for each period. */
 const PERIOD_BUCKET: Record<Period, TemplateUsage["bucket"]> = {
@@ -41,17 +45,66 @@ const PERIOD_BUCKET: Record<Period, TemplateUsage["bucket"]> = {
   all: "month",
 };
 
-/** Template browsing, usage stats, authoring, and community tags. */
-export function register(app: ApiApp, sql: Sql): void {
+/** Image matches asked of the search sidecar per query; they follow every tag and name match. */
+const VISUAL_SEARCH_LIMIT = 48;
+/** Near-duplicates asked of the search sidecar per upload. */
+const DUPLICATE_LIMIT = 12;
+
+type Fragment = ReturnType<typeof templateVisibleTo>;
+
+/**
+ * Template search, best first: templates with a tag matching `q`, then a name matching it, then (with the search
+ * sidecar) templates whose image matches it, so "dog" also finds doge. `listed` (alias `t`) filters all three; an
+ * image match on a variation finds its top-level template.
+ */
+async function searchTemplateIds(sql: Sql, search: TemplateSearch | null, q: string, listed: Fragment, viewerId: string | null) {
+  const tagged = sql`exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
+    where x.template_id = t.id and ${tagMatches(sql, q, "g")})`;
+  const [text, hits] = await Promise.all([
+    sql<{ id: string }[]>`select t.id from templates t
+      where ${listed} and (${tagged} or t.name ilike ${containsPattern(q)})
+      order by ${tagged} desc, t.created_at desc, t.id`,
+    search ? search.text(q, VISUAL_SEARCH_LIMIT) : [],
+  ]);
+  const ids = new Set(text.map((r) => r.id));
+  if (hits.length) {
+    const roots = await sql<{ hit: string; id: string }[]>`
+      select h.id as hit, t.id from templates h join templates t on t.id = coalesce(h.parent_id, h.id)
+      where h.id in ${sql(hits.map((h) => h.templateId))} and (h.is_public or h.owner_id = ${viewerId}) and ${listed}`;
+    const rootOf = new Map(roots.map((r) => [r.hit, r.id]));
+    for (const hit of hits) {
+      const id = rootOf.get(hit.templateId);
+      if (id) ids.add(id);
+    }
+  }
+  return [...ids];
+}
+
+/** Rows for `ids` in that order (any deleted since are skipped). */
+async function templateRows(sql: Sql, ids: string[], viewerId: string | null): Promise<TemplateRow[]> {
+  if (!ids.length) return [];
+  const rows = await sql<TemplateRow[]>`${templateSelect(sql)} where t.id in ${sql(ids)} and ${templateVisibleTo(sql, viewerId)}`;
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids.flatMap((id) => byId.get(id) ?? []);
+}
+
+/** Template browsing and search, duplicate checks, usage stats, authoring, and community tags. */
+export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): void {
   app.get("/api/templates", async (c) => {
     const { q, tag, kind, offset, limit } = parse(templatesQuerySchema, c.req.query());
     const viewerId = c.get("user")?.id ?? null;
-    const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
-      where t.parent_id is null and ${templateVisibleTo(sql, viewerId)}
-      ${q ? sql`and t.name ilike ${containsPattern(q)}` : sql``}
+    const listed = sql`t.parent_id is null and ${templateVisibleTo(sql, viewerId)}
       ${kind ? sql`and t.kind = ${kind}` : sql``}
       ${tag ? sql`and exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
-        where x.template_id = t.id and g.slug = ${tag})` : sql``}
+        where x.template_id = t.id and g.slug = ${tag})` : sql``}`;
+    if (q) {
+      const ids = await searchTemplateIds(sql, search, q, listed, viewerId);
+      const rows = await templateRows(sql, ids.slice(offset, offset + limit), viewerId);
+      const nextOffset = ids.length > offset + limit ? offset + limit : null;
+      return c.json({ items: await withVariations(sql, rows, viewerId), nextOffset });
+    }
+    const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
+      where ${listed}
       order by t.created_at desc, t.id
       ${pageSql(sql, offset, limit)}`;
     const { items, nextOffset } = page(rows, offset, limit);
@@ -64,6 +117,32 @@ export function register(app: ApiApp, sql: Sql): void {
     const [row] = await sql<TemplateCount[]>`
       select count(*)::int as count from templates t where t.parent_id is null and ${templateVisibleTo(sql, viewerId)}`;
     return c.json(row!);
+  });
+
+  /**
+   * Templates that already use an uploaded image, exact copies (same bytes) first, then (with the search sidecar)
+   * ones that look alike. The Template Editor asks before a new template is saved.
+   */
+  app.get("/api/templates/duplicates", async (c) => {
+    const user = requireUser(c);
+    const { assetId } = parse(templateDuplicatesQuerySchema, c.req.query());
+    const [asset] = await sql<{ sha256: string }[]>`select sha256 from assets where id = ${assetId}`;
+    if (!asset) throw new HttpError(404, "asset not found");
+    const [exact, hits] = await Promise.all([
+      sql<{ id: string }[]>`select t.id from templates t join assets a on a.id = t.asset_id
+        where a.sha256 = ${asset.sha256} order by t.created_at, t.id`,
+      search ? search.similar(assetId, DUPLICATE_LIMIT) : [],
+    ]);
+    const exactIds = new Set(exact.map((r) => r.id));
+    const similarity = new Map(hits.map((h) => [h.templateId, h.score]));
+    const ids = [...exactIds, ...hits.map((h) => h.templateId).filter((id) => !exactIds.has(id))];
+    const templates = await withVariations(sql, await templateRows(sql, ids, user.id), user.id);
+    const items: TemplateDuplicate[] = templates.map((template) => ({
+      template,
+      exact: exactIds.has(template.id),
+      similarity: similarity.get(template.id) ?? null,
+    }));
+    return c.json(items);
   });
 
   /** Most-used top-level templates in the period; variation uses roll up into their parent. */

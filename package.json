@@ -7,6 +7,10 @@
     "services/*",
     "apps/*"
   ],
+  "trustedDependencies": [
+    "faiss-node",
+    "onnxruntime-node"
+  ],
   "engines": {
     "node": ">=24.2"
   },

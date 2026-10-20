@@ -2,7 +2,7 @@ import { apiTemplate, apiUpload, apiUser, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("templates: the create page lists newest first and loads more matches as the end of the list scrolls into view", async ({ page, request }) => {
-  // Unique per project and per run, so the search matches exactly these templates.
+  // Unique per project and per run, so the search's name matches are exactly these templates.
   const prefix = scoped(`Scroll ${Date.now().toString(36)}`);
   const total = 30; // more than one page (24)
   const user = await apiUser(request, scoped("scroller"));
@@ -36,7 +36,9 @@ test("templates: the create page lists newest first and loads more matches as th
     await expect(grid).toHaveAttribute("aria-busy", "false");
   }
   await expect(matches).toHaveCount(total);
-  await expect(cards).toHaveCount(total);
+  // Name matches lead; the search sidecar's image matches (other specs' look-alike templates) may follow.
+  const names = await cards.allTextContents();
+  expect(names.slice(0, total).every((name) => name.includes(prefix))).toBe(true);
   await expect(sentinel).toHaveCount(0);
   await expect(page.getByTestId("load-more")).toHaveCount(0);
 });

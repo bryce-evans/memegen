@@ -200,6 +200,7 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
               note={`The ${boxes} (text with its placeholder, and images) become the template's defaults.`}
               ready
               create={(name, tags) => createTemplate({ name, assetId: source.asset.id, defaultLayers: layers, tags })}
+              assetId={source.asset.id}
             />
           ) : source.kind === "edit-template" ? (
             <TemplateEditPanel

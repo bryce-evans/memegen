@@ -4,7 +4,7 @@ High-level system design: modules, how they connect, and the decisions that shap
 
 ## System overview
 
-memegen is a React SPA backed by two small Node services and Postgres. The browser does all media work (decode, composite, encode). The servers store, validate, and index.
+memegen is a React SPA backed by two small Node services, an optional search sidecar, and Postgres. The browser does all media work (decode, composite, encode). The servers store, validate, and index.
 
 ```mermaid
 flowchart LR
@@ -18,6 +18,9 @@ flowchart LR
   web -- /api --> api[services/api :4000]
   api -- provider HTTP --> ai{{AI providers: openai / gemini / anthropic}}
   storage --> pg[(Postgres)]
+  api -- internal HTTP --> search[services/search :4002, optional]
+  search --> pg
+  search -- asset bytes --> storage
   api --> pg
   storage --> prov{{StorageProvider: local / s3}}
 ```
@@ -32,6 +35,7 @@ flowchart LR
 | `packages/server-kit` | Node | Config, Postgres, migrations, `AuthProvider`, HTTP helpers, asset rows, test helpers | shared |
 | `services/storage` | Node | Asset upload/serve, content sniffing, probing, caps, storage providers | server-kit, shared |
 | `services/api` | Node | Users, templates, memes, votes, comments, tags, stickers, stats, AI proxy | server-kit, shared |
+| `services/search` | Node | Optional sidecar: CLIP embeddings of template images in a FAISS index (natural-language search, duplicate checks) | server-kit, shared |
 | `apps/web` | browser | SPA: editor, template browser, gallery, profiles | ui, render, shared |
 | `db/migrations` | Postgres | Append-only schema, applied in filename order | — |
 | `scripts/` | Node/Bun | `run.sh` supervisor, seeds, snapshots, prod web server | all |
@@ -41,6 +45,7 @@ Dependency rules:
 
 - `packages/shared` is the single source of truth for contracts. Request bodies are `z.input` of its schemas, responses are `z.output`, so API, web, and e2e cannot drift.
 - Servers never import `packages/render`. API runtime code never imports `services/storage` (tests may, as a dev dependency); shared asset-row access lives in `server-kit`.
+- Nothing imports `services/search`: the API reaches it over HTTP (`services/api/src/search.ts`), and it reads asset bytes over storage's HTTP API.
 - Web `pages/` import from `components/`, never from each other.
 
 ## Key decisions
@@ -51,6 +56,18 @@ Dependency rules:
 - Preview equals output: the editor stage, loop preview, and every export use the same `layoutText`/`drawText` (shared) and `composeFrame` (render). The stage's handles and transparency checkerboard are DOM/CSS over the canvas, so its Preview box (beside a template's title) just drops them to show the finished meme.
 - Layout is stored in fractions of the media, so it is resolution-independent; text is rasterized at the size shown or exported.
 - Trade-off: export speed depends on the client. A server renderer could reuse the same TS without changing the data model.
+- One exception, not rendering: the search sidecar decodes template images (a GIF's first frame) to embed them. It never encodes or serves media.
+
+### Template search is an optional sidecar
+
+- `services/search` runs only with `SEARCH_ENABLED=true`. It loads CLIP (`Xenova/clip-vit-base-patch32` via transformers.js / ONNX Runtime, downloaded into `SEARCH_DATA_DIR` on first start) and keeps every image/GIF template's unit-length embedding in a FAISS inner-product index (cosine similarity). Videos are found by name and tags only.
+- Postgres stays the source of truth: every request first syncs the index with `templates`, embedding only images it hasn't seen and adding or removing only the templates that changed (no rebuild per change). Embeddings are keyed by the asset's sha256 and cached on disk, so restarts, snapshot loads, and re-uploads cost nothing. No migration or trigger is involved.
+- The index (`services/search/src/vector-index.ts`) is exact brute force up to `EXACT_LIMIT` (50k) vectors, about 2 ms a query at that size, and an HNSW graph past it. Exact stays the default because HNSW misses some true top-20 text matches even on a few hundred templates (text queries sit off the image distribution the graph is built from); image-to-image (duplicate) lookups keep full recall. Neither FAISS index deletes by key, so removals are tombstones that searches skip; the index is rebuilt from live vectors once tombstones pass a quarter of them, and when it crosses `EXACT_LIMIT`. faiss-node can't set HNSW's `efSearch`, so recall is tuned by fetching at least 64 candidates.
+- Text search: the query is embedded as the mean of several captions ("a photo of a dog", …), each image's similarity to a neutral caption is subtracted (busy, text-heavy images otherwise top every query), and matches are scored by z-score across the library. The subtraction is folded into the query (`query − baseline`), and the library's mean and spread come from running first and second moments of the vectors (O(d²) per query, exact), so only the top matches are scored. A query returns nothing unless its best match reaches `TEXT_MIN_TOP_Z`, then every match from `TEXT_MIN_Z`. Thresholds are starting points in `services/search/src/catalog.ts`.
+- `GET /api/templates?q=` ranks tag matches, then name matches, then image matches, each template once; an image match on a variation finds its top-level template, and visibility and filters apply to all three.
+- Duplicates: `GET /api/templates/duplicates` lists templates with the same bytes (always), then image matches at cosine ≥ `DUPLICATE_MIN_SIMILARITY` (0.92: re-encodes and resizes score above, different pictures of one subject below). The Template Editor shows them before a new template is saved.
+- Search is an extra: when the sidecar is off, slow, or failing, the API logs it and falls back to tags and names (text queries time out after 3 s).
+- The transport is plain JSON over HTTP behind `X-Internal-Token`, like `/internal/*`; no web proxy forwards to it.
 
 ### Storage is pluggable and immutable
 
@@ -135,7 +152,7 @@ All JSON unless noted. Errors: `{ error: string, details?: string[] }`. Shapes a
 | health | `GET /health` |
 | session/me | `POST /api/session`, `GET /api/me`, `GET /api/me/activity`, `GET /api/me/favorites` |
 | users | `GET /api/users`, `GET /api/users/:username`, `GET /api/users/:username/memes`, `GET /api/users/:username/templates`, `GET /api/leaderboard` |
-| templates | `GET/POST /api/templates`, `GET /api/templates/count`, `GET /api/templates/hot`, `GET/PATCH/DELETE /api/templates/:id`, `GET /api/templates/:id/usage`, `POST /api/templates/:id/tags` |
+| templates | `GET/POST /api/templates` (`q` searches tags, names, then images), `GET /api/templates/count`, `GET /api/templates/hot`, `GET /api/templates/duplicates`, `GET/PATCH/DELETE /api/templates/:id`, `GET /api/templates/:id/usage`, `POST /api/templates/:id/tags` |
 | memes | `POST /api/memes`, `GET/PATCH/DELETE /api/memes/:id`, `POST /api/memes/:id/post`, `PUT /api/memes/:id/vote`, `PUT /api/memes/:id/favorite` |
 | comments | `GET/POST /api/memes/:id/comments`, `DELETE /api/comments/:id` |
 | gallery | `GET /api/gallery` (period, sort, tag, search) |
@@ -146,11 +163,19 @@ All JSON unless noted. Errors: `{ error: string, details?: string[] }`. Shapes a
 
 API layout: `app.ts` wires auth and errors; each `routes/*.ts` exports a `register(app, …)`; shared guards in `access.ts`; row mapping and visibility in `rows.ts`.
 
+### search (`:4002`, optional, API only)
+
+| route | purpose |
+|---|---|
+| `GET /health` | liveness and indexed template count |
+| `POST /search` | `{ q, limit }` → `SearchHits` (z-scores), `X-Internal-Token` |
+| `POST /similar` | `{ assetId, limit }` → `SearchHits` (cosine), `X-Internal-Token` |
+
 ## Runtime and config
 
 - Node ≥ 24.2 runs server `.ts` via type stripping; Hono for HTTP; `postgres` (porsager) for SQL. Bun installs and runs scripts; Vite builds the web app.
 - `run.sh <config> <command>` is the single entry point; configs are literal `KEY=value` files.
-- `scripts/run.ts` supervises migrate → storage → API → web. The process list (`scripts/services.ts`) is shared with Playwright.
+- `scripts/run.ts` supervises migrate → storage → API → (search, when `SEARCH_ENABLED=true`) → web. The process list (`scripts/services.ts`) is shared with Playwright.
 - In prod, `scripts/serve-web.ts` serves the SPA and proxies `/api` and `/storage` (never `/internal`).
 - `MODE` is baked into the web build; anything other than `dev` builds as prod. `MODE=prod` refuses destructive and dev-only commands and requires real secrets.
 
@@ -163,4 +188,5 @@ API layout: `app.ts` wires auth and errors; each `routes/*.ts` exports a `regist
 ## Testing
 
 - `node --test`: shared logic and service behavior via `app.request()` against a fresh `memegen_test`.
-- Playwright: real servers on separate ports against a fresh `memegen_e2e`, in branded Chrome (needed for H.264 in WebCodecs). AI calls hit a local stub (`startAiStub`).
+- Playwright: real servers on separate ports against a fresh `memegen_e2e`, in branded Chrome (needed for H.264 in WebCodecs). AI calls hit a local stub (`startAiStub`). The search sidecar runs for real, with the model and embedding cache shared with dev.
+- Search: API tests inject a `TemplateSearch` to pin ranking, visibility, and duplicate merging; sidecar tests run the real CLIP model against the test database.

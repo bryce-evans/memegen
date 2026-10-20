@@ -9,3 +9,4 @@ export * from "./media.ts";
 export * from "./panels.ts";
 export * from "./section.ts";
 export * from "./ai.ts";
+export * from "./search.ts";

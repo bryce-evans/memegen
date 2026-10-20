@@ -27,3 +27,20 @@ export const config = {
   storagePort: num("STORAGE_PORT", 4001),
   internalToken: process.env.INTERNAL_TOKEN ?? "",
 };
+
+const searchEnabled = process.env.SEARCH_ENABLED === "true";
+const searchPort = num("SEARCH_PORT", 4002);
+
+/** The search sidecar (`services/search`) runs only when `SEARCH_ENABLED=true`; the API then reaches it at `SEARCH_URL`. */
+export const searchConfig = {
+  enabled: searchEnabled,
+  port: searchPort,
+  /** Where the API finds the sidecar; empty when search is off. */
+  url: searchEnabled ? process.env.SEARCH_URL || `http://localhost:${searchPort}` : "",
+  /** Where the sidecar reads asset bytes (storage's `GET /assets/:id/content`). */
+  storageUrl: process.env.STORAGE_URL || `http://localhost:${config.storagePort}`,
+  /** CLIP model (a transformers.js ONNX export on the Hugging Face hub). */
+  model: process.env.SEARCH_MODEL || "Xenova/clip-vit-base-patch32",
+  /** Downloaded model weights and the embedding cache. */
+  dataDir: process.env.SEARCH_DATA_DIR || ".data/search",
+};

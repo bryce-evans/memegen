@@ -10,6 +10,7 @@ Rules for changing this repo. Setup and commands: [README.md](README.md). Design
 - `packages/ui`: skinnable components, tokens, and skins (see its README).
 - `services/storage`: asset upload/serve, providers, probing, caps.
 - `services/api`: everything else (users, templates, memes, votes, comments, tags, stickers, stats).
+- `services/search`: optional sidecar (`SEARCH_ENABLED`): CLIP + FAISS index of template images for natural-language search and duplicate checks. Only the API calls it, over HTTP.
 - `apps/web`: React SPA.
 - `db/migrations`: append-only `NNN_name.sql`.
 - `e2e`: Playwright specs and fixtures.
@@ -18,7 +19,7 @@ Rules for changing this repo. Setup and commands: [README.md](README.md). Design
 
 - **Tooling:** Bun only (`bun install`, `bun add`, `bun run …`). No npm/yarn or other lockfiles. Workspace deps use `"workspace:*"`.
 - **Server TS:** Node runs `.ts` via type stripping. Erasable syntax only: no `enum`, `namespace`, or constructor parameter properties. Use explicit `.ts` import specifiers and `import type` for type-only imports.
-- **Rendering is client-side:** servers never decode or encode frames. Preview and export must both use `layoutText`/`drawText` from `packages/shared`.
+- **Rendering is client-side:** servers never decode or encode frames (the search sidecar's exception: it decodes template images only to embed them). Preview and export must both use `layoutText`/`drawText` from `packages/shared`.
 - **UI:** build only from `@memegen/ui` components. `apps/web/src/styles.css` is layout-only and uses design tokens, never hard-coded colors.
 - **Caps:** defaults in `packages/shared/src/limits.ts`, env overrides in `packages/server-kit/src/config.ts`. Storage enforces them on every write.
 - **Migrations:** never edit an applied migration. Add a new one (snapshots depend on this).

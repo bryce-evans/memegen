@@ -19,6 +19,7 @@ import type {
   Template,
   TemplateCount,
   TemplateKind,
+  TemplateDuplicate,
   TemplateUsage,
   Tag,
   TagKind,
@@ -188,6 +189,10 @@ export const listTemplates = ({ q, tag, kind, offset, limit }: PageParams & { q?
 export const countTemplates = () => request<TemplateCount>("/api/templates/count");
 
 export const getTemplate = (id: string) => request<Template>(`/api/templates/${id}`);
+
+/** Templates that already use an uploaded image: the same file, or (with template search on) one that looks alike. */
+export const findTemplateDuplicates = (assetId: string) =>
+  request<TemplateDuplicate[]>(`/api/templates/duplicates${qs({ assetId })}`);
 
 export const getHotTemplates = (period: Period) => request<HotTemplate[]>(`/api/templates/hot${qs({ period })}`);
 

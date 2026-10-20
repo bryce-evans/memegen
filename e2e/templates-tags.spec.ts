@@ -1,9 +1,9 @@
 import { expect, scoped, test } from "./test.ts";
 import { tagSlug, type Meme, type Template, type TemplateUsage } from "@memegen/shared";
 import {
-  addCommunityTags,
   apiGet,
   apiTemplate,
+  apiTemplateTags,
   apiUser,
   fixture,
   inputTagChip,
@@ -71,7 +71,6 @@ test("templates: add one, add a variation, add tags, use the variation with a br
   await expect(card.getByTestId("template-use-count")).toHaveAttribute("aria-label", "used 0 times");
   // The gallery card is just the template and Use: tags, usage and variations live in the editor.
   await expect(card.getByTestId("tag-chip")).toHaveCount(0);
-  await expect(card.getByTestId("template-tags-add")).toHaveCount(0);
   await expect(card.getByTestId("use-template")).toBeVisible();
 
   // An animated variation (the UI no longer uploads variations; the API still does).
@@ -79,18 +78,15 @@ test("templates: add one, add a variation, add tags, use the variation with a br
   const parentId = (await card.getAttribute("data-template-id"))!;
   await apiTemplate(request, user, { file: "anim.gif", name: `${base} (anim)`, parentId });
 
-  // Use opens the editor; tags, usage and variations sit under the stage.
+  // Use opens the editor; the template's tags, usage and variations sit under the stage, read-only: making a post
+  // never edits its template. Tags added after creation (here via the API) are community tags, not base tags.
+  await apiTemplateTags(request, user, templateId, ["movie"]);
   await card.getByTestId("use-template").click();
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   const details = page.getByTestId("template-details");
   await expect(tagChip(details, "e2e-base")).toHaveAttribute("data-base", "true");
+  await expect(tagChip(details, "movie")).not.toHaveAttribute("data-base", "true");
   await expect(details.getByTestId("usage-chart")).toBeVisible();
-
-  // Tags added after creation are community tags, not base tags.
-  await addCommunityTags(details, ["movie"]);
-  const movieChip = tagChip(details, "movie");
-  await expect(movieChip).toBeVisible();
-  await expect(movieChip).not.toHaveAttribute("data-base", "true");
 
   // Use the (animated) variation: the editor opens on it with every frame.
   await expect(details.getByTestId("variation-item")).toHaveCount(1);
@@ -131,25 +127,22 @@ test("templates: add one, add a variation, add tags, use the variation with a br
   await expect(card.getByTestId("template-use-count")).toHaveText("1");
 });
 
-test("templates: another user can add tags but the author's base tags stay marked", async ({ page, request }) => {
+test("templates: another user's tags show beside the author's base tags, which stay marked", async ({ page, request }) => {
   const author = await apiUser(request, scoped("tag-author"));
+  const helper = await apiUser(request, scoped("tag-helper"));
   const name = scoped("E2E Tagged");
   const template = await apiTemplate(request, author, { name, tags: ["oldschool"] });
   expect(template.baseTags).toEqual(["oldschool"]);
+  const after = await apiTemplateTags(request, helper, template.id, ["reaction"]);
+  expect(after.tags).toEqual(["oldschool", "reaction"]);
+  expect(after.baseTags).toEqual(["oldschool"]);
 
   await page.goto("/create");
-  await signIn(page, scoped("tag-helper"));
+  await signIn(page, helper.username);
   await page.getByTestId("template-search").fill(name);
   await templateCard(page, template.id).getByTestId("use-template").click();
   const details = page.getByTestId("template-details");
   await expect(tagChip(details, "oldschool")).toHaveAttribute("data-base", "true");
-
-  await addCommunityTags(details, ["reaction"]);
   await expect(tagChip(details, "reaction")).toBeVisible();
   await expect(tagChip(details, "reaction")).not.toHaveAttribute("data-base", "true");
-  await expect(tagChip(details, "oldschool")).toHaveAttribute("data-base", "true");
-
-  const after = await apiGet<Template>(request, `/api/templates/${template.id}`);
-  expect(after.tags).toEqual(["oldschool", "reaction"]);
-  expect(after.baseTags).toEqual(["oldschool"]);
 });

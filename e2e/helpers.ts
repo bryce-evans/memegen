@@ -69,14 +69,9 @@ export const templateCard = (scope: Page | Locator, id: string) =>
 export const inputTagChip = (scope: Page | Locator, slug: string) => scope.locator(`[data-testid="tag-input-chip"][data-tag="${slug}"]`);
 export const commentById = (scope: Page | Locator, id: string) => scope.locator(`[data-testid="comment"][data-comment-id="${id}"]`);
 
-/** Add community tags through a template's details ("+ tags", type each, save). */
-export async function addCommunityTags(scope: Page | Locator, tags: string[]): Promise<void> {
-  await scope.getByTestId("template-tags-add").click();
-  for (const tag of tags) {
-    await scope.getByTestId("tags-input").fill(tag);
-    await scope.getByTestId("tags-input").press("Enter");
-  }
-  await scope.getByTestId("tags-save").click();
+/** Add community (non-base) tags to a template as `user`, through the API: the editor shows a template's tags read-only. */
+export async function apiTemplateTags(request: APIRequestContext, user: User, templateId: string, tags: string[]): Promise<Template> {
+  return apiPost<Template>(request, `/api/templates/${templateId}/tags`, user, { tags }, 200);
 }
 
 /** Stream summary of a downloaded file via ffprobe (codec_type → frame count). */

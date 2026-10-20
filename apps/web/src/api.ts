@@ -207,10 +207,6 @@ export const createTemplate = (input: CreateTemplateInput) =>
 export const updateTemplate = (id: string, changes: Together<UpdateTemplateInput, "panels" | "assetId">) =>
   request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
 
-/** Adds (never removes) tags; the author's base tags always stay. */
-export const addTemplateTags = (id: string, tags: string[]) =>
-  request<Template>(`/api/templates/${id}/tags`, { method: "POST", json: { tags } });
-
 export const listTags = ({ q, kind, sort, limit }: { q?: string; kind?: TagKind; sort?: TagSort; limit?: number } = {}) =>
   request<Tag[]>(`/api/tags${qs({ q, kind, sort, limit })}`);
 

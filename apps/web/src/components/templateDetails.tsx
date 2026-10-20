@@ -2,17 +2,16 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PERIODS, type Period, type Template } from "@memegen/shared";
 import { Checkbox, Inline, Panel, SelectField, Text } from "@memegen/ui";
-import { addTemplateTags, getTemplateUsage } from "../api.ts";
+import { getTemplateUsage } from "../api.ts";
 import { PERIOD_LABELS, plural } from "../format.ts";
 import { useAsync } from "../useAsync.ts";
 import { ErrorView, MediaView } from "./common.tsx";
-import { TagEditor } from "./tagInputs.tsx";
 import { TagChips } from "./tags.tsx";
 import { TemplateMeta } from "./templates.tsx";
 
 /**
- * Under the editor stage when a template is open: its tags (anyone can add), usage, and variations. The Preview box
- * beside the title shows the stage as the finished meme.
+ * Under the editor stage when a template is open: its tags, usage, and variations, read-only (making a post never
+ * edits its template). The Preview box beside the title shows the stage as the finished meme.
  */
 export function TemplateDetails({
   template,
@@ -23,9 +22,6 @@ export function TemplateDetails({
   preview: boolean;
   onPreviewChange: (preview: boolean) => void;
 }) {
-  // Base tags come from the author and always stay; added tags sit beside them.
-  const [tagged, setTagged] = useState({ tags: template.tags, baseTags: template.baseTags });
-
   return (
     <Panel
       heading={template.name}
@@ -36,18 +32,11 @@ export function TemplateDetails({
       data-testid="template-details"
     >
       <TemplateMeta template={template} />
-      <div className="template-details-tags">
-        <TagChips slugs={tagged.tags} base={tagged.baseTags} />
-        <TagEditor
-          tags={[]}
-          label="Add tags"
-          testId="template-tags-add"
-          onSave={async (added) => {
-            const next = await addTemplateTags(template.id, added);
-            setTagged({ tags: next.tags, baseTags: next.baseTags });
-          }}
-        />
-      </div>
+      {template.tags.length > 0 && (
+        <div className="template-details-tags">
+          <TagChips slugs={template.tags} base={template.baseTags} />
+        </div>
+      )}
       <Panel variant="inset" heading="Usage">
         <UsageChart templateId={template.id} />
       </Panel>

@@ -4,6 +4,7 @@ import { ExportAbortedError, type ExportResult } from "@memegen/render";
 import { limitViolations, MAX_TAGS, MEME_TITLE_MAX_LENGTH, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
 import { ApiError, createMeme, postMeme, updateMeme, uploadAsset } from "../../api.ts";
+import { useBackGuard } from "../../backHotkeys.ts";
 import { downloadBlob, fileSlug } from "../../media.ts";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
@@ -85,6 +86,8 @@ export function SavePanel(props: SavePanelProps) {
     });
 
   const alreadyPosted = editingMeme !== null && editingMeme.postedAt !== null;
+  // Going back by hotkey from a meme you could still publish (new, or your own draft) asks first.
+  useBackGuard(canSave && !alreadyPosted ? "Leave the editor? This meme isn't published, and unsaved changes will be lost." : null);
 
   return (
     <Panel heading={editingMeme && canSave ? "Save changes" : "Save"} className="save-panel">

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { openFeed, signIn } from "./helpers.ts";
+import { apiMeme, apiUser, openFeed, signIn } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 const navIds = (page: Page) =>
@@ -194,4 +194,61 @@ test("a stored user the server no longer knows (e.g. after a DB reset) is signed
   await signIn(page, scoped("revenant"));
   await openFeed(page, { feed: "recent" });
   await expect(page.getByTestId("meme-card").first()).toBeVisible();
+});
+
+test("back hotkeys: Backspace, Delete, and Escape go back a page; text fields keep them; leaving an unpublished meme asks first", async ({
+  page,
+  request,
+}) => {
+  const username = scoped("backtracker");
+  const user = await apiUser(request, username);
+  const posted = await apiMeme(request, user, { title: scoped("Back posted") });
+  const draft = await apiMeme(request, user, { title: scoped("Back draft"), post: false });
+  await page.goto("/");
+  await signIn(page, username);
+  // A direct load starts the visit: it has nothing to go back to.
+  await page.goto("/recent");
+  await expect(page.getByTestId("meme-feed")).toHaveAttribute("aria-busy", "false");
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/recent$/);
+
+  for (const key of ["Backspace", "Delete", "Escape"]) {
+    await page.getByTestId("meme-card").first().getByTestId("meme-card-title").click();
+    await expect(page).toHaveURL(/\/m\//);
+    await page.keyboard.press(key);
+    await expect(page).toHaveURL(/\/recent$/);
+  }
+
+  // In a text field the keys edit the text.
+  await page.getByTestId("meme-card").first().getByTestId("meme-card-title").click();
+  const search = page.getByTestId("meme-search");
+  await search.fill("ab");
+  await search.press("Backspace");
+  await search.press("Escape");
+  await expect(page).toHaveURL(/\/m\//);
+
+  // Editing a published meme goes straight back.
+  const dialogs: string[] = [];
+  page.on("dialog", (dialog) => {
+    dialogs.push(dialog.message());
+    void (dialogs.length === 1 ? dialog.dismiss() : dialog.accept());
+  });
+  await page.goto(`/m/${posted.id}`);
+  await page.getByTestId("edit-meme").click();
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(new RegExp(`/m/${posted.id}$`));
+  expect(dialogs).toEqual([]);
+
+  // An unpublished draft asks: cancelling stays in the editor, confirming goes back.
+  await page.goto(`/m/${draft.id}`);
+  await page.getByTestId("edit-meme").click();
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  await page.keyboard.press("Backspace");
+  await expect.poll(() => dialogs.length).toBe(1);
+  expect(dialogs[0]).toContain("isn't published");
+  await expect(page).toHaveURL(new RegExp(`/create\\?meme=${draft.id}$`));
+  await page.keyboard.press("Backspace");
+  await expect(page).toHaveURL(new RegExp(`/m/${draft.id}$`));
+  expect(dialogs).toHaveLength(2);
 });

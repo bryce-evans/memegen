@@ -22,6 +22,7 @@ import {
 import { AuthProvider, useAuth, useUser } from "./auth.tsx";
 import { GalleryFilters, feedKindFor } from "./components/feed.tsx";
 import { TagSidebar } from "./components/tagNav.tsx";
+import { useBackHotkeys } from "./backHotkeys.ts";
 import { useStoredDarkMode } from "./darkMode.ts";
 import { DEV_MODE } from "./mode.ts";
 import { Editor } from "./pages/Editor.tsx";
@@ -198,6 +199,7 @@ function Root() {
   // The tab icon is the wordmark's first letter, drawn in the skin's wordmark style.
   useSkinFavicon(BRAND[0]!);
   useStoredDarkMode(user?.id ?? null);
+  useBackHotkeys();
   if (!user) return <SignIn brand={BRAND} />;
   return (
     <AppShell header={<SiteHeader />} sidebar={<SideColumn />}>

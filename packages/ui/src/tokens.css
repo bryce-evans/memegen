@@ -32,6 +32,9 @@
   --ui-color-tier-gold: #e5b021;
   --ui-color-tier-platinum: #8fb8c9;
   --ui-color-tier-diamond: #3fb7e8;
+  /* Vote toggles (pressed upvote / downvote), the same in every skin. */
+  --ui-color-upvote: #df154e;
+  --ui-color-downvote: #1e3fb8;
   /* Tonal (selected/secondary-emphasis) fill and its text. */
   --ui-color-tonal: #2a2f3a;
   --ui-color-on-tonal: var(--ui-color-text);
@@ -58,6 +61,8 @@
   /* Hover/press state layers, painted over any fill. */
   --ui-color-state-hover: rgb(255 255 255 / 0.04);
   --ui-color-state-press: rgb(255 255 255 / 0.08);
+  /* Behind a hovered clickable card (the meme feeds): a light veil on dark skins, a dark one on light skins. */
+  --ui-color-card-hover: rgb(255 255 255 / 0.1);
   --ui-color-header-bg: rgb(15 17 21 / 0.92);
   --ui-header-backdrop: blur(8px);
   --ui-color-sidebar-bg: transparent;

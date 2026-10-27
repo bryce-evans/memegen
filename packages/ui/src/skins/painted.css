@@ -34,6 +34,7 @@
   --ui-color-tooltip-bg: var(--spectrum-gray-50);
   --ui-color-state-hover: rgb(0 0 0 / 0.04);
   --ui-color-state-press: rgb(0 0 0 / 0.08);
+  --ui-color-card-hover: rgb(0 0 0 / 0.05);
   --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.12);
   --ui-shadow-3: 0 8px 32px rgb(0 0 0 / 0.16);
   --ui-header-height: 112px;
@@ -300,6 +301,7 @@
   --ui-color-bg: #282828;
   --ui-color-state-hover: rgb(255 255 255 / 0.06);
   --ui-color-state-press: rgb(255 255 255 / 0.12);
+  --ui-color-card-hover: rgb(255 255 255 / 0.1);
   --ui-color-tooltip-bg: #333333;
   --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.4);
   --ui-shadow-3: 0 8px 32px rgb(0 0 0 / 0.5);

@@ -1,5 +1,5 @@
-import { useRef, type ComponentPropsWithoutRef, type CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { useRef, type ComponentPropsWithoutRef, type CSSProperties, type MouseEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { isListed, type Asset, type Meme } from "@memegen/shared";
 import { Badge, Button, Card, CardMeta, CardTitle, EmptyState, Icon, Text } from "@memegen/ui";
 import { favoriteMeme, voteMeme } from "../api.ts";
@@ -7,10 +7,14 @@ import { useUser } from "../auth.tsx";
 import { plural } from "../format.ts";
 import { useAction } from "../useAction.ts";
 import type { Paged } from "../usePaged.ts";
+import { useCardLayout, type CardLayout } from "../cardLayout.ts";
 import { justifyRows, useRowBox } from "../justifiedRows.ts";
 import { ErrorView, MediaView, PagedList, TimeAgo } from "./common.tsx";
 
-/** 👍/👎 with up/down counts (downvotes shown negative); clicking your current vote clears it. */
+/**
+ * [👍] score [👎]: thumb toggles around the score (up − down); your vote's thumb is pressed (toned and filled).
+ * Clicking your current vote clears it.
+ */
 export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
   const { busy, error, run } = useAction();
   const votable = isListed(meme);
@@ -20,6 +24,8 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
   }
 
   const disabledReason = votable ? undefined : "Only posted public memes can be voted on";
+  const upLabel = meme.myVote === 1 ? "Remove upvote" : "Upvote";
+  const downLabel = meme.myVote === -1 ? "Remove downvote" : "Downvote";
   return (
     <div className="votes">
       <Button
@@ -28,29 +34,34 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
         className="vote vote-up"
         onClick={() => vote(1)}
         disabled={busy || !votable}
-        title={disabledReason ?? (meme.myVote === 1 ? "Remove upvote" : "Upvote")}
+        aria-label={upLabel}
+        title={disabledReason ?? upLabel}
         pressed={meme.myVote === 1}
         data-testid="vote-up"
+        icon={<Icon name="thumbUp" />}
+      />
+      <Text
+        as="span"
+        size="sm"
+        numeric
+        className="score"
+        title={`Score: ${meme.upvotes} up, ${meme.downvotes} down`}
+        data-testid="meme-score"
       >
-        <span aria-hidden>👍</span>
-        <span data-testid="upvote-count">{meme.upvotes}</span>
-      </Button>
+        {meme.score > 0 ? `+${meme.score}` : meme.score}
+      </Text>
       <Button
         size="sm"
         tone="info"
         className="vote vote-down"
         onClick={() => vote(-1)}
         disabled={busy || !votable}
-        title={disabledReason ?? (meme.myVote === -1 ? "Remove downvote" : "Downvote")}
+        aria-label={downLabel}
+        title={disabledReason ?? downLabel}
         pressed={meme.myVote === -1}
         data-testid="vote-down"
-      >
-        <span aria-hidden>👎</span>
-        <span data-testid="downvote-count">{meme.downvotes > 0 ? `-${meme.downvotes}` : "0"}</span>
-      </Button>
-      <Text as="span" size="sm" tone="muted" numeric className="score" title="Score (up − down)" data-testid="meme-score">
-        {meme.score > 0 ? `+${meme.score}` : meme.score}
-      </Text>
+        icon={<Icon name="thumbDown" />}
+      />
       {error !== null && <ErrorView error={error} />}
     </div>
   );
@@ -112,9 +123,28 @@ function aspect(asset: Asset): number {
   return asset.width && asset.height ? asset.width / asset.height : 1;
 }
 
-function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (meme: Meme) => void; height?: number }) {
+/** Clicks on the card's own controls and links (votes, favorite, author, title, media) keep their behavior. */
+const CARD_CONTROLS = "a, button, input, textarea, select, label";
+
+/**
+ * The whole card opens the meme; hovering it lights a rounded highlight around it (styles.css). Author, age, and the
+ * favorite star show only in the hover layout; below the image (Google-style) the card keeps just the title, badges,
+ * votes, and comment count.
+ */
+function MemeCard({ meme, layout, onChange, height }: { meme: Meme; layout: CardLayout; onChange: (meme: Meme) => void; height?: number }) {
+  const navigate = useNavigate();
+  const href = `/m/${meme.id}`;
   // Until the grid is measured, cards sit at the CSS default row height.
   const style = { "--meme-aspect": aspect(meme.outputAsset), "--meme-height": height ? `${height}px` : undefined } as CSSProperties;
+
+  function open(e: MouseEvent<HTMLElement>) {
+    if (e.defaultPrevented || (e.target as Element).closest(CARD_CONTROLS)) return;
+    // Finishing a text selection is not a click on the card.
+    if (window.getSelection()?.isCollapsed === false) return;
+    if (e.metaKey || e.ctrlKey) window.open(href, "_blank", "noopener");
+    else navigate(href);
+  }
+
   return (
     <Card
       borderless
@@ -122,48 +152,52 @@ function MemeCard({ meme, onChange, height }: { meme: Meme; onChange: (meme: Mem
       data-testid="meme-card"
       data-meme-id={meme.id}
       style={style}
+      onClick={open}
       media={
-        <Link to={`/m/${meme.id}`}>
-          <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} />
+        <Link to={href}>
+          <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} testId="meme-card-media" />
         </Link>
       }
     >
-      <CardTitle as={Link} to={`/m/${meme.id}`}>
+      <CardTitle as={Link} to={href} data-testid="meme-card-title">
         {meme.title || "Untitled"}
       </CardTitle>
       <CardMeta>
-        <Link to={`/u/${meme.owner.username}`} data-testid="meme-author">@{meme.owner.username}</Link>
-        <span aria-hidden> · </span>
-        <MemeAge meme={meme} />
+        {layout === "hover" && (
+          <>
+            <Link to={`/u/${meme.owner.username}`} data-testid="meme-author">@{meme.owner.username}</Link>
+            <span aria-hidden> · </span>
+            <MemeAge meme={meme} />
+          </>
+        )}
         <MemeBadges meme={meme} />
       </CardMeta>
       <div className="meme-card-actions">
         <VoteButtons meme={meme} onChange={onChange} />
-        <FavoriteButton meme={meme} onChange={onChange} />
-        <Link
-          to={`/m/${meme.id}#comments`}
-          className="comment-count"
-          aria-label={plural(meme.commentCount, "comment")}
-          title="Discussion"
-          data-testid="meme-comment-count"
-        >
-          <span aria-hidden>💬</span> {meme.commentCount}
-        </Link>
+        {layout === "hover" && <FavoriteButton meme={meme} onChange={onChange} />}
+        <span className="comment-count" title={plural(meme.commentCount, "comment")} data-testid="meme-comment-count">
+          <Icon name="comment" label="Comments" />
+          {meme.commentCount}
+        </span>
       </div>
     </Card>
   );
 }
 
-/** Memes flow in justified rows at their native aspect: one height per row, widths vary, nothing cropped. */
+/**
+ * Memes flow in justified rows at their native aspect: one height per row, widths vary, nothing cropped. Each card's
+ * info sits below its image or over it on hover, per the user's card layout setting.
+ */
 function MemeGrid({ memes, onChange }: { memes: Meme[]; onChange: (meme: Meme) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const box = useRowBox(ref, memes.length > 0, "--meme-row-height");
+  const { layout } = useCardLayout(useUser().id);
   if (memes.length === 0) return null;
   const heights = box && box.width > 0 ? justifyRows(memes.map((m) => aspect(m.outputAsset)), box.width, box.gap, box.target) : null;
   return (
-    <div ref={ref} className="meme-grid">
+    <div ref={ref} className="meme-grid" data-card-layout={layout} data-testid="meme-grid">
       {memes.map((m, i) => (
-        <MemeCard key={m.id} meme={m} onChange={onChange} height={heights?.[i]} />
+        <MemeCard key={m.id} meme={m} layout={layout} onChange={onChange} height={heights?.[i]} />
       ))}
     </div>
   );

@@ -45,6 +45,7 @@
   --ui-color-overlay: rgb(0 0 0 / 0.4);
   --ui-color-state-hover: rgb(0 0 0 / 0.04);
   --ui-color-state-press: rgb(0 0 0 / 0.08);
+  --ui-color-card-hover: rgb(0 0 0 / 0.05);
   --ui-color-header-bg: rgb(255 255 255 / 0.72);
   --ui-header-backdrop: saturate(180%) blur(20px);
   --ui-color-sidebar-bg: transparent;

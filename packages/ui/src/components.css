@@ -546,9 +546,17 @@ textarea {
   --ui-button-hover-bg: var(--ui-button-bg);
   --ui-button-hover-border: var(--ui-button-tone);
 }
-/* A pressed toned toggle fills its icon (an outlined star becomes a solid one). */
+/* A pressed toned toggle fills its icon (an outlined star becomes a solid one), or swaps to the icon's own pressed
+   drawing where it has one (the thumbs). */
 .ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] .ui-icon {
   fill: currentColor;
+}
+.ui-icon-pressed,
+.ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] .ui-icon-unpressed {
+  display: none;
+}
+.ui-button:is(.ui-button--tone-warning, .ui-button--tone-info)[aria-pressed="true"] .ui-icon-pressed {
+  display: inline;
 }
 .ui-button-icon {
   display: inline-flex;

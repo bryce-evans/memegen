@@ -66,11 +66,12 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   await expect(page.getByTestId("favorite")).toHaveCount(0);
 
   await page.getByTestId("nav-profile").click();
-  // Account tabs (Profile, AI keys) come first, apart from the content tabs.
+  // Account tabs (Profile, Settings, AI keys) come first, apart from the content tabs.
   const tabs = page.locator('[data-testid^="profile-tab-"]');
-  await expect(tabs).toHaveCount(6);
+  await expect(tabs).toHaveCount(7);
   expect(await tabs.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")))).toEqual([
     "profile-tab-profile",
+    "profile-tab-settings",
     "profile-tab-ai",
     "profile-tab-memes",
     "profile-tab-templates",

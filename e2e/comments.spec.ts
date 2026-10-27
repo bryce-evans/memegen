@@ -28,13 +28,13 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   await expect(reply.getByTestId("comment-body")).toHaveText("a reply");
   await expect(reply.getByTestId("comment-reply")).toHaveCount(0); // one level of replies
 
-  // Persisted; the card links to the discussion with the count.
+  // Persisted; the card shows the count, and clicking anywhere on the card (the count included) opens the meme.
   expect((await apiGet<Meme>(request, `/api/memes/${meme.id}`)).commentCount).toBe(2);
   await page.goto(`/u/${author.username}?tab=memes`);
   const count = memeCard(page, meme.id).getByTestId("meme-comment-count");
   await expect(count).toContainText("2");
   await count.click();
-  await expect(page).toHaveURL(new RegExp(`/m/${meme.id}#comments$`));
+  await expect(page).toHaveURL(new RegExp(`/m/${meme.id}$`));
   await expect(reply.getByTestId("comment-body")).toHaveText("a reply");
 
   // Deleting a comment that has replies leaves an italic "deleted" placeholder; deleting the last reply removes both.

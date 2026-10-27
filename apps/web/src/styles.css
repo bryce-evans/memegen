@@ -371,16 +371,44 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ui-space-2);
+  gap: var(--ui-space-1);
   margin-top: var(--ui-space-2);
 }
 .vote,
 .favorite {
   border-radius: var(--ui-radius-pill);
-  font-variant-numeric: tabular-nums;
 }
-.score {
-  margin-left: var(--ui-space-1);
+/* The thumbs are circles in every skin, 2px larger than a small control: as wide as they are tall, no side padding
+   (skins pad, size, and round buttons at 0,3,0; `:root` outranks them). */
+:root .votes .ui-button.vote {
+  width: calc(var(--ui-control-height-sm) + 2px);
+  height: calc(var(--ui-control-height-sm) + 2px);
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+}
+/* Votes take their own colors, not the favorite's warning tone: the tone colors are redefined on the buttons
+   themselves, so every skin's toned-toggle styling (which reads them) picks these up. Google's pressed jfk-button
+   gradient is tinted from them too. */
+.votes .vote-up {
+  --ui-color-warning: var(--ui-color-upvote);
+}
+.votes .vote-down {
+  --ui-color-info: var(--ui-color-downvote);
+}
+:root[data-skin="google"] .votes .vote[aria-pressed="true"] {
+  --g-top: color-mix(in srgb, var(--ui-button-tone) 6%, var(--ui-color-surface));
+  --g-bot: color-mix(in srgb, var(--ui-button-tone) 12%, var(--ui-color-surface));
+  --g-hover-top: var(--g-top);
+  --g-hover-bot: color-mix(in srgb, var(--ui-button-tone) 18%, var(--ui-color-surface));
+}
+/* Wide enough for a few digits so the thumbs don't move as the score changes. */
+.votes .score {
+  min-width: 2.5ch;
+  text-align: center;
+  font-weight: 700;
 }
 .votes .ui-alert {
   flex-basis: 100%;
@@ -404,6 +432,9 @@
   margin: 0;
 }
 .comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -412,28 +443,45 @@
    the app's own div, not ui MediaGrid, because the app computes this layout (skins may restyle MediaGrid, e.g.
    Studio's masonry). MemeGrid (justifyRows in memes.tsx) gives each card a row height (--meme-height) so every row
    fills the line at close to the target --meme-row-height, which the code reads, so keep it a plain px/rem length;
-   a per-skin override (scoped like the skins' own rules) may change it. Widths are --meme-aspect × that height.
-   Before the first measurement cards sit at the target height. The card shrinks to its image so the hover overlay
-   covers exactly the meme. */
+   a per-skin override (scoped like the skins' own rules) may change it. Widths are --meme-aspect × that height, and
+   the card has no padding so its image is exactly that size. Before the first measurement cards sit at the target
+   height. `data-card-layout` (the user's setting) puts each card's info over its image on hover, or below it
+   (Google-style), where it is styled as each skin's borderless cards. */
 .meme-grid {
-  --meme-row-height: 250px;
+  --meme-row-height: 312px;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--ui-grid-gap);
 }
 .meme-grid .meme-card.ui-card.ui-card--borderless {
-  position: relative;
   flex: none;
   width: calc(var(--meme-aspect) * var(--meme-height, var(--meme-row-height)));
   max-width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
   border-radius: var(--ui-radius-media);
+  cursor: pointer;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-easing-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-easing-standard);
+}
+/* The whole card opens the meme: hovered, it sits on a rounded highlight that reaches a little past its edges (the
+   spread shadow, which its own overflow doesn't clip, carries the fill out around the corners). */
+.meme-grid .meme-card.ui-card.ui-card--borderless:hover {
+  background-color: var(--ui-color-card-hover);
+  background-image: none;
+  box-shadow: 0 0 0 var(--ui-space-2) var(--ui-color-card-hover);
+}
+/* The whole card is the link, so its title doesn't underline on hover. */
+.meme-grid .meme-card .ui-card-title:hover {
+  text-decoration: none;
+}
+/* Below the image (Google-style) the title is semibold in every skin. */
+.meme-grid[data-card-layout="below"] .meme-card .ui-card-title {
+  font-weight: 600;
 }
 .meme-grid .ui-card-media {
-  border-radius: 0;
   background: var(--ui-color-media-bg);
 }
 .meme-grid .ui-card-media a {
@@ -449,9 +497,18 @@
   object-fit: contain;
 }
 
-/* Title, author, tags, votes and actions sit on a scrim that fades in from the bottom and slides up on hover
-   (or keyboard focus); touch screens without hover always show it. */
-.meme-grid .meme-card.ui-card.ui-card--borderless .ui-card-body {
+/* On hover: the card shrinks to its image so the overlay covers exactly the meme. Title, author, tags, votes and
+   actions sit on a scrim that fades in from the bottom and slides up on hover (or keyboard focus); touch screens
+   without hover always show it. */
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--ui-radius-media);
+}
+.meme-grid[data-card-layout="hover"] .ui-card-media {
+  border-radius: 0;
+}
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless .ui-card-body {
   --ui-color-text: var(--ui-color-on-scrim);
   --ui-color-text-muted: color-mix(in srgb, var(--ui-color-on-scrim) 78%, transparent);
   --ui-color-link: var(--ui-color-on-scrim);
@@ -466,17 +523,17 @@
     opacity var(--ui-duration-normal) var(--ui-easing-standard),
     transform var(--ui-duration-slow) var(--ui-easing-standard);
 }
-.meme-grid .meme-card.ui-card.ui-card--borderless:is(:hover, :focus-within) .ui-card-body {
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless:is(:hover, :focus-within) .ui-card-body {
   opacity: 1;
   transform: none;
 }
 @media (hover: none) {
-  .meme-grid .meme-card.ui-card.ui-card--borderless .ui-card-body {
+  .meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless .ui-card-body {
     opacity: 1;
     transform: none;
   }
 }
-.meme-grid .meme-card.ui-card .ui-card-body :is(.ui-card-title, .ui-card-meta, .ui-card-meta a) {
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card .ui-card-body :is(.ui-card-title, .ui-card-meta, .ui-card-meta a) {
   color: inherit;
 }
 /* Template gallery: justified rows like the meme feeds (JustifiedTemplates in templates.tsx gives each card a width
@@ -1206,6 +1263,17 @@
 }
 .profile-stats {
   margin: var(--ui-space-3) 0;
+}
+/* Settings: one labelled control per row, left-aligned. */
+.profile-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ui-space-5);
+  margin-bottom: var(--ui-space-4);
+}
+.profile-settings .ui-segmented {
+  align-self: flex-start;
 }
 
 /* ---- editor --------------------------------------------------------------- */

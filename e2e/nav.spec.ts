@@ -54,10 +54,10 @@ test("dark mode: a profile setting for skins with a dark variant, kept in this b
   const root = page.locator("html");
   await signIn(page, username);
 
-  // The default skin has no dark variant, so there is nothing to set.
-  await page.goto(`/u/${username}`);
-  await expect(page.getByTestId("profile-tab-profile")).toBeVisible();
-  await expect(page.getByTestId("profile-tab-settings")).toHaveCount(0);
+  // The default skin has no dark variant, so Settings has nothing to set for it.
+  await page.goto(`/u/${username}?tab=settings`);
+  await expect(page.getByTestId("profile-settings")).toBeVisible();
+  await expect(page.getByTestId("dark-mode-on")).toHaveCount(0);
 
   await page.goto(`/u/${username}?tab=settings&skin=painted`);
   await expect(root).toHaveAttribute("data-skin", "painted");
@@ -79,6 +79,38 @@ test("dark mode: a profile setting for skins with a dark variant, kept in this b
   await page.goto(`/u/${username}?tab=settings`);
   await page.getByTestId("dark-mode-off").click();
   await expect(root).not.toHaveAttribute("data-theme", "dark");
+});
+
+test("card layout: a profile setting, on hover by default, Google-style puts the info below each meme", async ({ page }) => {
+  const username = scoped("cardsharp");
+  await page.goto("/");
+  await signIn(page, username);
+  const grid = page.getByTestId("meme-grid");
+
+  // On hover (the default) the card carries the author, age, and favorite star.
+  await openFeed(page, { feed: "recent" });
+  await expect(grid).toHaveAttribute("data-card-layout", "hover");
+  const first = page.getByTestId("meme-card").first();
+  await expect(first.getByTestId("meme-author")).toHaveCount(1);
+  await expect(first.getByTestId("favorite")).toHaveCount(1);
+
+  await page.goto(`/u/${username}?tab=settings`);
+  await expect(page.getByTestId("card-layout-hover")).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("card-layout-below").click();
+  await expect(page.getByTestId("card-layout-below")).toHaveAttribute("aria-pressed", "true");
+
+  // Google-style: the title sits under the image, not over it, and the author, age, and favorite star are left out.
+  await openFeed(page, { feed: "recent" });
+  await expect(grid).toHaveAttribute("data-card-layout", "below");
+  const card = page.getByTestId("meme-card").first();
+  const media = await card.getByTestId("meme-card-media").boundingBox();
+  const title = await card.getByTestId("meme-card-title").boundingBox();
+  expect(media && title && title.y >= media.y + media.height).toBe(true);
+  await expect(card.getByTestId("meme-author")).toHaveCount(0);
+  await expect(card.getByTestId("meme-age")).toHaveCount(0);
+  await expect(card.getByTestId("favorite")).toHaveCount(0);
+  await page.reload();
+  await expect(grid).toHaveAttribute("data-card-layout", "below");
 });
 
 test("sidebar nav: entries in order, each opens its page", async ({ page }) => {

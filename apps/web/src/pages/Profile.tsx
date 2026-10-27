@@ -1,6 +1,6 @@
 import { useParams, useSearchParams } from "react-router-dom";
 import type { Meme, Page, Template, UserProfile } from "@memegen/shared";
-import { EmptyState, Icon, PageHeader, Panel, SegmentedControl, Spinner, Stat, StatGroup, Text, useSkin } from "@memegen/ui";
+import { EmptyState, Field, Icon, PageHeader, Panel, SegmentedControl, Spinner, Stat, StatGroup, Text, useSkin } from "@memegen/ui";
 import { getMyActivity, getMyFavorites, getUser, getUserMemes, getUserTemplates, type PageParams } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { AiAgentsPanel } from "../components/ai.tsx";
@@ -8,14 +8,14 @@ import { ErrorView } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
 import { TemplateGrid } from "../components/templates.tsx";
 import { TieredStat } from "../components/users.tsx";
+import { useCardLayout, type CardLayout } from "../cardLayout.ts";
 import { useDarkModeSetting } from "../darkMode.ts";
 import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
 /**
- * Two tab groups under the name: the account (Profile: stats and badges; Settings and API Keys, owner only; Settings
- * only while the skin has a dark variant, its one setting), then the content (Memes and Templates are public;
- * Favorites and Recent activity (votes) are the owner's own).
+ * Two tab groups under the name: the account (Profile: stats and badges; Settings and API Keys, owner only), then the
+ * content (Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own).
  */
 const ACCOUNT_TABS = ["profile", "settings", "ai"] as const;
 const PUBLIC_CONTENT_TABS = ["memes", "templates"] as const;
@@ -40,10 +40,9 @@ export function Profile() {
   const { username = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const user = useUser();
-  const { hasDark } = useSkin();
   const { data: profile, error } = useAsync(username, () => getUser(username));
   const isOwner = user.username === username;
-  const accountTabs: readonly ProfileTab[] = isOwner ? ACCOUNT_TABS.filter((t) => t !== "settings" || hasDark) : ["profile"];
+  const accountTabs: readonly ProfileTab[] = isOwner ? ACCOUNT_TABS : ["profile"];
   const contentTabs: readonly ProfileTab[] = isOwner ? CONTENT_TABS : PUBLIC_CONTENT_TABS;
   const tabParam = params.get("tab");
   const tab: ProfileTab = [...accountTabs, ...contentTabs].find((t) => t === tabParam) ?? "profile";
@@ -96,20 +95,36 @@ function ProfileOverview({ profile }: { profile: UserProfile }) {
   );
 }
 
-/** The owner's browser-local settings: dark mode, for skins that have a dark variant. */
+const CARD_LAYOUT_OPTIONS: { value: CardLayout; label: string; testId: string }[] = [
+  { value: "below", label: "Google-style", testId: "card-layout-below" },
+  { value: "hover", label: "On hover", testId: "card-layout-hover" },
+];
+
+/** The owner's browser-local settings: dark mode (for skins that have a dark variant) and the feeds' card layout. */
 function ProfileSettings({ userId }: { userId: string }) {
-  const { on, set } = useDarkModeSetting(userId);
+  const { hasDark } = useSkin();
+  const dark = useDarkModeSetting(userId);
+  const cards = useCardLayout(userId);
   return (
     <Panel heading="Appearance" data-testid="profile-settings">
-      <SegmentedControl
-        aria-label="Dark mode"
-        value={on ? "dark" : "light"}
-        onChange={(value) => set(value === "dark")}
-        options={[
-          { value: "light", label: "Light", testId: "dark-mode-off" },
-          { value: "dark", label: "Dark", testId: "dark-mode-on" },
-        ]}
-      />
+      <div className="profile-settings">
+        {hasDark && (
+          <Field as="div" label="Dark mode">
+            <SegmentedControl
+              aria-label="Dark mode"
+              value={dark.on ? "dark" : "light"}
+              onChange={(value) => dark.set(value === "dark")}
+              options={[
+                { value: "light", label: "Light", testId: "dark-mode-off" },
+                { value: "dark", label: "Dark", testId: "dark-mode-on" },
+              ]}
+            />
+          </Field>
+        )}
+        <Field as="div" label="Card layout" description="Google-style shows each meme's info below it; On hover shows it over the image.">
+          <SegmentedControl aria-label="Card layout" value={cards.layout} onChange={cards.set} options={CARD_LAYOUT_OPTIONS} />
+        </Field>
+      </div>
       <Text size="sm" tone="muted">
         Saved in this browser for your account.
       </Text>

@@ -32,7 +32,7 @@ test("gallery: popular all time and this month, recent newest first; hidden meme
   for (const old of MOCK_EXPECT.olderThanMonth) expect(month).not.toContain(old);
 });
 
-test("votes: upvote adds one; downvote then removes it and adds a downvote (-2 â†’ -3)", async ({ page, request }) => {
+test("votes: upvote adds one to the score and lights its thumb; downvote swaps the vote (net -2)", async ({ page, request }) => {
   await page.goto("/");
   await signIn(page, scoped("voter"));
   await openFeed(page, { feed: "recent" });
@@ -40,31 +40,36 @@ test("votes: upvote adds one; downvote then removes it and adds a downvote (-2 â
   const card = page.getByTestId("meme-card").filter({ hasText: MOCK_EXPECT.controversial.title });
   await expect(card).toHaveCount(1);
 
-  const up = card.getByTestId("upvote-count");
-  const down = card.getByTestId("downvote-count");
-  // Downvotes display as a negative number. Other specs and retries share the seeded DB and may have voted already,
-  // so assert relative to what is shown (the fresh dataset starts at 1 / -2).
-  const up0 = Number(await up.textContent());
-  const down0 = Number(await down.textContent());
-  expect(down0).toBeLessThanOrEqual(-MOCK_EXPECT.controversial.down);
+  const score = card.getByTestId("meme-score");
+  const up = card.getByTestId("vote-up");
+  const down = card.getByTestId("vote-down");
+  // Other specs and retries share the seeded DB and may have voted already, so assert relative to what is shown.
+  // Positive scores show a "+".
+  const shown = (n: number) => (n > 0 ? `+${n}` : String(n));
+  const score0 = Number(await score.textContent());
+  await expect(up).toHaveAttribute("aria-pressed", "false");
+  await expect(down).toHaveAttribute("aria-pressed", "false");
 
-  await card.getByTestId("vote-up").click();
-  await expect(up).toHaveText(String(up0 + 1));
-  await expect(down).toHaveText(String(down0));
+  await up.click();
+  await expect(score).toHaveText(shown(score0 + 1));
+  await expect(up).toHaveAttribute("aria-pressed", "true");
+  await expect(down).toHaveAttribute("aria-pressed", "false");
 
-  await card.getByTestId("vote-down").click();
-  await expect(up).toHaveText(String(up0));
-  await expect(down).toHaveText(String(down0 - 1));
+  await down.click();
+  await expect(score).toHaveText(shown(score0 - 1));
+  await expect(up).toHaveAttribute("aria-pressed", "false");
+  await expect(down).toHaveAttribute("aria-pressed", "true");
 
   // Persisted server-side.
   const id = await card.getAttribute("data-meme-id");
   const meme = await apiGet<Meme>(request, `/api/memes/${id}`);
-  expect([meme.upvotes, -meme.downvotes]).toEqual([up0, down0 - 1]);
+  expect(meme.score).toBe(score0 - 1);
   await page.reload();
   await openFeed(page, { feed: "recent" });
   await loadAll(page);
   const again = page.getByTestId("meme-card").filter({ hasText: MOCK_EXPECT.controversial.title });
-  await expect(again.getByTestId("downvote-count")).toHaveText(String(down0 - 1));
+  await expect(again.getByTestId("meme-score")).toHaveText(shown(score0 - 1));
+  await expect(again.getByTestId("vote-down")).toHaveAttribute("aria-pressed", "true");
 });
 
 test("gallery lists only posted public memes", async ({ request }) => {

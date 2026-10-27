@@ -3,9 +3,29 @@ import { cx } from "../cx.ts";
 import { skinnable } from "../skin.tsx";
 import { Tooltip } from "./Tooltip.tsx";
 
+/** The thumb's hand, pointing up, right of its cuff. */
+const THUMB_HAND = "M7 10.5 11 4.2a1.6 1.6 0 0 1 3 .9L13.3 9.5h5.2a2 2 0 0 1 2 2.4l-1.4 6.5a2 2 0 0 1-2 1.6H7z";
+/**
+ * Thumb up: an outlined hand and cuff that share an edge. Pressed, both go solid as two unstroked shapes (a stroke
+ * would round the hand into a mitten), the cuff narrowed so a gap stands where the shared edge was.
+ */
+const THUMB = (
+  <>
+    <g className="ui-icon-unpressed">
+      <rect x="3.5" y="10.5" width="3.5" height="9.5" rx="1" />
+      <path d={THUMB_HAND} />
+    </g>
+    <g className="ui-icon-pressed">
+      <rect className="ui-icon-solid" x="3.25" y="10.5" width="2.25" height="9.5" rx="0.75" />
+      <path className="ui-icon-solid" d={THUMB_HAND} />
+    </g>
+  </>
+);
+
 /**
  * Stroke icons on a 24px grid; stroke width comes from `--ui-icon-stroke` so skins can go thin or chunky. Solid parts
- * carry `ui-icon-solid` (filled in the icon's paint, no stroke).
+ * carry `ui-icon-solid` (filled in the icon's paint, no stroke). An icon may carry a second drawing for a pressed
+ * toned toggle: `ui-icon-unpressed` shows otherwise, `ui-icon-pressed` (filled) only then.
  */
 const PATHS = {
   grid: (
@@ -70,6 +90,18 @@ const PATHS = {
   up: <path d="M12 19V5m-6 6 6-6 6 6" />,
   down: <path d="M12 5v14m-6-6 6 6 6-6" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  thumbUp: THUMB,
+  /** `thumbUp` turned upside down. */
+  thumbDown: <g transform="rotate(180 12 12)">{THUMB}</g>,
+  /** A speech bubble with a pointer at its lower left and three dots inside: comments. */
+  comment: (
+    <>
+      <path d="M7 16.5h-.5a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H12L7 20z" />
+      <circle className="ui-icon-solid" cx="8" cy="10.5" r="1.1" />
+      <circle className="ui-icon-solid" cx="12" cy="10.5" r="1.1" />
+      <circle className="ui-icon-solid" cx="16" cy="10.5" r="1.1" />
+    </>
+  ),
   /** Two chain links: a link to share. */
   link: (
     <>

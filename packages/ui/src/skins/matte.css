@@ -63,6 +63,7 @@
   /* M3 state layers: 8% hover / 12% press of the element's own content color. */
   --ui-color-state-hover: color-mix(in srgb, currentColor 8%, transparent);
   --ui-color-state-press: color-mix(in srgb, currentColor 12%, transparent);
+  --ui-color-card-hover: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
   --ui-color-header-bg: var(--md-surface);
   --ui-header-backdrop: none;
   --ui-color-sidebar-bg: transparent;

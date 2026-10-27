@@ -49,7 +49,7 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   await page.getByTestId("post-meme").click();
   await expect(page.getByTestId("draft-badge")).toHaveCount(0);
   await expect(page.getByTestId("vote-up")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByTestId("upvote-count")).toHaveText("1");
+  await expect(page.getByTestId("meme-score")).toHaveText("+1");
   await expect(tagChip(page, "movie")).toBeVisible();
 
   await openFeed(page, { feed: "recent" });

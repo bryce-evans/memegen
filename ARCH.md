@@ -98,7 +98,8 @@ Triggers keep derived state consistent across every write path (API, seeds, snap
 
 - All web UI is built from `@memegen/ui`; app CSS is layout-only and reads tokens.
 - A skin is token overrides plus optional component replacements and layout hints. Only one arrangement renders at a time, so test ids stay unique. See `packages/ui/README.md`.
-- Dark mode is a per-skin variant (`Skin.dark`), not a second token set: the app keeps the choice per user in `localStorage` and turns it on through `SkinProvider`, which sets `data-theme="dark"` on `<html>` for skins that have one. Today only `painted` does; skins without a variant ignore it, and the profile's Settings tab hides.
+- Dark mode is a per-skin variant (`Skin.dark`), not a second token set: the app keeps the choice per user in `localStorage` and turns it on through `SkinProvider`, which sets `data-theme="dark"` on `<html>` for skins that have one. Today only `painted` does; skins without a variant ignore it, and the profile's Settings tab hides its control.
+- Card layout is the other Settings choice, kept the same way (`cardLayout.ts`): meme feed cards show their title, author, age, and actions over the image on hover (default, on a scrim) or just the title, badges, votes, and comment count below it (Google-style; no author, age, or favorite star). `MemeGrid` sets `data-card-layout` on the grid; the justified-row math is unchanged because only the image sizes the card's width. In both, the whole card opens the meme (clicks on its own controls and links excepted) and hovering it shows a rounded `--ui-color-card-hover` highlight.
 
 ### Migrations are the schema version
 

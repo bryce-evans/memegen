@@ -4,14 +4,15 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 
 ## Features
 
-- **Templates**: the checked-in [library](library/README.md) contains 1,464 canonical formats in one [manifest](library/MANIFEST.json), including the existing checkout seed templates, with 1–5 content-risk scores, search tags, and default captions. Work settings include ratings 1–3 and exclude 4–5. Defaults include outlined Impact macros, added sans-serif comment bands, movie subtitles, and positioned character/panel labels. Search by tag, name, or what's in the picture ("dog" finds doge), filter by kind, see what's hot, and check each template's usage chart. Uploading an image that's already a template (the same file, or a copy of the picture) lists the existing ones before you save.
+- **Templates**: the checked-in [library](library/README.md) combines canonical checkout and online formats in one [manifest](library/MANIFEST.json), with 1–5 content-risk scores, search tags, and default captions. Work settings include ratings 1–3 and exclude 4–5. Search by tag, name, or what's in the picture ("dog" finds doge), filter by kind, see what's hot, and check each template's usage chart. Uploading an image that's already a template lists existing matches before you save.
   Template cards open directly when selected, with usage count and flame beside the title and a rounded hover highlight.
 - **Editor**: text boxes that wrap and shrink to fit (drag their corners to resize, the handle above to rotate; ⌘⌫ in a box's text removes it), custom fonts, image layers (upload or paste a screenshot), and a shared sticker library.
 - **Animation**: for GIFs and videos, a frame-by-frame timeline with per-layer visibility windows, keyframes, and a live loop preview. Exports are GIF or MP4, and MP4s keep their audio.
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
 - **Multi-panel templates**: expanding brain and similar formats, built from an image pack. Memes can add, remove, and reorder panels.
-- **Quick Creator**: at the top of Create, a template (a random one to start) drawn with its text, and one Describe field (each text box's text shown as its placeholder). Your Agent Provider rewrites the template's text boxes (text and font) and adds, rewrites, or removes the top section; your Image Generator makes any described change to the image (the result becomes a new template). Publish posts the result straight away; Full editor (or clicking the image) opens it in the editor to finish by hand (no agent needed). Box positions and timing never change. The Agent Provider is OpenAI, Google Gemini, or Anthropic Claude; the Image Generator is OpenAI or Google Gemini. Each uses your own API key and an optional model (set up under your profile's API Keys tab). Below it, an Upload card adds a template, multi-panel template, or sticker.
+- **Quick Creator**: start with a random template or search for one, then describe the meme. Your Agent Provider edits text/font/top-section content for media templates and captions for multi-panel templates. Panels use the template's saved default layout, order, grid, mirroring, and caption size without flattening the image pack. The optional Image Generator edits single still images only. Publish posts the result; Full editor (or clicking the preview) continues the complete draft, including your typed title, even before an AI update. Configure your own provider keys/models under your profile's API Keys tab.
 - **Gallery**: Popular (day, week, month, year, or all time) and Recent feeds, voting, threaded comments, favorites, search (posts, templates, or users), and tag pages. Feed cards open their meme when clicked anywhere and show its info over it on hover or, set under your profile's Settings tab, its title and votes below it (Google-style).
+- **Unlisted sharing**: unlisted memes and templates stay out of public discovery but open for anyone with their direct link, including drafts. Media bytes remain directly accessible. Unlisted is not confidential storage; editing and deletion still require the owner.
 - **Keyboard**: Backspace, Delete, or Escape goes back a page (outside text fields). Leaving the editor this way with an unpublished meme asks first.
 - **Profiles and leaderboard**: a Profile tab with h-score, high score, and tiered stats (bronze to diamond: tile outlines and stars); the user's memes and templates; and, on your own profile, API Keys (Agent Provider and Image Generator) plus private Favorites and Recent activity tabs. Leaderboard tier stars are enlarged and vertically centered beside their numbers.
 - **Skins**: seven interchangeable looks from `packages/ui` (dev only. Prod is locked to `default`). `painted` has a dark mode, set per user under your profile's Settings tab and kept in your browser.
@@ -83,8 +84,9 @@ Everything runs through `./run.sh <config> <command>`:
 | `start` | build, migrate, then serve everything on `WEB_PORT` |
 | `snapshot save [out.zip] [--label name]` | write the database and every asset into one zip |
 | `snapshot load <in.zip> [--replace]` | load a snapshot into a clean system; `--replace` wipes first *(dev only)* |
+| `typecheck` | check runtime import boundaries and TypeScript |
 | `test` / `e2e` | unit/integration tests / Playwright browser tests *(dev only)* |
-| `config` | print the resolved config, secrets masked |
+| `config` | print configured keys, secrets and database URL credentials masked |
 
 ## Configs
 
@@ -130,43 +132,11 @@ cp config/prod.env.example config/prod.env   # set DATABASE_URL, INTERNAL_TOKEN,
 
 To start over: `./run.sh config/dev.env reset`.
 
-The unified manifest records each template's stable `online/` or `jb/` slug, title, full-size HTTPS media URL, source page, search tags, required integer `risk` (1–5), required `rating_tags` explaining the classification, layout, and default text boxes. Reason tags are nonempty, unique lowercase keywords such as `language`, `sex`, `nudity`, `gore`, `politics`, `smoking`, `drugs`, `innuendo`, and `weapon`; they are separate from search tags. Box centers and sizes are fractions of image dimensions, with optional font, color, outline, alignment, and rotation overrides. `impact` uses outlined Impact; `comment` adds a white band with sans-serif text; `subtitle` uses pale cream-yellow sans-serif with a thin black outline and dialogue sized to each panel; `labels` uses individually positioned white sans-serif boxes. Per-box fonts include Impact, Noto Sans (`sans`), Titillium Web SemiBold (`thin`), and Kalam (`comic`). Optional `start`/`end` are fractions of GIF duration, converted to native caption windows at import.
+Preview the corpus without seeding: `./run.sh config/dev.env library serve`, then open http://127.0.0.1:8088/. The inspector supports text/tag/rating filters and optional captions rendered with the editor's real fonts and layout. It needs no running application or database. Offline metadata browsing also works by opening [`library/index.html`](library/index.html).
 
-Generic caption placeholders are replaced with short, clean example jokes tailored to the reaction, embedded quote, or panel sequence. Positioned labels name the participants in the joke. Clean captions do not automatically lower a rating; imagery, embedded language, titles, and source context still matter.
+The library importer loads configured checkout content, then the manifest, with one migration/registry/reconciliation lifecycle. Reruns preserve successful imports and existing IDs, bytes, defaults, and saved memes. Reconciliation makes over-ceiling and retired templates **unlisted**, not inaccessible by link, and runs even after partial import failure. `--limit 0` still installs checkout fonts and reconciles; it is not a dry run. Disabling both sources skips reconciliation.
 
-Preserve these curated captions when updating ratings, sources, or catalog membership; metadata refreshes should not restore generic setup/punchline text or numbered labels.
-
-Every catalog template has at least four distinct searchable tags, targeting six to eight or more where useful. Tags describe subjects, reactions, known movies/shows/characters, cartoon imagery, and political context independently of rating reasons. Greedy Pipe Man is the canonical copy of the BAYSAL cartoon; “fat man drinking from pipe” and “Guy Who Have Lot A Water” remain searchable aliases.
-
-For a read-only preview without seeding, run `./run.sh config/dev.env library serve` and open http://127.0.0.1:8088/. Each card's **Show placeholder text** checkbox renders default captions directly on its image using the editor's fonts, styling, placement, and comment bands; uncheck it to restore the original. Captions remain searchable but are not listed below cards. Fonts come from `library download`. The default Work view includes ratings 1–3; select an exact rating or All ratings to review the rest. Remote previews load lazily without saving assets; disable them to browse metadata only. Opening [`library/index.html`](library/index.html) directly also supports local-manifest and original-image browsing, but rendered captions require the server. No app/database startup is needed. See [library commands and corpus maintenance](library/README.md).
-
-Use **Rating tag** to inspect an exact reason such as `language`, `violence`, or `smoking`. **Template tag** offers searchable suggestions from the loaded manifest and matches an exact tag, ignoring case and surrounding spaces. Both tag filters combine with the existing score, layout, and text filters. Clear the template-tag field or select All rating tags to remove that restriction. Reloading keeps valid tag selections; opening a manifest without the selected tags clears them.
-
-HTTP manifest requests bypass the browser cache: refresh the page or click Reload MANIFEST.json to read the current JSON from the server. No gallery rebuild or database reseed is needed.
-
-Rating guidelines: **1** very safe / child-appropriate; **2** general audience, mild language or innuendo; **3** politics, smoking, drugs, or other mature themes; **4** bad language, strong suggestiveness, or realistic violence; **5** very inappropriate, explicit sex, nudity, or gore. Work settings admit 1–3 as potentially appropriate, not a guarantee for every workplace. Specific editorial decisions override broad guidelines: Ben affleck smoking is 2 (`smoking`), Dat Boi is 3 (`language`), and Cat Sniper Scope is 4 (`violence`). Cartoon style alone does not excuse explicit content, nor does a weapon automatically imply violence.
-
-Uncensored F-word content requires a rating of at least 4 with `language`, and is excluded from work settings. Editorial exceptions permit Jackie Chan WTF and Picard Wtf at 2, FFFFUUUU Rage Guy at 3, and the renamed `I F**** Love X` at 2. The renamed template's display tag and Picard's explicit phrase tag are masked too; stable identifiers and provenance URLs remain unchanged. Other censored spellings and abbreviations retain the conservative rule. Metadata is regression-checked; embedded image text requires image review.
-
-Reviewed score overrides do not erase descriptive reason tags: Doctor Manhattan It Is 1985 and Dead Baby Voldemort / What Happened To Him are rated 3 while retaining their `nudity` and `gore` reasons respectively. Work view follows the numeric score, not a blanket ban on particular reason tags.
-
-Barbie vs Oppenheimer, Bernie Sanders In a Chair, and Bernie I Am Once Again Asking For Your Support are rated 2. Cigar Cougar is rated 4 with both `smoking` and `disturbing`.
-
-Illusion of free choice is rated 1 with `cartoon`, not `politics`. I See Dead People is rated 2, retaining `death` and `horror`. Here it comes is rated 2 with `general-audience`, not `violence`. Greedy Pipe Man and its aliases (including Guy Who Have Lot A Water) are rated 2, retaining their descriptive political context.
-
-Feels Good, Insanity Wolf, I'm Going to Build My Own Theme Park, What's in the box!?, What the Hell is This?, and Vince McMahon Reaction are rated 2. Oh, I'm Sorry, I Thought This Was America; death knocking at the door; Rage Guy (FFFUUU); Say That Again I Dare You; and Hawk Tuah Girl are rated 3. 5 black guys and blonde is rated 5. These score overrides preserve existing reason tags, captions, and source metadata.
-
-Ratings are an editorial review of metadata and selected source images, not an exhaustive visual certification. `review-needed` marks unresolved context. Ordinary identity or affection alone is not a risk reason. Bench Press Fail, Blonde Woman Looking at the Camera, and 2 gay black mens kissing are removed from the catalog. Gallery changes take effect on reload; removing catalog entries does not delete previously imported database records or media.
-
-`library/REGISTRY_POLICY.json` records terminal canonical targets and rated aliases for 243 retired duplicate slugs; there is no separate checkout rating list. All 210 media-bearing checkout roots are represented: 201 canonical entries and nine aliases to existing canonical images. The media-less `_test` fixture is excluded. Existing `oldschool` tags, source keywords, and persisted seed tags are preserved on canonical entries or their rated aliases. Eight additional online duplicates were consolidated into checkout canonicals. Genuinely different drawings, reactions, and panel arrangements remain separate.
-
-The first import needs network access and the Impact/Noto Sans font assets; checkout captions also use Titillium Web SemiBold and Kalam. `library download` supplies the checkout and all six fonts used by the local importer. Successful imports are retained if another image fails; the command reports failures and exits unsuccessfully, and rerunning resumes without downloading completed entries. Rerun `./run.sh config/dev.env seed` to apply catalog tags and the risk ceiling to an existing development database; a reset is not needed. Both importers reconcile managed built-ins before and after importing, even with `--limit 0`: over-ceiling and retired duplicate cards become private, while allowed canonical cards become public. Higher-risk aliases never annotate a lower-risk canonical. Existing template IDs, image bytes, saved layouts, memes, and user-owned templates are retained, and saved memes remain editable. This curates the built-in template browser; it does not moderate or remove existing posts.
-
-Image URLs were checked when the manifest was assembled, but external hosts can remove them. Checkout media URLs are pinned to the same upstream Git revision as the downloader; the registry is not a live scrape during startup. To add a format, review the image, source context, aliases, and default captions; add it to `library/MANIFEST.json` with its risk score, reason tags, and verified text geometry, update duplicate mappings where relevant, then run `seed`. Adjust `SEED_MAX_RISK` in the chosen config and reseed to change the imported selection; custom manifests must supply ratings and obey the same ceiling. Public availability is not a license: source links record provenance, not redistribution permission. Review rights for your deployment; snapshots include imported image bytes.
-
-Discovery sources include [Imgflip's popular catalog](https://imgflip.com/memetemplates?sort=top-all-time), [Know Your Meme's templates](https://knowyourmeme.com/photos/templates), [Meming Wiki's blank-image catalog](https://en.meming.world/wiki/Category:Images), [MagicMeme's still-template catalog](https://magicmeme.com/meme-templates), and [MemesGuy's current](https://memesguy.com/year/2026) and [historical timelines](https://memesguy.com/year/2025). The rated registry and reviewed duplicate mappings curate the previous 1,500-entry online selection together with checkout formats. Prior-year MemesGuy archives span 1996–2025; culture-only listings and examples without a reusable template image were excluded.
-
-Source-backed year and character/actor tags improve discovery of older formats. “Why Would I Deceive You” also matches `Elizabeth Holmes`, `Theranos`, and the common misspelling `decieve`. Recent selections include Surprised/Shocked Katie Britt, Odysseus Screaming (Matt Damon yelling), Jimothy, Sleepy Jerry, and Punch the Monkey, searchable with `recent memes` and `2026 memes`. The catalog remains a checked-in selection, not an automatically refreshing feed. Counts refer to manifest entries; seeding reuses byte-identical built-ins rather than adding duplicate gallery cards.
+See [the library guide](library/README.md) for corpus editorial rules, source provenance, font/layout vocabulary, gallery controls, and safe reseeding. The catalog is a reviewed checked-in selection, not a live feed. Source availability is not redistribution permission; review rights before deploying or sharing snapshots.
 
 ## Snapshots
 
@@ -195,16 +165,19 @@ A snapshot is one zip holding the whole database and every image, GIF, video, an
 ## Tests
 
 ```sh
-./run.sh config/dev.env test              # unit + integration (wipes memegen_test)
-./run.sh config/dev.env e2e               # Playwright (wipes memegen_e2e; own ports, doesn't touch dev)
-./run.sh config/dev.env e2e nav.spec.ts   # one spec; Playwright args pass through
-bun run test:e2e:ui                       # Playwright UI mode
-bun run typecheck
+./run.sh config/dev.env typecheck                    # import boundaries + TypeScript
+./run.sh config/dev.env test                         # serial unit/integration tests
+./run.sh config/dev.env e2e                          # library inspector + full application
+./run.sh config/dev.env e2e nav.spec.ts               # one spec; Playwright args pass through
+./run.sh config/dev.env e2e --project=library         # gallery only; no database or app stack
+./run.sh config/dev.env e2e --project=chrome --ui     # application Playwright UI
 ```
 
 The e2e suite runs in branded Google Chrome, because MP4 export needs its H.264/AAC support. `E2E_CHANNEL=chromium` uses Playwright's Chromium instead, but then the video spec fails. `ffprobe` must be on `PATH`.
 
-The unit tests and the e2e suite run the search sidecar's real CLIP model, so their first run downloads it into `.data/search` (shared with `dev`).
+Destructive setup requires dedicated database names: `memegen_test`, `memegen_snapshot_test`, and `memegen_e2e`. They may be hosted remotely but must differ from the main database name. PostgreSQL URLs may use `ssl`, `sslmode`, `connect_timeout`, and `application_name` options; target overrides are refused. E2E storage is confined to `.data/e2e-storage` and must differ from main storage. Production mode always refuses resets.
+
+The unit tests and full-application browser suite run the search sidecar's real CLIP model, so their first run downloads it into `.data/search` (shared with `dev`). The library project uses local fixtures and the real browser renderer without PostgreSQL, application services, or CLIP. Test selection is resolved before starting infrastructure; a filter matching neither suite fails.
 
 Fixtures in `e2e/fixtures/` are gitignored. Recreate them once (needs ffmpeg and the `demo/` checkout from Quick start):
 

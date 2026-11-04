@@ -11,10 +11,12 @@ This directory owns the corpus of known templates: canonical images/GIFs, search
 | `index.html` | Standalone searchable gallery with risk and tag filters |
 | `preview.ts` | Browser-only default-caption composition using the editor's shared renderer |
 | `manifest.ts` | Manifest validation and conversion to native editor layers |
+| `fonts.ts` | Browser-safe identities for six checkout fonts and four caption roles |
 | `registry.ts` | Risk selection, alias tags, duplicate visibility, and reseed reconciliation |
 | `download.ts` | Non-destructive download of the pinned checkout/font prerequisites |
-| `seed-checkout.ts` | Local font/media import, catalog root defaults, and checkout variations |
-| `seed.ts` | Manifest media download and resumable asset/template import |
+| `seed.ts` | Single import command: arguments/config, migration, SQL lifetime, pre/final reconciliation |
+| `import-checkout.ts` | Local font/media import, catalog root defaults, and checkout variations |
+| `import-manifest.ts` | Manifest media download, byte-deduplication, and resumable import |
 | `serve.ts` | Development-only loopback gallery server |
 
 The 210 existing media-bearing checkout templates are represented by 201 `jb/` canonicals and nine aliases to online canonicals. `oldschool`, source keywords, and existing seed tags are retained on canonical entries or their rated aliases. The media-less `_test` fixture is excluded. Eight additional online duplicates resolve to checkout canonicals; distinct drawings, reactions, and panel counts remain separate.
@@ -29,11 +31,15 @@ Run from the repository root:
 
 Open **http://127.0.0.1:8088/**. Use `--port 8090` to choose another port. The server exposes the gallery, the two JSON files, an in-memory browser preview bundle, and four fixed font routes, with caching disabled; it does not expose config files or mutate a database. `Ctrl-C` stops it.
 
+The default Work view includes ratings 1–3; choose an exact rating or All ratings to review the rest. Remote images load lazily without saving assets and can be disabled for metadata-only browsing. **Rating tag** matches an exact reason; **Template tag** offers suggestions from the entire loaded manifest and matches exact membership ignoring case and surrounding whitespace. These combine with score, layout, and text filters. Reload preserves valid selected tags and clears missing ones. HTTP manifest requests bypass cache; reload the page or choose Reload MANIFEST.json after edits.
+
 Each card has an unchecked **Show placeholder text** checkbox. Check it to render the default words directly on that image with the editor's fonts, outline, casing, rotation, and placement; comment layouts add their native white top band. GIF previews animate with their caption timing. Unchecking restores the original image. Captions remain searchable but are not listed beneath cards. The checkbox is disabled when remote image previews are off.
 
 Caption rendering needs installed dependencies and the fonts from `library download`; missing fonts show an error instead of silently substituting another font. `library serve` bundles the existing browser renderer at startup without writing generated files. Restart it after changing preview code; manifest edits only require a page reload.
 
 Alternatively, open `library/index.html` directly and select the neighboring `MANIFEST.json` for metadata and original-image browsing; rendered captions require the local server. Choose **All ratings** and the **oldschool** template tag to browse all 210 seed formats, independent of the work-safe cutoff.
+
+The offline gallery is an inspector, not an import validator: its lightweight metadata checks do not replace the strict manifest schema used by imports.
 
 ## Download and initialize
 
@@ -52,15 +58,19 @@ bunx playwright install chromium
 
 `SEED_MAX_RISK=3` is the default work view. Set it to an integer from 1 to 5 to change the ceiling. An empty `SEED_TEMPLATE_MANIFEST` disables only manifest import; `SEED_TEMPLATES_FROM` independently enables local checkout import. The full manifest remains the source of builtin metadata and risk decisions.
 
+Custom manifests cannot lower reviewed canonical or retired-alias risks. Unknown checkout folders fail closed. Checkout roots use catalog defaults, while variations retain their upstream `config.yml` conversion. Canonical `jb/` entries can be imported through either source. Reconciliation affects managed roots and children, only removes seed-owned tag associations, and leaves user templates/tags intact; it does not moderate or remove existing posts. Sample/starter rendering prefers an existing original root and resolves missing retired roots to their canonical.
+
+The runner invokes `library/seed.ts` once. With the environment already loaded, its direct interface is `bun library/seed.ts [--from PATH] [--manifest PATH] [--limit N]`; omitted paths use the corresponding seed environment variables (the manifest defaults to `library/MANIFEST.json`). Explicit empty paths disable that source. One SQL connection owns migration and reconciliation before and after both sources, including final reconciliation on import failure. Disabling both sources retains migration but skips reconciliation, leaving previously imported content unchanged. A disabled source alone does not unlist its under-ceiling existing entries.
+
 ## Reseed safely
 
 ```sh
 ./run.sh config/dev.env seed
 ```
 
-Reruns preserve existing template IDs, assets, default layers, variants, and saved memes. They add catalog tags and update builtin visibility: retired duplicates and over-ceiling templates become private, not deleted. Higher-risk alias metadata cannot annotate a lower-risk canonical. Successful imports survive download failures; a failed run exits unsuccessfully, and the next run resumes completed entries without downloading them again.
+Reruns preserve existing template IDs, assets, default layers, variants, and saved memes. They add catalog tags and update builtin visibility: retired duplicates and over-ceiling templates become unlisted, not deleted; direct links to records and media remain openable. Higher-risk alias metadata cannot annotate a lower-risk canonical. Successful imports survive download failures; a failed run exits unsuccessfully, and the next run resumes completed entries without downloading them again.
 
-`seed --limit N` bounds each importer's template loop. Reconciliation still runs across existing managed templates, even with `--limit 0`; it is not a dry run. Sample/starter steps also follow their normal configured behavior.
+`seed --limit N` bounds each source's template loop independently. With either source enabled, reconciliation still runs across existing managed templates, even with `--limit 0`; checkout fonts are still imported, so it is not a dry run. Sample/starter steps also follow their normal configured behavior.
 
 ## Maintain the corpus
 
@@ -71,10 +81,55 @@ Reruns preserve existing template IDs, assets, default layers, variants, and sav
 - For a duplicate, retain one canonical manifest entry, move the retired metadata into policy `aliases`, and add its `duplicates` redirect. Every target must exist in the manifest, and redirects must be terminal. Preserve useful retired names/tags on the canonical when their risk permits it.
 - Review actual images before merging. Different reactions and panel arrangements are not duplicates merely because their titles match.
 
+## Ratings and editorial decisions
+
+Ratings consider the original image, embedded language, title/aliases, captions, and source context:
+
+| Score | Guideline |
+|---|---|
+| 1 | Very safe / child-appropriate |
+| 2 | General audience, mild language or innuendo |
+| 3 | Politics, smoking, drugs, or other mature themes |
+| 4 | Bad language, strong suggestiveness, or realistic violence |
+| 5 | Very inappropriate content, explicit sex, nudity, or gore |
+
+Work settings admit 1–3 as potentially appropriate, not a guarantee for every workplace. Numeric editorial decisions override broad categories; descriptive reason tags do not automatically impose a score. Cartoon style alone does not excuse explicit content, nor does a weapon automatically imply violence. Ordinary identity or affection alone is not a risk reason. `review-needed` marks unresolved context, not an assertion of explicit imagery. Ratings are not exhaustive visual certification.
+
+Uncensored F-word content requires at least 4 and `language`. Reviewed exceptions permit Jackie Chan WTF and Picard Wtf at 2, FFFFUUUU Rage Guy at 3, and the display-masked I F**** Love X at 2. Its display tag and Picard's explicit phrase tag are masked too; stable identifiers and provenance URLs remain unchanged. Other censored spellings and abbreviations retain the conservative rule. Metadata is regression-checked; remote embedded image text still requires visual review.
+
+Preserve these reviewed decisions when maintaining metadata (reason tags, captions, and source metadata remain unless explicitly reviewed):
+
+- Ben affleck smoking is 2 (`smoking`); Dat Boi is 3 (`language`); Cat Sniper Scope is 4 (`violence`).
+- Doctor Manhattan It Is 1985 and Dead Baby Voldemort / What Happened To Him are 3 while retaining `nudity` and `gore` respectively.
+- Barbie vs Oppenheimer, Bernie Sanders In a Chair, and Bernie I Am Once Again Asking For Your Support are 2. Cigar Cougar is 4 with `smoking` and `disturbing`.
+- Illusion of free choice is 1 with `cartoon`, not `politics`. I See Dead People is 2 with `death` and `horror`. Here it comes is 2 with `general-audience`, not `violence`.
+- Greedy Pipe Man (`online/6fesx7`) and its aliases are 2 with descriptive political context. It is the canonical BAYSAL cartoon; “fat man drinking from pipe” and “Guy Who Have Lot A Water” remain searchable aliases. Reconciliation unlists retired roots without deleting saved content.
+- Feels Good, Insanity Wolf, I'm Going to Build My Own Theme Park, What's in the box!?, What the Hell is This?, and Vince McMahon Reaction are 2.
+- Oh, I'm Sorry, I Thought This Was America; death knocking at the door; Rage Guy (FFFUUU); Say That Again I Dare You; and Hawk Tuah Girl are 3. 5 black guys and blonde is 5.
+- Bench Press Fail, Blonde Woman Looking at the Camera, and 2 gay black mens kissing were removed from the catalog. Removal does not delete previously imported records or media.
+
+## Layouts, fonts, and sources
+
+Layouts are `impact` (outlined captions), `comment` (one native white top-section caption), `subtitle`, and `labels`. They compile to ordinary shared editor layers, not a second renderer. Preserve per-box font, color, alignment, casing, rotation, and timing overrides. Geometry must fit inside the image; reposition source boxes minimally when curating out-of-bounds source geometry. GIF fractions become seconds after probing; still captions are unbounded.
+
+The four catalog roles are `impact` → Impact, `sans` → Noto Sans Bold, `thin` → Titillium Web SemiBold, and `comic` → Kalam. The checkout also imports Titillium Web Black and Noto Sans Hebrew Bold for source aliases/variations. `fonts.ts` owns filenames, display identities, aliases, and catalog roles; preview-only synthetic asset IDs stay in `preview.ts`. Checkout's default thick caption alias is deliberately mapped to Impact.
+
+Movie subtitles use pale cream-yellow (`#f5f2a6`) Noto Sans with a thin black outline and original casing. Catalog dialogue sizes are approximately 7% of each panel's height, stored image-relative rather than inferred during rendering. Explicit white captions and Impact headings retain source styling.
+
+Every manifest entry requires HTTPS media/provenance URLs, integer risk 1–5, and 1–12 unique lowercase kebab-case rating reasons of 1–40 characters. Retired slugs cannot remain canonical entries. Source URLs were checked during assembly, but external hosts may remove images; this is not a live startup scrape. Review rights before deployment: public availability is not a redistribution license, and snapshots include imported image bytes.
+
+Discovery sources include [Imgflip](https://imgflip.com/memetemplates?sort=top-all-time), [Know Your Meme](https://knowyourmeme.com/photos/templates), [Meming Wiki](https://en.meming.world/wiki/Category:Images), [MagicMeme](https://magicmeme.com/meme-templates), and [MemesGuy's current](https://memesguy.com/year/2026) and [historical timelines](https://memesguy.com/year/2025). Historical MemesGuy archives span 1996–2025; culture-only listings and examples without reusable template images were excluded.
+
+Gallery previews use `manifestLayers`, `composedSize`, and `composeFrame` with real fonts. Stills draw from the loaded image without CORS fetch/readback; GIFs decode and animate in the browser. Removing a card or unchecking releases pending work/canvases/frames. Missing media or fonts retain the original with an explicit error rather than substituting a font. The server serves bytes and bundles code; it never decodes or renders media.
+
+## Verification
+
 Verify from the repository root:
 
 ```sh
-bun run typecheck
+./run.sh config/dev.env typecheck
 ./run.sh config/dev.env test
 ./run.sh config/dev.env e2e
 ```
+
+For gallery-only browser coverage without the application stack, database, AI stubs, or search, run `./run.sh config/dev.env e2e --project=library`. Its isolated configuration is `playwright.library.config.ts`.

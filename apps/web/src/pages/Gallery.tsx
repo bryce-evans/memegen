@@ -9,7 +9,7 @@ import { usePaged } from "../usePaged.ts";
 
 export function Popular() {
   return (
-    <section>
+    <section className="gallery-page">
       <GalleryFeed kind="popular" title="Popular" />
     </section>
   );
@@ -17,7 +17,7 @@ export function Popular() {
 
 export function Recent() {
   return (
-    <section>
+    <section className="gallery-page">
       <GalleryFeed kind="recent" title="Recent" />
     </section>
   );
@@ -47,7 +47,7 @@ export function Search() {
     />
   );
   return (
-    <section data-testid="search-results" data-query={q} data-type={type}>
+    <section className="gallery-page" data-testid="search-results" data-query={q} data-type={type}>
       {type === "posts" ? (
         <GalleryFeed kind="search" q={q} title={title} actions={typeControl} />
       ) : (

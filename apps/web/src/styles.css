@@ -1335,6 +1335,10 @@
   .ui-shell > .ui-main {
     grid-column: 2;
   }
+
+  .ui-shell > .ui-main:has(> .gallery-page) {
+    grid-column: 2 / 4;
+  }
 }
 
 @media (min-width: 961px) {

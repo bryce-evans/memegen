@@ -26,7 +26,7 @@ export function TagPage() {
   );
 
   return (
-    <section>
+    <section className="gallery-page">
       {/* A team tag's header stands out as a callout in the team color. */}
       <header className="tag-head">{tag?.kind === "team" ? <Callout tone="success">{head}</Callout> : head}</header>
 

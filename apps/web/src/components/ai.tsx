@@ -506,13 +506,12 @@ export function AiCreator() {
             data-testid="ai-describe"
           />
           <TextField
-            label="Title"
+            label="Title (required)"
             value={title}
             maxLength={MEME_TITLE_MAX_LENGTH}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Add a title"
             required
-            description={!title.trim() ? "A title is required to publish." : undefined}
             disabled={create.busy}
             data-testid="ai-title"
           />

@@ -183,12 +183,12 @@ test("Creator: Update with text-only directions from Claude fills the template's
   await expect(page).toHaveURL(/\/create$/);
 
   // Two boxes, three lines: the agent can't add a box, so the last line is dropped. A second Update builds on the
-  // first: the top box keeps its new text.
+  // first: the top box keeps its new text. Clicking the image opens the result like Full editor does.
   await creator.getByTestId("ai-describe").fill("me reading the docs\nme after reading the docs\nsame bug");
   await update(creator, 1);
   await creator.getByTestId("ai-describe").fill("Bottom text: same bug");
   await update(creator, 2);
-  await creator.getByTestId("ai-full-editor").click();
+  await creator.getByTestId("ai-canvas").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("layer-text")).toHaveCount(2);
@@ -225,13 +225,18 @@ test("Creator: Publish posts the updated meme directly, an edited image saved as
   await expect(creator.getByTestId("ai-publish")).toBeDisabled();
 
   await update(creator, 1);
+  await expect(creator.getByTestId("ai-title")).toHaveValue("");
+  await expect(creator.getByTestId("ai-publish")).toBeDisabled();
+  await creator.getByTestId("ai-title").fill("   ");
+  await expect(creator.getByTestId("ai-publish")).toBeDisabled();
+  await creator.getByTestId("ai-title").fill("  First try, party hat edition  ");
   await creator.getByTestId("ai-publish").click();
   const meme = await apiGet<Meme>(request, `/api/memes/${await memeIdFromUrl(page)}`, owner);
   const made = await apiGet<Template>(request, `/api/templates/${meme.templateId}`, owner);
   expect([made.name, made.tags, meme.title, meme.tags, meme.visibility]).toEqual([
     "put a party hat on it",
     ["office"],
-    "put a party hat on it",
+    "First try, party hat edition",
     ["office"],
     "public",
   ]);

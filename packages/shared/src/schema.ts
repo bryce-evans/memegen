@@ -167,10 +167,10 @@ export const panelTemplateInputSchema = z
 
 export const visibilitySchema = z.enum(VISIBILITIES);
 
-/** Every meme is made from an existing template. */
+/** Every meme is made from an existing template and has a title. */
 export const createMemeSchema = z
   .object({
-    title: z.string().trim().max(MEME_TITLE_MAX_LENGTH).default(""),
+    title: z.string().trim().min(1).max(MEME_TITLE_MAX_LENGTH),
     templateId: z.uuid(),
     /** Client-rendered result, already uploaded to storage. */
     outputAssetId: z.uuid(),
@@ -185,7 +185,7 @@ export const createMemeSchema = z
 
 export const updateMemeSchema = z
   .object({
-    title: z.string().trim().max(MEME_TITLE_MAX_LENGTH).optional(),
+    title: z.string().trim().min(1).max(MEME_TITLE_MAX_LENGTH).optional(),
     layers: layersSchema.optional(),
     panels: panelSetSchema.nullable().optional(),
     outputAssetId: z.uuid().optional(),

@@ -96,10 +96,10 @@ export const EDITOR_TITLES: Record<SourceRef["kind"], string> = {
 export function memeSaveProps(
   source: { kind: "template"; template: Template } | { kind: "meme"; meme: Meme },
   user: User,
-): Pick<SavePanelProps, "canSave" | "target" | "defaultTitle" | "templateTags"> {
+): Pick<SavePanelProps, "canSave" | "target" | "templateTags"> {
   return source.kind === "meme"
-    ? { canSave: source.meme.owner.id === user.id, target: { editing: source.meme }, defaultTitle: "", templateTags: [] }
-    : { canSave: true, target: { templateId: source.template.id }, defaultTitle: source.template.name, templateTags: source.template.tags };
+    ? { canSave: source.meme.owner.id === user.id, target: { editing: source.meme }, templateTags: [] }
+    : { canSave: true, target: { templateId: source.template.id }, templateTags: source.template.tags };
 }
 
 async function loadSource({ kind, id }: SourceRef): Promise<Source | { kind: "new-panels" }> {

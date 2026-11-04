@@ -32,9 +32,13 @@
   --ui-color-tier-gold: #e5b021;
   --ui-color-tier-platinum: #8fb8c9;
   --ui-color-tier-diamond: #3fb7e8;
-  /* Vote toggles (pressed upvote / downvote), the same in every skin. */
+  /* Vote toggles (pressed upvote / downvote) and the meme page's favorited star, the same in every skin; the
+     `-on-scrim` votes are brighter for dark overlays. */
   --ui-color-upvote: #df154e;
   --ui-color-downvote: #1e3fb8;
+  --ui-color-upvote-on-scrim: rgb(248 38 91);
+  --ui-color-downvote-on-scrim: rgb(54 163 251);
+  --ui-color-favorite: #0f9bb0;
   /* Tonal (selected/secondary-emphasis) fill and its text. */
   --ui-color-tonal: #2a2f3a;
   --ui-color-on-tonal: var(--ui-color-text);

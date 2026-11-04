@@ -25,11 +25,10 @@ test("meme page: Share copies the meme's link; the owner's actions sit in an 'On
   await expect(panel).toContainText("Only visible to you");
   for (const id of ["visibility-toggle", "edit-meme", "delete-meme"]) await expect(panel.getByTestId(id)).toBeVisible();
 
-  // Editing tags shows them once, in the chip input, not also as links beside it.
   await expect(tagChip(page, "e2e-share")).toBeVisible();
-  await page.getByTestId("edit-tags").click();
-  await expect(page.getByTestId("tags-input")).toBeVisible();
-  await expect(tagChip(page, "e2e-share")).toHaveCount(0);
+  await expect(page.getByTestId("edit-tags")).toHaveCount(0);
+  await panel.getByTestId("edit-meme").click();
+  await expect(page.getByTestId("meme-tags")).toBeVisible();
 });
 
 test("meme page: the age shows the full posting date and time in a tooltip on hover", async ({ page, request }) => {

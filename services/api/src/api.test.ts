@@ -99,7 +99,7 @@ async function makeMeme(
   opts: { templateId?: string; title?: string; post?: boolean; visibility?: "public" | "private"; tags?: string[]; panels?: PanelSet } = {},
 ): Promise<Meme> {
   const res = await call<Meme>("POST", "/api/memes", owner, {
-    title: opts.title,
+    title: opts.title ?? "A meme",
     templateId: opts.templateId ?? (await makeTemplate(owner)).id,
     outputAssetId: await upload(owner, "o.png"),
     layers: opts.panels ? [] : [newTextLayer()],
@@ -407,19 +407,25 @@ test("gallery: period windows by post time, best sorts by score", async () => {
   assert.deepEqual(await ids("period=week&sort=new"), [recentHigh.id, recentLow.id, lastWeek.id]);
 });
 
-test("memes need an existing template and an output uploaded by the author", async () => {
+test("memes need a title, an existing template, and an output uploaded by the author", async () => {
   const alice = await signIn("alice");
   const eve = await signIn("eve");
   const template = await makeTemplate(alice);
   const aliceOutput = await upload(alice, "o.png");
   const eveOutput = await upload(eve, "o.png");
-  const create = (body: Record<string, unknown>) => call("POST", "/api/memes", eve, { layers: [], ...body });
+  const create = (body: Record<string, unknown>) => call<Meme>("POST", "/api/memes", eve, { title: "A meme", layers: [], ...body });
   assert.equal((await create({ templateId: template.id, outputAssetId: aliceOutput })).status, 403);
   assert.equal((await create({ outputAssetId: eveOutput })).status, 400); // no template
   assert.equal((await create({ sourceAssetId: eveOutput, outputAssetId: eveOutput })).status, 400);
   assert.equal((await create({ templateId: crypto.randomUUID(), outputAssetId: eveOutput })).status, 404);
+  for (const title of [undefined, "", "   "]) {
+    assert.equal((await create({ title, templateId: template.id, outputAssetId: eveOutput })).status, 400, `title ${JSON.stringify(title)}`);
+  }
   const made = await create({ templateId: template.id, outputAssetId: eveOutput });
   assert.equal(made.status, 201);
+  // A title can change but not be cleared.
+  assert.equal((await call("PATCH", `/api/memes/${made.body.id}`, eve, { title: " " })).status, 400);
+  assert.equal((await call<Meme>("PATCH", `/api/memes/${made.body.id}`, eve, { title: "Renamed" })).body.title, "Renamed");
 
   // A template in use can't be deleted (nor can its parent, which would take the variation with it).
   assert.equal((await call("DELETE", `/api/templates/${template.id}`, alice)).status, 409);
@@ -433,7 +439,7 @@ test("image layers: stored in order with text layers, need an existing still ima
   const sticker = await upload(alice);
   const layers = [newTextLayer({ text: "top" }), newImageLayer(sticker, { width: 0.4 }), newTextLayer({ text: "bottom" })];
   const create = async (body: Record<string, unknown>) =>
-    call<Meme>("POST", "/api/memes", alice, { templateId: template.id, outputAssetId: await upload(alice, "o.png"), ...body });
+    call<Meme>("POST", "/api/memes", alice, { title: "Layered", templateId: template.id, outputAssetId: await upload(alice, "o.png"), ...body });
   const made = await create({ layers });
   assert.equal(made.status, 201, JSON.stringify(made.body));
   assert.deepEqual(made.body.layers, layers);
@@ -509,6 +515,7 @@ test("sticker usage: saves and posts count once per meme however often it places
   const template = await makeTemplate(alice);
   const meme = async (stickers: Sticker[], post: boolean) => {
     const res = await call<Meme>("POST", "/api/memes", alice, {
+      title: "Sticker meme",
       templateId: template.id,
       outputAssetId: await upload(alice, "o.png"),
       layers: stickers.map((s) => newImageLayer(s.asset.id)),
@@ -588,7 +595,7 @@ test("multi-panel templates: an ordered still-image pack; memes must fill panels
   assert.equal((await makeMeme(alice)).panels, null);
 
   const createMeme = (templateId: string, body: Record<string, unknown>) =>
-    call("POST", "/api/memes", alice, { templateId, outputAssetId: pack[0], layers: [], ...body });
+    call("POST", "/api/memes", alice, { title: "Panel meme", templateId, outputAssetId: pack[0], layers: [], ...body });
   assert.equal((await createMeme(template.id, {})).status, 400); // panels required
   assert.equal((await createMeme(template.id, { panels: { layout: "vertical", panels: [newPanel(stranger)] } })).status, 400);
   assert.equal((await createMeme(plain.id, { panels })).status, 400);

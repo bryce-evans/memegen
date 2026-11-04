@@ -28,50 +28,54 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
   const downLabel = meme.myVote === -1 ? "Remove downvote" : "Downvote";
   return (
     <div className="votes">
-      <Button
-        size="sm"
-        tone="warning"
-        className="vote vote-up"
-        onClick={() => vote(1)}
-        disabled={busy || !votable}
-        aria-label={upLabel}
-        title={disabledReason ?? upLabel}
-        pressed={meme.myVote === 1}
-        data-testid="vote-up"
-        icon={<Icon name="thumbUp" />}
-      />
-      <Text
-        as="span"
-        size="sm"
-        numeric
-        className="score"
-        title={`Score: ${meme.upvotes} up, ${meme.downvotes} down`}
-        data-testid="meme-score"
-      >
-        {meme.score > 0 ? `+${meme.score}` : meme.score}
-      </Text>
-      <Button
-        size="sm"
-        tone="info"
-        className="vote vote-down"
-        onClick={() => vote(-1)}
-        disabled={busy || !votable}
-        aria-label={downLabel}
-        title={disabledReason ?? downLabel}
-        pressed={meme.myVote === -1}
-        data-testid="vote-down"
-        icon={<Icon name="thumbDown" />}
-      />
+      <div className="vote-controls" data-testid="vote-controls">
+        <Button
+          size="sm"
+          tone="warning"
+          className="vote vote-up"
+          onClick={() => vote(1)}
+          disabled={busy || !votable}
+          aria-label={upLabel}
+          title={disabledReason ?? upLabel}
+          pressed={meme.myVote === 1}
+          data-testid="vote-up"
+          icon={<Icon name="thumbUp" />}
+        />
+        <Text
+          as="span"
+          size="sm"
+          numeric
+          className="score"
+          title={`Score: ${meme.upvotes} up, ${meme.downvotes} down`}
+          data-testid="meme-score"
+        >
+          {meme.score > 0 ? `+${meme.score}` : meme.score}
+        </Text>
+        <Button
+          size="sm"
+          tone="info"
+          className="vote vote-down"
+          onClick={() => vote(-1)}
+          disabled={busy || !votable}
+          aria-label={downLabel}
+          title={disabledReason ?? downLabel}
+          pressed={meme.myVote === -1}
+          data-testid="vote-down"
+          icon={<Icon name="thumbDown" />}
+        />
+      </div>
       {error !== null && <ErrorView error={error} />}
     </div>
   );
 }
 
-/** Star toggle (filled when pressed) that saves someone else's posted public meme to your Favorites; hidden on your own and unposted memes. */
-export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme: Meme) => void }) {
-  const user = useUser();
+/**
+ * Star toggle (filled when pressed) that saves a posted public meme, your own included, to your Favorites; hidden on
+ * unposted and private memes. `className` lets a page restyle it (the meme page's bare title star).
+ */
+export function FavoriteButton({ meme, onChange, className }: { meme: Meme; onChange: (meme: Meme) => void; className?: string }) {
   const { busy, error, run } = useAction();
-  if (user.id === meme.owner.id || !isListed(meme)) return null;
+  if (!isListed(meme)) return null;
 
   function toggle() {
     void run(async () => onChange(await favoriteMeme(meme.id, !meme.favorited)));
@@ -83,7 +87,7 @@ export function FavoriteButton({ meme, onChange }: { meme: Meme; onChange: (meme
       <Button
         size="sm"
         tone="warning"
-        className="favorite"
+        className={className ? `favorite ${className}` : "favorite"}
         onClick={toggle}
         disabled={busy}
         pressed={meme.favorited}
@@ -127,9 +131,9 @@ function aspect(asset: Asset): number {
 const CARD_CONTROLS = "a, button, input, textarea, select, label";
 
 /**
- * The whole card opens the meme; hovering it lights a rounded highlight around it (styles.css). Author, age, and the
- * favorite star show only in the hover layout; below the image (Google-style) the card keeps just the title, badges,
- * votes, and comment count.
+ * The whole card opens the meme; hovering it lights a rounded highlight around it (styles.css). Author, age, favorite
+ * star, and comment count show only in the hover layout; below the image (Google-style) the card keeps the
+ * title with the votes at the right of its line, and any badges under it.
  */
 function MemeCard({ meme, layout, onChange, height }: { meme: Meme; layout: CardLayout; onChange: (meme: Meme) => void; height?: number }) {
   const navigate = useNavigate();
@@ -174,11 +178,15 @@ function MemeCard({ meme, layout, onChange, height }: { meme: Meme; layout: Card
       </CardMeta>
       <div className="meme-card-actions">
         <VoteButtons meme={meme} onChange={onChange} />
-        {layout === "hover" && <FavoriteButton meme={meme} onChange={onChange} />}
-        <span className="comment-count" title={plural(meme.commentCount, "comment")} data-testid="meme-comment-count">
-          <Icon name="comment" label="Comments" />
-          {meme.commentCount}
-        </span>
+        {layout === "hover" && (
+          <>
+            <FavoriteButton meme={meme} onChange={onChange} />
+            <span className="comment-count" title={plural(meme.commentCount, "comment")} data-testid="meme-comment-count">
+              <Icon name="comment" label="Comments" />
+              {meme.commentCount}
+            </span>
+          </>
+        )}
       </div>
     </Card>
   );

@@ -20,6 +20,7 @@ import {
   layerLabels,
   limitViolations,
   MAX_TAGS,
+  MEME_TITLE_MAX_LENGTH,
   TEXT_MAX_LENGTH,
   type AiProviderId,
   type Asset,
@@ -271,7 +272,7 @@ type Action = "update" | "editor" | "publish";
  * request on the canvas's current state; its `ADD_TEXT` actions rewrite the text boxes (never their placement or
  * timing), and its `UPDATE_IMAGE`, only offered when an Image Generator is set, goes to that generator. The canvas then
  * shows the result, and another Update builds on it. Full editor opens the result (or the template as is) in the
- * editor; Publish renders and posts it, titled and tagged like the template, once an Update made one. An edited image
+ * editor; Publish renders and posts it with the user's title and the template's tags, once an Update made one. An edited image
  * is uploaded only then, becoming a new template like any new media.
  */
 export function AiCreator() {
@@ -283,6 +284,7 @@ export function AiCreator() {
   const [source, setSource] = useState<Template | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [description, setDescription] = useState("");
+  const [title, setTitle] = useState("");
   // The Describe field's placeholder for the chosen template: its boxes' own text, never sent as directions.
   const [initial, setInitial] = useState("");
   const [step, setStep] = useState("");
@@ -294,7 +296,7 @@ export function AiCreator() {
   const create = useAction();
   const words = description.trim();
   // Update needs the Agent Provider and typed directions other than the placeholder's own text; Publish needs an
-  // Update's result; Full editor needs neither (the template opens as is).
+  // Update's result and a nonblank title; Full editor needs neither (the template opens as is).
   const canUpdate = source !== null && agent !== null && words !== "" && words !== initial.trim();
 
   // Set once the user searches or picks: the random starting template never replaces their choice.
@@ -368,7 +370,7 @@ export function AiCreator() {
   }
 
   /**
-   * Render the draft with the export's own pipeline and post it, titled and tagged like its template. An edited image
+   * Render the draft with the export's own pipeline and post it with the user's title and the template's tags. An edited image
    * is saved as a new template first (as the Template Editor would, with the draft's boxes as its defaults).
    */
   async function publish(from: Template, { layers, image }: Draft, signal: AbortSignal): Promise<string> {
@@ -391,10 +393,10 @@ export function AiCreator() {
     const tooBig = limitViolations(out.blob.size, null, limits);
     if (tooBig.length) throw new ApiError(413, "the rendered meme is over the upload limit", tooBig);
     setStep("Uploading…");
-    const output = await uploadAsset(out.blob, `${fileSlug(template.name)}${out.extension}`, undefined, signal);
+    const output = await uploadAsset(out.blob, `${fileSlug(title)}${out.extension}`, undefined, signal);
     setStep("Publishing…");
     const meme = await createMeme({
-      title: template.name,
+      title: title.trim(),
       templateId: template.id,
       outputAssetId: output.id,
       layers,
@@ -406,7 +408,7 @@ export function AiCreator() {
   }
 
   function run(to: Action) {
-    if (!source) return;
+    if (!source || (to === "publish" && !title.trim())) return;
     const from = source;
     const current = draft;
     setAction(to);
@@ -432,7 +434,7 @@ export function AiCreator() {
       <div className="ai-creator-body">
         <div className="ai-creator-preview">
           {source ? (
-            <TemplateCanvas template={source} draft={draft} />
+            <TemplateCanvas template={source} draft={draft} onOpen={create.busy ? null : () => run("editor")} />
           ) : start.error !== null ? (
             <ErrorView error={start.error} />
           ) : start.loading ? (
@@ -503,6 +505,17 @@ export function AiCreator() {
             onChange={(e) => setDescription(e.target.value)}
             data-testid="ai-describe"
           />
+          <TextField
+            label="Title"
+            value={title}
+            maxLength={MEME_TITLE_MAX_LENGTH}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Add a title"
+            required
+            description={!title.trim() ? "A title is required to publish." : undefined}
+            disabled={create.busy}
+            data-testid="ai-title"
+          />
           <Inline justify="between">
             <Inline>
               <Button icon={<Icon name="sparkle" />} disabled={!canUpdate || create.busy} onClick={() => run("update")} data-testid="ai-update">
@@ -517,7 +530,7 @@ export function AiCreator() {
                 </Button>
               )}
             </Inline>
-            <Button variant="primary" disabled={!draft || create.busy} onClick={() => run("publish")} data-testid="ai-publish">
+            <Button variant="primary" disabled={!draft || !title.trim() || create.busy} onClick={() => run("publish")} data-testid="ai-publish">
               {label("publish", "Publish")}
             </Button>
           </Inline>
@@ -532,9 +545,10 @@ export function AiCreator() {
  * A template's first frame with its default text, or Update's draft (its layers on its edited image, if any), drawn
  * by the export's compositor (`composeFrame`), so it looks as the meme will. Templates without text boxes show the
  * editor's TOP/BOTTOM defaults. The canvas fits the preview's width and its CSS `max-height`, scaled down to whichever
- * binds. For tests, `data-ready` marks the drawn canvas and `data-updates` the draft's Update count it drew (0: none).
+ * binds. Clicking it (or Enter on it) does what Full editor does, `onOpen`; null while another action runs. For
+ * tests, `data-ready` marks the drawn canvas and `data-updates` the draft's Update count it drew (0: none).
  */
-function TemplateCanvas({ template, draft }: { template: Template; draft: Draft | null }) {
+function TemplateCanvas({ template, draft, onOpen }: { template: Template; draft: Draft | null; onOpen: (() => void) | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<unknown>(null);
 
@@ -583,7 +597,17 @@ function TemplateCanvas({ template, draft }: { template: Template; draft: Draft 
       <canvas
         ref={canvasRef}
         className="ai-creator-canvas"
-        aria-label={draft ? `${template.name} as updated` : `${template.name} with its default text`}
+        role="link"
+        tabIndex={0}
+        aria-disabled={onOpen === null || undefined}
+        aria-label={`${draft ? `${template.name} as updated` : `${template.name} with its default text`}: open in the full editor`}
+        title="Open in the full editor"
+        onClick={() => onOpen?.()}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          onOpen?.();
+        }}
         data-testid="ai-canvas"
         data-template-id={template.id}
       />

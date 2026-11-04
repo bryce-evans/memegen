@@ -23,7 +23,6 @@ export interface SavePanelProps {
   canSave: boolean;
   /** Re-editing an existing meme (PATCH), or creating a new one from a template. */
   target: { editing: Meme } | { templateId: string };
-  defaultTitle: string;
   /** The template's tags: pre-filled on a new meme (the user may remove them) and offered as one-click tags. */
   templateTags: string[];
 }
@@ -35,10 +34,12 @@ interface Progress {
 }
 
 export function SavePanel(props: SavePanelProps) {
-  const { render: renderMeme, content, limits, canSave, target, defaultTitle, templateTags } = props;
+  const { render: renderMeme, content, limits, canSave, target, templateTags } = props;
   const editingMeme = "editing" in target ? target.editing : null;
   const navigate = useNavigate();
-  const [title, setTitle] = useState(editingMeme?.title ?? defaultTitle);
+  // New memes start untitled; Save and Post wait for one.
+  const [title, setTitle] = useState(editingMeme?.title ?? "");
+  const untitled = title.trim() === "";
   const [visibility, setVisibility] = useState<Visibility>(editingMeme?.visibility ?? "public");
   const [tags, setTags] = useState<string[]>(editingMeme?.tags ?? templateTags.slice(0, MAX_TAGS));
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -96,7 +97,9 @@ export function SavePanel(props: SavePanelProps) {
         value={title}
         maxLength={MEME_TITLE_MAX_LENGTH}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Untitled"
+        placeholder="Add a title"
+        required
+        description={canSave && untitled ? "A title is required to save or post." : undefined}
         disabled={busy}
         data-testid="meme-title"
       />
@@ -121,15 +124,15 @@ export function SavePanel(props: SavePanelProps) {
         </Button>
         {canSave &&
           (alreadyPosted ? (
-            <Button variant="primary" disabled={busy} onClick={() => save(false)} data-testid="save-draft">
+            <Button variant="primary" disabled={busy || untitled} onClick={() => save(false)} data-testid="save-draft">
               Save changes
             </Button>
           ) : (
             <>
-              <Button disabled={busy} onClick={() => save(false)} data-testid="save-draft">
+              <Button disabled={busy || untitled} onClick={() => save(false)} data-testid="save-draft">
                 Save draft
               </Button>
-              <Button variant="primary" disabled={busy} onClick={() => save(true)} data-testid="post-meme">
+              <Button variant="primary" disabled={busy || untitled} onClick={() => save(true)} data-testid="post-meme">
                 Post
               </Button>
             </>

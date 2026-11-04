@@ -1,12 +1,9 @@
 import { useId, useState, type Dispatch, type KeyboardEvent, type SetStateAction } from "react";
 import { MAX_TAGS, tagSlug, type Tag } from "@memegen/shared";
-import { Button, Chip, ChipGroup, Field, Icon, Inline, Text, TextField } from "@memegen/ui";
+import { Chip, ChipGroup, Field, Text, TextField } from "@memegen/ui";
 import { listTags } from "../api.ts";
-import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
-import { ErrorView } from "./common.tsx";
-import { TagChips } from "./tags.tsx";
 
 /** Debounced `/api/tags?q=` lookup; an empty query (or a failed lookup) → no suggestions. */
 function useTagSuggestions(query: string, limit = 8): Tag[] {
@@ -127,59 +124,5 @@ export function TagField(props: {
     <Field as="div" label={label} description={description}>
       <TagInput value={value} onChange={onChange} suggestions={suggestions} testId={testId} disabled={disabled} />
     </Field>
-  );
-}
-
-/**
- * The tags as links beside an edit button, which swaps them for a chip input + Save (so they show once, in the
- * input, while editing); `onSave` returns once the server accepted the tags. The draft starts from `tags`.
- */
-export function TagEditor(props: { tags: string[]; onSave: (tags: string[]) => Promise<void>; testId: string; label?: string }) {
-  const { tags, onSave, testId, label = "Edit tags" } = props;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(tags);
-  const { busy, error, setError, run } = useAction();
-
-  if (!editing) {
-    return (
-      <>
-        <TagChips slugs={tags} />
-        <Button
-          size="sm"
-          variant="quiet"
-          icon={<Icon name="tag" />}
-          data-testid={testId}
-          onClick={() => {
-            setDraft(tags);
-            setError(null);
-            setEditing(true);
-          }}
-        >
-          {label}
-        </Button>
-      </>
-    );
-  }
-
-  function save() {
-    void run(async () => {
-      await onSave(draft);
-      setEditing(false);
-    });
-  }
-
-  return (
-    <div className="tag-editor">
-      <TagInput value={draft} onChange={setDraft} testId="tags-input" disabled={busy} />
-      <Inline className="tag-editor-actions">
-        <Button size="sm" variant="primary" disabled={busy} onClick={save} data-testid="tags-save">
-          Save tags
-        </Button>
-        <Button size="sm" disabled={busy} onClick={() => setEditing(false)}>
-          Cancel
-        </Button>
-      </Inline>
-      {error !== null && <ErrorView error={error} />}
-    </div>
   );
 }

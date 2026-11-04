@@ -352,12 +352,6 @@
   align-items: center;
   margin-top: var(--ui-space-2);
 }
-.tag-editor {
-  margin: var(--ui-space-2) 0;
-}
-.tag-editor-actions {
-  margin-top: var(--ui-space-3);
-}
 .tag-head {
   margin-bottom: var(--ui-space-5);
 }
@@ -374,13 +368,16 @@
   gap: var(--ui-space-1);
   margin-top: var(--ui-space-2);
 }
+.vote-controls {
+  display: contents;
+}
 .vote,
 .favorite {
   border-radius: var(--ui-radius-pill);
 }
-/* The thumbs are circles in every skin, 2px larger than a small control: as wide as they are tall, no side padding
-   (skins pad, size, and round buttons at 0,3,0; `:root` outranks them). */
-:root .votes .ui-button.vote {
+/* The thumbs, and the star on cards, are circles in every skin, 2px larger than a small control: as wide as they are
+   tall, no side padding (skins pad, size, and round buttons at 0,3,0; `:root` outranks them). */
+:root :is(.votes .ui-button.vote, .meme-card-actions .ui-button.favorite) {
   width: calc(var(--ui-control-height-sm) + 2px);
   height: calc(var(--ui-control-height-sm) + 2px);
   min-width: 0;
@@ -398,7 +395,7 @@
 .votes .vote-down {
   --ui-color-info: var(--ui-color-downvote);
 }
-:root[data-skin="google"] .votes .vote[aria-pressed="true"] {
+:root[data-skin="google"] :is(.votes .vote, .meme-card-actions .favorite)[aria-pressed="true"] {
   --g-top: color-mix(in srgb, var(--ui-button-tone) 6%, var(--ui-color-surface));
   --g-bot: color-mix(in srgb, var(--ui-button-tone) 12%, var(--ui-color-surface));
   --g-hover-top: var(--g-top);
@@ -430,6 +427,41 @@
 .detail-votes > .ui-alert {
   flex-basis: 100%;
   margin: 0;
+}
+/* On the meme page the votes are the main action: larger thumbs (and icons) around a larger score. */
+:root .detail-votes .votes .ui-button.vote {
+  --ui-icon-size: calc(var(--ui-control-height-sm) * 0.85);
+  width: calc(var(--ui-control-height-sm) * 1.2);
+  height: calc(var(--ui-control-height-sm) * 1.2);
+}
+.detail-votes .votes {
+  gap: var(--ui-space-3);
+}
+.detail-votes .vote-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-1);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-color-surface-raised);
+}
+:root:root .detail-votes .votes .ui-button.vote {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root:root .detail-votes .votes .ui-button.vote[aria-pressed="true"] {
+  color: var(--ui-button-tone);
+}
+:root:root .detail-votes .votes .ui-button.vote:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-color-text) 10%, transparent);
+}
+:root:root .detail-votes .votes .ui-button.vote:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-color-text) 16%, transparent);
+}
+.detail-votes .votes .score {
+  font-size: calc(var(--ui-font-size-2xl) * 0.6);
+  line-height: 1;
 }
 .comment-count {
   display: inline-flex;
@@ -477,9 +509,25 @@
 .meme-grid .meme-card .ui-card-title:hover {
   text-decoration: none;
 }
-/* Below the image (Google-style) the title is semibold in every skin. */
+/* Below the image (Google-style): the semibold title (in every skin) shares its line with the votes at the right;
+   badges, if any, take the line under it. */
+.meme-grid[data-card-layout="below"] .meme-card .ui-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--ui-space-2);
+}
 .meme-grid[data-card-layout="below"] .meme-card .ui-card-title {
   font-weight: 600;
+}
+.meme-grid[data-card-layout="below"] .meme-card .ui-card-meta {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.meme-grid[data-card-layout="below"] .meme-card .meme-card-actions {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
 }
 .meme-grid .ui-card-media {
   background: var(--ui-color-media-bg);
@@ -535,6 +583,35 @@
 }
 .meme-grid[data-card-layout="hover"] .meme-card.ui-card .ui-card-body :is(.ui-card-title, .ui-card-meta, .ui-card-meta a) {
   color: inherit;
+}
+/* On the scrim, votes take their brighter colors (the page ones are too dark against black) and the star the meme
+   page's teal; unselected toggles (votes, star) are bare icons in the scrim's text color: the skins' light button
+   fills read as white pills there. Selected ones keep their toned look. Hovered, either shows the same veil, between
+   the faint unselected and bright selected hovers it replaces. `:root:root` outranks skins' button rules (up to
+   0,5,0). */
+.meme-grid[data-card-layout="hover"] .meme-card-actions {
+  --ui-color-upvote: var(--ui-color-upvote-on-scrim);
+  --ui-color-downvote: var(--ui-color-downvote-on-scrim);
+}
+.meme-grid[data-card-layout="hover"] .meme-card-actions .favorite {
+  --ui-color-warning: var(--ui-color-favorite);
+}
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):not([aria-pressed="true"]) {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--ui-color-on-scrim);
+}
+/* Selected: a translucent wash of the toggle's color with a matching ring, the same in every skin (skins that tint
+   from a light surface, like Google's jfk-buttons, would show a white pill). */
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite)[aria-pressed="true"] {
+  border-color: var(--ui-button-tone);
+  background: color-mix(in srgb, var(--ui-button-tone) 16%, transparent);
+  box-shadow: none;
+  color: var(--ui-button-tone);
+}
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-color-on-scrim) 24%, transparent);
 }
 /* Template gallery: justified rows like the meme feeds (JustifiedTemplates in templates.tsx gives each card a width
    and media height, --template-width/--template-height, so every full row fills the line at close to the target
@@ -630,8 +707,36 @@
   gap: var(--ui-space-2);
   margin: var(--ui-space-3) 0;
 }
-.comment-form .ui-textarea {
+.comment-composer {
   width: 100%;
+  padding: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-color-border);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-input-bg);
+}
+.comment-composer:focus-within {
+  border-color: var(--ui-color-border-strong);
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+:root:root .comment-composer .ui-textarea {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  field-sizing: content;
+  resize: vertical;
+  padding: 0 var(--ui-space-2);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+.comment-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-2);
 }
 .comments > .comment-form {
   margin-top: var(--ui-space-5);
@@ -809,6 +914,14 @@
   color: var(--ui-color-tier-diamond);
 }
 
+.leaderboard .stat-figure {
+  display: inline-flex;
+  align-items: center;
+}
+.leaderboard .stat-star {
+  width: calc(var(--ui-icon-size) * 1.6);
+  height: calc(var(--ui-icon-size) * 1.6);
+}
 /* ---- templates ------------------------------------------------------------ */
 
 /*
@@ -844,6 +957,18 @@
   margin-inline: auto;
   border-radius: var(--ui-radius-media);
   background: var(--ui-color-media-bg);
+}
+/* The canvas opens the Full editor: a pointer, a slight lift on hover, and the focus ring for keyboard users. */
+.ai-creator-canvas[role="link"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+  transition: box-shadow var(--ui-duration-fast) var(--ui-easing-standard);
+}
+.ai-creator-canvas[role="link"]:not([aria-disabled="true"]):hover {
+  box-shadow: var(--ui-shadow-2);
+}
+.ai-creator-canvas:focus-visible {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: var(--ui-focus-ring-offset);
 }
 .ai-creator-form {
   min-width: 0;
@@ -1194,25 +1319,80 @@
   max-height: 80vh;
   object-fit: contain;
 }
-.detail-title {
+.detail-meta {
+  --ui-color-link: var(--ui-color-text-muted);
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  margin-top: 0;
+}
+.detail-byline {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* The title runs inline so the favorite star follows its last word, even when it wraps. The heading takes over the
+   h1's block margin and line box; the star's error alert is a block, so it gets its own line. */
+.detail-heading {
+  margin: 0 0 var(--ui-space-3);
   font-size: var(--ui-font-size-2xl);
+  line-height: 1.2;
+}
+.detail-title {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+}
+/* The title's star is a bare icon in every skin: a thin outline, solid teal once favorited, never a button fill or
+   border, hovered or pressed (skins style pressed toned toggles up to 0,5,0; the doubled `:root` outranks them).
+   Middle-aligned, then raised 3px so it centers on the title's capitals rather than its lowercase letters. */
+:root:root .detail-heading .ui-button.detail-favorite {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: var(--ui-space-2);
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  padding: var(--ui-space-1);
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--ui-color-text-muted);
+  translate: 0 -3px;
+}
+:root:root .detail-heading .ui-button.detail-favorite:hover {
+  color: var(--ui-color-text);
+}
+:root:root .detail-heading .ui-button.detail-favorite[aria-pressed="true"] {
+  color: var(--ui-color-favorite);
+}
+.detail-heading .detail-favorite .ui-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+  fill: none;
+  stroke-width: 1.25;
+}
+.detail-heading .detail-favorite[aria-pressed="true"] .ui-icon {
+  fill: currentColor;
 }
 /* As tall as the media beside it, so the owner-only panel can sit at its bottom, level with the image's. */
 .detail-side {
   display: flex;
   flex-direction: column;
   align-self: stretch;
+  min-width: 0;
 }
 .detail-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ui-space-3);
-  margin: var(--ui-space-3) 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
-/* Editing, the chip input takes the whole row. */
-.detail-tags > .tag-editor {
-  flex-basis: 100%;
+:root .detail-tags .ui-chip {
+  border-radius: var(--ui-radius-sm);
+  font-size: var(--ui-font-size-xs);
+  padding: 0 var(--ui-space-2);
 }
 .detail-links {
   margin: var(--ui-space-4) 0 var(--ui-space-2);

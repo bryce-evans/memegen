@@ -25,7 +25,14 @@ test("still image: edit and drag text on a template, tag, save draft, post, show
   await page.keyboard.type(" for real");
   await expect(bottom.getByTestId("layer-text")).toHaveValue("BOTTOM TEXT for real");
 
+  // A new meme starts untitled, and saving or posting waits for a title.
+  await expect(page.getByTestId("meme-title")).toHaveValue("");
+  await expect(page.getByTestId("save-draft")).toBeDisabled();
+  await expect(page.getByTestId("post-meme")).toBeDisabled();
+  await page.getByTestId("meme-title").fill("   ");
+  await expect(page.getByTestId("save-draft")).toBeDisabled();
   await page.getByTestId("meme-title").fill("E2E still");
+  await expect(page.getByTestId("save-draft")).toBeEnabled();
   await page.getByTestId("meme-tags").fill("Movie");
   await page.getByTestId("meme-tags").press("Enter");
   await page.getByTestId("save-draft").click();

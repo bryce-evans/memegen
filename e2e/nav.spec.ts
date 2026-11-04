@@ -87,25 +87,32 @@ test("card layout: a profile setting, on hover by default, Google-style puts the
   await signIn(page, username);
   const grid = page.getByTestId("meme-grid");
 
-  // On hover (the default) the card carries the author, age, and favorite star.
+  // On hover (the default) the card carries the author, age, favorite star, and comment count.
   await openFeed(page, { feed: "recent" });
   await expect(grid).toHaveAttribute("data-card-layout", "hover");
   const first = page.getByTestId("meme-card").first();
   await expect(first.getByTestId("meme-author")).toHaveCount(1);
   await expect(first.getByTestId("favorite")).toHaveCount(1);
+  await expect(first.getByTestId("meme-comment-count")).toHaveCount(1);
 
   await page.goto(`/u/${username}?tab=settings`);
   await expect(page.getByTestId("card-layout-hover")).toHaveAttribute("aria-pressed", "true");
   await page.getByTestId("card-layout-below").click();
   await expect(page.getByTestId("card-layout-below")).toHaveAttribute("aria-pressed", "true");
 
-  // Google-style: the title sits under the image, not over it, and the author, age, and favorite star are left out.
+  // Google-style: the title sits under the image with the votes at the right of its line; the author, age, favorite
+  // star, and comment count are left out.
   await openFeed(page, { feed: "recent" });
   await expect(grid).toHaveAttribute("data-card-layout", "below");
   const card = page.getByTestId("meme-card").first();
-  const media = await card.getByTestId("meme-card-media").boundingBox();
-  const title = await card.getByTestId("meme-card-title").boundingBox();
-  expect(media && title && title.y >= media.y + media.height).toBe(true);
+  const media = (await card.getByTestId("meme-card-media").boundingBox())!;
+  const title = (await card.getByTestId("meme-card-title").boundingBox())!;
+  const vote = (await card.getByTestId("vote-up").boundingBox())!;
+  const middle = (box: { y: number; height: number }) => box.y + box.height / 2;
+  expect(title.y).toBeGreaterThanOrEqual(media.y + media.height);
+  expect(vote.x).toBeGreaterThanOrEqual(title.x + title.width);
+  expect(Math.abs(middle(vote) - middle(title))).toBeLessThan(vote.height / 2);
+  await expect(card.getByTestId("meme-comment-count")).toHaveCount(0);
   await expect(card.getByTestId("meme-author")).toHaveCount(0);
   await expect(card.getByTestId("meme-age")).toHaveCount(0);
   await expect(card.getByTestId("favorite")).toHaveCount(0);

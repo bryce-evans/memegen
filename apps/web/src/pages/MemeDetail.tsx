@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Meme } from "@memegen/shared";
-import { Button, Icon, Inline, LinkButton, Panel, Spinner, Text } from "@memegen/ui";
+import { Button, Chip, Icon, Inline, LinkButton, Panel, Spinner, Text } from "@memegen/ui";
 import { contentUrl, deleteMeme, getMeme, postMeme, updateMeme } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { Comments } from "../components/comments.tsx";
 import { ErrorView, MediaView } from "../components/common.tsx";
 import { FavoriteButton, MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
-import { TagEditor } from "../components/tagInputs.tsx";
-import { TagChips } from "../components/tags.tsx";
 import { assetExtension, fileSlug } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
@@ -51,22 +49,29 @@ export function MemeDetail() {
         <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} testId="meme-media" controls />
       </div>
       <aside className="detail-side">
-        <h1 className="detail-title" data-testid="meme-title">
-          {meme.title || "Untitled"}
-        </h1>
-        <Text>
-          by <Link to={`/u/${meme.owner.username}`}>@{meme.owner.username}</Link> · <MemeAge meme={meme} /> <MemeBadges meme={meme} />
+        <Text as="div" tone="muted" className="detail-meta" data-testid="meme-meta">
+          <span className="detail-byline">
+            by <Link to={`/u/${meme.owner.username}`}>@{meme.owner.username}</Link> · <MemeAge meme={meme} /> <MemeBadges meme={meme} />
+          </span>
+          {meme.tags.length > 0 && (
+            <span className="detail-tags" data-testid="meme-tags" title={meme.tags.map((tag) => `#${tag}`).join(" ")}>
+              {meme.tags.map((tag, index) => (
+                <span key={tag}>
+                  {index > 0 && " "}
+                  <Chip as={Link} to={`/t/${tag}`} data-testid="tag-chip" data-tag={tag}>#{tag}</Chip>
+                </span>
+              ))}
+            </span>
+          )}
         </Text>
+        <div className="detail-heading">
+          <h1 className="detail-title" data-testid="meme-title">
+            {meme.title || "Untitled"}
+          </h1>
+          <FavoriteButton meme={meme} onChange={setMeme} className="detail-favorite" />
+        </div>
         <div className="detail-votes">
           <VoteButtons meme={meme} onChange={setMeme} />
-          <FavoriteButton meme={meme} onChange={setMeme} />
-        </div>
-        <div className="detail-tags">
-          {isOwner ? (
-            <TagEditor tags={meme.tags} testId="edit-tags" onSave={async (tags) => setMeme(await updateMeme(meme.id, { tags }))} />
-          ) : (
-            <TagChips slugs={meme.tags} />
-          )}
         </div>
         <Inline className="detail-links">
           <ShareButton memeId={meme.id} />

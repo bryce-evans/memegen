@@ -299,6 +299,8 @@
 :root[data-skin="painted"][data-theme="dark"] {
   color-scheme: dark;
   --ui-color-bg: #282828;
+  --ui-color-downvote: #4c73ff;
+  --ui-color-downvote-on-scrim: #4c73ff;
   --ui-color-state-hover: rgb(255 255 255 / 0.06);
   --ui-color-state-press: rgb(255 255 255 / 0.12);
   --ui-color-card-hover: rgb(255 255 255 / 0.1);

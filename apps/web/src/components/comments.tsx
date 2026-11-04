@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { COMMENT_MAX_LENGTH, isListed, type Comment, type Meme } from "@memegen/shared";
 import { Button, PageHeader, Text, TextArea } from "@memegen/ui";
@@ -145,34 +145,55 @@ function CommentItem(props: {
 /** New top-level comment (`parentId` null) or a reply to a top-level comment. */
 function CommentForm({ memeId, parentId, onPosted }: { memeId: string; parentId: string | null; onPosted: (comment: Comment) => void }) {
   const [body, setBody] = useState("");
-  const { busy, error, run } = useAction();
+  const [expanded, setExpanded] = useState(false);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const { busy, error, setError, run } = useAction();
   const reply = parentId !== null;
+
+  function reset() {
+    setBody("");
+    setExpanded(false);
+    setError(null);
+    input.current?.style.removeProperty("height");
+    input.current?.blur();
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!body.trim()) return;
     void run(async () => {
       const comment = await createComment(memeId, body.trim(), parentId);
-      setBody("");
+      reset();
       onPosted(comment);
     });
   }
 
   return (
     <form className="comment-form" onSubmit={submit}>
-      <TextArea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder={reply ? "Write a reply…" : "Add a comment…"}
-        aria-label={reply ? "Reply" : "Comment"}
-        maxLength={COMMENT_MAX_LENGTH}
-        rows={reply ? 2 : 3}
-        disabled={busy}
-        data-testid={reply ? "reply-input" : "comment-input"}
-      />
-      <Button type="submit" size="sm" variant="primary" disabled={busy || !body.trim()} data-testid={reply ? "reply-submit" : "comment-submit"}>
-        {reply ? "Reply" : "Comment"}
-      </Button>
+      <div className="comment-composer" data-testid={reply ? "reply-composer" : "comment-composer"}>
+        <TextArea
+          ref={input}
+          onFocus={() => setExpanded(true)}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder={reply ? "Write a reply…" : "Add a comment…"}
+          aria-label={reply ? "Reply" : "Comment"}
+          maxLength={COMMENT_MAX_LENGTH}
+          rows={1}
+          disabled={busy}
+          data-testid={reply ? "reply-input" : "comment-input"}
+        />
+        {expanded && (
+          <div className="comment-composer-actions">
+            <Button type="button" size="sm" disabled={busy} onClick={reset} data-testid={reply ? "reply-cancel" : "comment-cancel"}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" variant="primary" disabled={busy || !body.trim()} data-testid={reply ? "reply-submit" : "comment-submit"}>
+              {reply ? "Reply" : "Comment"}
+            </Button>
+          </div>
+        )}
+      </div>
       {error !== null && <ErrorView error={error} />}
     </form>
   );

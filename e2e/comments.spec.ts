@@ -11,6 +11,16 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   await page.goto(`/m/${meme.id}`);
   await signIn(page, commenter);
   const comments = page.getByTestId("comments");
+  const input = page.getByTestId("comment-input");
+  const collapsedHeight = (await input.boundingBox())!.height;
+  await expect(page.getByTestId("comment-submit")).toHaveCount(0);
+  await input.focus();
+  await expect(page.getByTestId("comment-submit")).toBeDisabled();
+  await input.fill("discard this\nand this");
+  await page.getByTestId("comment-cancel").click();
+  await expect(input).toHaveValue("");
+  await expect(page.getByTestId("comment-submit")).toHaveCount(0);
+  await expect.poll(async () => (await input.boundingBox())!.height).toBe(collapsedHeight);
   await page.getByTestId("comment-input").fill("first!");
   await page.getByTestId("comment-submit").click();
   const top = comments.getByTestId("comment");
@@ -21,6 +31,11 @@ test("comments: post, reply, see the count on the card, delete (placeholder whil
   const parent = commentById(page, parentId!);
 
   await parent.getByTestId("comment-reply").click();
+  await expect(parent.getByTestId("reply-submit")).toHaveCount(0);
+  await parent.getByTestId("reply-input").fill("discard reply");
+  await parent.getByTestId("reply-cancel").click();
+  await expect(parent.getByTestId("reply-input")).toHaveValue("");
+  await expect(parent.getByTestId("reply-submit")).toHaveCount(0);
   await parent.getByTestId("reply-input").fill("a reply");
   await parent.getByTestId("reply-submit").click();
   const reply = parent.getByTestId("comment");

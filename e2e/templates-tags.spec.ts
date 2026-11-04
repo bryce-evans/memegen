@@ -65,23 +65,21 @@ test("templates: add one, add a variation, add tags, use the variation with a br
   await page.getByTestId("template-search").fill(base);
   const card = page.getByTestId("template-card").filter({ hasText: base });
   await expect(card).toHaveCount(1);
-  await expect(card.getByTestId("template-author")).toContainText(`@${curator}`);
   await expect(card.getByTestId("template-use-count")).toHaveText("0");
   await expect(card.getByTestId("template-multi-panel")).toHaveCount(0);
   await expect(card.getByTestId("template-use-count")).toHaveAttribute("aria-label", "used 0 times");
-  // The gallery card is just the template and Use: tags, usage and variations live in the editor.
+  // Template details stay in the editor; the card opens directly without a separate Use button.
   await expect(card.getByTestId("tag-chip")).toHaveCount(0);
-  await expect(card.getByTestId("use-template")).toBeVisible();
 
   // An animated variation (the UI no longer uploads variations; the API still does).
   const user = await apiUser(request, curator);
   const parentId = (await card.getAttribute("data-template-id"))!;
   await apiTemplate(request, user, { file: "anim.gif", name: `${base} (anim)`, parentId });
 
-  // Use opens the editor; the template's tags, usage and variations sit under the stage, read-only: making a post
+  // Selecting the card opens the editor; tags, usage and variations sit under the stage, read-only: making a post
   // never edits its template. Tags added after creation (here via the API) are community tags, not base tags.
   await apiTemplateTags(request, user, templateId, ["movie"]);
-  await card.getByTestId("use-template").click();
+  await card.getByTestId("template-card-title").click();
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   const details = page.getByTestId("template-details");
   await expect(tagChip(details, "e2e-base")).toHaveAttribute("data-base", "true");
@@ -140,7 +138,7 @@ test("templates: another user's tags show beside the author's base tags, which s
   await page.goto("/create");
   await signIn(page, helper.username);
   await page.getByTestId("template-search").fill(name);
-  await templateCard(page, template.id).getByTestId("use-template").click();
+  await templateCard(page, template.id).getByTestId("template-card-media").click();
   const details = page.getByTestId("template-details");
   await expect(tagChip(details, "oldschool")).toHaveAttribute("data-base", "true");
   await expect(tagChip(details, "reaction")).toBeVisible();

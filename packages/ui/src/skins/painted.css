@@ -37,7 +37,8 @@
   --ui-color-card-hover: rgb(0 0 0 / 0.05);
   --ui-shadow-2: 0 4px 16px rgb(0 0 0 / 0.12);
   --ui-shadow-3: 0 8px 32px rgb(0 0 0 / 0.16);
-  --ui-header-height: 112px;
+  --ui-header-height: 56px;
+  --ui-radius-search: var(--ui-radius-pill);
   --painted-main-sheet: rgb(255 255 255 / 0.2);
   --painted-sheet: rgb(255 255 255 / 0.5);
   --painted-fill: rgb(255 255 255 / 0.7);
@@ -85,11 +86,52 @@
   opacity: var(--painted-backdrop-opacity);
 }
 
-/* ---- header: tall, 50% white, blurring whatever scrolls under it (via --ui-color-header-bg/--ui-header-backdrop) */
+/* ---- header: compact frosted bar, sized to the search field -------------------------------- */
 
 /* Spectrum's shell starts flush under its flat header; here the frosted header and the content sheet need a gap. */
 :root[data-skin="painted"] .ui-shell {
   padding-top: var(--spectrum-spacing-300);
+}
+
+:root[data-skin="painted"] .ui-header {
+  padding-block: 3px;
+}
+
+:root[data-skin="painted"] .ui-header-brand {
+  width: 120px;
+}
+
+:root[data-skin="painted"] .ui-header .ui-wordmark {
+  --painted-wordmark-size: 24px;
+  padding-block: 0.1em;
+  transform: scale(1.75);
+  transform-origin: left center;
+}
+
+
+@media (min-width: 761px) {
+  :root[data-skin="painted"] .ui-header {
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(44vw, 40rem, calc(100vw - 472px))) minmax(0, 1fr);
+  }
+
+  :root[data-skin="painted"] .ui-header-center {
+    width: 100%;
+    max-width: none;
+    margin-inline-start: 0;
+  }
+
+  /* Match the visible wordmark and menu icons to the Create button's leading inset. */
+  :root[data-skin="painted"] .ui-header .ui-wordmark {
+    padding-inline-start: calc(var(--ui-space-5) / 1.75);
+  }
+
+  :root[data-skin="painted"] .ui-sidebar .ui-nav-item {
+    padding-inline-start: var(--ui-space-5);
+  }
+
+  :root[data-skin="painted"] .ui-sidebar .ui-sidebar-heading {
+    margin-inline-start: var(--ui-space-5);
+  }
 }
 
 /* Where the wordmark's lights well up from: the fire's warm core under the end of the word and the cool light under
@@ -281,10 +323,6 @@
 }
 
 @media (max-width: 760px) {
-  :root[data-skin="painted"] {
-    --ui-header-height: 72px;
-    --painted-wordmark-size: 32px;
-  }
   :root[data-skin="painted"] .ui-header {
     padding-inline: var(--spectrum-spacing-300, 16px);
   }

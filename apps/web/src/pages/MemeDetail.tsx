@@ -45,33 +45,29 @@ export function MemeDetail() {
 
   return (
     <section className="detail">
-      <div className="detail-media">
-        <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} testId="meme-media" controls />
-      </div>
-      <aside className="detail-side">
-        <Text as="div" tone="muted" className="detail-meta" data-testid="meme-meta">
-          <span className="detail-byline">
-            by <Link to={`/u/${meme.owner.username}`}>@{meme.owner.username}</Link> · <MemeAge meme={meme} /> <MemeBadges meme={meme} />
-          </span>
-          {meme.tags.length > 0 && (
-            <span className="detail-tags" data-testid="meme-tags" title={meme.tags.map((tag) => `#${tag}`).join(" ")}>
-              {meme.tags.map((tag, index) => (
-                <span key={tag}>
-                  {index > 0 && " "}
-                  <Chip as={Link} to={`/t/${tag}`} data-testid="tag-chip" data-tag={tag}>#{tag}</Chip>
-                </span>
-              ))}
+      <div className="detail-header">
+        <div className="detail-info">
+          <Text as="div" tone="muted" className="detail-meta" data-testid="meme-meta">
+            <span className="detail-byline">
+              by <Link to={`/u/${meme.owner.username}`}>@{meme.owner.username}</Link> · <MemeAge meme={meme} /> <MemeBadges meme={meme} />
             </span>
-          )}
-        </Text>
-        <div className="detail-heading">
-          <h1 className="detail-title" data-testid="meme-title">
-            {meme.title || "Untitled"}
-          </h1>
-          <FavoriteButton meme={meme} onChange={setMeme} className="detail-favorite" />
-        </div>
-        <div className="detail-votes">
-          <VoteButtons meme={meme} onChange={setMeme} />
+            {meme.tags.length > 0 && (
+              <span className="detail-tags" data-testid="meme-tags" title={meme.tags.map((tag) => `#${tag}`).join(" ")}>
+                {meme.tags.map((tag, index) => (
+                  <span key={tag}>
+                    {index > 0 && " "}
+                    <Chip as={Link} to={`/t/${tag}`} data-testid="tag-chip" data-tag={tag}>#{tag}</Chip>
+                  </span>
+                ))}
+              </span>
+            )}
+          </Text>
+          <div className="detail-heading">
+            <h1 className="detail-title" data-testid="meme-title">
+              {meme.title || "Untitled"}
+            </h1>
+            <FavoriteButton meme={meme} onChange={setMeme} className="detail-favorite" />
+          </div>
         </div>
         <Inline className="detail-links">
           <ShareButton memeId={meme.id} />
@@ -84,11 +80,21 @@ export function MemeDetail() {
             Download
           </LinkButton>
         </Inline>
-        <Inline className="detail-template">
-          <LinkButton as={Link} variant="quiet" to={`/create?template=${meme.templateId}`} icon={<Icon name="image" />}>
-            Make one with this template
-          </LinkButton>
-        </Inline>
+      </div>
+      <div className="detail-media">
+        <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} testId="meme-media" controls />
+      </div>
+      <div className="detail-actions">
+        <div className="detail-votes" data-testid="meme-votes">
+          <VoteButtons meme={meme} onChange={setMeme} />
+        </div>
+        <LinkButton as={Link} variant="quiet" to={`/create?template=${meme.templateId}`} icon={<Icon name="image" />} data-testid="use-template">
+          Make one with this template
+        </LinkButton>
+      </div>
+      <div className="detail-comments" data-testid="meme-comments">
+        <Comments meme={meme} onCountChange={(delta) => setMeme((m) => m && { ...m, commentCount: m.commentCount + delta })} />
+      </div>
         {isOwner && (
           <Panel variant="inset" heading="Only visible to you" className="detail-owner" data-testid="owner-actions">
             <Inline>
@@ -116,10 +122,6 @@ export function MemeDetail() {
             {actionError !== null && <ErrorView error={actionError} />}
           </Panel>
         )}
-      </aside>
-      <div className="detail-comments">
-        <Comments meme={meme} onCountChange={(delta) => setMeme((m) => m && { ...m, commentCount: m.commentCount + delta })} />
-      </div>
     </section>
   );
 }

@@ -44,3 +44,41 @@ test("meme page: the age shows the full posting date and time in a tooltip on ho
   await age.hover();
   await expect(page.getByRole("tooltip", { name: full })).toBeVisible();
 });
+
+test("meme page: content stays in one column with public actions beside the heading and votes", async ({ page, request }) => {
+  const owner = await apiUser(request, scoped("layout"));
+  const meme = await apiMeme(request, owner, { title: scoped("Single column"), tags: ["e2e-layout"] });
+  await page.goto(`/m/${meme.id}`);
+  await signIn(page, owner.username);
+
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const { meta, title, share, download, media, votes, template, comments, privateActions } = await page.evaluate(() => {
+      const box = (id: string) => {
+        const bounds = document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect();
+        return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+      };
+      return {
+        meta: box("meme-meta"), title: box("meme-title"), share: box("share-meme"), download: box("download-meme"),
+        media: box("meme-media"), votes: box("meme-votes"), template: box("use-template"),
+        comments: box("meme-comments"), privateActions: box("owner-actions"),
+      };
+    });
+    expect(meta.y + meta.height).toBeLessThanOrEqual(title.y);
+    expect(title.y + title.height).toBeLessThan(media.y);
+    expect(share.y + share.height).toBeLessThan(media.y);
+    expect(download.y + download.height).toBeLessThan(media.y);
+    expect(media.y + media.height).toBeLessThan(votes.y);
+    expect(media.y + media.height).toBeLessThan(template.y);
+    expect(votes.y + votes.height).toBeLessThan(comments.y);
+    expect(template.y + template.height).toBeLessThan(comments.y);
+    expect(comments.y + comments.height).toBeLessThan(privateActions.y);
+    if (width === 1280) {
+      expect(share.x).toBeGreaterThan(title.x + title.width);
+      expect(template.x).toBeGreaterThan(votes.x + votes.width);
+      expect(template.y).toBeLessThan(votes.y + votes.height);
+      expect(votes.y).toBeLessThan(template.y + template.height);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
+});

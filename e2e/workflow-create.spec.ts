@@ -15,7 +15,15 @@ test("create: pick a template, add top + bottom text, download, save to profile,
   await page.getByTestId("nav-create").click();
   await page.getByTestId("template-search").fill("Mock Classic");
   const card = page.getByTestId("template-card").filter({ hasText: "Mock Classic" }).first();
-  await card.getByTestId("use-template").click();
+  await card.hover();
+  await expect.poll(() => card.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe("none");
+  const usage = card.getByTestId("template-use-count");
+  const titleBox = await card.getByTestId("template-card-title").boundingBox();
+  const usageBox = await usage.boundingBox();
+  expect(usageBox!.x).toBeGreaterThan(titleBox!.x + titleBox!.width);
+  expect(Math.abs((usageBox!.y + usageBox!.height / 2) - (titleBox!.y + titleBox!.height / 2))).toBeLessThan(2);
+  // Clicking the usage area selects the template too.
+  await usage.click();
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
 
   // The template's preset boxes: top and bottom.

@@ -249,9 +249,9 @@ test("Creator: Publish posts the updated meme directly, an edited image saved as
 test("Creator: the canvas is capped in height; a template that would pass it scales down at its own aspect", async ({ page, request }) => {
   const username = scoped("aicanvas");
   const owner = await apiUser(request, username);
-  // Square: at this width the preview column is wider than the cap, so the height binds.
+  // Stack the Creator's columns so the square preview is wider than its height cap.
   const template = await apiTemplate(request, owner, { name: scoped("ai-square"), file: "panel-a.jpg" });
-  await page.setViewportSize({ width: 1800, height: 1000 });
+  await page.setViewportSize({ width: 760, height: 1000 });
   await page.goto("/create");
   await signIn(page, username);
   const creator = page.getByTestId("ai-creator");

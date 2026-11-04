@@ -138,13 +138,13 @@ test("profile templates: everyone sees the tab; the author opens one, edits its 
   const template = await apiTemplate(request, author, { name, defaultLayers: topBottomLayers("FIRST TOP", "FIRST BOTTOM") });
   const hidden = await apiTemplate(request, author, { name: scoped("Hidden draft"), assetId: template.asset.id, isPublic: false });
 
-  // A visitor sees the public template with Use, not Edit, and never the private one.
+  // A visitor can select the public template, but cannot edit it or see the private one.
   await page.goto(`/u/${author.username}?tab=templates`);
   await signIn(page, scoped("template-visitor"));
   const grid = page.getByTestId("profile-templates");
   await expect(grid).toHaveAttribute("aria-busy", "false");
   await expect(page.getByTestId("profile-tab-templates")).toHaveAttribute("aria-pressed", "true");
-  await expect(templateCard(page, template.id).getByTestId("use-template")).toBeVisible();
+  await expect(templateCard(page, template.id).getByTestId("template-card-title")).toBeVisible();
   await expect(templateCard(page, template.id).getByTestId("edit-template")).toHaveCount(0);
   await expect(templateCard(page, hidden.id)).toHaveCount(0);
 

@@ -91,6 +91,8 @@
   --ui-font-size-lg: 1.05rem;
   --ui-font-size-xl: 1.4rem;
   --ui-font-size-2xl: 1.8rem;
+  --ui-font-size-post-meta: 8pt;
+  --ui-font-size-post-title: calc(var(--ui-font-size-xl) + 2pt);
   --ui-line-height: 1.45;
   --ui-font-weight-regular: 400;
   --ui-font-weight-medium: 500;

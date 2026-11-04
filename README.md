@@ -5,6 +5,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 ## Features
 
 - **Templates**: about 260 built-in templates with variations, plus your own uploads. Search by tag, name, or what's in the picture ("dog" finds doge), filter by kind, see what's hot, and check each template's usage chart. Uploading an image that's already a template (the same file, or a copy of the picture) lists the existing ones before you save.
+  Template cards open directly when selected, with usage count and flame beside the title and a rounded hover highlight.
 - **Editor**: text boxes that wrap and shrink to fit (drag their corners to resize, the handle above to rotate; ⌘⌫ in a box's text removes it), custom fonts, image layers (upload or paste a screenshot), and a shared sticker library.
 - **Animation**: for GIFs and videos, a frame-by-frame timeline with per-layer visibility windows, keyframes, and a live loop preview. Exports are GIF or MP4, and MP4s keep their audio.
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
@@ -14,9 +15,13 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 - **Keyboard**: Backspace, Delete, or Escape goes back a page (outside text fields). Leaving the editor this way with an unpublished meme asks first.
 - **Profiles and leaderboard**: a Profile tab with h-score, high score, and tiered stats (bronze to diamond: tile outlines and stars); the user's memes and templates; and, on your own profile, API Keys (Agent Provider and Image Generator) plus private Favorites and Recent activity tabs. Leaderboard tier stars are enlarged and vertically centered beside their numbers.
 - **Skins**: seven interchangeable looks from `packages/ui` (dev only. Prod is locked to `default`). `painted` has a dark mode, set per user under your profile's Settings tab and kept in your browser.
+- **Header and columns**: the painted skin uses a 56px header with about 8px of clearance above and below search. Its 120px brand slot is aligned to the left column; reduced wordmark padding allows a 1.75× logo to fill the bar without clipping. Main content is centered in the viewport; navigation occupies up to 220px in the left rail and editor controls occupy the right rail, stacking on narrow screens.
+  On desktop, the visible wordmark, Create's plus icon, and navigation icons share the same left inset.
 - **Snapshots**: back up or restore the whole site (database and media) as one zip.
 - **Meme titles**: enter a title before saving or publishing in the editor or Quick Creator. Titles start empty; template names are never used as defaults.
-- **Post view**: the author, posting date, and compact, small-radius tag pills share a muted line above the title; overflowing tags end in an ellipsis. Upvote, score, and downvote share one pill, with circular highlights when hovering over either thumb. Change tags through the owner's Edit button. Comment and reply composers start at one line and size to their text, with a handle for manual vertical resizing. Focusing the input reveals Cancel and submit buttons inside the border; Cancel clears the draft and restores the collapsed one-line composer.
+- **Post view**: a single column with author, posting date, and compact tag pills above the title, and Share/Download to the right. The media follows, then voting with “Make one with this template” to the right, comments, and the owner's “Only visible to you” controls at the bottom. Action rows wrap on narrow screens. Overflowing tags end in an ellipsis. Upvote, score, and downvote share one pill, with circular highlights when hovering over either thumb. Change tags through the owner's Edit button. Comment and reply composers start at one line and size to their text, with a handle for manual vertical resizing. Focusing the input reveals Cancel and submit buttons inside the border; Cancel clears the draft and restores the collapsed one-line composer.
+
+Post pages use a compact heading with 8pt author/date/tags, muted gray tag labels, and a title 2pt larger than the skin's XL font, in a content column capped at 940px that shrinks to fit narrow screens. Images and videos fill the available width up to 940px and scale proportionally within a 680px height limit, without cropping.
 
 All rendering happens in the browser. The servers only store, validate, and index. How it works and why: [ARCH.md](ARCH.md).
 

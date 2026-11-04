@@ -1,5 +1,5 @@
-import { useRef, type ComponentPropsWithoutRef, type CSSProperties, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { useRef, type ComponentPropsWithoutRef, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import type { Template } from "@memegen/shared";
 import { Badge, Card, CardMeta, CardTitle, cx, Icon, LinkButton, MediaGrid } from "@memegen/ui";
 import { plural } from "../format.ts";
@@ -15,7 +15,7 @@ export function useTemplateSearchPlaceholder(): string {
   return total === undefined ? "Search templates…" : `Search ${plural(total, "template")}`;
 }
 
-/** A card is at least this share of the skin's grid column (`--ui-grid-min`) wide: room for its title and Use. */
+/** A card is at least this share of the skin's grid column wide: room for its title and usage. */
 const MIN_WIDTH_SHARE = 0.6;
 
 /** Where the grid placed a card: its width and media height, px. */
@@ -25,10 +25,11 @@ interface Slot {
 }
 
 /**
- * Gallery tile: the template, who added it, how often it's used, and Use. Details live in the editor.
- * `editable` (the author's own profile) points the tile at the template's editor and swaps Use for Edit.
+ * Gallery tile: title and usage beside the template. Details live in the editor.
+ * `editable` (the author's own profile) points the tile at the template's editor and shows Edit.
  */
 function TemplateCard({ template, editable = false, slot }: { template: Template; editable?: boolean; slot?: Slot }) {
+  const navigate = useNavigate();
   const to = editable ? `/create?editTemplate=${template.id}` : `/create?template=${template.id}`;
   // Until the grid is measured, the card sits at the CSS row height, as wide as its media's aspect.
   const style = {
@@ -36,6 +37,12 @@ function TemplateCard({ template, editable = false, slot }: { template: Template
     "--template-width": slot ? `${slot.width}px` : undefined,
     "--template-height": slot ? `${slot.height}px` : undefined,
   } as CSSProperties;
+  function open(e: MouseEvent<HTMLElement>) {
+    if (e.defaultPrevented || (e.target as Element).closest("a, button, input, textarea, select, label")) return;
+    if (window.getSelection()?.isCollapsed === false) return;
+    if (e.metaKey || e.ctrlKey) window.open(to, "_blank", "noopener");
+    else navigate(to);
+  }
   return (
     <Card
       borderless
@@ -43,30 +50,30 @@ function TemplateCard({ template, editable = false, slot }: { template: Template
       data-testid="template-card"
       data-template-id={template.id}
       style={style}
+      onClick={open}
       media={
-        <Link to={to}>
+        <Link to={to} data-testid="template-card-media">
           <MediaView asset={template.asset} alt={template.name} />
         </Link>
       }
       actions={
-        editable ? (
+        editable && (
           <LinkButton as={Link} size="sm" to={to} data-testid="edit-template">
             Edit
-          </LinkButton>
-        ) : (
-          <LinkButton as={Link} size="sm" to={to} data-testid="use-template">
-            Use
           </LinkButton>
         )
       }
     >
       <div className="template-card-title">
-        <CardTitle as={Link} to={to}>
+        <CardTitle as={Link} to={to} data-testid="template-card-title">
           {template.name}
         </CardTitle>
         {template.kind === "multi" && <Icon name="panels" gradient tooltip="Image pack template" data-testid="template-multi-panel" />}
       </div>
-      <TemplateMeta template={template} />
+      <CardMeta>
+        <TemplateUseCount template={template} />
+      </CardMeta>
+      {!template.isPublic && <Badge tone="info" className="template-card-private">Private</Badge>}
     </Card>
   );
 }
@@ -76,19 +83,25 @@ function aspect({ asset }: Template): number {
   return asset.width && asset.height ? asset.width / asset.height : 1;
 }
 
+function TemplateUseCount({ template }: { template: Template }) {
+  const used = `used ${plural(template.useCount, "time")}`;
+  return (
+    <span data-testid="template-use-count" aria-label={used} title={used}>
+      {template.useCount}
+      <Icon name="flame" />
+    </span>
+  );
+}
+
 /** Author, use count (`n` and a flame) and a Private badge. */
 export function TemplateMeta({ template }: { template: Template }) {
-  const used = `used ${plural(template.useCount, "time")}`;
   return (
     <CardMeta>
       <span data-testid="template-author">
         added by <Link to={`/u/${template.owner.username}`}>@{template.owner.username}</Link>
       </span>
       <span aria-hidden> · </span>
-      <span data-testid="template-use-count" aria-label={used} title={used}>
-        {template.useCount}
-        <Icon name="flame" />
-      </span>
+      <TemplateUseCount template={template} />
       {!template.isPublic && <Badge tone="info">Private</Badge>}
     </CardMeta>
   );

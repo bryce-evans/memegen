@@ -617,7 +617,7 @@
    and media height, --template-width/--template-height, so every full row fills the line at close to the target
    --template-row-height, which the code reads, so keep it a plain px/rem length). Until the first measurement a card
    sits at the target height, as wide as its media's --template-ratio, floored at 60% of the grid's normal column
-   (room for the title and Use) and capped at the row. `:root:root` beats the masonry skin's grid rules. */
+   (room for the title and usage) and capped at the row. `:root:root` beats the masonry skin's grid rules. */
 :root:root .ui-media-grid.template-grid {
   --template-row-height: 250px;
   display: flex;
@@ -634,6 +634,18 @@
   );
   max-width: 100%;
 }
+.template-grid .template-card.ui-card.ui-card--borderless {
+  border-radius: var(--ui-radius-media);
+  cursor: pointer;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-easing-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-easing-standard);
+}
+.template-grid .template-card.ui-card.ui-card--borderless:is(:hover, :focus-within) {
+  background-color: var(--ui-color-card-hover);
+  background-image: none;
+  box-shadow: 0 0 0 var(--ui-space-2) var(--ui-color-card-hover);
+}
 .template-card .ui-card-media {
   display: flex;
   justify-content: center;
@@ -648,17 +660,23 @@
   height: var(--template-height, var(--template-row-height));
   max-height: none;
 }
-/* Template cards: Use/Edit sits to the right of the title and author lines (centered across both) instead of
-   adding a row under them. Title and meta auto-place into the first column; the action spans both rows. */
+/* Title and usage share one line; an author's Edit action and private badge sit below. */
 .template-card .ui-card-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: var(--ui-space-3);
 }
+.template-card .ui-card-meta {
+  margin: 0;
+  white-space: nowrap;
+}
+.template-card-private {
+  justify-self: start;
+}
 .template-card .ui-card-actions {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-column: 1 / -1;
+  grid-row: 2;
   margin: 0;
 }
 /* The title shrinks (with its ellipsis) so a multi-panel icon after it always shows. */
@@ -1300,11 +1318,77 @@
 
 /* ---- detail / profile ----------------------------------------------------- */
 
+@media (min-width: 761px) {
+  :root[data-skin] .ui-shell {
+    --post-center-width: calc(940px + 2 * var(--ui-main-padding-inline));
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(var(--post-center-width), calc(100% - 360px - 2 * var(--ui-shell-gap)))) minmax(0, 1fr);
+    padding-inline: var(--ui-shell-padding-start);
+  }
+
+  .ui-shell > .ui-sidebar {
+    grid-column: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: 220px;
+  }
+
+  .ui-shell > .ui-main {
+    grid-column: 2;
+  }
+}
+
+@media (min-width: 961px) {
+  :root[data-skin] .ui-shell:has(> .ui-main > .editor) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(var(--post-center-width), calc(100% - 640px - 2 * var(--ui-shell-gap)))) minmax(0, 1fr);
+  }
+
+  :root[data-skin] .ui-shell > .ui-main:has(> .editor) {
+    display: grid;
+    grid-column: 2 / 4;
+    grid-template-columns: subgrid;
+    padding-inline: 0;
+  }
+
+  .ui-main:has(> .editor) > .ui-page-header {
+    grid-column: 1;
+    padding-inline: var(--ui-main-padding-inline);
+  }
+
+  .ui-main > .editor {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+  }
+
+  .editor > .editor-main {
+    padding-inline: var(--ui-main-padding-inline);
+  }
+}
+
+/* Keep posts compact without narrowing feeds or the editor's content sheet. */
+:root[data-skin] .ui-main:has(> .detail) {
+  width: 100%;
+  max-width: calc(940px + 2 * var(--ui-main-padding-inline));
+  padding-block: var(--ui-space-3);
+  justify-self: start;
+}
+
 .detail {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  gap: var(--ui-space-7);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-space-5);
   align-items: start;
+}
+.detail-header,
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ui-space-4);
+}
+.detail-info {
+  flex: 1 1 20rem;
+  min-width: 0;
 }
 .detail-media {
   display: flex;
@@ -1315,12 +1399,15 @@
 }
 .detail-media img,
 .detail-media video {
+  width: 100%;
+  height: auto;
   max-width: 100%;
-  max-height: 80vh;
+  max-height: 680px;
   object-fit: contain;
 }
 .detail-meta {
   --ui-color-link: var(--ui-color-text-muted);
+  font-size: var(--ui-font-size-post-meta);
   display: flex;
   align-items: baseline;
   gap: var(--ui-space-3);
@@ -1334,8 +1421,8 @@
 /* The title runs inline so the favorite star follows its last word, even when it wraps. The heading takes over the
    h1's block margin and line box; the star's error alert is a block, so it gets its own line. */
 .detail-heading {
-  margin: 0 0 var(--ui-space-3);
-  font-size: var(--ui-font-size-2xl);
+  margin: 0;
+  font-size: var(--ui-font-size-post-title);
   line-height: 1.2;
 }
 .detail-title {
@@ -1367,20 +1454,13 @@
   color: var(--ui-color-favorite);
 }
 .detail-heading .detail-favorite .ui-icon {
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 1.5rem;
+  height: 1.5rem;
   fill: none;
   stroke-width: 1.25;
 }
 .detail-heading .detail-favorite[aria-pressed="true"] .ui-icon {
   fill: currentColor;
-}
-/* As tall as the media beside it, so the owner-only panel can sit at its bottom, level with the image's. */
-.detail-side {
-  display: flex;
-  flex-direction: column;
-  align-self: stretch;
-  min-width: 0;
 }
 .detail-tags {
   flex: 1;
@@ -1391,21 +1471,12 @@
 }
 :root .detail-tags .ui-chip {
   border-radius: var(--ui-radius-sm);
-  font-size: var(--ui-font-size-xs);
+  font-size: var(--ui-font-size-post-meta);
+  color: var(--ui-color-text-muted);
   padding: 0 var(--ui-space-2);
 }
 .detail-links {
-  margin: var(--ui-space-4) 0 var(--ui-space-2);
-}
-.detail-template {
-  margin-bottom: var(--ui-space-4);
-}
-.detail-owner.ui-panel {
-  margin: auto 0 0;
-}
-.detail-comments {
-  grid-column: 1 / -1;
-  max-width: 48rem;
+  flex-shrink: 0;
 }
 
 .profile-head {
@@ -1850,7 +1921,6 @@
 
 @media (max-width: 960px) {
   .editor,
-  .detail,
   .ai-creator-body,
   .ai-settings,
   .add-content-cards {

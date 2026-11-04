@@ -1,5 +1,5 @@
 /**
- * SQL and helpers shared by the seed scripts (library/seed-checkout.ts, scripts/seed-stickers.ts, scripts/sample/seed.ts,
+ * SQL and helpers shared by the seed scripts (library import modules, scripts/seed-stickers.ts, scripts/sample/seed.ts,
  * scripts/starter/seed.ts, and the e2e mock seed e2e/mock/seed-data.ts) and file naming shared with scripts/snapshot.
  */
 import type { Layer, TagKind, Visibility } from "@memegen/shared";

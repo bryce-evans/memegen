@@ -9,6 +9,7 @@ import {
   TAG_NAME_MAX_LENGTH,
   type Layer,
 } from "@memegen/shared";
+import { CATALOG_FONT_ROLES, type CatalogFontRole } from "./fonts.ts";
 
 const httpsUrl = z.url().refine((value) => new URL(value).protocol === "https:", "URL must use HTTPS");
 const fraction = z.number().min(0).max(1);
@@ -21,7 +22,7 @@ export const manifestTextSchema = z.object({
   maxWidth: z.number().gt(0).max(1),
   maxHeight: z.number().gt(0).max(1),
   fontSize: z.number().gt(0).max(1).optional(),
-  font: z.enum(["impact", "sans", "thin", "comic"]).optional(),
+  font: z.enum(CATALOG_FONT_ROLES).optional(),
   color: color.optional(),
   strokeColor: color.optional(),
   strokeWidth: z.number().min(0).max(0.5).optional(),
@@ -79,7 +80,8 @@ export const templateManifestSchema = z.object({
 
 export type ManifestTemplate = z.infer<typeof manifestTemplateSchema>;
 export type TemplateManifest = z.infer<typeof templateManifestSchema>;
-export type ManifestFonts = { impact: string; sans: string; thin?: string; comic?: string };
+export type ManifestFonts = Pick<Record<CatalogFontRole, string>, "impact" | "sans">
+  & Partial<Record<CatalogFontRole, string>>;
 
 /** Convert catalog coordinates to native, validated editor layers. */
 export function manifestLayers(entry: ManifestTemplate, fonts: ManifestFonts, durationSec: number | null = null): Layer[] {

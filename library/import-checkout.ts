@@ -12,36 +12,14 @@
  */
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseArgs } from "node:util";
 import { parse as parseYaml } from "yaml";
 import { newTextLayer, type Layer, type TextLayer, type TextStyle } from "@memegen/shared";
-import { createSql, HttpError, migrate, type Sql } from "@memegen/server-kit";
+import { HttpError, type Sql } from "@memegen/server-kit";
 import { assetStoreFromEnv } from "@memegen/storage";
 import { insertTemplate, titleCase } from "../scripts/lib.ts";
-import { addRegistryAliases, checkoutAllowed, loadRegistry, reconcileRegistry, registryRisk } from "./registry.ts";
+import { checkoutAllowed, registryRisk, type Registry } from "./registry.ts";
 import { manifestLayers, type ManifestFonts } from "./manifest.ts";
-
-const { values } = parseArgs({
-  options: { from: { type: "string" }, limit: { type: "string" } },
-});
-if (!values.from) {
-  console.error("usage: node library/seed-checkout.ts --from <path to jacebrowning/memegen checkout> [--limit N]");
-  process.exit(1);
-}
-const ROOT = values.from;
-const LIMIT = values.limit ? Number(values.limit) : Infinity;
-if (values.limit !== undefined && (!/^\d+$/.test(values.limit) || !Number.isSafeInteger(LIMIT))) {
-  throw new Error("--limit must be a non-negative safe integer");
-}
-
-const FONTS: { file: string; name: string; aliases: string[] }[] = [
-  { file: "Impact.ttf", name: "Impact", aliases: ["impact"] },
-  { file: "TitilliumWeb-Black.ttf", name: "Titillium Web Black", aliases: ["thick", "titilliumweb"] },
-  { file: "TitilliumWeb-SemiBold.ttf", name: "Titillium Web SemiBold", aliases: ["thin", "titilliumweb-thin"] },
-  { file: "NotoSans-Bold.ttf", name: "Noto Sans Bold", aliases: ["notosans", "tiny", "segoe", "jp", "hgminchob"] },
-  { file: "Kalam-Regular.ttf", name: "Kalam", aliases: ["comic", "kalam"] },
-  { file: "NotoSansHebrew-Bold.ttf", name: "Noto Sans Hebrew Bold", aliases: ["he", "notosanshebrew"] },
-];
+import { LIBRARY_FONTS } from "./fonts.ts";
 
 /** jacebrowning's default ("thick") is swapped for Impact, the house default here. */
 const DEFAULT_FONT_ALIASES: Record<string, true> = { thick: true, titilliumweb: true, "": true };
@@ -139,29 +117,21 @@ async function upsertTemplate(
 
 const MEDIA = /\.(png|jpe?g|gif|webp)$/i;
 
-async function main() {
-  const sql = createSql();
-  const registry = await loadRegistry({ checkoutEnabled: true });
-  try {
-    await migrate(sql);
-    await reconcileRegistry(sql, registry);
+export async function importCheckout(sql: Sql, registry: Registry, root: string, limit: number): Promise<void> {
     const store = assetStoreFromEnv(sql);
-
     const fontIds = new Map<string, string>();
-    for (const font of FONTS) {
-      const data = new Uint8Array(await readFile(join(ROOT, "fonts", font.file)));
+    const catalogFonts: Partial<ManifestFonts> = {};
+    for (const font of LIBRARY_FONTS) {
+      const data = new Uint8Array(await readFile(join(root, "fonts", font.file)));
       const asset = await store.uploadOnce({ data, filename: font.file, name: font.name, ownerId: null });
       for (const alias of font.aliases) fontIds.set(alias, asset.id);
+      if (font.role) catalogFonts[font.role] = asset.id;
       console.log(`font  ${font.name}`);
     }
-    const fonts: ManifestFonts = {
-      impact: fontIds.get("impact")!,
-      sans: fontIds.get("notosans")!,
-      thin: fontIds.get("thin")!,
-      comic: fontIds.get("comic")!,
-    };
+    if (!catalogFonts.impact || !catalogFonts.sans) throw new Error("Checkout fonts must include Impact and Noto Sans Bold");
+    const fonts: ManifestFonts = { ...catalogFonts, impact: catalogFonts.impact, sans: catalogFonts.sans };
 
-    const dirs = (await readdir(join(ROOT, "templates"), { withFileTypes: true }))
+    const dirs = (await readdir(join(root, "templates"), { withFileTypes: true }))
       .filter((d) => d.isDirectory())
       .map((d) => d.name)
       .sort()
@@ -170,13 +140,13 @@ async function main() {
         if (registryRisk(registry, slug) === undefined) console.warn(`skip  ${slug} — no catalog entry`);
         return checkoutAllowed(registry, slug);
       })
-      .slice(0, LIMIT);
+      .slice(0, limit);
 
     let created = 0;
     let skipped = 0;
     for (const dir of dirs) {
       const entry = registry.catalog.find((entry) => entry.slug === `jb/${dir}`)!;
-      const folder = join(ROOT, "templates", dir);
+      const folder = join(root, "templates", dir);
       const cfg = parseYaml(await readFile(join(folder, "config.yml"), "utf8")) as JbConfig;
       const files = (await readdir(folder)).filter((f) => MEDIA.test(f)).sort();
       const parentFile =
@@ -201,7 +171,6 @@ async function main() {
           });
           if (isParent) {
             parentId = result.id;
-            await addRegistryAliases(sql, result.id, entry);
           }
           if (result.created) created++;
         } catch (err) {
@@ -214,13 +183,4 @@ async function main() {
       }
     }
     console.log(`templates: ${created} created, ${skipped} skipped, ${dirs.length} folders scanned`);
-  } finally {
-    try {
-      await reconcileRegistry(sql, registry);
-    } finally {
-      await sql.end();
-    }
-  }
 }
-
-await main();

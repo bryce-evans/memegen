@@ -1,4 +1,5 @@
 import { DEFAULT_LIMITS, type UploadLimits } from "@memegen/shared";
+import { servicePorts } from "./ports.ts";
 
 function num(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -21,15 +22,17 @@ export function uploadLimitsFromEnv(): UploadLimits {
   };
 }
 
+const ports = servicePorts(process.env);
+
 export const config = {
   databaseUrl: process.env.DATABASE_URL ?? "postgres://localhost:5432/memegen",
-  apiPort: num("API_PORT", 4000),
-  storagePort: num("STORAGE_PORT", 4001),
+  apiPort: ports.api,
+  storagePort: ports.storage,
   internalToken: process.env.INTERNAL_TOKEN ?? "",
 };
 
 const searchEnabled = process.env.SEARCH_ENABLED === "true";
-const searchPort = num("SEARCH_PORT", 4002);
+const searchPort = ports.search;
 
 /** The search sidecar (`services/search`) runs only when `SEARCH_ENABLED=true`; the API then reaches it at `SEARCH_URL`. */
 export const searchConfig = {

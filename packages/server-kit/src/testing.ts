@@ -6,8 +6,47 @@ import { migrate } from "./migrate.ts";
 
 export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgres://localhost:5432/memegen_test";
 
+const disposableDatabases = {
+  integration: "memegen_test",
+  snapshot: "memegen_snapshot_test",
+  e2e: "memegen_e2e",
+} as const;
+
+/** Dedicated names are mandatory, even on remote hosts. Never infer safety from a substring or MODE alone. */
+export function assertDisposableDatabase(
+  url: string,
+  purpose: keyof typeof disposableDatabases,
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  if (env.MODE === "prod") throw new Error("refusing to reset a test database in prod mode");
+  const databaseName = (value: string): string => {
+    try {
+      const parsed = new URL(value);
+      if (!["postgres:", "postgresql:"].includes(parsed.protocol) || parsed.hash) throw new Error();
+      // postgres.js and pg_restore must agree on the target. Query parameters may not override it.
+      for (const key of parsed.searchParams.keys()) {
+        if (!["sslmode", "ssl", "connect_timeout", "application_name"].includes(key)) throw new Error();
+      }
+      const name = decodeURIComponent(parsed.pathname.slice(1));
+      if (!name || name.includes("/")) throw new Error();
+      return name;
+    } catch {
+      // Do not echo credentials from malformed URLs.
+      throw new Error("test database safety requires a PostgreSQL URL without target overrides");
+    }
+  };
+  const name = databaseName(url);
+  if (name !== disposableDatabases[purpose]) {
+    throw new Error(`refusing to reset database: ${purpose} requires ${disposableDatabases[purpose]}`);
+  }
+  const main = databaseName(env.DATABASE_URL ?? "postgres://localhost:5432/memegen");
+  // Conservatively reject matching names even across hosts: localhost aliases and proxies can coincide.
+  if (name === main) throw new Error("refusing to reset a test database also configured as the main database");
+}
+
 /** Fresh schema in the test database. Test files run serially (--test-concurrency=1). */
 export async function freshTestDb(): Promise<Sql> {
+  assertDisposableDatabase(TEST_DATABASE_URL, "integration");
   const sql = createSql(TEST_DATABASE_URL);
   await sql`drop schema if exists public cascade`;
   await sql`create schema public`;

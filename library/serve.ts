@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { LIBRARY_FONTS, catalogFontUrl } from "./fonts.ts";
 
 const FILES: Record<string, { name: string; type: string }> = {
   "/": { name: "index.html", type: "text/html; charset=utf-8" },
@@ -12,12 +13,9 @@ const FILES: Record<string, { name: string; type: string }> = {
   "/REGISTRY_POLICY.json": { name: "REGISTRY_POLICY.json", type: "application/json; charset=utf-8" },
 };
 
-const FONTS: Record<string, string> = {
-  "/fonts/impact.ttf": "Impact.ttf",
-  "/fonts/sans.ttf": "NotoSans-Bold.ttf",
-  "/fonts/thin.ttf": "TitilliumWeb-SemiBold.ttf",
-  "/fonts/comic.ttf": "Kalam-Regular.ttf",
-};
+const FONTS: Record<string, string> = Object.fromEntries(
+  LIBRARY_FONTS.flatMap((font) => font.role ? [[catalogFontUrl(font.role), font.file]] : []),
+);
 const FONT_HELP = "Run ./run.sh config/dev.env library download and set SEED_TEMPLATES_FROM to that checkout.";
 
 function buildPreview(): Promise<Buffer> {

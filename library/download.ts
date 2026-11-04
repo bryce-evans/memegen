@@ -2,17 +2,11 @@ import { execFile } from "node:child_process";
 import { lstat, mkdir, mkdtemp, readdir, rename, rm, rmdir, stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify, parseArgs } from "node:util";
+import { LIBRARY_FONTS } from "./fonts.ts";
 
 const SOURCE_URL = "https://github.com/jacebrowning/memegen.git";
 const SOURCE_REVISION = "a8b34146192d9a8fccc9f0d57b73aa947cbdd72d";
-const FONT_FILES = [
-  "Impact.ttf",
-  "TitilliumWeb-Black.ttf",
-  "TitilliumWeb-SemiBold.ttf",
-  "NotoSans-Bold.ttf",
-  "Kalam-Regular.ttf",
-  "NotoSansHebrew-Bold.ttf",
-];
+const FONT_FILES = LIBRARY_FONTS.map((font) => font.file);
 const exec = promisify(execFile);
 
 async function exists(path: string): Promise<boolean> {

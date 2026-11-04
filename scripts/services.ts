@@ -4,7 +4,7 @@
  */
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { config, searchConfig } from "@memegen/server-kit";
+import { portFromEnv, servicePorts } from "@memegen/server-kit/ports";
 
 export interface Service {
   name: string;
@@ -32,14 +32,14 @@ export function services({ watch, web }: StackOptions, env: NodeJS.ProcessEnv = 
     cwd: ROOT,
     port,
   });
-  const webPort = env.WEB_PORT || (web === "vite" ? "5173" : "8080");
+  const ports = servicePorts(env);
+  const webPort = portFromEnv(env, "WEB_PORT", web === "vite" ? 5173 : 8080);
   return [
-    // `env` (e2e passes its own) wins over the config defaults read from process.env.
-    server("storage", Number(env.STORAGE_PORT) || config.storagePort),
-    server("api", Number(env.API_PORT) || config.apiPort),
-    ...(env.SEARCH_ENABLED === "true" ? [server("search", Number(env.SEARCH_PORT) || searchConfig.port)] : []),
+    server("storage", ports.storage),
+    server("api", ports.api),
+    ...(env.SEARCH_ENABLED === "true" ? [server("search", ports.search)] : []),
     web === "vite"
-      ? { name: "web", command: "bunx", args: ["vite", "--port", webPort, "--strictPort"], cwd: join(ROOT, "apps/web"), port: Number(webPort) }
-      : { name: "web", command: "node", args: ["scripts/serve-web.ts"], cwd: ROOT, port: Number(webPort) },
+      ? { name: "web", command: "bunx", args: ["vite", "--port", String(webPort), "--strictPort"], cwd: join(ROOT, "apps/web"), port: webPort }
+      : { name: "web", command: "node", args: ["scripts/serve-web.ts"], cwd: ROOT, port: webPort },
   ];
 }

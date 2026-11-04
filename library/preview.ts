@@ -8,6 +8,7 @@ import {
   type DecodedMedia,
 } from "@memegen/render";
 import { manifestLayers, type ManifestTemplate } from "./manifest.ts";
+import { CATALOG_FONT_ROLES, catalogFontUrl } from "./fonts.ts";
 
 const fonts = {
   impact: "00000000-0000-4000-8000-000000000001",
@@ -15,12 +16,9 @@ const fonts = {
   thin: "00000000-0000-4000-8000-000000000003",
   comic: "00000000-0000-4000-8000-000000000004",
 };
-const fontUrls: Record<string, string> = {
-  [fonts.impact]: "/fonts/impact.ttf",
-  [fonts.sans]: "/fonts/sans.ttf",
-  [fonts.thin]: "/fonts/thin.ttf",
-  [fonts.comic]: "/fonts/comic.ttf",
-};
+const fontUrls: Record<string, string> = Object.fromEntries(
+  CATALOG_FONT_ROLES.map((role) => [fonts[role], catalogFontUrl(role)]),
+);
 const images: AssetImages = new Map();
 
 function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promise<void> {

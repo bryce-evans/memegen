@@ -9,7 +9,7 @@ import { openPromise } from "yauzl";
 import { ZipFile } from "yazl";
 import { DEFAULT_LIMITS } from "@memegen/shared";
 import { createSql, migrate, migrationFiles, MIGRATIONS_DIR, type Sql } from "@memegen/server-kit";
-import { encodePng, TEST_DATABASE_URL } from "@memegen/server-kit/testing";
+import { assertDisposableDatabase, encodePng, TEST_DATABASE_URL } from "@memegen/server-kit/testing";
 import { AssetStore, LocalStorageProvider, staticProviders, type Providers } from "@memegen/storage";
 import { insertTemplate } from "../lib.ts";
 import { loadSnapshot } from "./load.ts";
@@ -27,7 +27,8 @@ let targetProviders: Providers;
 let sourceStorage: string;
 let targetStorage: string;
 
-async function emptySchema(sql: Sql): Promise<void> {
+async function emptySchema(sql: Sql, url: string, purpose: "integration" | "snapshot"): Promise<void> {
+  assertDisposableDatabase(url, purpose);
   await sql`drop schema if exists public cascade`;
   await sql`create schema public`;
 }
@@ -114,14 +115,16 @@ async function rewriteManifest(file: string, out: string, edit: (m: Manifest) =>
 // Each test drops and recreates both schemas, so each gets fresh connections: postgres.js caches prepared
 // statements and type ids per connection, which go stale when the schema is recreated.
 beforeEach(async () => {
+  assertDisposableDatabase(SOURCE_URL, "integration");
+  assertDisposableDatabase(TARGET_URL, "snapshot");
   dir = await mkdtemp(join(tmpdir(), "memegen-snapshot-test-"));
   sourceStorage = join(dir, "source-storage");
   targetStorage = join(dir, "target-storage");
   sourceProviders = staticProviders(new LocalStorageProvider(sourceStorage));
   targetProviders = staticProviders(new LocalStorageProvider(targetStorage));
-  for (const url of [SOURCE_URL, TARGET_URL]) {
+  for (const [url, purpose] of [[SOURCE_URL, "integration"], [TARGET_URL, "snapshot"]] as const) {
     const sql = createSql(url);
-    await emptySchema(sql);
+    await emptySchema(sql, url, purpose);
     await sql.end();
   }
   source = createSql(SOURCE_URL);
@@ -171,12 +174,14 @@ test("a snapshot from older code loads and is migrated forward", async () => {
   const old = await migrationsUpTo("012_stickers.sql");
   await migrate(source, old);
   const { memeId } = await seedFixture(source);
+  await source`update memes set visibility = 'private' where id = ${memeId}`;
   const file = join(dir, "old.zip");
   const manifest = await saveSnapshot(source, { databaseUrl: SOURCE_URL, providers: sourceProviders, out: file, label: "backup", migrationsDir: old });
   assert.equal(manifest.migrations.at(-1), "012_stickers.sql");
 
-  const result = await loadSnapshot(target, { databaseUrl: TARGET_URL, providers: targetProviders, file });
-  assert.deepEqual(result.migrated, ["013_sticker_uses.sql", "014_panel_mirror.sql", "015_drop_tag_description.sql"]);
+  await loadSnapshot(target, { databaseUrl: TARGET_URL, providers: targetProviders, file });
+  const [restored] = await target<{ visibility: string }[]>`select visibility from memes where id = ${memeId}`;
+  assert.equal(restored!.visibility, "unlisted");
   // 013's backfill ran over the restored meme.
   const uses = await target<{ kind: string }[]>`select kind from sticker_uses where meme_id = ${memeId} order by kind`;
   assert.deepEqual(uses.map((u) => u.kind), ["created", "posted"]);

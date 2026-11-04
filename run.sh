@@ -15,8 +15,9 @@
 #   build    production build of the web app
 #   start    build, then run storage + api + web server (apps/web/dist)
 #   test     unit/integration tests (dev only)
+#   typecheck  check workspace dependency boundaries and TypeScript
 #   e2e      Playwright browser tests (dev only)
-#   config   print the resolved config (secrets masked)
+#   config   print configured values (secrets masked)
 #
 # Examples:
 #   ./run.sh config/dev.env setup && ./run.sh config/dev.env seed && ./run.sh config/dev.env dev
@@ -111,25 +112,10 @@ wipe() {
 
 # Templates first: the sample memes are made from them.
 seed() {
-  migrate
-  # Both importers reconcile existing built-ins to the configured content-risk ceiling.
-  export SEED_MAX_RISK="${SEED_MAX_RISK-3}"
-  [[ "$SEED_MAX_RISK" =~ ^[1-5]$ ]] || {
-    echo "SEED_MAX_RISK must be an integer from 1 to 5" >&2
-    return 1
-  }
+  # The library command owns migration and one reconciliation around both source imports.
+  bun library/seed.ts "$@"
   local seeded=false
-  if [[ -n "${SEED_TEMPLATES_FROM:-}" ]]; then
-    [[ -d "$SEED_TEMPLATES_FROM" ]] ||
-      die "SEED_TEMPLATES_FROM=$SEED_TEMPLATES_FROM not found (run ./run.sh \"$CONFIG\" library download)"
-    bun library/seed-checkout.ts --from "$SEED_TEMPLATES_FROM" "$@"
-    seeded=true
-  fi
-  local manifest="${SEED_TEMPLATE_MANIFEST-library/MANIFEST.json}"
-  if [[ -n "$manifest" ]]; then
-    bun library/seed.ts --manifest "$manifest" "$@"
-    seeded=true
-  fi
+  if [[ -n "${SEED_TEMPLATES_FROM:-}" || -n "${SEED_TEMPLATE_MANIFEST-library/MANIFEST.json}" ]]; then seeded=true; fi
   if [[ "${SEED_SAMPLE:-false}" == true ]]; then
     node scripts/sample/seed.ts
     seeded=true
@@ -228,18 +214,26 @@ case "$COMMAND" in
     dev_only
     exec bun run test "$@"
     ;;
+  typecheck)
+    exec bun run typecheck "$@"
+    ;;
   e2e)
     dev_only
     exec bun run test:e2e "$@"
     ;;
   config)
-    echo "# resolved from $CONFIG"
+    echo "# configured values from $CONFIG"
     while IFS= read -r line || [[ -n "$line" ]]; do
       [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)= ]] || continue
       key="${BASH_REMATCH[1]}"
       value="${!key-}"
       if [[ "$key" =~ (TOKEN|SECRET|PASSWORD|KEY) && -n "$value" ]]; then value="****"; fi
-      [[ "$key" != DATABASE_URL || "$value" != *:*@* ]] || value="$(sed -E 's#(://[^:]+:)[^@]+@#\1****@#' <<<"$value")"
+      case "$key" in
+        DATABASE_URL|TEST_DATABASE_URL|E2E_DATABASE_URL|SNAPSHOT_TEST_DATABASE_URL)
+          # URLs can also carry credentials in query options. Do not expose any connection details.
+          [[ -z "$value" ]] || value="****"
+          ;;
+      esac
       echo "$key=$value"
     done <"$CONFIG"
     ;;

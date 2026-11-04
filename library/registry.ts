@@ -124,11 +124,11 @@ export async function reconcileRegistry(sql: Sql, registry: Registry): Promise<v
     group by t.id`;
   const metadata = [...registry.catalog, ...registry.policy.aliases];
   const publicRoots: string[] = [];
-  const privateRoots: string[] = [];
+  const unlistedRoots: string[] = [];
   const ratedRoots = new Map<number, string[]>();
   for (const root of roots) {
     const visible = rootVisibility(registry, root);
-    if (visible !== undefined) (visible ? publicRoots : privateRoots).push(root.id);
+    if (visible !== undefined) (visible ? publicRoots : unlistedRoots).push(root.id);
     const risk = root.slug ? registryRisk(registry, root.slug) : undefined;
     if (risk !== undefined) {
       const ids = ratedRoots.get(risk) ?? [];
@@ -136,7 +136,7 @@ export async function reconcileRegistry(sql: Sql, registry: Registry): Promise<v
       ratedRoots.set(risk, ids);
     }
   }
-  for (const [visible, ids] of [[true, publicRoots], [false, privateRoots]] as const) {
+  for (const [visible, ids] of [[true, publicRoots], [false, unlistedRoots]] as const) {
     if (!ids.length) continue;
     await sql`update templates set is_public = ${visible}
       where owner_id = memegen_user_id() and (id in ${sql(ids)} or parent_id in ${sql(ids)})

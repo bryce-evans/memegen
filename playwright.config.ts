@@ -1,44 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 import { services } from "./scripts/services.ts";
 
-/**
- * Browser end-to-end tests. Runs isolated servers on their own ports against the
- * `memegen_e2e` database and `.data/e2e-storage`, so a running `./run.sh config/dev.env dev` is untouched.
- */
-const API_PORT = 4100;
-const STORAGE_PORT = 4101;
-const WEB_PORT = 5174;
-/** The AI provider stub (`startAiStub`), started by global setup. */
-export const AI_STUB_PORT = 4102;
-const SEARCH_PORT = 4103;
-
-export const E2E_ENV = {
-  DATABASE_URL: process.env.E2E_DATABASE_URL ?? "postgres://localhost:5432/memegen_e2e",
-  API_PORT: String(API_PORT),
-  STORAGE_PORT: String(STORAGE_PORT),
-  WEB_PORT: String(WEB_PORT),
-  // Pinned so an API_URL/STORAGE_URL override in the caller's config can't point Vite at another stack.
-  API_URL: `http://localhost:${API_PORT}`,
-  STORAGE_URL: `http://localhost:${STORAGE_PORT}`,
-  STORAGE_PROVIDER: "local",
-  LOCAL_STORAGE_DIR: ".data/e2e-storage",
-  INTERNAL_TOKEN: "e2e-internal-token",
-  // Specs sign in through the dev login.
-  MODE: "dev",
-  // AI images go to the local stub, never a real provider.
-  OPENAI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/openai/v1`,
-  GEMINI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/gemini/v1beta`,
-  ANTHROPIC_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/anthropic/v1`,
-  // The search sidecar runs (duplicate checks); its model and embedding cache are shared with dev (`.data/search`).
-  SEARCH_ENABLED: "true",
-  SEARCH_PORT: String(SEARCH_PORT),
-  SEARCH_URL: `http://localhost:${SEARCH_PORT}`,
-};
+import { E2E_ENV, WEB_PORT } from "./e2e/environment.ts";
 
 const serverEnv = { ...process.env, ...E2E_ENV } as Record<string, string>;
 
 export default defineConfig({
   testDir: "e2e",
+  testIgnore: "library-gallery.spec.ts",
   // Shared database: run specs one at a time, in file order.
   workers: 1,
   fullyParallel: false,

@@ -1343,7 +1343,7 @@
 
 @media (min-width: 961px) {
   :root[data-skin] .ui-shell:has(> .ui-main > .editor) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, min(var(--post-center-width), calc(100% - 640px - 2 * var(--ui-shell-gap)))) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, min(var(--post-center-width), calc(100% - 628px - 2 * var(--ui-shell-gap)))) minmax(448px, 1fr);
   }
 
   :root[data-skin] .ui-shell > .ui-main:has(> .editor) {
@@ -1535,7 +1535,7 @@
 
 .editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 448px;
   gap: var(--ui-space-6);
   align-items: start;
 }

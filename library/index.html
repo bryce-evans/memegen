@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Template library preview</title>
+  <style>
+    :root { color-scheme: light dark; --bg: light-dark(#f5f5f7, #15171b); --panel: light-dark(#fff, #202329); --ink: light-dark(#202329, #f1f2f5); --muted: light-dark(#646773, #b0b5c0); --line: light-dark(#d9dce2, #414652); --accent: light-dark(#315bc7, #9db6ff); --radius: 12px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
+    header, main { max-width: 1500px; margin: auto; padding: 24px; }
+    header { padding-bottom: 8px; }
+    h1 { margin: 0; font-size: clamp(24px, 4vw, 36px); }
+    p { margin: 8px 0; }
+    .muted, .slug, .tags { color: var(--muted); }
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 16px 0; }
+    button, input, select, .file-button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 9px 12px; }
+    button, select, .file-button { cursor: pointer; }
+    button:hover, .file-button:hover { border-color: var(--accent); }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    input[type="search"] { flex: 1; min-width: 200px; }
+    input[type="checkbox"] { accent-color: var(--accent); }
+    input[type="file"] { max-width: 100%; }
+    label { display: inline-flex; gap: 8px; align-items: center; }
+    .tag-controls label { flex: 1 1 260px; flex-direction: column; align-items: stretch; }
+    .tag-controls input, .tag-controls select { width: 100%; min-width: 0; }
+    #status { min-height: 1.5em; }
+    #gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 285px), 1fr)); gap: 20px; }
+    article { min-width: 0; overflow: hidden; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+    .media { height: 220px; display: flex; align-items: center; justify-content: center; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px; text-align: center; color: var(--muted); }
+    .media img, .media canvas { width: 100%; height: 100%; object-fit: contain; }
+    .body { padding: 16px; }
+    h2 { margin: 0 0 4px; font-size: 18px; }
+    .slug { font: 12px/1.5 ui-monospace, monospace; overflow-wrap: anywhere; }
+    .badge { display: inline-block; border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px; margin-top: 8px; font-size: 12px; }
+    .tags { font-size: 13px; overflow-wrap: anywhere; }
+    .placeholder-toggle { margin-top: 12px; }
+    .placeholder-status { font-size: 13px; }
+    .placeholder-status:empty { display: none; }
+    .links { display: flex; gap: 16px; margin-top: 12px; }
+    a { color: var(--accent); }
+    #more { display: block; margin: 28px auto; }
+    #more[hidden] { display: none; }
+    #drop-zone { border: 1px dashed var(--line); border-radius: var(--radius); padding: 12px; }
+    #drop-zone.dragging { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Template library preview</h1>
+    <p class="muted">Browse manifest metadata and image previews without importing templates or saving image files.</p>
+    <div class="controls">
+      <button type="button" id="reload" data-testid="reload-manifest">Reload MANIFEST.json</button>
+    </div>
+    <div id="drop-zone">
+      <label for="file">Or open a local manifest JSON</label>
+      <input id="file" data-testid="manifest-file" type="file" accept=".json,application/json">
+      <span class="muted">You can also drop a JSON file here. Local files stay in your browser.</span>
+    </div>
+    <div class="controls">
+      <input type="search" id="search" data-testid="gallery-search" placeholder="Search titles, slugs, tags, rating reasons, or default captions" aria-label="Search templates">
+      <label>Layout <select id="layout" data-testid="layout-filter"><option value="">All layouts</option><option>impact</option><option>comment</option><option>subtitle</option><option>labels</option></select></label>
+      <label>Risk <select id="risk" data-testid="risk-filter"><option value="safe">Work view (1–3)</option><option value="all">All ratings</option><option value="1">1 — Child appropriate</option><option value="2">2 — General audience</option><option value="3">3 — Politics / smoking</option><option value="4">4 — Language / strong themes</option><option value="5">5 — Explicit / gore</option></select></label>
+      <label><input type="checkbox" id="previews" data-testid="remote-previews" checked> Load remote image previews</label>
+    </div>
+    <div class="controls tag-controls">
+      <label>Rating tag <select id="rating-tag" data-testid="rating-tag-filter"><option value="">All rating tags</option></select></label>
+      <label>Template tag <input type="search" id="template-tag" data-testid="template-tag-filter" list="template-tags" placeholder="Type or choose an exact tag"><datalist id="template-tags" data-testid="template-tag-options"></datalist></label>
+    </div>
+    <p class="muted">Tag filters match exact tags and combine with the score, layout, and search filters. Clear a tag filter to show all tags again.</p>
+    <p class="muted" data-testid="risk-legend">Risk scale: 1 — very safe / child appropriate; 2 — mild themes; 3 — politics, smoking, drugs, or mature themes; 4 — bad language or strong themes; 5 — very inappropriate, explicit sex, nudity, or gore. Individual ratings can override category guidelines. Work view includes 1–3 and excludes 4–5.</p>
+    <p class="muted">Images load lazily from their source hosts. Check “Show placeholder text” on a card to render its default captions with the editor’s fonts and layout. Disable remote previews above to browse metadata only. Source links open only when clicked.</p>
+    <p id="status" data-testid="gallery-status" role="status" aria-live="polite"></p>
+    <p id="count" data-testid="gallery-count" class="muted"></p>
+  </header>
+  <main>
+    <div id="gallery" data-testid="library-gallery"></div>
+    <button type="button" id="more" data-testid="load-more" hidden>Show more</button>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const $ = (id) => document.getElementById(id);
+      const pageSize = 48;
+      const layouts = new Set(['impact', 'comment', 'subtitle', 'labels']);
+      const cardDisposals = new Set();
+      let entries = [], matches = [], shown = 0, loaded = false, request = 0;
+      const node = (tag, text, className) => {
+        const element = document.createElement(tag);
+        if (text !== undefined) element.textContent = text;
+        if (className) element.className = className;
+        return element;
+      };
+      function https(value) {
+        if (typeof value !== 'string') return false;
+        try { return new URL(value).protocol === 'https:'; } catch { return false; }
+      }
+      function parse(text) {
+        const data = JSON.parse(text);
+        if (data?.version !== 1 || !Array.isArray(data.templates)) throw new Error('Expected a version 1 template manifest with a templates array.');
+        for (const [index, entry] of data.templates.entries()) {
+          if (!entry || typeof entry.title !== 'string' || typeof entry.slug !== 'string' ||
+              !https(entry.url) || !https(entry.source) || !layouts.has(entry.layout) ||
+              !Array.isArray(entry.tags) || !entry.tags.every(tag => typeof tag === 'string') ||
+              !Array.isArray(entry.text) || !entry.text.every(box => box && typeof box.text === 'string')) {
+            throw new Error(`Template ${index + 1} has invalid metadata or non-HTTPS links.`);
+          }
+          if (!Number.isInteger(entry.risk) || entry.risk < 1 || entry.risk > 5) {
+            throw new Error(`Template ${index + 1} requires an integer risk from 1 to 5.`);
+          }
+          if (!Array.isArray(entry.rating_tags) || entry.rating_tags.length < 1 || entry.rating_tags.length > 12 ||
+              !entry.rating_tags.every(tag => typeof tag === 'string' && tag.length <= 40 && /^[a-z]+(?:-[a-z]+)*$/.test(tag)) ||
+              new Set(entry.rating_tags).size !== entry.rating_tags.length) {
+            throw new Error(`Template ${index + 1} requires 1–12 unique lowercase kebab-case rating_tags, each 1–40 characters.`);
+          }
+        }
+        return data.templates;
+      }
+      function card(entry) {
+        const article = node('article');
+        article.dataset.testid = 'template-card';
+        article.dataset.risk = String(entry.risk);
+        const media = node('div', 'Remote image not loaded', 'media');
+        let image;
+        if ($('previews').checked) {
+          image = node('img');
+          image.dataset.testid = 'template-image';
+          image.alt = entry.title;
+          image.loading = 'lazy';
+          image.decoding = 'async';
+          image.referrerPolicy = 'no-referrer';
+          const imageError = node('span', 'Image unavailable. Metadata and source links are still available.');
+          imageError.hidden = true;
+          image.addEventListener('load', () => { imageError.hidden = true; image.hidden = false; });
+          image.addEventListener('error', () => { imageError.hidden = false; image.hidden = true; });
+          image.src = entry.url;
+          media.replaceChildren(image, imageError);
+        }
+        const body = node('div', undefined, 'body');
+        body.append(node('h2', entry.title), node('div', entry.slug, 'slug'), node('span', entry.layout, 'badge'));
+        const risk = node('p', `Risk ${entry.risk}/5`, 'badge');
+        risk.dataset.testid = 'template-risk';
+        const reasons = node('p', `Rating reasons: ${entry.rating_tags.join(' · ')}`, 'tags');
+        reasons.dataset.testid = 'template-rating-tags';
+        body.append(risk, reasons);
+        const toggleLabel = node('label', undefined, 'placeholder-toggle');
+        const toggle = node('input');
+        toggle.type = 'checkbox';
+        toggle.dataset.testid = 'placeholder-toggle';
+        toggle.disabled = !image;
+        toggleLabel.append(toggle, document.createTextNode('Show placeholder text'));
+        const previewStatus = node('p', undefined, 'placeholder-status muted');
+        previewStatus.dataset.testid = 'placeholder-status';
+        previewStatus.setAttribute('role', 'status');
+        previewStatus.setAttribute('aria-live', 'polite');
+        let previewRequest = 0, disposePreview;
+        const stopPreview = () => {
+          previewRequest++;
+          disposePreview?.();
+          disposePreview = undefined;
+          previewStatus.textContent = '';
+        };
+        cardDisposals.add(stopPreview);
+        toggle.addEventListener('change', async () => {
+          stopPreview();
+          if (!toggle.checked || !image) return;
+          if (location.protocol === 'file:') {
+            previewStatus.textContent = 'Placeholder rendering needs library serve for the shared renderer and fonts. Start the local gallery server, then check this box there.';
+            return;
+          }
+          const token = previewRequest;
+          previewStatus.textContent = 'Loading placeholder renderer…';
+          try {
+            const { createCaptionPreview } = await import('./preview.js');
+            if (token !== previewRequest || !article.isConnected) return;
+            const dispose = await createCaptionPreview(entry, image, previewStatus);
+            if (token !== previewRequest || !article.isConnected) dispose();
+            else disposePreview = dispose;
+          } catch (error) {
+            if (token === previewRequest) previewStatus.textContent = `Placeholder preview unavailable: ${error.message} Use library serve, then uncheck and check the box to retry.`;
+          }
+        });
+        body.append(toggleLabel, previewStatus, node('p', entry.tags.join(' · '), 'tags'));
+        const links = node('div', undefined, 'links');
+        for (const [title, url] of [['Source page', entry.source], ['Original image', entry.url]]) {
+          const link = node('a', title);
+          link.href = url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          links.append(link);
+        }
+        body.append(links);
+        article.append(media, body);
+        return article;
+      }
+      function more() {
+        const end = Math.min(shown + pageSize, matches.length);
+        const fragment = document.createDocumentFragment();
+        for (let i = shown; i < end; i++) fragment.append(card(matches[i]));
+        $('gallery').append(fragment);
+        shown = end;
+        $('count').textContent = loaded ? `Showing ${shown.toLocaleString()} of ${matches.length.toLocaleString()} matches · ${entries.length.toLocaleString()} templates in manifest` : '';
+        $('more').hidden = shown >= matches.length;
+      }
+      function refreshTagFilters() {
+        const ratingTags = [...new Set(entries.flatMap(entry => entry.rating_tags))].sort((a, b) => a.localeCompare(b));
+        const selectedRatingTag = $('rating-tag').value;
+        const all = node('option', 'All rating tags');
+        all.value = '';
+        $('rating-tag').replaceChildren(all);
+        for (const tag of ratingTags) {
+          const option = node('option', tag);
+          option.value = tag;
+          $('rating-tag').append(option);
+        }
+        $('rating-tag').value = ratingTags.includes(selectedRatingTag) ? selectedRatingTag : '';
+        const templateTags = [...new Set(entries.flatMap(entry => entry.tags.map(tag => tag.trim().toLowerCase())))].sort((a, b) => a.localeCompare(b));
+        $('template-tags').replaceChildren();
+        for (const tag of templateTags) {
+          const option = node('option');
+          option.value = tag;
+          $('template-tags').append(option);
+        }
+        if (!templateTags.includes($('template-tag').value.trim().toLowerCase())) $('template-tag').value = '';
+      }
+      function filter() {
+        const query = $('search').value.trim().toLowerCase();
+        const layout = $('layout').value;
+        const risk = $('risk').value;
+        const ratingTag = $('rating-tag').value;
+        const templateTag = $('template-tag').value.trim().toLowerCase();
+        matches = entries.filter(entry => (risk === 'all' || (risk === 'safe' ? entry.risk <= 3 : entry.risk === Number(risk))) &&
+          (!layout || entry.layout === layout) &&
+          (!ratingTag || entry.rating_tags.includes(ratingTag)) &&
+          (!templateTag || entry.tags.some(tag => tag.trim().toLowerCase() === templateTag)) &&
+          (!query || [entry.title, entry.slug, ...entry.tags, ...entry.rating_tags, ...entry.text.map(box => box.text)].join('\n').toLowerCase().includes(query)));
+        shown = 0;
+        for (const dispose of cardDisposals) dispose();
+        cardDisposals.clear();
+        $('gallery').replaceChildren();
+        more();
+      }
+      async function load(name, readText) {
+        const token = ++request;
+        $('status').textContent = `Loading ${name}…`;
+        try {
+          const next = parse(await readText());
+          if (token !== request) return;
+          entries = next;
+          loaded = true;
+          $('search').value = '';
+          $('layout').value = '';
+          refreshTagFilters();
+          $('status').textContent = `Loaded ${name}.`;
+          filter();
+        } catch (error) {
+          if (token === request) $('status').textContent = `Could not load ${name}: ${error.message} ${location.protocol === 'file:' ? 'Use the local JSON file chooser above; browsers block automatic file access.' : ''}`;
+        }
+      }
+      function loadManifest() {
+        const name = 'MANIFEST.json';
+        if (location.protocol === 'file:') {
+          $('status').textContent = `Choose ./${name} from this library folder using the local JSON file chooser above. Browsers do not allow this page to read neighboring files automatically.`;
+          return;
+        }
+        load(name, async () => {
+          const response = await fetch(new URL(`./${name}`, location.href), { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        });
+      }
+      $('reload').addEventListener('click', loadManifest);
+      $('file').addEventListener('change', () => {
+        const file = $('file').files[0];
+        if (file) load(file.name, () => file.text());
+        $('file').value = '';
+      });
+      $('search').addEventListener('input', filter);
+      $('layout').addEventListener('change', filter);
+      $('risk').addEventListener('change', filter);
+      $('rating-tag').addEventListener('change', filter);
+      $('template-tag').addEventListener('input', filter);
+      $('previews').addEventListener('change', filter);
+      $('more').addEventListener('click', more);
+      $('drop-zone').addEventListener('dragover', event => { event.preventDefault(); $('drop-zone').classList.add('dragging'); });
+      $('drop-zone').addEventListener('dragleave', () => $('drop-zone').classList.remove('dragging'));
+      $('drop-zone').addEventListener('drop', event => {
+        event.preventDefault();
+        $('drop-zone').classList.remove('dragging');
+        const file = event.dataTransfer.files[0];
+        if (file) load(file.name, () => file.text());
+      });
+      loadManifest();
+    })();
+  </script>
+</body>
+</html>

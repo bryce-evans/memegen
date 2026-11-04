@@ -7,27 +7,32 @@
  *   and HG Mincho are proprietary and are skipped.
  * - Each `templates/<dir>/` becomes a top-level template from `default.(png|jpg)` (or
  *   `default.gif` when there is no still); every other image in the folder becomes a
- *   variation. Text boxes from `config.yml` become `defaultLayers`.
+ *   variation. Root defaults come from the catalog; variations use `config.yml`.
  * - Idempotent: assets dedupe by sha256 and templates by slug.
  */
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { parse as parseYaml } from "yaml";
-import { newTextLayer, type TextLayer, type TextStyle } from "@memegen/shared";
+import { newTextLayer, type Layer, type TextLayer, type TextStyle } from "@memegen/shared";
 import { createSql, HttpError, migrate, type Sql } from "@memegen/server-kit";
 import { assetStoreFromEnv } from "@memegen/storage";
-import { insertTemplate, tagTemplate, titleCase } from "./lib.ts";
+import { insertTemplate, titleCase } from "../scripts/lib.ts";
+import { addRegistryAliases, checkoutAllowed, loadRegistry, reconcileRegistry, registryRisk } from "./registry.ts";
+import { manifestLayers, type ManifestFonts } from "./manifest.ts";
 
 const { values } = parseArgs({
   options: { from: { type: "string" }, limit: { type: "string" } },
 });
 if (!values.from) {
-  console.error("usage: node scripts/seed.ts --from <path to jacebrowning/memegen checkout> [--limit N]");
+  console.error("usage: node library/seed-checkout.ts --from <path to jacebrowning/memegen checkout> [--limit N]");
   process.exit(1);
 }
 const ROOT = values.from;
 const LIMIT = values.limit ? Number(values.limit) : Infinity;
+if (values.limit !== undefined && (!/^\d+$/.test(values.limit) || !Number.isSafeInteger(LIMIT))) {
+  throw new Error("--limit must be a non-negative safe integer");
+}
 
 const FONTS: { file: string; name: string; aliases: string[] }[] = [
   { file: "Impact.ttf", name: "Impact", aliases: ["impact"] },
@@ -121,10 +126,14 @@ function toLayers(cfg: JbConfig, fontIds: Map<string, string>, durationSec: numb
 async function upsertTemplate(
   sql: Sql,
   slug: string,
-  fields: { name: string; assetId: string; parentId: string | null; layers: TextLayer[] },
+  fields: { name: string; assetId: string; parentId: string | null; layers: Layer[] },
 ): Promise<{ id: string; created: boolean }> {
-  const [existing] = await sql<{ id: string }[]>`select id from templates where slug = ${slug}`;
-  if (existing) return { id: existing.id, created: false };
+  const [existing] = await sql<{ id: string; managed: boolean }[]>`
+    select id, owner_id = memegen_user_id() as managed from templates where slug = ${slug}`;
+  if (existing) {
+    if (!existing.managed) throw new Error(`Cannot import ${slug}: slug belongs to a user template`);
+    return { id: existing.id, created: false };
+  }
   return { id: await insertTemplate(sql, { slug, ...fields }), created: true };
 }
 
@@ -132,66 +141,86 @@ const MEDIA = /\.(png|jpe?g|gif|webp)$/i;
 
 async function main() {
   const sql = createSql();
-  await migrate(sql);
-  const store = assetStoreFromEnv(sql);
+  const registry = await loadRegistry({ checkoutEnabled: true });
+  try {
+    await migrate(sql);
+    await reconcileRegistry(sql, registry);
+    const store = assetStoreFromEnv(sql);
 
-  const fontIds = new Map<string, string>();
-  for (const font of FONTS) {
-    const data = new Uint8Array(await readFile(join(ROOT, "fonts", font.file)));
-    const asset = await store.uploadOnce({ data, filename: font.file, name: font.name, ownerId: null });
-    for (const alias of font.aliases) fontIds.set(alias, asset.id);
-    console.log(`font  ${font.name}`);
-  }
+    const fontIds = new Map<string, string>();
+    for (const font of FONTS) {
+      const data = new Uint8Array(await readFile(join(ROOT, "fonts", font.file)));
+      const asset = await store.uploadOnce({ data, filename: font.file, name: font.name, ownerId: null });
+      for (const alias of font.aliases) fontIds.set(alias, asset.id);
+      console.log(`font  ${font.name}`);
+    }
+    const fonts: ManifestFonts = {
+      impact: fontIds.get("impact")!,
+      sans: fontIds.get("notosans")!,
+      thin: fontIds.get("thin")!,
+      comic: fontIds.get("comic")!,
+    };
 
-  const dirs = (await readdir(join(ROOT, "templates"), { withFileTypes: true }))
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name)
-    .sort()
-    .slice(0, LIMIT);
+    const dirs = (await readdir(join(ROOT, "templates"), { withFileTypes: true }))
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort()
+      .filter((dir) => {
+        const slug = `jb/${dir}`;
+        if (registryRisk(registry, slug) === undefined) console.warn(`skip  ${slug} — no catalog entry`);
+        return checkoutAllowed(registry, slug);
+      })
+      .slice(0, LIMIT);
 
-  let created = 0;
-  let skipped = 0;
-  for (const dir of dirs) {
-    const folder = join(ROOT, "templates", dir);
-    const cfg = parseYaml(await readFile(join(folder, "config.yml"), "utf8")) as JbConfig;
-    const files = (await readdir(folder)).filter((f) => MEDIA.test(f)).sort();
-    const parentFile =
-      files.find((f) => /^default\.(png|jpe?g|webp)$/i.test(f)) ?? files.find((f) => /^default\./i.test(f)) ?? files[0];
-    if (!parentFile) continue;
-    const name = cfg.name?.trim() || titleCase(dir);
-    const ordered = [parentFile, ...files.filter((f) => f !== parentFile)];
-    let parentId: string | null = null;
-    for (const file of ordered) {
-      const isParent = file === parentFile;
-      const stem = file.replace(/\.[^.]+$/, "");
-      const label = isParent ? name : stem === "default" ? `${name} (animated)` : `${name} — ${titleCase(stem)}`;
-      try {
-        const data = new Uint8Array(await readFile(join(folder, file)));
-        const asset = await store.uploadOnce({ data, filename: file, name: label, ownerId: null });
-        const duration = asset.kind === "image" ? null : (asset.durationMs ?? 0) / 1000;
-        const result = await upsertTemplate(sql, isParent ? `jb/${dir}` : `jb/${dir}/${file}`, {
-          name: label,
-          assetId: asset.id,
-          parentId: isParent ? null : parentId,
-          layers: toLayers(cfg, fontIds, duration),
-        });
-        if (isParent) {
-          parentId = result.id;
-          // Classic image macros; variations and memes inherit the tag through the match views.
-          await tagTemplate(sql, result.id, ["oldschool"]);
+    let created = 0;
+    let skipped = 0;
+    for (const dir of dirs) {
+      const entry = registry.catalog.find((entry) => entry.slug === `jb/${dir}`)!;
+      const folder = join(ROOT, "templates", dir);
+      const cfg = parseYaml(await readFile(join(folder, "config.yml"), "utf8")) as JbConfig;
+      const files = (await readdir(folder)).filter((f) => MEDIA.test(f)).sort();
+      const parentFile =
+        files.find((f) => /^default\.(png|jpe?g|webp)$/i.test(f)) ?? files.find((f) => /^default\./i.test(f)) ?? files[0];
+      if (!parentFile) continue;
+      const name = entry.title;
+      const ordered = [parentFile, ...files.filter((f) => f !== parentFile)];
+      let parentId: string | null = null;
+      for (const file of ordered) {
+        const isParent = file === parentFile;
+        const stem = file.replace(/\.[^.]+$/, "");
+        const label = isParent ? name : stem === "default" ? `${name} (animated)` : `${name} — ${titleCase(stem)}`;
+        try {
+          const data = new Uint8Array(await readFile(join(folder, file)));
+          const asset = await store.uploadOnce({ data, filename: file, name: label, ownerId: null });
+          const duration = asset.kind === "image" ? null : (asset.durationMs ?? 0) / 1000;
+          const result = await upsertTemplate(sql, isParent ? `jb/${dir}` : `jb/${dir}/${file}`, {
+            name: label,
+            assetId: asset.id,
+            parentId: isParent ? null : parentId,
+            layers: isParent ? manifestLayers(entry, fonts, duration) : toLayers(cfg, fontIds, duration),
+          });
+          if (isParent) {
+            parentId = result.id;
+            await addRegistryAliases(sql, result.id, entry);
+          }
+          if (result.created) created++;
+        } catch (err) {
+          if (!(err instanceof HttpError)) throw err;
+          skipped++;
+          const details = Array.isArray(err.details) ? `: ${err.details.join("; ")}` : "";
+          console.warn(`skip  ${dir}/${file} — ${err.message}${details}`);
+          if (isParent) break;
         }
-        if (result.created) created++;
-      } catch (err) {
-        if (!(err instanceof HttpError)) throw err;
-        skipped++;
-        const details = Array.isArray(err.details) ? `: ${err.details.join("; ")}` : "";
-        console.warn(`skip  ${dir}/${file} — ${err.message}${details}`);
-        if (isParent) break;
       }
     }
+    console.log(`templates: ${created} created, ${skipped} skipped, ${dirs.length} folders scanned`);
+  } finally {
+    try {
+      await reconcileRegistry(sql, registry);
+    } finally {
+      await sql.end();
+    }
   }
-  console.log(`templates: ${created} created, ${skipped} skipped, ${dirs.length} folders scanned`);
-  await sql.end();
 }
 
 await main();

@@ -15,7 +15,7 @@
     "node": ">=24.2"
   },
   "scripts": {
-    "test": "node --test --test-concurrency=1 \"packages/*/src/**/*.test.ts\" \"services/*/src/**/*.test.ts\" \"scripts/**/*.test.ts\"",
+    "test": "node --test --test-concurrency=1 \"packages/*/src/**/*.test.ts\" \"services/*/src/**/*.test.ts\" \"scripts/**/*.test.ts\" \"library/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json && tsc -b apps/web",
     "build": "bun run --cwd apps/web build",
     "test:e2e": "playwright test",

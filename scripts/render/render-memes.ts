@@ -12,6 +12,7 @@ import type { Asset, MediaKind, TextLayer } from "@memegen/shared";
 import { findAssetRow, type Sql } from "@memegen/server-kit";
 import type { AssetStore } from "@memegen/storage";
 import { fileSlug } from "../lib.ts";
+import { duplicateCanonical, loadRegistry } from "../../library/registry.ts";
 import type { RenderRequest, RenderResponse } from "./render-page.ts";
 
 /** Fake origin the page loads from; Playwright answers every request to it, so nothing leaves the machine. */
@@ -33,11 +34,30 @@ async function loadTemplates(sql: Sql, slugs: readonly string[]): Promise<Map<st
     from templates t join assets a on a.id = t.asset_id
     where t.slug in ${sql(wanted)}`;
   const bySlug = new Map(rows.map((r) => [r.slug, r]));
-  const missing = wanted.filter((s) => !bySlug.has(s));
+  const unresolved = wanted.filter((slug) => !bySlug.has(slug));
+  if (unresolved.length) {
+    const registry = await loadRegistry({ manifest: "" });
+    const redirects = unresolved.flatMap((slug) => {
+      const canonical = duplicateCanonical(registry, slug);
+      return canonical ? [{ slug, canonical }] : [];
+    });
+    if (redirects.length) {
+      const canonicals = await sql<TemplateRow[]>`
+        select t.id, t.slug, t.asset_id, a.kind, t.default_layers
+        from templates t join assets a on a.id = t.asset_id
+        where t.slug in ${sql([...new Set(redirects.map((entry) => entry.canonical))])}`;
+      const byCanonical = new Map(canonicals.map((row) => [row.slug, row]));
+      for (const { slug, canonical } of redirects) {
+        const row = byCanonical.get(canonical);
+        if (row) bySlug.set(slug, row);
+      }
+    }
+  }
+  const missing = wanted.filter((slug) => !bySlug.has(slug));
   if (missing.length) {
     throw new Error(
       `seeded memes need templates that are not imported: ${missing.join(", ")}. ` +
-        "Set SEED_TEMPLATES_FROM to a jacebrowning/memegen checkout (without --limit) and run seed again.",
+        "Seed the template catalog and required fonts (without --limit), or import the local checkout, then run seed again.",
     );
   }
   return bySlug;

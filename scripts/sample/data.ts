@@ -39,7 +39,7 @@ export interface SampleComment {
 export interface SampleMeme {
   title: string;
   owner: SampleUser;
-  /** `templates.slug` from the jacebrowning import (`jb/<folder>`). */
+  /** Stable `templates.slug` from the curated built-in registry (`jb/` or `online/`). */
   template: string;
   /** One caption per default text box of the template, in order; missing boxes stay empty. */
   captions: string[];
@@ -95,7 +95,7 @@ export const SAMPLE_MEMES: SampleMeme[] = [
   {
     title: "Docs vs Slack",
     owner: "eli",
-    template: "jb/drake",
+    template: "online/30b1gx",
     captions: ["reading the docs", "asking in slack and waiting 3 hours"],
     ageHours: 9,
     up: 9,
@@ -107,8 +107,8 @@ export const SAMPLE_MEMES: SampleMeme[] = [
   {
     title: "Standup",
     owner: "harper",
-    template: "jb/grumpycat",
-    captions: ["standup at 9am", "no"],
+    template: "online/8p0a",
+    captions: ["Standup at 9am? No."],
     ageHours: 20,
     up: 5,
     down: 2,
@@ -147,8 +147,8 @@ export const SAMPLE_MEMES: SampleMeme[] = [
   {
     title: "YAML",
     owner: "ivy",
-    template: "jb/astronaut",
-    captions: ["Wait, it's all YAML?", "Always has been", "Me", "Platform team"],
+    template: "jb/morpheus",
+    captions: ["What if I told you", "it's always been YAML"],
     ageHours: 3 * DAY,
     up: 8,
     down: 0,
@@ -194,7 +194,7 @@ export const SAMPLE_MEMES: SampleMeme[] = [
   {
     title: "Is this a microservice",
     owner: "nora",
-    template: "jb/pigeon",
+    template: "online/1o00in",
     captions: ["junior dev", "a function", "is this a microservice?"],
     ageHours: 9 * DAY,
     up: 7,
@@ -303,7 +303,7 @@ export const SAMPLE_MEMES: SampleMeme[] = [
   {
     title: "Good guy reviewer",
     owner: "nora",
-    template: "jb/ggg",
+    template: "jb/success",
     captions: ["reviews your 2000-line PR", "leaves helpful comments"],
     ageHours: 420 * DAY,
     up: 11,

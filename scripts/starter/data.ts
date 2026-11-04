@@ -11,7 +11,7 @@ export const STARTER_TAG = {
 
 export interface StarterMeme {
   title: string;
-  /** `templates.slug` from the jacebrowning import (`jb/<folder>`). */
+  /** Stable `templates.slug` from the curated built-in registry (`jb/` or `online/`). */
   template: string;
   /** One caption per default text box of the template, in order; missing boxes stay empty. */
   captions: string[];
@@ -20,7 +20,7 @@ export interface StarterMeme {
 }
 
 export const STARTER_MEMES: StarterMeme[] = [
-  { title: "Welcome to memegen", template: "jb/drake", captions: ["Scrolling past other people's memes", "Making your own in Create"], ageHours: 1 },
+  { title: "Welcome to memegen", template: "online/30b1gx", captions: ["Scrolling past other people's memes", "Making your own in Create"], ageHours: 1 },
   { title: "Animated text works too", template: "jb/bongo", captions: ["Me adding animated text", "to a GIF"], ageHours: 2 },
   { title: "Everyone gets an upvote", template: "jb/oprah", captions: ["You get an upvote", "Everybody gets an upvote"], ageHours: 3 },
   { title: "Bring your own image", template: "jb/fry", captions: ["Not sure if there's a template for this", "or if I should just upload my own"], ageHours: 5 },

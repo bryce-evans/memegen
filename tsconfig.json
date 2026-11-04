@@ -23,6 +23,7 @@
     "packages/*/src",
     "services/*/src",
     "scripts",
+    "library",
     "e2e",
     "playwright.config.ts"
   ],

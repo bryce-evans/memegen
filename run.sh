@@ -5,7 +5,9 @@
 #
 #   setup    install deps, create the database if missing, run migrations
 #   migrate  apply pending migrations
-#   seed     import templates from SEED_TEMPLATES_FROM, then the SEED_SAMPLE dataset, SEED_STARTER content, and SEED_STICKERS_FROM stickers
+#   seed     import local fonts/variations and the unified library, then sample/starter content and stickers
+#   library download [--to PATH]  download seed fonts/templates (defaults to SEED_TEMPLATES_FROM)
+#   library serve [--port N]     preview the library at http://127.0.0.1:8088 (dev only)
 #   reset    wipe the database and local storage, then seed (dev only)
 #   snapshot save [out.zip] [--label <name>]   back up the database and every asset into one zip
 #   snapshot load <in.zip> [--replace]         load a snapshot into a clean system (--replace wipes first; dev only)
@@ -110,11 +112,22 @@ wipe() {
 # Templates first: the sample memes are made from them.
 seed() {
   migrate
+  # Both importers reconcile existing built-ins to the configured content-risk ceiling.
+  export SEED_MAX_RISK="${SEED_MAX_RISK-3}"
+  [[ "$SEED_MAX_RISK" =~ ^[1-5]$ ]] || {
+    echo "SEED_MAX_RISK must be an integer from 1 to 5" >&2
+    return 1
+  }
   local seeded=false
   if [[ -n "${SEED_TEMPLATES_FROM:-}" ]]; then
     [[ -d "$SEED_TEMPLATES_FROM" ]] ||
-      die "SEED_TEMPLATES_FROM=$SEED_TEMPLATES_FROM not found (git clone --depth 1 https://github.com/jacebrowning/memegen $SEED_TEMPLATES_FROM)"
-    node scripts/seed.ts --from "$SEED_TEMPLATES_FROM" "$@"
+      die "SEED_TEMPLATES_FROM=$SEED_TEMPLATES_FROM not found (run ./run.sh \"$CONFIG\" library download)"
+    bun library/seed-checkout.ts --from "$SEED_TEMPLATES_FROM" "$@"
+    seeded=true
+  fi
+  local manifest="${SEED_TEMPLATE_MANIFEST-library/MANIFEST.json}"
+  if [[ -n "$manifest" ]]; then
+    bun library/seed.ts --manifest "$manifest" "$@"
     seeded=true
   fi
   if [[ "${SEED_SAMPLE:-false}" == true ]]; then
@@ -134,7 +147,7 @@ seed() {
       echo "SEED_STICKERS_FROM=$SEED_STICKERS_FROM not found; no stickers seeded"
     fi
   fi
-  [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_TEMPLATES_FROM, SEED_SAMPLE=true, or SEED_STARTER=true in $CONFIG)"
+  [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_TEMPLATES_FROM, SEED_TEMPLATE_MANIFEST, SEED_SAMPLE=true, or SEED_STARTER=true in $CONFIG)"
 }
 
 check_prod
@@ -158,6 +171,23 @@ case "$COMMAND" in
     ;;
   seed)
     seed "$@"
+    ;;
+  library)
+    case "${1:-}" in
+      download)
+        shift
+        need node "https://nodejs.org, >= 24.2"
+        need git "https://git-scm.com"
+        exec node library/download.ts "$@"
+        ;;
+      serve)
+        dev_only
+        shift
+        need node "https://nodejs.org, >= 24.2"
+        exec node library/serve.ts "$@"
+        ;;
+      *) die "usage: ./run.sh <config> library download [--to PATH] | library serve [--port N]" ;;
+    esac
     ;;
   reset)
     dev_only

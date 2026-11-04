@@ -63,7 +63,7 @@ export function register(app: ApiApp, sql: Sql): void {
     return c.json(page(rows.map(toMeme), offset, limit));
   });
 
-  /** Templates the user added (variations included), newest first; the owner also sees private ones. */
+  /** Templates the user added (variations included), newest first; the owner also sees unlisted ones. */
   app.get("/api/users/:username/templates", async (c) => {
     const owner = await findUserByName(sql, c.req.param("username"));
     const { offset, limit } = parse(userPageQuerySchema, c.req.query());

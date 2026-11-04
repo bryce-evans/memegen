@@ -98,20 +98,16 @@ export class AssetStore {
     }
   }
 
-  /**
-   * Deletes metadata then bytes. Refuses while templates (as media, pack image, or default image layer), memes
-   * (as source, output, or image layer), or a sticker reference the asset.
-   */
+  /** Foreign keys protect all media, layer, and font references; delete bytes only after metadata commits. */
   async delete(row: AssetRow): Promise<void> {
-    const imageLayer = this.sql.json([{ type: "image", assetId: row.id }] as never);
-    const [ref] = await this.sql`
-      select 1 from templates where asset_id = ${row.id} or default_layers @> ${imageLayer}
-      union all select 1 from template_pack_assets where asset_id = ${row.id}
-      union all select 1 from memes where source_asset_id = ${row.id} or output_asset_id = ${row.id} or layers @> ${imageLayer}
-      union all select 1 from stickers where asset_id = ${row.id}
-      limit 1`;
-    if (ref) throw new HttpError(409, "asset is in use by a template, meme, or sticker");
-    await this.sql`delete from assets where id = ${row.id}`;
+    try {
+      await this.sql`delete from assets where id = ${row.id}`;
+    } catch (err) {
+      if (err instanceof Error && "code" in err && err.code === "23503") {
+        throw new HttpError(409, "asset is in use by a template, meme, or sticker");
+      }
+      throw err;
+    }
     await this.providers.get(row.provider).delete(row.storage_key);
   }
 }

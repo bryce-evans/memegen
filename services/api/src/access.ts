@@ -1,7 +1,7 @@
 import type { Context, Hono } from "hono";
 import type { Layer, PanelSet, Template, User } from "@memegen/shared";
 import { findAssetRow, HttpError, idParam, parse, toUser, type AssetRow, type Env, type Sql, type UserRow } from "@memegen/server-kit";
-import { memeOpenTo, memeSelect, templateSelect, templateVisibleTo, withVariations, type MemeRow, type TemplateRow } from "./rows.ts";
+import { memeSelect, templateSelect, withVariations, type MemeRow, type TemplateRow } from "./rows.ts";
 
 /** Loaders and guards shared by the route modules: each finds a record the caller may use, or throws. */
 
@@ -20,9 +20,10 @@ export async function findUserByName(sql: Sql, username: string): Promise<User> 
   return toUser(row);
 }
 
+/** Both public and unlisted memes are openable by direct link, including drafts. */
 export async function loadMeme(sql: Sql, id: string, viewer: User | null): Promise<MemeRow> {
   const viewerId = viewer?.id ?? null;
-  const [row] = await sql<MemeRow[]>`${memeSelect(sql, viewerId)} where m.id = ${id} and ${memeOpenTo(sql, viewerId)}`;
+  const [row] = await sql<MemeRow[]>`${memeSelect(sql, viewerId)} where m.id = ${id}`;
   if (!row) throw new HttpError(404, "meme not found");
   return row;
 }
@@ -36,10 +37,10 @@ export async function ownMeme(sql: Sql, c: Context<Env>): Promise<{ user: User; 
   return { user, id, meme };
 }
 
+/** A direct link opens any template; related variations still follow listing visibility. */
 export async function loadTemplate(sql: Sql, id: string, viewer: User | null): Promise<Template> {
   const viewerId = viewer?.id ?? null;
-  const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
-    where t.id = ${id} and ${templateVisibleTo(sql, viewerId)}`;
+  const rows = await sql<TemplateRow[]>`${templateSelect(sql)} where t.id = ${id}`;
   const [template] = await withVariations(sql, rows, viewerId);
   if (!template) throw new HttpError(404, "template not found");
   return template;
@@ -77,10 +78,15 @@ export async function requirePackImages(sql: Sql, ids: readonly string[]): Promi
   await requireStillImages(sql, ids, "pack images must be existing still images");
 }
 
-/** Image layers draw existing still images (one frame, like pack images). */
-export async function requireLayerImages(sql: Sql, layers: readonly Layer[] | undefined): Promise<void> {
+/** Friendly kind/existence checks; database foreign keys arbitrate concurrent deletes. */
+export async function requireLayerAssets(sql: Sql, layers: readonly Layer[] | undefined): Promise<void> {
   const ids = (layers ?? []).flatMap((l) => (l.type === "image" ? [l.assetId] : []));
   await requireStillImages(sql, ids, "image layers need an existing still image");
+  const fonts = [...new Set((layers ?? []).flatMap((l) => (l.type === "text" && l.fontAssetId ? [l.fontAssetId] : [])))];
+  if (!fonts.length) return;
+  const [row] = await sql<{ count: number }[]>`
+    select count(*)::int as count from assets where id in ${sql(fonts)} and kind = 'font'`;
+  if (row!.count !== fonts.length) throw new HttpError(400, "text layers need an existing font");
 }
 
 /** A template's pack asset ids in order, or null for a single-media template. */

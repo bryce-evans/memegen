@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { SearchHit } from "@memegen/shared";
+import type { SearchCandidate, SearchHit } from "@memegen/shared";
 import { HttpError, type Sql } from "@memegen/server-kit";
 import type { Clip } from "./clip.ts";
 import { VectorIndex } from "./vector-index.ts";
@@ -88,7 +88,7 @@ export class TemplateCatalog {
    * Templates whose image matches `query`, best first; `score` is the z-score of its debiased similarity against the
    * whole library (exact, from the index's moments), so the cutoffs don't depend on which neighbors HNSW returns.
    */
-  async searchText(query: string, limit: number): Promise<SearchHit[]> {
+  async searchText(query: string, limit: number, candidates: SearchCandidate[]): Promise<SearchHit[]> {
     await this.sync();
     const index = this.index;
     if (!index || index.size < 2) return [];
@@ -96,23 +96,48 @@ export class TemplateCatalog {
     const { mean, sd } = index.moments(direction);
     // Identical images leave a rounding-error spread, not exactly 0.
     if (sd < 1e-9) return [];
-    const hits = index.search(direction, limit).map((h) => ({ templateId: h.key, score: (h.score - mean) / sd }));
+    const hits = this.rankCandidates(direction, limit, candidates).map((h) => ({ ...h, score: (h.score - mean) / sd }));
     if (!hits.length || hits[0]!.score < TEXT_MIN_TOP_Z) return [];
     return hits.filter((h) => h.score >= TEXT_MIN_Z).map((h) => ({ templateId: h.templateId, score: round(h.score) }));
   }
 
   /** Templates whose image looks like asset `assetId`'s (near-duplicates), most alike first; `score` is cosine. */
-  async similar(assetId: string, limit: number): Promise<SearchHit[]> {
+  async similar(assetId: string, limit: number, candidates: SearchCandidate[]): Promise<SearchHit[]> {
     const [asset] = await this.sql<{ kind: string; sha256: string }[]>`select kind, sha256 from assets where id = ${assetId}`;
     if (!asset) throw new HttpError(404, "asset not found");
     if (!INDEXED_KINDS.includes(asset.kind)) return [];
     await this.sync();
     if (!this.index) return [];
     const vector = this.vectors!.get(asset.sha256) ?? (await (await this.clip).embedImage(await this.fetchAsset(assetId)));
-    return this.index
-      .search(vector, limit)
-      .map((h) => ({ templateId: h.key, score: round(h.score) }))
+    return this.rankCandidates(vector, limit, candidates)
+      .map((h) => ({ ...h, score: round(h.score) }))
       .filter((h) => h.score >= DUPLICATE_MIN_SIMILARITY);
+  }
+
+  /**
+   * Limits count eligible groups, not global neighbors. Expand the neighbor window until enough
+   * groups survive or the live index is exhausted; a fixed over-fetch cannot prevent crowding.
+   * The API supplies eligibility/grouping, never authorization logic inside the index.
+   */
+  private rankCandidates(direction: Float32Array, limit: number, candidates: SearchCandidate[]): SearchHit[] {
+    const index = this.index;
+    if (!index) return [];
+    const groupOf = new Map(candidates.filter((candidate) => this.indexed.has(candidate.templateId))
+      .map((candidate) => [candidate.templateId, candidate.groupId]));
+    const wanted = Math.min(limit, new Set(groupOf.values()).size);
+    if (!wanted) return [];
+    for (let count = Math.min(index.size, Math.max(limit, 64)); ; count = Math.min(index.size, count * 2)) {
+      const groups = new Set<string>();
+      const hits: SearchHit[] = [];
+      for (const hit of index.search(direction, count)) {
+        const group = groupOf.get(hit.key);
+        if (!group || groups.has(group)) continue;
+        groups.add(group);
+        hits.push({ templateId: hit.key, score: hit.score });
+        if (hits.length === wanted) return hits;
+      }
+      if (count === index.size) return hits;
+    }
   }
 
   private async runSync(): Promise<void> {

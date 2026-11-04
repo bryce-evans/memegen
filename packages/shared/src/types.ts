@@ -235,7 +235,8 @@ export interface TemplateUsage {
   points: UsagePoint[];
 }
 
-export const VISIBILITIES = ["public", "private"] as const;
+/** Unlisted records remain accessible to anyone with their direct link. */
+export const VISIBILITIES = ["public", "unlisted"] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
 
 export interface Meme {

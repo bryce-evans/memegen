@@ -96,7 +96,7 @@ async function makeTemplate(
 /** A meme by `owner` (posted and public by default), from `templateId` or else a new template of theirs. */
 async function makeMeme(
   owner: User,
-  opts: { templateId?: string; title?: string; post?: boolean; visibility?: "public" | "private"; tags?: string[]; panels?: PanelSet } = {},
+  opts: { templateId?: string; title?: string; post?: boolean; visibility?: "public" | "unlisted"; tags?: string[]; panels?: PanelSet } = {},
 ): Promise<Meme> {
   const res = await call<Meme>("POST", "/api/memes", owner, {
     title: opts.title ?? "A meme",
@@ -169,7 +169,7 @@ test("profiles count the public templates a user added, variations included", as
   assert.equal(await count("/api/users/bob", null), 0);
 });
 
-test("a user's templates: variations included, newest first; private ones only for their owner", async () => {
+test("a user's templates: variations included, newest first; unlisted ones listed only for their owner", async () => {
   const alice = await signIn("alice");
   const bob = await signIn("bob");
   const base = await makeTemplate(alice);
@@ -278,23 +278,62 @@ test("template browsing: top-level templates newest first; the count matches wha
   assert.deepEqual([await count(alice), await count(bob), await count(null)], [3, 2, 2]);
 });
 
-test("private memes and drafts are hidden from others but visible to the owner", async () => {
+test("unlisted memes and drafts open by link but stay out of public lists and social actions", async () => {
   const alice = await signIn("alice");
   const eve = await signIn("eve");
-  const priv = await makeMeme(alice, { visibility: "private" });
+  const unlisted = await makeMeme(alice, { visibility: "unlisted" });
+  const unlistedDraft = await makeMeme(alice, { visibility: "unlisted", post: false });
   const draft = await makeMeme(alice, { post: false });
   const pub = await makeMeme(alice);
 
-  assert.equal((await call("GET", `/api/memes/${priv.id}`, eve)).status, 404);
-  assert.equal((await call("GET", `/api/memes/${priv.id}`, alice)).status, 200);
-
-  const gallery = await call<Page<Meme>>("GET", "/api/gallery?period=all", eve);
-  assert.deepEqual(gallery.body.items.map((m) => m.id), [pub.id]);
-
-  const asOther = await call<Page<Meme>>("GET", "/api/users/alice/memes", eve);
-  assert.deepEqual(asOther.body.items.map((m) => m.id), [pub.id]);
+  for (const viewer of [null, eve, alice]) {
+    for (const meme of [unlisted, unlistedDraft, draft]) {
+      const opened = await call<Meme>("GET", `/api/memes/${meme.id}`, viewer);
+      assert.equal(opened.status, 200);
+      assert.equal(opened.body.id, meme.id);
+      assert.equal(opened.body.visibility, meme.visibility);
+    }
+  }
+  for (const viewer of [null, eve]) {
+    const gallery = await call<Page<Meme>>("GET", "/api/gallery?period=all", viewer);
+    assert.deepEqual(gallery.body.items.map((m) => m.id), [pub.id]);
+    const profile = await call<Page<Meme>>("GET", "/api/users/alice/memes", viewer);
+    assert.deepEqual(profile.body.items.map((m) => m.id), [pub.id]);
+  }
   const asOwner = await call<Page<Meme>>("GET", "/api/users/alice/memes", alice);
-  assert.deepEqual(new Set(asOwner.body.items.map((m) => m.id)), new Set([priv.id, draft.id, pub.id]));
+  assert.deepEqual(new Set(asOwner.body.items.map((m) => m.id)), new Set([unlisted.id, unlistedDraft.id, draft.id, pub.id]));
+  for (const viewer of [eve, alice]) {
+    assert.equal((await call("PUT", `/api/memes/${unlisted.id}/vote`, viewer, { value: 1 })).status, 400);
+    assert.equal((await call("PUT", `/api/memes/${unlisted.id}/favorite`, viewer, { favorite: true })).status, 400);
+    assert.equal((await call("POST", `/api/memes/${unlisted.id}/comments`, viewer, { body: "A comment" })).status, 400);
+  }
+  assert.equal((await call("PATCH", `/api/memes/${unlisted.id}`, eve, { title: "Not mine" })).status, 403);
+  assert.equal((await call("DELETE", `/api/memes/${unlisted.id}`, eve)).status, 403);
+});
+
+test("unlisted templates and variations open by link without leaking into browse results", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const listed = await makeTemplate(alice);
+  const unlisted = await makeTemplate(alice, { name: "Unlisted", isPublic: false });
+  const variation = await makeTemplate(alice, { name: "Unlisted variation", parentId: listed.id, isPublic: false });
+  for (const viewer of [null, bob]) {
+    for (const template of [unlisted, variation]) {
+      const opened = await call<Template>("GET", `/api/templates/${template.id}`, viewer);
+      assert.equal(opened.status, 200);
+      assert.equal(opened.body.id, template.id);
+      assert.equal(opened.body.isPublic, false);
+    }
+    const browsed = await call<Page<Template>>("GET", "/api/templates", viewer);
+    assert.deepEqual(browsed.body.items.map((t) => t.id), [listed.id]);
+    assert.deepEqual(browsed.body.items[0]!.variations, []);
+    const root = await call<Template>("GET", `/api/templates/${listed.id}`, viewer);
+    assert.deepEqual(root.body.variations, []);
+  }
+  const remix = await makeMeme(bob, { templateId: unlisted.id });
+  assert.equal(remix.templateId, unlisted.id);
+  assert.equal((await call("PATCH", `/api/templates/${unlisted.id}`, bob, { name: "Not mine" })).status, 403);
+  assert.equal((await call("DELETE", `/api/templates/${unlisted.id}`, bob)).status, 403);
 });
 
 test("votes: one per user, switchable, removable; drafts can't be voted on", async () => {
@@ -329,10 +368,10 @@ test("posting casts the author's upvote once, only when the meme is listed", asy
   const again = (await post(draft.id)).body;
   assert.deepEqual([again.upvotes, again.myVote], [0, 0]);
 
-  // A private meme isn't listed, so it takes no votes, the author's included: posted at creation or later.
-  const privateDraft = await makeMeme(alice, { visibility: "private", post: false });
-  for (const priv of [await makeMeme(alice, { visibility: "private" }), (await post(privateDraft.id)).body]) {
-    assert.deepEqual([priv.upvotes, priv.myVote], [0, 0]);
+  // An unlisted meme isn't listed, so it takes no votes, the author's included: posted at creation or later.
+  const unlistedDraft = await makeMeme(alice, { visibility: "unlisted", post: false });
+  for (const unlisted of [await makeMeme(alice, { visibility: "unlisted" }), (await post(unlistedDraft.id)).body]) {
+    assert.deepEqual([unlisted.upvotes, unlisted.myVote], [0, 0]);
   }
 });
 
@@ -351,7 +390,7 @@ test("recent activity: liked and disliked memes together, newest vote first, onl
   for (const [memeId, hours] of [[older.id, 4], [disliked.id, 3], [own.id, 2], [newer.id, 1]] as const) {
     await sql`update votes set created_at = now() - ${hours + " hours"}::interval where meme_id = ${memeId}`;
   }
-  await call("PATCH", `/api/memes/${hidden.id}`, alice, { visibility: "private" });
+  await call("PATCH", `/api/memes/${hidden.id}`, alice, { visibility: "unlisted" });
 
   const activity = (await call<Page<Meme>>("GET", "/api/me/activity", bob)).body.items;
   assert.deepEqual(
@@ -729,7 +768,7 @@ test("tags: normalized, inherited from templates (and variations), filter templa
 
   const fromScene = await makeMeme(alice, { templateId: variation.id });
   const teamMeme = await makeMeme(alice, { templateId: plain.id, tags: ["google-memes"] });
-  await makeMeme(alice, { templateId: variation.id, visibility: "private" });
+  await makeMeme(alice, { templateId: variation.id, visibility: "unlisted" });
   assert.deepEqual(fromScene.tags, []);
   assert.deepEqual(teamMeme.tags, ["google-memes"]);
 
@@ -779,7 +818,7 @@ test("gallery search: title, template or parent template name, own or template t
   const tweak = await makeTemplate(alice, { name: "Scene", parentId: base.id, tags: ["Movie"] });
   const fromBase = await makeMeme(alice, { templateId: base.id, title: "monday" });
   const fromTweak = await makeMeme(bob, { templateId: tweak.id, title: "tuesday", tags: ["work-life"] });
-  await makeMeme(alice, { templateId: base.id, title: "hidden", visibility: "private" });
+  await makeMeme(alice, { templateId: base.id, title: "hidden", visibility: "unlisted" });
   await makeMeme(alice, { templateId: base.id, title: "draft", post: false });
 
   const search = async (q: string) =>
@@ -844,4 +883,83 @@ test("comments: one level of replies on posted public memes, author or meme owne
   assert.deepEqual((await list()).map((c) => c.id), [second.id]);
   assert.equal(await commentCount(), 1);
   assert.equal((await call("DELETE", `/api/comments/${top.body.id}`, bob)).status, 404);
+});
+
+/** Fail a late database write without replacing the domain implementation under test. */
+async function rejectingWrites(table: "template_tags" | "meme_tags" | "votes", run: () => Promise<void>): Promise<void> {
+  await sql`create function api_test_reject_write() returns trigger language plpgsql as $$
+    begin raise exception 'injected write failure' using errcode = '23514'; end $$`;
+  try {
+    await sql`create trigger api_test_reject_write before insert on ${sql(table)}
+      for each row execute function api_test_reject_write()`;
+    await run();
+  } finally {
+    await sql`drop trigger if exists api_test_reject_write on ${sql(table)}`;
+    await sql`drop function api_test_reject_write()`;
+  }
+}
+
+test("template creation rolls back the template, pack, and newly-created tags when tagging fails", async () => {
+  const alice = await signIn("alice");
+  const assetId = await upload(alice);
+  await rejectingWrites("template_tags", async () => {
+    const result = await call("POST", "/api/templates", alice, {
+      name: "Atomic pack", assetId, tags: ["rollback-template-tag"],
+      panels: { layout: "vertical", packAssetIds: [assetId], defaultPanels: [newPanel(assetId)] },
+    });
+    assert.equal(result.status, 400);
+    assert.equal((await sql`select id from templates where name = 'Atomic pack'`).length, 0);
+    assert.equal((await sql`select template_id from template_pack_assets`).length, 0);
+    assert.equal((await sql`select id from tags where slug = 'rollback-template-tag'`).length, 0);
+  });
+});
+
+test("posted meme creation rolls back tags and usage when the author vote fails", async () => {
+  const alice = await signIn("alice");
+  const template = await makeTemplate(alice);
+  const outputAssetId = await upload(alice);
+  await rejectingWrites("votes", async () => {
+    const result = await call("POST", "/api/memes", alice, {
+      title: "Atomic meme", templateId: template.id, outputAssetId, layers: [],
+      post: true, tags: ["rollback-meme-tag"],
+    });
+    assert.equal(result.status, 400);
+    assert.equal((await sql`select id from memes`).length, 0);
+    assert.equal((await sql`select template_id from template_uses`).length, 0);
+    assert.equal((await sql`select id from tags where slug = 'rollback-meme-tag'`).length, 0);
+  });
+});
+
+test("meme update failure preserves its fields and previous tags", async () => {
+  const alice = await signIn("alice");
+  const meme = await makeMeme(alice, { title: "Before", tags: ["before"] });
+  await rejectingWrites("meme_tags", async () => {
+    const result = await call("PATCH", `/api/memes/${meme.id}`, alice, {
+      title: "After", visibility: "unlisted", tags: ["rollback-update-tag"],
+    });
+    assert.equal(result.status, 400);
+    const saved = (await call<Meme>("GET", `/api/memes/${meme.id}`, alice)).body;
+    assert.deepEqual([saved.title, saved.visibility, saved.tags, saved.updatedAt], ["Before", "public", ["before"], meme.updatedAt]);
+    assert.equal((await sql`select id from tags where slug = 'rollback-update-tag'`).length, 0);
+  });
+});
+
+test("failed posting stays a draft and retries with exactly one author vote and posted usage", async () => {
+  const alice = await signIn("alice");
+  const meme = await makeMeme(alice, { post: false });
+  await rejectingWrites("votes", async () => {
+    assert.equal((await call("POST", `/api/memes/${meme.id}/post`, alice)).status, 400);
+    const saved = (await call<Meme>("GET", `/api/memes/${meme.id}`, alice)).body;
+    assert.deepEqual([saved.postedAt, saved.upvotes, saved.myVote], [null, 0, 0]);
+    assert.equal((await sql`select template_id from template_uses where meme_id = ${meme.id} and kind = 'posted'`).length, 0);
+  });
+  const posted = await call<Meme>("POST", `/api/memes/${meme.id}/post`, alice);
+  assert.equal(posted.status, 200);
+  assert.ok(posted.body.postedAt);
+  assert.deepEqual([posted.body.upvotes, posted.body.myVote], [1, 1]);
+  const repeated = await call<Meme>("POST", `/api/memes/${meme.id}/post`, alice);
+  assert.equal(repeated.body.postedAt, posted.body.postedAt);
+  assert.deepEqual([repeated.body.upvotes, repeated.body.myVote], [1, 1]);
+  const uses = await sql<{ count: number }[]>`select count(*)::int as count from template_uses where meme_id = ${meme.id} and kind = 'posted'`;
+  assert.equal(uses[0]!.count, 1);
 });

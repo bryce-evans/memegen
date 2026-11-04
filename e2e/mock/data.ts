@@ -57,12 +57,12 @@ export const MOCK_MEMES: MockMeme[] = [
   { key: "meh", title: "Mock: Meh", owner: "mock-alice", template: "classic-night", ageHours: 40 * DAY, up: 1, down: 0, top: "it works", bottom: "on my machine" },
   { key: "half-year", title: "Mock: Half Year Hit", owner: "mock-carol", template: "movie", ageHours: 180 * DAY, up: 9, down: 2, top: "migrated the db", bottom: "zero downtime" },
   { key: "ancient", title: "Mock: Ancient Legend", owner: "mock-bob", template: "movie", ageHours: 400 * DAY, up: 10, down: 0, top: "the original", bottom: "meme" },
-  { key: "secret", title: "Mock: Secret", owner: "mock-alice", template: "classic", ageHours: 1 * DAY, up: 0, down: 0, visibility: "private", top: "private", bottom: "joke" },
+  { key: "secret", title: "Mock: Secret", owner: "mock-alice", template: "classic", ageHours: 1 * DAY, up: 0, down: 0, visibility: "unlisted", top: "unlisted", bottom: "joke" },
   { key: "draft", title: "Mock: Draft", owner: "mock-alice", template: "classic", ageHours: 5, up: 0, down: 0, draft: true, top: "half", bottom: "finished" },
 ];
 
 const meme = (key: string): MockMeme => MOCK_MEMES.find((m) => m.key === key)!;
-const isPublic = (m: MockMeme) => !m.draft && m.visibility !== "private";
+const isPublic = (m: MockMeme) => !m.draft && m.visibility !== "unlisted";
 const titles = (memes: MockMeme[]) => memes.map((m) => m.title);
 
 /**
@@ -70,7 +70,7 @@ const titles = (memes: MockMeme[]) => memes.map((m) => m.title);
  * they check the server independently; the rest is read off MOCK_MEMES.
  */
 export const MOCK_EXPECT = {
-  /** mock-alice: posted memes (incl. private) scored 8, 3, 3, 1, 0, -1. */
+  /** mock-alice: posted memes (incl. unlisted) scored 8, 3, 3, 1, 0, -1. */
   aliceStats: { memeCount: 6, highScore: 8, hScore: 3 },
   /** Public memes alice's profile shows to other users. */
   alicePublicTitles: titles(MOCK_MEMES.filter((m) => m.owner === "mock-alice" && isPublic(m))),
@@ -80,7 +80,7 @@ export const MOCK_EXPECT = {
   olderThanMonth: ["Mock: Meh", "Mock: Half Year Hit", "Mock: Ancient Legend"],
   bestAllTime: ["Mock: Ancient Legend", "Mock: Top of the Week", "Mock: Half Year Hit", "Mock: Monthly Classic"],
   newest: ["Mock: Fresh Today", "Mock: Top of the Week", "Mock: Flop", "Mock: Controversial"],
-  /** Drafts and private memes never reach the gallery. */
+  /** Drafts and unlisted memes never reach the gallery. */
   hidden: titles(MOCK_MEMES.filter((m) => !isPublic(m))),
   controversial: meme("controversial"),
 } as const;

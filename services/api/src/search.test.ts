@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, test } from "node:test";
-import { DEFAULT_LIMITS, type Page, type SearchHit, type Template, type TemplateDuplicate, type User } from "@memegen/shared";
+import { DEFAULT_LIMITS, type Page, type SearchCandidate, type SearchHit, type Template, type TemplateDuplicate, type User } from "@memegen/shared";
 import { HeaderAuthProvider, type Sql } from "@memegen/server-kit";
 import { encodePng, freshTestDb } from "@memegen/server-kit/testing";
 import { AssetStore, LocalStorageProvider, staticProviders } from "@memegen/storage";
@@ -20,9 +20,21 @@ let app: ApiApp;
 let textHits: SearchHit[] = [];
 let similarHits: SearchHit[] = [];
 const search: TemplateSearch = {
-  text: async () => textHits,
-  similar: async () => similarHits,
+  text: async (_q, limit, candidates) => eligibleHits(textHits, limit, candidates),
+  similar: async (_assetId, limit, candidates) => eligibleHits(similarHits, limit, candidates),
 };
+
+/** The injected ranker honors the sidecar's eligibility/group contract, independent of SQL policy. */
+function eligibleHits(hits: SearchHit[], limit: number, candidates: SearchCandidate[]): SearchHit[] {
+  const groups = new Map(candidates.map((candidate) => [candidate.templateId, candidate.groupId]));
+  const seen = new Set<string>();
+  return hits.filter((hit) => {
+    const group = groups.get(hit.templateId);
+    if (!group || seen.has(group)) return false;
+    seen.add(group);
+    return true;
+  }).slice(0, limit);
+}
 
 before(async () => {
   sql = await freshTestDb();
@@ -98,17 +110,17 @@ test("image matches respect visibility and filters, and a variation's match find
   const bob = await signIn("bob");
   const parent = await makeTemplate(alice, "Doge");
   const variation = await makeTemplate(alice, "Doge (zoomed)", { parentId: parent.id });
-  const hidden = await makeTemplate(bob, "Bob's private shiba", { isPublic: false });
-  const hiddenVariation = await makeTemplate(bob, "Bob's private variation", { parentId: parent.id, isPublic: false });
+  const hidden = await makeTemplate(bob, "Bob's unlisted shiba", { isPublic: false });
+  const hiddenVariation = await makeTemplate(bob, "Bob's unlisted variation", { parentId: parent.id, isPublic: false });
   const otherTag = await makeTemplate(alice, "Shiba", { tags: ["animals"] });
 
   textHits = [hit(variation), hit(hidden), hit(otherTag)];
   assert.deepEqual(await searchNames("pet", alice), ["Doge", "Shiba"]);
   // Only the tag filter's templates.
   assert.deepEqual(await searchNames("pet", alice, "&tag=animals"), ["Shiba"]);
-  // Bob sees his own private template.
-  assert.deepEqual(await searchNames("pet", bob), ["Doge", "Bob's private shiba", "Shiba"]);
-  // A private variation never surfaces its public parent for anyone else.
+  // Bob sees his own unlisted template.
+  assert.deepEqual(await searchNames("pet", bob), ["Doge", "Bob's unlisted shiba", "Shiba"]);
+  // An unlisted variation never surfaces its public parent for anyone else.
   textHits = [hit(hiddenVariation)];
   assert.deepEqual(await searchNames("pet", alice), []);
   assert.deepEqual(await searchNames("pet", bob), ["Doge"]);
@@ -166,4 +178,29 @@ test("duplicates needs a signed-in user and an existing asset", async () => {
   assert.equal((await call(`/api/templates/duplicates?assetId=${assetId}`, null)).status, 401);
   assert.equal((await call(`/api/templates/duplicates?assetId=${crypto.randomUUID()}`, alice)).status, 404);
   assert.deepEqual((await call(`/api/templates/duplicates?assetId=${assetId}`, alice)).body, []);
+});
+
+test("eligible visual roots are not crowded out by excluded templates, filtered roots, or repeated variations", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const first = await makeTemplate(alice, "First root", { tags: ["animals"] });
+  const second = await makeTemplate(alice, "Second root", { tags: ["animals"] });
+  const hidden = await makeTemplate(bob, "Hidden root", { isPublic: false, tags: ["animals"] });
+  const filtered = await makeTemplate(alice, "Other category");
+  const variations = [];
+  for (let i = 0; i < 50; i++) variations.push(await makeTemplate(alice, `Variation ${i}`, { parentId: first.id }));
+  textHits = [hit(hidden), hit(filtered), ...variations.map((variation) => hit(variation)), hit(second)];
+  assert.deepEqual(await searchNames("pet", alice, "&tag=animals&kind=single"), ["First root", "Second root"]);
+});
+
+test("duplicate ranking excludes ineligible candidates before the similarity limit", async () => {
+  const alice = await signIn("alice");
+  const bob = await signIn("bob");
+  const hidden = [];
+  for (let i = 0; i < 13; i++) hidden.push(await makeTemplate(bob, `Hidden ${i}`, { isPublic: false }));
+  const visible = await makeTemplate(alice, "Visible look-alike");
+  similarHits = [...hidden.map((template) => hit(template, 0.99)), hit(visible, 0.94)];
+  const result = await call<TemplateDuplicate[]>(`/api/templates/duplicates?assetId=${await upload(alice)}`, alice);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.map((duplicate) => duplicate.template.id), [visible.id]);
 });

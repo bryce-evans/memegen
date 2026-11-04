@@ -86,13 +86,17 @@ async function template(name: string, assetId: string): Promise<string> {
 
 const catalog = () => new TemplateCatalog(sql, clip, fetchAsset, dir, searchConfig.model);
 
+async function candidates() {
+  return sql<{ templateId: string; groupId: string }[]>`select id as "templateId", id as "groupId" from templates`;
+}
+
 test("similar: a resized, re-encoded copy finds its template; different pictures don't", async () => {
   const rings = await template("Rings", await asset(picture("rings", 224)));
   await template("Stripes", await asset(picture("stripes", 224)));
   await template("Checker", await asset(picture("checker", 224)));
   const search = catalog();
 
-  const hits = await search.similar(await asset(picture("rings", 160, 3)), 10);
+  const hits = await search.similar(await asset(picture("rings", 160, 3)), 10, await candidates());
   assert.deepEqual(
     hits.map((h) => h.templateId),
     [rings],
@@ -103,15 +107,15 @@ test("similar: a resized, re-encoded copy finds its template; different pictures
 test("the index follows the templates table: new templates appear, deleted ones go, videos are skipped", async () => {
   const search = catalog();
   const copy = await asset(picture("stripes", 200, 2));
-  assert.deepEqual(await search.similar(copy, 10), []);
+  assert.deepEqual(await search.similar(copy, 10, await candidates()), []);
 
   const stripes = await template("Stripes", await asset(picture("stripes", 224)));
   await template("Clip", await asset(new Uint8Array([0, 0, 0]), "video"));
-  assert.deepEqual((await search.similar(copy, 10)).map((h) => h.templateId), [stripes]);
+  assert.deepEqual((await search.similar(copy, 10, await candidates())).map((h) => h.templateId), [stripes]);
   assert.equal(search.size, 1);
 
   await sql`delete from templates where id = ${stripes}`;
-  assert.deepEqual(await search.similar(copy, 10), []);
+  assert.deepEqual(await search.similar(copy, 10, await candidates()), []);
   assert.equal(search.size, 0);
 });
 
@@ -127,6 +131,25 @@ test("embeddings are cached on disk by content: a restarted catalog fetches noth
   await restarted.sync();
   assert.equal(fetches, 1);
   assert.equal(restarted.size, 2);
-  const hits = await restarted.similar(await asset(image), 10);
+  const hits = await restarted.similar(await asset(image), 10, await candidates());
   assert.deepEqual(hits.map((h) => h.templateId).sort(), [checker, again].sort());
+});
+
+test("eligible groups are ranked before limiting, despite higher-ranked excluded templates and repeated variations", async () => {
+  const image = await asset(picture("rings", 224));
+  const excluded = await Promise.all(Array.from({ length: 40 }, (_, i) => template(`Excluded ${i}`, image)));
+  const root = await template("Root", image);
+  const variations = await Promise.all(Array.from({ length: 40 }, (_, i) => template(`Variation ${i}`, image)));
+  const other = await template("Other root", await asset(picture("rings", 160, 3)));
+  const search = catalog();
+  const hits = await search.similar(image, 2, [
+    { templateId: root, groupId: root },
+    ...variations.map((templateId) => ({ templateId, groupId: root })),
+    { templateId: other, groupId: other },
+  ]);
+  assert.equal(hits.length, 2);
+  assert.ok([root, ...variations].includes(hits[0]!.templateId));
+  assert.equal(hits[1]!.templateId, other);
+  assert.ok(hits.every((hit) => !excluded.includes(hit.templateId)));
+  assert.deepEqual(await search.similar(image, 2, []), []);
 });

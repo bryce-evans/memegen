@@ -315,11 +315,11 @@ export const SAMPLE_MEMES: SampleMeme[] = [
     title: "Note to self",
     owner: "dana",
     template: "jb/doge",
-    captions: ["such private", "very joke"],
+    captions: ["such unlisted", "very joke"],
     ageHours: 2 * DAY,
     up: 0,
     down: 0,
-    visibility: "private",
+    visibility: "unlisted",
   },
   {
     title: "Still drafting",

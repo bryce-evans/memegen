@@ -1,7 +1,7 @@
 import { isListed } from "@memegen/shared";
 import type { Comment, Layer, Meme, PanelSet, PanelTemplate, Period, Sticker, Tag, Template, TemplateKind, Visibility } from "@memegen/shared";
 import { tagSlug } from "@memegen/shared";
-import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit";
+import { HttpError, toAsset, type AssetRow, type Sql, type TransactionSql } from "@memegen/server-kit";
 
 // ---- shared SQL pieces -------------------------------------------------------------
 
@@ -9,22 +9,18 @@ import { HttpError, toAsset, type AssetRow, type Sql } from "@memegen/server-kit
  * Visibility rules, written once. Fragments use the aliases `m` (memes) and `t` (templates).
  * Listed = posted and public: galleries, public profiles, tag counts, votes, favorites, and comments.
  */
-export function memeListed(sql: Sql) {
+export function memeListed(sql: Sql | TransactionSql) {
   return sql`(m.visibility = 'public' and m.posted_at is not null)`;
 }
 
-/** Listed memes plus the viewer's own (drafts and private included). */
+/** Listed memes plus the viewer's own (drafts and unlisted included). */
 export function memeVisibleTo(sql: Sql, viewerId: string | null) {
   return sql`(${memeListed(sql)} or m.owner_id = ${viewerId})`;
 }
 
-/** Opening one meme by id: anything public (drafts too, so links work before posting) plus the viewer's own. */
-export function memeOpenTo(sql: Sql, viewerId: string | null) {
-  return sql`(m.visibility = 'public' or m.owner_id = ${viewerId})`;
-}
 
-export function templateVisibleTo(sql: Sql, viewerId: string | null) {
-  return sql`(t.is_public or t.owner_id = ${viewerId})`;
+export function templateVisibleTo(sql: Sql, viewerId: string | null, alias: "t" | "h" = "t") {
+  return sql`(${sql(alias)}.is_public or ${sql(alias)}.owner_id = ${viewerId})`;
 }
 
 /** `isListed` for a loaded row (JS twin of `memeListed`): only listed memes take votes, favorites, and comments. */
@@ -142,18 +138,6 @@ export function toMeme(r: MemeRow): Meme {
   };
 }
 
-/** Replace the tags on a meme. */
-export async function replaceMemeTags(sql: Sql, memeId: string, slugs: readonly string[], userId: string): Promise<void> {
-  if (slugs.length) await ensureTags(sql, slugs, userId);
-  await sql.begin(async (tx) => {
-    await tx`delete from meme_tags where meme_id = ${memeId}`;
-    if (slugs.length) {
-      await tx`
-        insert into meme_tags (meme_id, tag_id)
-        select ${memeId}, id from tags where slug = any(${slugs as string[]}::text[])`;
-    }
-  });
-}
 
 // ---- templates ---------------------------------------------------------------------
 
@@ -245,37 +229,6 @@ export async function withVariations(sql: Sql, rows: readonly TemplateRow[], vie
   return nest(rows, variations, (r, vs) => toTemplate(r, vs.map((v) => toTemplate(v))));
 }
 
-/**
- * Add tags to a template. `base` tags come with the template from its author; others are community
- * additions. Tags already on the template are left as they are, so base tags stay base.
- */
-export async function addTemplateTags(
-  sql: Sql,
-  templateId: string,
-  slugs: readonly string[],
-  userId: string,
-  base: boolean,
-): Promise<void> {
-  if (!slugs.length) return;
-  await ensureTags(sql, slugs, userId);
-  await sql`
-    insert into template_tags (template_id, tag_id, base, added_by)
-    select ${templateId}, id, ${base}, ${userId} from tags where slug = any(${slugs as string[]}::text[])
-    on conflict (template_id, tag_id) do nothing`;
-}
-
-// ---- tags --------------------------------------------------------------------------
-
-/**
- * Create missing slugs as `topic` tags named after the slug; existing tags (including team tags) are
- * reused. Idempotent, so it runs outside the tagging transaction.
- */
-async function ensureTags(sql: Sql, slugs: readonly string[], userId: string): Promise<void> {
-  await sql`
-    insert into tags (slug, name, created_by)
-    select s, s, ${userId} from unnest(${slugs as string[]}::text[]) as s
-    on conflict (slug) do nothing`;
-}
 
 export interface TagRow {
   slug: string;

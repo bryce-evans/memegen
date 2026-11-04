@@ -12,14 +12,14 @@ export function createSearchApp(catalog: TemplateCatalog): Hono {
 
   app.post("/search", async (c) => {
     requireInternal(c);
-    const { q, limit } = await parseJson(c, searchTextSchema);
-    return c.json<SearchHits>({ hits: await catalog.searchText(q, limit) });
+    const { q, limit, candidates } = await parseJson(c, searchTextSchema);
+    return c.json<SearchHits>({ hits: await catalog.searchText(q, limit, candidates) });
   });
 
   app.post("/similar", async (c) => {
     requireInternal(c);
-    const { assetId, limit } = await parseJson(c, searchSimilarSchema);
-    return c.json<SearchHits>({ hits: await catalog.similar(assetId, limit) });
+    const { assetId, limit, candidates } = await parseJson(c, searchSimilarSchema);
+    return c.json<SearchHits>({ hits: await catalog.similar(assetId, limit, candidates) });
   });
 
   return app;

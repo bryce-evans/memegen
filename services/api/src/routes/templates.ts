@@ -6,117 +6,35 @@ import {
   templatesQuerySchema,
   templateUsageQuerySchema,
   updateTemplateSchema,
-  type HotTemplate,
-  type Period,
-  type TemplateCount,
-  type TemplateDuplicate,
-  type TemplateUsage,
 } from "@memegen/shared";
-import { HttpError, idParam, page, pageSql, parse, parseJson, type Sql } from "@memegen/server-kit";
+import { HttpError, idParam, parse, parseJson, type Sql } from "@memegen/server-kit";
 import {
   loadTemplate,
   loadTemplatePack,
   ownTemplate,
-  requireLayerImages,
+  requireLayerAssets,
   requireMediaAsset,
   requirePackImages,
   requireUser,
   type ApiApp,
 } from "../access.ts";
-import {
-  addTemplateTags,
-  containsPattern,
-  periodStart,
-  storedPanels,
-  tagMatches,
-  templateSelect,
-  templateVisibleTo,
-  withVariations,
-  type TemplateRow,
-} from "../rows.ts";
+import { storedPanels } from "../rows.ts";
+import { addTemplateTags } from "../tags.ts";
+import { browseTemplates, templateCount, templateDuplicates } from "../template-queries.ts";
+import { hotTemplates, templateUsage } from "../template-usage.ts";
 import type { TemplateSearch } from "../search.ts";
 
-/** Time-series granularity for each period. */
-const PERIOD_BUCKET: Record<Period, TemplateUsage["bucket"]> = {
-  day: "hour",
-  week: "day",
-  month: "day",
-  year: "month",
-  all: "month",
-};
-
-/** Image matches asked of the search sidecar per query; they follow every tag and name match. */
-const VISUAL_SEARCH_LIMIT = 48;
-/** Near-duplicates asked of the search sidecar per upload. */
-const DUPLICATE_LIMIT = 12;
-
-type Fragment = ReturnType<typeof templateVisibleTo>;
-
-/**
- * Template search, best first: templates with a tag matching `q`, then a name matching it, then (with the search
- * sidecar) templates whose image matches it, so "dog" also finds doge. `listed` (alias `t`) filters all three; an
- * image match on a variation finds its top-level template.
- */
-async function searchTemplateIds(sql: Sql, search: TemplateSearch | null, q: string, listed: Fragment, viewerId: string | null) {
-  const tagged = sql`exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
-    where x.template_id = t.id and ${tagMatches(sql, q, "g")})`;
-  const [text, hits] = await Promise.all([
-    sql<{ id: string }[]>`select t.id from templates t
-      where ${listed} and (${tagged} or t.name ilike ${containsPattern(q)})
-      order by ${tagged} desc, t.created_at desc, t.id`,
-    search ? search.text(q, VISUAL_SEARCH_LIMIT) : [],
-  ]);
-  const ids = new Set(text.map((r) => r.id));
-  if (hits.length) {
-    const roots = await sql<{ hit: string; id: string }[]>`
-      select h.id as hit, t.id from templates h join templates t on t.id = coalesce(h.parent_id, h.id)
-      where h.id in ${sql(hits.map((h) => h.templateId))} and (h.is_public or h.owner_id = ${viewerId}) and ${listed}`;
-    const rootOf = new Map(roots.map((r) => [r.hit, r.id]));
-    for (const hit of hits) {
-      const id = rootOf.get(hit.templateId);
-      if (id) ids.add(id);
-    }
-  }
-  return [...ids];
-}
-
-/** Rows for `ids` in that order (any deleted since are skipped). */
-async function templateRows(sql: Sql, ids: string[], viewerId: string | null): Promise<TemplateRow[]> {
-  if (!ids.length) return [];
-  const rows = await sql<TemplateRow[]>`${templateSelect(sql)} where t.id in ${sql(ids)} and ${templateVisibleTo(sql, viewerId)}`;
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  return ids.flatMap((id) => byId.get(id) ?? []);
-}
 
 /** Template browsing and search, duplicate checks, usage stats, authoring, and community tags. */
 export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): void {
   app.get("/api/templates", async (c) => {
-    const { q, tag, kind, offset, limit } = parse(templatesQuerySchema, c.req.query());
-    const viewerId = c.get("user")?.id ?? null;
-    const listed = sql`t.parent_id is null and ${templateVisibleTo(sql, viewerId)}
-      ${kind ? sql`and t.kind = ${kind}` : sql``}
-      ${tag ? sql`and exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
-        where x.template_id = t.id and g.slug = ${tag})` : sql``}`;
-    if (q) {
-      const ids = await searchTemplateIds(sql, search, q, listed, viewerId);
-      const rows = await templateRows(sql, ids.slice(offset, offset + limit), viewerId);
-      const nextOffset = ids.length > offset + limit ? offset + limit : null;
-      return c.json({ items: await withVariations(sql, rows, viewerId), nextOffset });
-    }
-    const rows = await sql<TemplateRow[]>`${templateSelect(sql)}
-      where ${listed}
-      order by t.created_at desc, t.id
-      ${pageSql(sql, offset, limit)}`;
-    const { items, nextOffset } = page(rows, offset, limit);
-    return c.json({ items: await withVariations(sql, items, viewerId), nextOffset });
+    const query = parse(templatesQuerySchema, c.req.query());
+    return c.json(await browseTemplates(sql, search, c.get("user")?.id ?? null, query));
   });
 
   /** How many templates the browser lists with no search or filter. */
   app.get("/api/templates/count", async (c) => {
-    const viewerId = c.get("user")?.id ?? null;
-    const [row] = await sql<TemplateCount[]>`
-      select count(*)::int as count from templates t where t.parent_id is null and ${templateVisibleTo(sql, viewerId)}`;
-    return c.json(row!);
+    return c.json(await templateCount(sql, c.get("user")?.id ?? null));
   });
 
   /**
@@ -126,46 +44,13 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
   app.get("/api/templates/duplicates", async (c) => {
     const user = requireUser(c);
     const { assetId } = parse(templateDuplicatesQuerySchema, c.req.query());
-    const [asset] = await sql<{ sha256: string }[]>`select sha256 from assets where id = ${assetId}`;
-    if (!asset) throw new HttpError(404, "asset not found");
-    const [exact, hits] = await Promise.all([
-      sql<{ id: string }[]>`select t.id from templates t join assets a on a.id = t.asset_id
-        where a.sha256 = ${asset.sha256} order by t.created_at, t.id`,
-      search ? search.similar(assetId, DUPLICATE_LIMIT) : [],
-    ]);
-    const exactIds = new Set(exact.map((r) => r.id));
-    const similarity = new Map(hits.map((h) => [h.templateId, h.score]));
-    const ids = [...exactIds, ...hits.map((h) => h.templateId).filter((id) => !exactIds.has(id))];
-    const templates = await withVariations(sql, await templateRows(sql, ids, user.id), user.id);
-    const items: TemplateDuplicate[] = templates.map((template) => ({
-      template,
-      exact: exactIds.has(template.id),
-      similarity: similarity.get(template.id) ?? null,
-    }));
-    return c.json(items);
+    return c.json(await templateDuplicates(sql, search, assetId, user.id));
   });
 
   /** Most-used top-level templates in the period; variation uses roll up into their parent. */
   app.get("/api/templates/hot", async (c) => {
     const { period, limit } = parse(hotTemplatesQuerySchema, c.req.query());
-    const viewerId = c.get("user")?.id ?? null;
-    const since = period === "all" ? sql`` : sql`and u.created_at >= ${periodStart(sql, period)}`;
-    const ranked = await sql<{ id: string; uses: number; posts: number }[]>`
-      select u.root_template_id as id,
-        count(*) filter (where u.kind = 'created')::int as uses,
-        count(*) filter (where u.kind = 'posted')::int as posts
-      from template_uses u
-      join templates t on t.id = u.root_template_id
-      where ${templateVisibleTo(sql, viewerId)} ${since}
-      group by u.root_template_id
-      order by uses desc, posts desc, u.root_template_id
-      limit ${limit}`;
-    if (!ranked.length) return c.json([]);
-    const rows = await sql<TemplateRow[]>`${templateSelect(sql)} where t.id in ${sql(ranked.map((r) => r.id))}`;
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    const templates = await withVariations(sql, ranked.map((r) => byId.get(r.id)!), viewerId);
-    const items: HotTemplate[] = ranked.map((r, i) => ({ template: templates[i]!, uses: r.uses, posts: r.posts }));
-    return c.json(items);
+    return c.json(await hotTemplates(sql, c.get("user")?.id ?? null, period, limit));
   });
 
   /** Zero-filled usage time series for one template (top-level includes its variations). */
@@ -173,29 +58,7 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
     const { id } = parse(idParam, c.req.param());
     const { period } = parse(templateUsageQuerySchema, c.req.query());
     const template = await loadTemplate(sql, id, c.get("user"));
-    const bucket = PERIOD_BUCKET[period];
-    const match = template.parentId ? sql`u.template_id = ${id}` : sql`u.root_template_id = ${id}`;
-    const start =
-      period === "all"
-        ? sql`coalesce((select min(u.created_at) from template_uses u where ${match}), now())`
-        : periodStart(sql, period);
-    const points = await sql<{ at: Date; uses: number; posts: number }[]>`
-      with buckets as (
-        select generate_series(date_trunc(${bucket}, ${start}), date_trunc(${bucket}, now()), ${"1 " + bucket}::interval) as at
-      )
-      select b.at,
-        count(u.*) filter (where u.kind = 'created')::int as uses,
-        count(u.*) filter (where u.kind = 'posted')::int as posts
-      from buckets b
-      left join template_uses u on ${match} and date_trunc(${bucket}, u.created_at) = b.at
-      group by b.at order by b.at`;
-    const usage: TemplateUsage = {
-      templateId: id,
-      period,
-      bucket,
-      points: points.map((p) => ({ at: p.at.toISOString(), uses: p.uses, posts: p.posts })),
-    };
-    return c.json(usage);
+    return c.json(await templateUsage(sql, template, period));
   });
 
   app.get("/api/templates/:id", async (c) => {
@@ -209,12 +72,12 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
     await requireMediaAsset(sql, body.assetId, "assetId");
     if (body.parentId) {
       const [parent] = await sql<{ parent_id: string | null }[]>`
-        select t.parent_id from templates t where t.id = ${body.parentId} and ${templateVisibleTo(sql, user.id)}`;
+        select t.parent_id from templates t where t.id = ${body.parentId}`;
       if (!parent) throw new HttpError(400, "parent template does not exist");
       if (parent.parent_id) throw new HttpError(400, "variations cannot have variations; use the top-level template");
     }
     if (body.panels) await requirePackImages(sql, body.panels.packAssetIds);
-    await requireLayerImages(sql, body.defaultLayers);
+    await requireLayerAssets(sql, body.defaultLayers);
     const id = await sql.begin(async (tx) => {
       const [row] = await tx<{ id: string }[]>`
         insert into templates ${tx({
@@ -230,9 +93,9 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
         const rows = body.panels.packAssetIds.map((assetId, position) => ({ template_id: row!.id, asset_id: assetId, position }));
         await tx`insert into template_pack_assets ${tx(rows)}`;
       }
+      await addTemplateTags(tx, row!.id, body.tags, user.id, true);
       return row!.id;
     });
-    await addTemplateTags(sql, id, body.tags, user.id, true);
     return c.json(await loadTemplate(sql, id, user), 201);
   });
 
@@ -245,7 +108,7 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
     if (body.name !== undefined) changes.name = body.name;
     if (body.isPublic !== undefined) changes.is_public = body.isPublic;
     if (body.defaultLayers !== undefined) {
-      await requireLayerImages(sql, body.defaultLayers);
+      await requireLayerAssets(sql, body.defaultLayers);
       changes.default_layers = sql.json(body.defaultLayers as never);
     }
     const panels = body.panels;
@@ -288,9 +151,8 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
     const user = requireUser(c);
     const { id } = parse(idParam, c.req.param());
     const { tags } = await parseJson(c, setTagsSchema);
-    const [row] = await sql`select 1 from templates t where t.id = ${id} and ${templateVisibleTo(sql, user.id)}`;
-    if (!row) throw new HttpError(404, "template not found");
-    await addTemplateTags(sql, id, tags, user.id, false);
+    await loadTemplate(sql, id, user);
+    await sql.begin((tx) => addTemplateTags(tx, id, tags, user.id, false));
     return c.json(await loadTemplate(sql, id, user));
   });
 }

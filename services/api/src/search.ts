@@ -1,5 +1,5 @@
 import { config, searchConfig } from "@memegen/server-kit";
-import type { SearchHit, SearchHits } from "@memegen/shared";
+import { searchHitsSchema, type SearchCandidate, type SearchHit } from "@memegen/shared";
 
 /**
  * The search sidecar as the API sees it. Search is an extra: when the sidecar is off, slow, or failing, these resolve
@@ -7,9 +7,9 @@ import type { SearchHit, SearchHits } from "@memegen/shared";
  */
 export interface TemplateSearch {
   /** Templates whose image matches a natural-language query, best first. */
-  text(q: string, limit: number): Promise<SearchHit[]>;
+  text(q: string, limit: number, candidates: SearchCandidate[]): Promise<SearchHit[]>;
   /** Templates whose image looks like the asset's, most alike first. */
-  similar(assetId: string, limit: number): Promise<SearchHit[]>;
+  similar(assetId: string, limit: number, candidates: SearchCandidate[]): Promise<SearchHit[]>;
 }
 
 /** Text search runs on every keystroke-debounced query, so it gives up quickly. */
@@ -29,14 +29,14 @@ export function templateSearch(url: string = searchConfig.url): TemplateSearch |
         signal: AbortSignal.timeout(timeoutMs),
       });
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-      return ((await res.json()) as SearchHits).hits;
+      return searchHitsSchema.parse(await res.json()).hits;
     } catch (err) {
       console.error(`search ${path} failed: ${err instanceof Error ? err.message : String(err)}`);
       return [];
     }
   }
   return {
-    text: (q, limit) => call("/search", { q, limit }, TEXT_TIMEOUT_MS),
-    similar: (assetId, limit) => call("/similar", { assetId, limit }, SIMILAR_TIMEOUT_MS),
+    text: (q, limit, candidates) => call("/search", { q, limit, candidates }, TEXT_TIMEOUT_MS),
+    similar: (assetId, limit, candidates) => call("/similar", { assetId, limit, candidates }, SIMILAR_TIMEOUT_MS),
   };
 }

@@ -7,28 +7,33 @@ import type { Template } from "./types.ts";
  * `GET /api/templates/duplicates`.
  */
 
+/** API-selected eligible templates. Limits count distinct groups (roots for browse, IDs for duplicates). */
+export const searchCandidateSchema = z.object({ templateId: z.uuid(), groupId: z.uuid() });
+export type SearchCandidate = z.output<typeof searchCandidateSchema>;
+
 /** Sidecar `POST /search`: templates whose image matches a natural-language query, best first. */
 export const searchTextSchema = z.object({
   q: z.string().trim().min(1).max(100),
   limit: z.number().int().min(1).max(200).default(48),
+  candidates: z.array(searchCandidateSchema),
 });
 
 /** Sidecar `POST /similar`: templates whose image looks like an uploaded asset's (near-duplicates), most alike first. */
 export const searchSimilarSchema = z.object({
   assetId: z.uuid(),
   limit: z.number().int().min(1).max(100).default(12),
+  candidates: z.array(searchCandidateSchema),
 });
 
-export interface SearchHit {
-  /** Any template, variations included; the API applies visibility and rolls variations up. */
-  templateId: string;
-  /** `/search`: how far the match stands out from the library (z-score). `/similar`: cosine similarity, 0–1. */
-  score: number;
-}
+export const searchHitSchema = z.object({
+  templateId: z.uuid(),
+  /** Text z-score or image cosine similarity. */
+  score: z.number().finite(),
+});
+export type SearchHit = z.output<typeof searchHitSchema>;
 
-export interface SearchHits {
-  hits: SearchHit[];
-}
+export const searchHitsSchema = z.object({ hits: z.array(searchHitSchema) });
+export type SearchHits = z.output<typeof searchHitsSchema>;
 
 /** `GET /api/templates/duplicates?assetId=`: templates that already use this image (or one that looks like it). */
 export const templateDuplicatesQuerySchema = z.object({ assetId: z.uuid() });

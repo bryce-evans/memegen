@@ -1,20 +1,21 @@
 import { createMemeSchema, favoriteSchema, updateMemeSchema, voteSchema } from "@memegen/shared";
-import { idParam, parse, parseJson, type Sql } from "@memegen/server-kit";
+import { idParam, parse, parseJson, type Sql, type TransactionSql } from "@memegen/server-kit";
 import {
   loadMeme,
   loadTemplate,
   loadTemplatePack,
   ownMeme,
-  requireLayerImages,
+  requireLayerAssets,
   requireMemePanels,
   requireOwnOutput,
   requireUser,
   type ApiApp,
 } from "../access.ts";
-import { memeListed, replaceMemeTags, requireListed, toMeme } from "../rows.ts";
+import { memeListed, requireListed, toMeme } from "../rows.ts";
+import { replaceMemeTags } from "../tags.ts";
 
-/** Reddit-style: posting casts the author's upvote, once the meme is listed (posting a private meme casts none). */
-async function authorUpvote(sql: Sql, memeId: string, authorId: string): Promise<void> {
+/** Posting casts the author's upvote once listed; unlisted posts receive none. */
+async function authorUpvote(sql: TransactionSql, memeId: string, authorId: string): Promise<void> {
   await sql`
     insert into votes (user_id, meme_id, value)
     select ${authorId}, m.id, 1 from memes m where m.id = ${memeId} and ${memeListed(sql)}
@@ -29,22 +30,25 @@ export function register(app: ApiApp, sql: Sql): void {
     const template = await loadTemplate(sql, body.templateId, user);
     const output = await requireOwnOutput(sql, body.outputAssetId, user);
     const panels = requireMemePanels(template.panels?.pack.map((a) => a.id) ?? null, body.panels);
-    await requireLayerImages(sql, body.layers);
-    const [row] = await sql<{ id: string }[]>`
-      insert into memes ${sql({
-        owner_id: user.id,
-        template_id: template.id,
-        source_asset_id: template.asset.id,
-        output_asset_id: output.id,
-        title: body.title,
-        layers: sql.json(body.layers as never),
-        panels: panels ? sql.json(panels as never) : null,
-        visibility: body.visibility,
-        posted_at: body.post ? new Date() : null,
-      })} returning id`;
-    if (body.tags.length) await replaceMemeTags(sql, row!.id, body.tags, user.id);
-    if (body.post) await authorUpvote(sql, row!.id, user.id);
-    return c.json(toMeme(await loadMeme(sql, row!.id, user)), 201);
+    await requireLayerAssets(sql, body.layers);
+    const id = await sql.begin(async (tx) => {
+      const [row] = await tx<{ id: string }[]>`
+        insert into memes ${tx({
+          owner_id: user.id,
+          template_id: template.id,
+          source_asset_id: template.asset.id,
+          output_asset_id: output.id,
+          title: body.title,
+          layers: tx.json(body.layers as never),
+          panels: panels ? tx.json(panels as never) : null,
+          visibility: body.visibility,
+          posted_at: body.post ? new Date() : null,
+        })} returning id`;
+      if (body.tags.length) await replaceMemeTags(tx, row!.id, body.tags, user.id);
+      if (body.post) await authorUpvote(tx, row!.id, user.id);
+      return row!.id;
+    });
+    return c.json(toMeme(await loadMeme(sql, id, user)), 201);
   });
 
   app.get("/api/memes/:id", async (c) => {
@@ -61,23 +65,27 @@ export function register(app: ApiApp, sql: Sql): void {
     if (body.layers && body.outputAssetId) {
       const output = await requireOwnOutput(sql, body.outputAssetId, user);
       const panels = requireMemePanels(await loadTemplatePack(sql, meme.template_id), body.panels);
-      await requireLayerImages(sql, body.layers);
+      await requireLayerAssets(sql, body.layers);
       changes.layers = sql.json(body.layers as never);
       changes.panels = panels ? sql.json(panels as never) : null;
       changes.output_asset_id = output.id;
     }
-    if (Object.keys(changes).length) {
-      await sql`update memes set ${sql(changes)}, updated_at = now() where id = ${id}`;
-    }
-    if (body.tags) await replaceMemeTags(sql, id, body.tags, user.id);
+    await sql.begin(async (tx) => {
+      if (Object.keys(changes).length) {
+        await tx`update memes set ${tx(changes)}, updated_at = now() where id = ${id}`;
+      }
+      if (body.tags) await replaceMemeTags(tx, id, body.tags, user.id);
+    });
     return c.json(toMeme(await loadMeme(sql, id, user)));
   });
 
   app.post("/api/memes/:id/post", async (c) => {
     const { user, id } = await ownMeme(sql, c);
-    const [posted] = await sql`
-      update memes set posted_at = now(), updated_at = now() where id = ${id} and posted_at is null returning id`;
-    if (posted) await authorUpvote(sql, id, user.id);
+    await sql.begin(async (tx) => {
+      const [posted] = await tx`
+        update memes set posted_at = now(), updated_at = now() where id = ${id} and posted_at is null returning id`;
+      if (posted) await authorUpvote(tx, id, user.id);
+    });
     return c.json(toMeme(await loadMeme(sql, id, user)));
   });
 

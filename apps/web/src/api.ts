@@ -179,7 +179,7 @@ export const getUser = (username: string) => request<UserProfile>(`/api/users/${
 export const getUserMemes = (username: string, { offset, limit }: PageParams = {}) =>
   request<Page<Meme>>(`/api/users/${encodeURIComponent(username)}/memes${qs({ offset, limit })}`);
 
-/** Templates the user added (variations included), newest first; their owner also sees private ones. */
+/** Templates the user added (variations included), newest first; their owner also sees unlisted ones. */
 export const getUserTemplates = (username: string, { offset, limit }: PageParams = {}) =>
   request<Page<Template>>(`/api/users/${encodeURIComponent(username)}/templates${qs({ offset, limit })}`);
 

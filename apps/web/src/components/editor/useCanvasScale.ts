@@ -12,19 +12,25 @@ export interface CanvasScale {
 /**
  * Size a stage canvas's backing store to its displayed size × device pixels, so text is rasterized at screen
  * resolution instead of at the source's size and then stretched; tracks resizes. `mounted` re-attaches the observer
- * when the canvas is (re)rendered conditionally.
+ * when the canvas is (re)rendered conditionally. `fitAspect` fits a preview to its parent's width and CSS max-height.
  */
-export function useCanvasScale(canvasRef: RefObject<HTMLCanvasElement | null>, fallbackWidth: number, mounted = true): CanvasScale {
+export function useCanvasScale(canvasRef: RefObject<HTMLCanvasElement | null>, fallbackWidth: number, mounted = true, fitAspect?: number): CanvasScale {
   const [displayWidth, setDisplayWidth] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const observer = new ResizeObserver(() => setDisplayWidth(canvas.clientWidth));
+    const measure = () => {
+      if (fitAspect === undefined) return setDisplayWidth(canvas.clientWidth);
+      const maxHeight = parseFloat(getComputedStyle(canvas).maxHeight) || Infinity;
+      setDisplayWidth(Math.min(canvas.parentElement?.clientWidth ?? canvas.clientWidth, maxHeight * fitAspect));
+    };
+    const observer = new ResizeObserver(measure);
     observer.observe(canvas);
-    setDisplayWidth(canvas.clientWidth);
+    if (fitAspect !== undefined && canvas.parentElement) observer.observe(canvas.parentElement);
+    measure();
     return () => observer.disconnect();
-  }, [canvasRef, mounted]);
+  }, [canvasRef, mounted, fitAspect]);
 
   const dpr = window.devicePixelRatio || 1;
   const pixelWidth = displayWidth > 0 ? Math.round(displayWidth * dpr) : fallbackWidth;

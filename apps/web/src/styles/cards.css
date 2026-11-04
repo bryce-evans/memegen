@@ -1,0 +1,219 @@
+/* Meme feeds flow in justified rows instead of a grid: native aspect, never cropped, widths vary. The container is
+   the app's own div, not ui MediaGrid, because the app computes this layout (skins may restyle MediaGrid, e.g.
+   Studio's masonry). MemeGrid (justifyRows in memes.tsx) gives each card a row height (--meme-height) so every row
+   fills the line at close to the target --meme-row-height, which the code reads, so keep it a plain px/rem length;
+   a per-skin override (scoped like the skins' own rules) may change it. Widths are --meme-aspect × that height, and
+   the card has no padding so its image is exactly that size. Before the first measurement cards sit at the target
+   height. `data-card-layout` (the user's setting) puts each card's info over its image on hover, or below it
+   (Google-style), where it is styled as each skin's borderless cards. */
+.meme-grid {
+  --meme-row-height: 312px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--ui-grid-gap);
+}
+.meme-grid .meme-card.ui-card.ui-card--borderless {
+  flex: none;
+  width: calc(var(--meme-aspect) * var(--meme-height, var(--meme-row-height)));
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--ui-radius-media);
+  cursor: pointer;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-easing-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-easing-standard);
+}
+/* The whole card opens the meme: hovered, it sits on a rounded highlight that reaches a little past its edges (the
+   spread shadow, which its own overflow doesn't clip, carries the fill out around the corners). */
+.meme-grid .meme-card.ui-card.ui-card--borderless:hover {
+  background-color: var(--ui-color-card-hover);
+  background-image: none;
+  box-shadow: 0 0 0 var(--ui-space-2) var(--ui-color-card-hover);
+}
+/* The whole card is the link, so its title doesn't underline on hover. */
+.meme-grid .meme-card .ui-card-title:hover {
+  text-decoration: none;
+}
+/* Below the image (Google-style): the semibold title (in every skin) shares its line with the votes at the right;
+   badges, if any, take the line under it. */
+.meme-grid[data-card-layout="below"] .meme-card .ui-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--ui-space-2);
+}
+.meme-grid[data-card-layout="below"] .meme-card .ui-card-title {
+  font-weight: 600;
+}
+.meme-grid[data-card-layout="below"] .meme-card .ui-card-meta {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.meme-grid[data-card-layout="below"] .meme-card .meme-card-actions {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+}
+.meme-grid .ui-card-media {
+  background: var(--ui-color-media-bg);
+}
+.meme-grid .ui-card-media a {
+  display: block;
+}
+.meme-grid .ui-card-media img,
+.meme-grid .ui-card-media video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--meme-aspect);
+  max-height: none;
+  object-fit: contain;
+}
+
+/* On hover: the card shrinks to its image so the overlay covers exactly the meme. Title, author, tags, votes and
+   actions sit on a scrim that fades in from the bottom and slides up on hover (or keyboard focus); touch screens
+   without hover always show it. */
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--ui-radius-media);
+}
+.meme-grid[data-card-layout="hover"] .ui-card-media {
+  border-radius: 0;
+}
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless .ui-card-body {
+  --ui-color-text: var(--ui-color-on-scrim);
+  --ui-color-text-muted: color-mix(in srgb, var(--ui-color-on-scrim) 78%, transparent);
+  --ui-color-link: var(--ui-color-on-scrim);
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: var(--ui-space-8) var(--ui-space-3) var(--ui-space-3);
+  background: linear-gradient(to top, var(--ui-color-scrim) 0%, var(--ui-color-scrim) 40%, transparent 100%);
+  color: var(--ui-color-on-scrim);
+  opacity: 0;
+  transform: translateY(40%);
+  transition:
+    opacity var(--ui-duration-normal) var(--ui-easing-standard),
+    transform var(--ui-duration-slow) var(--ui-easing-standard);
+}
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless:is(:hover, :focus-within) .ui-card-body {
+  opacity: 1;
+  transform: none;
+}
+@media (hover: none) {
+  .meme-grid[data-card-layout="hover"] .meme-card.ui-card.ui-card--borderless .ui-card-body {
+    opacity: 1;
+    transform: none;
+  }
+}
+.meme-grid[data-card-layout="hover"] .meme-card.ui-card .ui-card-body :is(.ui-card-title, .ui-card-meta, .ui-card-meta a) {
+  color: inherit;
+}
+/* On the scrim, votes take their brighter colors (the page ones are too dark against black) and the star the meme
+   page's teal; unselected toggles (votes, star) are bare icons in the scrim's text color: the skins' light button
+   fills read as white pills there. Selected ones keep their toned look. Hovered, either shows the same veil, between
+   the faint unselected and bright selected hovers it replaces. `:root:root` outranks skins' button rules (up to
+   0,5,0). */
+.meme-grid[data-card-layout="hover"] .meme-card-actions {
+  --ui-color-upvote: var(--ui-color-upvote-on-scrim);
+  --ui-color-downvote: var(--ui-color-downvote-on-scrim);
+}
+.meme-grid[data-card-layout="hover"] .meme-card-actions .favorite {
+  --ui-color-warning: var(--ui-color-favorite);
+}
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):not([aria-pressed="true"]) {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--ui-color-on-scrim);
+}
+/* Selected: a translucent wash of the toggle's color with a matching ring, the same in every skin (skins that tint
+   from a light surface, like Google's jfk-buttons, would show a white pill). */
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite)[aria-pressed="true"] {
+  border-color: var(--ui-button-tone);
+  background: color-mix(in srgb, var(--ui-button-tone) 16%, transparent);
+  box-shadow: none;
+  color: var(--ui-button-tone);
+}
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-color-on-scrim) 24%, transparent);
+}
+/* Template gallery: justified rows like the meme feeds (JustifiedTemplates in templates.tsx gives each card a width
+   and media height, --template-width/--template-height, so every full row fills the line at close to the target
+   --template-row-height, which the code reads, so keep it a plain px/rem length). Until the first measurement a card
+   sits at the target height, as wide as its media's --template-ratio, floored at 60% of the grid's normal column
+   (room for the title and usage) and capped at the row. `:root:root` beats the masonry skin's grid rules. */
+:root:root .ui-media-grid.template-grid {
+  --template-row-height: 250px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  columns: auto;
+}
+:root:root .ui-media-grid.template-grid > .template-card {
+  flex: 0 0 auto;
+  margin: 0;
+  width: var(
+    --template-width,
+    clamp(calc(var(--ui-grid-min) * 0.6), calc(var(--template-row-height) * var(--template-ratio, 1)), 100%)
+  );
+  max-width: 100%;
+}
+.template-grid .template-card.ui-card.ui-card--borderless {
+  border-radius: var(--ui-radius-media);
+  cursor: pointer;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-easing-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-easing-standard);
+}
+.template-grid .template-card.ui-card.ui-card--borderless:is(:hover, :focus-within) {
+  background-color: var(--ui-color-card-hover);
+  background-image: none;
+  box-shadow: 0 0 0 var(--ui-space-2) var(--ui-color-card-hover);
+}
+.template-card .ui-card-media {
+  display: flex;
+  justify-content: center;
+}
+.template-card .ui-card-media > a {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.template-card .ui-card-media :is(img, video) {
+  width: 100%;
+  height: var(--template-height, var(--template-row-height));
+  max-height: none;
+}
+/* Title and usage share one line; an author's Edit action and unlisted badge sit below. */
+.template-card .ui-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--ui-space-3);
+}
+.template-card .ui-card-meta {
+  margin: 0;
+  white-space: nowrap;
+}
+.template-card-unlisted {
+  justify-self: start;
+}
+.template-card .ui-card-actions {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin: 0;
+}
+/* The title shrinks (with its ellipsis) so a multi-panel icon after it always shows. */
+.template-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.template-card-title .ui-card-title {
+  min-width: 0;
+}
+

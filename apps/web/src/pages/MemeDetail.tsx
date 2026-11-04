@@ -107,10 +107,10 @@ export function MemeDetail() {
                 disabled={busy}
                 data-testid="visibility-toggle"
                 onClick={() =>
-                  act(() => updateMeme(meme.id, { visibility: meme.visibility === "public" ? "private" : "public" }))
+                  act(() => updateMeme(meme.id, { visibility: meme.visibility === "public" ? "unlisted" : "public" }))
                 }
               >
-                Make {meme.visibility === "public" ? "private" : "public"}
+                Make {meme.visibility === "public" ? "unlisted" : "public"}
               </Button>
               <Button disabled={busy} data-testid="edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
                 Edit

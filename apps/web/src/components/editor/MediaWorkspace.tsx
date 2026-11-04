@@ -22,8 +22,9 @@ import { ErrorView } from "../common.tsx";
 import { TemplateDetails } from "../templateDetails.tsx";
 import { LayerPanel } from "./LayerPanel.tsx";
 import { PreviewPanel } from "./PreviewPanel.tsx";
-import { SavePanel, type RenderProgress } from "./SavePanel.tsx";
-import { defaultFontId, EDITOR_TITLES, memeSaveProps, type MediaSession } from "./session.ts";
+import { SavePanel, memeSaveProps, type RenderProgress } from "./SavePanel.tsx";
+import { EDITOR_TITLES, type MediaSession } from "./session.ts";
+import { defaultFontId } from "../../memeDraft.ts";
 import { Stage } from "./Stage.tsx";
 import { TemplateEditPanel } from "./TemplateEditPanel.tsx";
 import { TemplateSavePanel } from "./TemplateSavePanel.tsx";
@@ -201,6 +202,7 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
               ready
               create={(name, tags) => createTemplate({ name, assetId: source.asset.id, defaultLayers: layers, tags })}
               assetId={source.asset.id}
+              draft={{ kind: "media", layers, title: session.initialTitle }}
             />
           ) : source.kind === "edit-template" ? (
             <TemplateEditPanel
@@ -212,7 +214,7 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
               save={(name) => updateTemplate(source.template.id, { name, defaultLayers: layers })}
             />
           ) : (
-            <SavePanel render={render} content={{ layers, panels: null }} limits={limits} {...memeSaveProps(source, user)} />
+            <SavePanel render={render} content={{ layers, panels: null }} limits={limits} initialTitle={session.initialTitle} {...memeSaveProps(source, user)} />
           )}
         </div>
       </section>

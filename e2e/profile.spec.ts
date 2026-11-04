@@ -138,7 +138,7 @@ test("profile templates: everyone sees the tab; the author opens one, edits its 
   const template = await apiTemplate(request, author, { name, defaultLayers: topBottomLayers("FIRST TOP", "FIRST BOTTOM") });
   const hidden = await apiTemplate(request, author, { name: scoped("Hidden draft"), assetId: template.asset.id, isPublic: false });
 
-  // A visitor can select the public template, but cannot edit it or see the private one.
+  // A visitor can select the public template, but cannot edit it or see the unlisted one in this list.
   await page.goto(`/u/${author.username}?tab=templates`);
   await signIn(page, scoped("template-visitor"));
   const grid = page.getByTestId("profile-templates");

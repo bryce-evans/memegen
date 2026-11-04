@@ -1,224 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  composedSize,
-  composeFrame,
-  context2d,
-  decodeMedia,
-  ensureLayerFonts,
-  ensureLayerImages,
-  exportMeme,
-  type DecodedMedia,
-} from "@memegen/render";
-import {
-  AI_EDIT_FONTS_MAX,
-  AI_PROVIDERS,
-  aiEditTarget,
-  aiImageUpdate,
-  applyAiEdit,
-  extensionForMime,
-  layerLabels,
-  limitViolations,
-  MAX_TAGS,
-  MEME_TITLE_MAX_LENGTH,
-  TEXT_MAX_LENGTH,
-  type AiProviderId,
-  type Asset,
-  type Layer,
-  type Template,
-} from "@memegen/shared";
-import { Button, Icon, Inline, NavItem, NavList, Panel, SelectField, Spinner, Stack, Text, TextArea, TextField } from "@memegen/ui";
-import {
-  ApiError,
-  assetUrl,
-  countTemplates,
-  createMeme,
-  createTemplate,
-  fetchAssetBlob,
-  generateAiImage,
-  getLimits,
-  listFonts,
-  listTemplates,
-  requestAiEdit,
-  uploadAsset,
-} from "../api.ts";
-import { ROLE_PROVIDER_IDS, useAiSettings, validModel, type AiConfig, type AiRole } from "../aiSettings.ts";
+import { decodeMedia, ensureLayerFonts, ensureLayerImages, exportMeme, exportPanels, loadAssetImages, panelSetGrid } from "@memegen/render";
+import { extensionForMime, MAX_TAGS, MEME_TITLE_MAX_LENGTH, panelExportSize, TEXT_MAX_LENGTH, type Asset, type Template } from "@memegen/shared";
+import { Button, Icon, Inline, Panel, Spinner, Stack, Text, TextArea, TextField } from "@memegen/ui";
+import { assetUrl, countTemplates, createTemplate, fetchAssetBlob, getLimits, listFonts, listTemplates, uploadAsset } from "../api.ts";
+import { useAiSettings } from "../aiSettings.ts";
 import { useUser } from "../auth.tsx";
 import { fileSlug, nameFromFile } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
 import { ErrorView, MediaView } from "./common.tsx";
-import { defaultFontId, templateLayers } from "./editor/session.ts";
+import { defaultFontId, type EditorDraft } from "../memeDraft.ts";
+import { publishMeme } from "../publishMeme.ts";
+import { draftTarget, initialDraft, updateDraft, type CreatorDraft, type DraftImage } from "./ai/draft.ts";
+import { TemplateCanvas } from "./ai/Preview.tsx";
 import { useTemplateSearchPlaceholder } from "./templates.tsx";
 
-/** The settings' two roles, in sidebar order, with what each is for. */
-const ROLES: { role: AiRole; label: string; description: string }[] = [
-  {
-    role: "text",
-    label: "Agent Provider",
-    description:
-      "The Agent Provider writes your memes in the Quick Creator on the Create page. It can also invoke the Image Generator to make changes to the image itself.",
-  },
-  {
-    role: "image",
-    label: "Image Generator",
-    description: "The Image Generator is used for AI edits to images. It is invoked via the Agent Provider, but can be a separate provider.",
-  },
-];
-
-const providerLabel = (config: AiConfig | null) => AI_PROVIDERS.find((p) => p.id === config?.provider)?.label;
-
-/**
- * Profile (owner only): the user's two AI settings, the Agent Provider and the Image Generator, each a provider, the
- * user's own API key, and an optional model, kept in this browser. The sidebar picks one; the form edits it.
- */
-export function AiAgentsPanel() {
-  const user = useUser();
-  const { settings, save } = useAiSettings(user.id);
-  const [role, setRole] = useState<AiRole>("text");
-  const description = ROLES.find((r) => r.role === role)!.description;
-
-  return (
-    <Panel heading="API Keys" data-testid="ai-agents">
-      <Text tone="muted">API keys stay in this browser and are sent only with your AI requests. Memegen never stores them.</Text>
-      <div className="ai-settings">
-        <NavList className="ai-settings-roles" aria-label="AI settings">
-          {ROLES.map((r) => (
-            <NavItem
-              key={r.role}
-              as="button"
-              type="button"
-              className="ai-settings-role"
-              active={role === r.role}
-              aria-pressed={role === r.role}
-              onClick={() => setRole(r.role)}
-              data-testid={`ai-role-${r.role}`}
-              data-set={settings[r.role] !== null}
-            >
-              {r.label}: {providerLabel(settings[r.role]) ?? "UNSET"}
-            </NavItem>
-          ))}
-        </NavList>
-        {role === "text" ? (
-          <AiConfigForm
-            key="text"
-            label="Agent Provider"
-            description={description}
-            providers={ROLE_PROVIDER_IDS.text}
-            current={settings.text}
-            onSave={(c) => save("text", c)}
-          />
-        ) : (
-          <AiConfigForm
-            key="image"
-            label="Image Generator"
-            description={description}
-            providers={ROLE_PROVIDER_IDS.image}
-            current={settings.image}
-            onSave={(c) => save("image", c)}
-          />
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-/** One role's provider (from those the role may use), key (blank keeps the stored one), and model; Clear unsets it. */
-function AiConfigForm<P extends AiProviderId>({
-  label,
-  description,
-  providers,
-  current,
-  onSave,
-}: {
-  label: string;
-  /** What the role is for, shown above its fields. */
-  description: string;
-  providers: readonly P[];
-  current: AiConfig<P> | null;
-  onSave: (config: AiConfig<P> | null) => void;
-}) {
-  const options = AI_PROVIDERS.filter((p) => (providers as readonly AiProviderId[]).includes(p.id));
-  const [provider, setProvider] = useState<P>(current?.provider ?? providers[0]!);
-  const [key, setKey] = useState("");
-  const [model, setModel] = useState(current?.model ?? "");
-  const info = options.find((p) => p.id === provider) ?? options[0]!;
-  const apiKey = key.trim() || current?.apiKey || "";
-  const valid = apiKey !== "" && validModel(model);
-
-  return (
-    <form
-      className="ai-settings-form"
-      aria-label={label}
-      data-testid="ai-config-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!valid) return;
-        onSave({ provider, apiKey, model: model.trim() });
-        setKey("");
-      }}
-    >
-      <Stack>
-        <Text tone="muted" data-testid="ai-role-description">
-          {description}
-        </Text>
-        <SelectField
-          label="Provider"
-          value={provider}
-          onChange={(e) => setProvider(providers.find((p) => p === e.target.value) ?? provider)}
-          data-testid="ai-config-provider"
-        >
-          {options.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </SelectField>
-        <TextField
-          type="password"
-          autoComplete="off"
-          label="API key"
-          placeholder={current ? "Keep the current key…" : "Paste API key…"}
-          description={
-            <a href={info.keyUrl} target="_blank" rel="noreferrer">
-              Get an API key from {info.label}
-            </a>
-          }
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          data-testid="ai-config-key"
-        />
-        <TextField
-          label="Model"
-          placeholder="Provider default"
-          value={model}
-          error={validModel(model) ? undefined : "Letters, digits, and . _ : - only"}
-          onChange={(e) => setModel(e.target.value)}
-          data-testid="ai-config-model"
-        />
-        <Inline>
-          <Button type="submit" variant="primary" disabled={!valid} data-testid="ai-config-save">
-            Save
-          </Button>
-          {current && (
-            <Button
-              variant="quiet"
-              onClick={() => {
-                onSave(null);
-                setKey("");
-                setModel("");
-              }}
-              data-testid="ai-config-clear"
-            >
-              Clear
-            </Button>
-          )}
-        </Inline>
-      </Stack>
-    </form>
-  );
-}
 
 /** Template search results shown under the Creator's search field. */
 const PICKER_LIMIT = 6;
@@ -231,37 +29,18 @@ const oneLine = (text: string) => text.replace(/\s*\n\s*/g, " ");
  * its layer is), so the agent knows which box each part goes in. Templates without boxes get the editor's own defaults.
  */
 function startingText(template: Template): string {
-  const layers = templateLayers(template, null);
-  return aiEditTarget(layers, layerLabels(layers))
+  return draftTarget(initialDraft(template, null))
     .boxes.map((b) => `${b.label}: ${oneLine(b.text)}`)
     .join("\n");
 }
 
-/** A random browsable template to start from; multi-panel ones (no single image) are skipped. */
+/** Every browsable template has an editable draft, including panel packs. */
 async function randomTemplate(): Promise<Template | null> {
   const { count } = await countTemplates();
-  for (let tries = 0; count > 0 && tries < 3; tries++) {
-    const [pick] = (await listTemplates({ offset: Math.floor(Math.random() * count), limit: 1 })).items;
-    if (pick && pick.kind !== "multi") return pick;
-  }
-  return (await listTemplates({ kind: "single", limit: 1 })).items[0] ?? null;
+  if (!count) return null;
+  return (await listTemplates({ offset: Math.floor(Math.random() * count), limit: 1 })).items[0] ?? null;
 }
 
-/** An image the Image Generator made, not uploaded yet, and the prompt it was made from (its file's name). */
-interface DraftImage {
-  blob: Blob;
-  prompt: string;
-}
-
-/**
- * What Update made of a template so far: its layers with the agent's text, and its edited image (null: the template's
- * own). `updates` counts the Updates applied, for the canvas to say which one it drew.
- */
-interface Draft {
-  layers: Layer[];
-  image: DraftImage | null;
-  updates: number;
-}
 
 /** The Creator's actions: ask the agent, open the result in the editor, or post it. */
 type Action = "update" | "editor" | "publish";
@@ -270,7 +49,7 @@ type Action = "update" | "editor" | "publish";
  * Create page, top: a template (a random one to begin with) shown on a canvas, and directions for the meme (starting
  * as the template's own text). Update sends the directions to the user's Agent Provider as a `quick-creator/2`
  * request on the canvas's current state; its `ADD_TEXT` actions rewrite the text boxes (never their placement or
- * timing), and its `UPDATE_IMAGE`, only offered when an Image Generator is set, goes to that generator. The canvas then
+ * timing), and its `UPDATE_IMAGE`, only offered for single media with an Image Generator set, goes to that generator. The canvas then
  * shows the result, and another Update builds on it. Full editor opens the result (or the template as is) in the
  * editor; Publish renders and posts it with the user's title and the template's tags, once an Update made one. An edited image
  * is uploaded only then, becoming a new template like any new media.
@@ -279,10 +58,10 @@ export function AiCreator() {
   const user = useUser();
   const navigate = useNavigate();
   const { settings } = useAiSettings(user.id);
-  const { text: agent, image: generator } = settings;
+  const agent = settings.text;
   const [search, setSearch] = useState("");
   const [source, setSource] = useState<Template | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<CreatorDraft | null>(null);
   const [description, setDescription] = useState("");
   const [title, setTitle] = useState("");
   // The Describe field's placeholder for the chosen template: its boxes' own text, never sent as directions.
@@ -316,43 +95,6 @@ export function AiCreator() {
     if (random && !touched.current) choose(random);
   }, [random]);
 
-  /**
-   * Ask the Agent Provider to apply the directions to `current` (else the template as is), and have the Image
-   * Generator make any image update it asks for.
-   */
-  async function update(from: Template, current: Draft | null, signal: AbortSignal): Promise<Draft> {
-    if (!agent) throw new Error("Add an Agent Provider in your profile's API Keys tab.");
-    const [image, fonts] = await Promise.all([
-      current?.image?.blob ?? (from.asset.kind === "image" ? fetchAssetBlob(from.asset, signal) : null),
-      listFonts(),
-    ]);
-    const base = current?.layers ?? templateLayers(from, defaultFontId(fonts.items));
-    setStep("Asking the agent…");
-    const edit = await requestAiEdit(
-      {
-        provider: agent.provider,
-        model: agent.model,
-        request: {
-          directions: words,
-          ...aiEditTarget(base, layerLabels(base)),
-          fonts: fonts.items.slice(0, AI_EDIT_FONTS_MAX).map((f) => ({ id: f.id, name: f.name })),
-          // Without an Image Generator the agent isn't offered UPDATE_IMAGE, and the API drops any it sends.
-          canUpdateImage: generator !== null,
-        },
-      },
-      image,
-      agent.apiKey,
-      signal,
-    );
-    const layers = applyAiEdit(base, edit);
-    const updates = (current?.updates ?? 0) + 1;
-    // The API only returns UPDATE_IMAGE with an Image Generator and the image: GIF/video templates take text only.
-    const prompt = aiImageUpdate(edit);
-    if (!prompt || !image || !generator) return { layers, image: current?.image ?? null, updates };
-    setStep("Editing the image…");
-    const edited = await generateAiImage({ provider: generator.provider, prompt, model: generator.model }, image, generator.apiKey, signal);
-    return { layers, image: { blob: edited, prompt }, updates };
-  }
 
   /** Upload an edited image as new media, named after its prompt. */
   function uploadImage({ blob, prompt }: DraftImage, signal: AbortSignal): Promise<Asset> {
@@ -360,11 +102,13 @@ export function AiCreator() {
     return uploadAsset(blob, `${fileSlug(prompt)}${extensionForMime(blob.type) ?? ".png"}`, undefined, signal);
   }
 
-  /** The Template Editor on the draft: its edited image as new media, else the template, with the draft's layers. */
-  async function openEditor(from: Template, current: Draft | null, signal: AbortSignal) {
-    if (!current) return navigate(`/create?template=${from.id}`);
-    const state = { layers: current.layers };
-    if (!current.image) return navigate(`/create?template=${from.id}`, { state });
+  /** Continue the complete draft, including titles entered before the first Update. */
+  async function openEditor(from: Template, current: CreatorDraft, signal: AbortSignal) {
+    const handoff: EditorDraft = current.kind === "panels"
+      ? { kind: "panels", panels: current.panels, title }
+      : { kind: "media", layers: current.layers, title };
+    const state = { draft: handoff };
+    if (current.kind === "panels" || !current.image) return navigate(`/create?template=${from.id}`, { state });
     const asset = await uploadImage(current.image, signal);
     if (!signal.aborted) navigate(`/create?newTemplate=${asset.id}`, { state });
   }
@@ -373,36 +117,35 @@ export function AiCreator() {
    * Render the draft with the export's own pipeline and post it with the user's title and the template's tags. An edited image
    * is saved as a new template first (as the Template Editor would, with the draft's boxes as its defaults).
    */
-  async function publish(from: Template, { layers, image }: Draft, signal: AbortSignal): Promise<string> {
+  async function publish(from: Template, current: CreatorDraft, signal: AbortSignal): Promise<string> {
     const limits = await getLimits();
-    const uploaded = image ? await uploadImage(image, signal) : null;
-    const template = uploaded
-      ? await createTemplate({ name: nameFromFile(uploaded.filename), assetId: uploaded.id, defaultLayers: layers, tags: from.tags })
-      : from;
-    const { asset } = template;
-    if (asset.kind === "font") throw new Error("template asset is a font, not media");
-    setStep("Rendering…");
-    const media = await decodeMedia(image?.blob ?? (await fetchAssetBlob(asset, signal)), asset.kind);
+    let template = from;
     let out;
-    try {
-      const [, images] = await Promise.all([ensureLayerFonts(layers, assetUrl), ensureLayerImages(layers, assetUrl)]);
-      out = await exportMeme(media, layers, images, limits, { signal });
-    } finally {
-      media.dispose();
+    setStep("Rendering…");
+    if (current.kind === "panels") {
+      const images = await loadAssetImages(from.panels!.pack.map((asset) => asset.id), assetUrl);
+      out = await exportPanels(current.panels, images, panelExportSize(panelSetGrid(current.panels, images), limits));
+    } else {
+      const { layers, image } = current;
+      if (image) {
+        const uploaded = await uploadImage(image, signal);
+        template = await createTemplate({ name: nameFromFile(uploaded.filename), assetId: uploaded.id, defaultLayers: layers, tags: from.tags });
+      }
+      const { asset } = template;
+      if (asset.kind === "font") throw new Error("template asset is a font, not media");
+      const media = await decodeMedia(image?.blob ?? (await fetchAssetBlob(asset, signal)), asset.kind);
+      try {
+        const [, images] = await Promise.all([ensureLayerFonts(layers, assetUrl), ensureLayerImages(layers, assetUrl)]);
+        out = await exportMeme(media, layers, images, limits, { signal });
+      } finally {
+        media.dispose();
+      }
     }
-    const tooBig = limitViolations(out.blob.size, null, limits);
-    if (tooBig.length) throw new ApiError(413, "the rendered meme is over the upload limit", tooBig);
-    setStep("Uploading…");
-    const output = await uploadAsset(out.blob, `${fileSlug(title)}${out.extension}`, undefined, signal);
-    setStep("Publishing…");
-    const meme = await createMeme({
-      title: title.trim(),
-      templateId: template.id,
-      outputAssetId: output.id,
-      layers,
-      visibility: "public",
-      post: true,
-      tags: template.tags.slice(0, MAX_TAGS),
+    const meme = await publishMeme({
+      output: out,
+      content: current.kind === "panels" ? { layers: [], panels: current.panels } : { layers: current.layers, panels: null },
+      target: { templateId: template.id }, title, visibility: "public", post: true,
+      tags: template.tags.slice(0, MAX_TAGS), limits, signal, progress: setStep,
     });
     return meme.id;
   }
@@ -410,16 +153,17 @@ export function AiCreator() {
   function run(to: Action) {
     if (!source || (to === "publish" && !title.trim())) return;
     const from = source;
-    const current = draft;
+    const edited = draft;
     setAction(to);
     setStep("Working…");
     void create.run(async (signal) => {
+      const current = edited ?? initialDraft(from, from.kind === "multi" ? null : defaultFontId((await listFonts()).items));
       if (to === "update") {
-        const next = await update(from, current, signal);
+        const next = await updateDraft(from, current, words, settings, signal, setStep);
         if (!signal.aborted) setDraft(next);
       } else if (to === "editor") {
         await openEditor(from, current, signal);
-      } else if (current) {
+      } else if (edited) {
         const memeId = await publish(from, current, signal);
         if (!signal.aborted) navigate(`/m/${memeId}`);
       }
@@ -540,77 +284,3 @@ export function AiCreator() {
   );
 }
 
-/**
- * A template's first frame with its default text, or Update's draft (its layers on its edited image, if any), drawn
- * by the export's compositor (`composeFrame`), so it looks as the meme will. Templates without text boxes show the
- * editor's TOP/BOTTOM defaults. The canvas fits the preview's width and its CSS `max-height`, scaled down to whichever
- * binds. Clicking it (or Enter on it) does what Full editor does, `onOpen`; null while another action runs. For
- * tests, `data-ready` marks the drawn canvas and `data-updates` the draft's Update count it drew (0: none).
- */
-function TemplateCanvas({ template, draft, onOpen }: { template: Template; draft: Draft | null; onOpen: (() => void) | null }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.dataset.ready = "false";
-    setError(null);
-    let cancelled = false;
-    let media: DecodedMedia | null = null;
-    (async () => {
-      const { asset } = template;
-      const kind = draft?.image ? "image" : asset.kind;
-      if (kind === "font") throw new Error("template asset is a font, not media");
-      const [decoded, fonts] = await Promise.all([
-        (draft?.image ? Promise.resolve(draft.image.blob) : fetchAssetBlob(asset)).then((blob) => decodeMedia(blob, kind)),
-        listFonts(),
-      ]);
-      if (cancelled) return decoded.dispose();
-      media = decoded;
-      const layers = draft?.layers ?? templateLayers(template, defaultFontId(fonts.items));
-      const [frame, images] = await Promise.all([decoded.frame(0), ensureLayerImages(layers, assetUrl), ensureLayerFonts(layers, assetUrl)]);
-      if (cancelled) return;
-      // Fit the preview's width and the canvas's max-height, then draw at that size × devicePixelRatio; CSS shows the
-      // canvas at its intrinsic aspect within the same bounds.
-      const maxWidth = canvas.parentElement?.clientWidth ?? canvas.clientWidth;
-      const maxHeight = parseFloat(getComputedStyle(canvas).maxHeight) || Infinity;
-      const full = composedSize(layers, decoded, maxWidth);
-      const shown = Math.min(maxWidth, (maxHeight * full.width) / full.height);
-      const width = Math.max(1, Math.round(shown * (window.devicePixelRatio || 1)));
-      const { height } = composedSize(layers, decoded, width);
-      canvas.width = width;
-      canvas.height = height;
-      composeFrame(context2d(canvas), frame, layers, images, width, height, 0);
-      canvas.dataset.updates = String(draft?.updates ?? 0);
-      canvas.dataset.ready = "true";
-    })().catch((err: unknown) => !cancelled && setError(err));
-    return () => {
-      cancelled = true;
-      media?.dispose();
-    };
-  }, [template, draft]);
-
-  return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="ai-creator-canvas"
-        role="link"
-        tabIndex={0}
-        aria-disabled={onOpen === null || undefined}
-        aria-label={`${draft ? `${template.name} as updated` : `${template.name} with its default text`}: open in the full editor`}
-        title="Open in the full editor"
-        onClick={() => onOpen?.()}
-        onKeyDown={(e) => {
-          if (e.key !== "Enter") return;
-          e.preventDefault();
-          onOpen?.();
-        }}
-        data-testid="ai-canvas"
-        data-template-id={template.id}
-      />
-      {error !== null && <ErrorView error={error} />}
-    </>
-  );
-}

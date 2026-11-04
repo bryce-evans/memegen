@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExportAbortedError, type ExportResult } from "@memegen/render";
-import { limitViolations, MAX_TAGS, MEME_TITLE_MAX_LENGTH, type Layer, type Meme, type PanelSet, type UploadLimits, type Visibility } from "@memegen/shared";
+import { MAX_TAGS, MEME_TITLE_MAX_LENGTH, type Meme, type Template, type UploadLimits, type User, type Visibility } from "@memegen/shared";
 import { Alert, Button, Icon, Inline, Panel, ProgressBar, SelectField, Text, TextField } from "@memegen/ui";
-import { ApiError, createMeme, postMeme, updateMeme, uploadAsset } from "../../api.ts";
 import { useBackGuard } from "../../backHotkeys.ts";
 import { downloadBlob, fileSlug } from "../../media.ts";
+import { publishMeme, type MemeContent, type MemeTarget } from "../../publishMeme.ts";
 import { useAction } from "../../useAction.ts";
 import { ErrorView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
@@ -17,14 +17,25 @@ export interface SavePanelProps {
   /** Render the meme in the browser (the editor's own exporter). */
   render: (signal: AbortSignal, progress: RenderProgress) => Promise<ExportResult>;
   /** What the meme stores: its layers, or a multi-panel meme's panels (with no layers). */
-  content: { layers: Layer[]; panels: PanelSet | null };
+  content: MemeContent;
   limits: UploadLimits;
   /** False when re-editing someone else's meme: only Download is offered. */
   canSave: boolean;
   /** Re-editing an existing meme (PATCH), or creating a new one from a template. */
-  target: { editing: Meme } | { templateId: string };
+  target: MemeTarget;
   /** The template's tags: pre-filled on a new meme (the user may remove them) and offered as one-click tags. */
   templateTags: string[];
+  initialTitle?: string;
+}
+
+/** Saving policy and initial tags for the editor's source. */
+export function memeSaveProps(
+  source: { kind: "template"; template: Template } | { kind: "meme"; meme: Meme },
+  user: User,
+): Pick<SavePanelProps, "canSave" | "target" | "templateTags"> {
+  return source.kind === "meme"
+    ? { canSave: source.meme.owner.id === user.id, target: { editing: source.meme }, templateTags: [] }
+    : { canSave: true, target: { templateId: source.template.id }, templateTags: source.template.tags };
 }
 
 interface Progress {
@@ -37,8 +48,8 @@ export function SavePanel(props: SavePanelProps) {
   const { render: renderMeme, content, limits, canSave, target, templateTags } = props;
   const editingMeme = "editing" in target ? target.editing : null;
   const navigate = useNavigate();
-  // New memes start untitled; Save and Post wait for one.
-  const [title, setTitle] = useState(editingMeme?.title ?? "");
+  // New memes start untitled unless continuing an explicitly titled Quick Creator draft.
+  const [title, setTitle] = useState(editingMeme?.title ?? props.initialTitle ?? "");
   const untitled = title.trim() === "";
   const [visibility, setVisibility] = useState<Visibility>(editingMeme?.visibility ?? "public");
   const [tags, setTags] = useState<string[]>(editingMeme?.tags ?? templateTags.slice(0, MAX_TAGS));
@@ -68,21 +79,10 @@ export function SavePanel(props: SavePanelProps) {
   const save = (post: boolean) =>
     run(async (signal) => {
       const out = await render(signal);
-      const tooBig = limitViolations(out.blob.size, null, limits);
-      if (tooBig.length) throw new ApiError(413, "the rendered meme is over the upload limit", tooBig);
-
-      setProgress({ step: "Uploading", value: null });
-      const output = await uploadAsset(out.blob, `${fileSlug(title)}${out.extension}`, undefined, signal);
-
-      setProgress({ step: "Saving", value: null });
-      const common = { title: title.trim(), visibility, layers: content.layers, panels: content.panels, outputAssetId: output.id, tags };
-      let meme: Meme;
-      if ("editing" in target) {
-        meme = await updateMeme(target.editing.id, common);
-        if (post && meme.postedAt === null) meme = await postMeme(meme.id);
-      } else {
-        meme = await createMeme({ ...common, templateId: target.templateId, post });
-      }
+      const meme = await publishMeme({
+        output: out, content, target, title, visibility, tags, post, limits, signal,
+        progress: (step) => setProgress({ step, value: null }),
+      });
       if (!signal.aborted) navigate(`/m/${meme.id}`);
     });
 
@@ -113,7 +113,7 @@ export function SavePanel(props: SavePanelProps) {
             data-testid="meme-visibility"
           >
             <option value="public">Public</option>
-            <option value="private">Private (only you)</option>
+            <option value="unlisted">Unlisted (anyone with the link)</option>
           </SelectField>
           <TagField value={tags} onChange={setTags} suggestions={templateTags} testId="meme-tags" disabled={busy} />
         </>

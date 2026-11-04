@@ -5,6 +5,7 @@ import { Button, Callout, Dialog, Inline, Panel, Text, TextField } from "@memege
 import { findTemplateDuplicates } from "../../api.ts";
 import { useAction } from "../../useAction.ts";
 import { useAsync } from "../../useAsync.ts";
+import type { EditorDraft } from "../../memeDraft.ts";
 import { ErrorView, MediaView } from "../common.tsx";
 import { TagField } from "../tagInputs.tsx";
 
@@ -20,13 +21,15 @@ export interface TemplateSavePanelProps {
   create: (name: string, tags: string[]) => Promise<Template>;
   /** The uploaded image: templates that already use it (or one like it) are listed before saving. */
   assetId?: string;
+  /** Continue a generated-image draft after template confirmation. */
+  draft?: EditorDraft;
 }
 
 /**
  * Template Editor's side panel: name and base tags for a new template. Saving asks "Add new template?" first, then
  * opens the new template in the editor.
  */
-export function TemplateSavePanel({ defaultName, what, note, ready, create: write, assetId }: TemplateSavePanelProps) {
+export function TemplateSavePanel({ defaultName, what, note, ready, create: write, assetId, draft }: TemplateSavePanelProps) {
   const navigate = useNavigate();
   const [name, setName] = useState(defaultName);
   const [tags, setTags] = useState<string[]>([]);
@@ -35,7 +38,7 @@ export function TemplateSavePanel({ defaultName, what, note, ready, create: writ
 
   async function create() {
     const template = await run(() => write(name.trim(), tags));
-    if (template) navigate(`/create?template=${template.id}`);
+    if (template) navigate(`/create?template=${template.id}`, { state: draft ? { draft } : undefined });
     else setConfirming(false);
   }
 

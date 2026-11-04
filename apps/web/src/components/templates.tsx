@@ -73,7 +73,7 @@ function TemplateCard({ template, editable = false, slot }: { template: Template
       <CardMeta>
         <TemplateUseCount template={template} />
       </CardMeta>
-      {!template.isPublic && <Badge tone="info" className="template-card-private">Private</Badge>}
+      {!template.isPublic && <Badge tone="info" className="template-card-unlisted">Unlisted</Badge>}
     </Card>
   );
 }
@@ -93,7 +93,7 @@ function TemplateUseCount({ template }: { template: Template }) {
   );
 }
 
-/** Author, use count (`n` and a flame) and a Private badge. */
+/** Author, use count (`n` and a flame) and an Unlisted badge. */
 export function TemplateMeta({ template }: { template: Template }) {
   return (
     <CardMeta>
@@ -102,7 +102,7 @@ export function TemplateMeta({ template }: { template: Template }) {
       </span>
       <span aria-hidden> · </span>
       <TemplateUseCount template={template} />
-      {!template.isPublic && <Badge tone="info">Private</Badge>}
+      {!template.isPublic && <Badge tone="info">Unlisted</Badge>}
     </CardMeta>
   );
 }

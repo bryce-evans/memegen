@@ -10,8 +10,8 @@ import { TemplateDetails } from "../templateDetails.tsx";
 import { PackPanel } from "./PackPanel.tsx";
 import { PanelList } from "./PanelList.tsx";
 import { PanelStage } from "./PanelStage.tsx";
-import { SavePanel } from "./SavePanel.tsx";
-import { EDITOR_TITLES, memeSaveProps, type PanelSession } from "./session.ts";
+import { SavePanel, memeSaveProps } from "./SavePanel.tsx";
+import { EDITOR_TITLES, type PanelSession } from "./session.ts";
 import { TemplateEditPanel } from "./TemplateEditPanel.tsx";
 import { TemplateSavePanel } from "./TemplateSavePanel.tsx";
 
@@ -156,6 +156,7 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
               }}
               content={{ layers: [], panels: set }}
               limits={limits}
+              initialTitle={session.initialTitle}
               {...memeSaveProps(source, user)}
             />
           )}

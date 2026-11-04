@@ -1,4 +1,4 @@
-import { apiMeme, apiUser, signIn, tagChip } from "./helpers.ts";
+import { apiMeme, apiTemplate, apiUser, memeCard, signIn, tagChip } from "./helpers.ts";
 import { expect, scoped, test } from "./test.ts";
 
 test("meme page: Share copies the meme's link; the owner's actions sit in an 'Only visible to you' panel", async ({
@@ -29,6 +29,36 @@ test("meme page: Share copies the meme's link; the owner's actions sit in an 'On
   await expect(page.getByTestId("edit-tags")).toHaveCount(0);
   await panel.getByTestId("edit-meme").click();
   await expect(page.getByTestId("meme-tags")).toBeVisible();
+});
+
+test("unlisted links open for another user while profiles exclude the meme", async ({ page, request }) => {
+  const owner = await apiUser(request, scoped("unlisted-owner"));
+  const template = await apiTemplate(request, owner, { name: scoped("Unlisted template"), isPublic: false });
+  const unlisted = await apiMeme(request, owner, { title: scoped("Unlisted link"), templateId: template.id, visibility: "unlisted" });
+  const listed = await apiMeme(request, owner, { title: scoped("Public control") });
+
+  // Record and immutable media links also work without a session.
+  const anonymous = await request.get(`/api/memes/${unlisted.id}`);
+  expect(anonymous.status()).toBe(200);
+  expect((await anonymous.json()).visibility).toBe("unlisted");
+  const bytes = await request.get(`/storage/assets/${unlisted.outputAsset.id}/content`);
+  expect(bytes.status()).toBe(200);
+  expect(bytes.headers()["content-type"]).toBe(unlisted.outputAsset.mime);
+
+  await page.goto(`/m/${unlisted.id}`);
+  await signIn(page, scoped("unlisted-visitor"));
+  await expect(page.getByTestId("meme-title")).toHaveText(unlisted.title);
+  await expect(page.getByTestId("unlisted-badge")).toHaveText("Unlisted");
+  await expect(page.getByTestId("owner-actions")).toHaveCount(0);
+  await expect(page.getByTestId("meme-media")).toBeVisible();
+  await expect.poll(() => page.getByTestId("meme-media").evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  await page.getByTestId("use-template").click();
+  await expect(page).toHaveURL(new RegExp(`template=${template.id}`));
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+
+  await page.goto(`/u/${owner.username}?tab=memes`);
+  await expect(memeCard(page, listed.id)).toBeVisible();
+  await expect(memeCard(page, unlisted.id)).toHaveCount(0);
 });
 
 test("meme page: the age shows the full posting date and time in a tooltip on hover", async ({ page, request }) => {

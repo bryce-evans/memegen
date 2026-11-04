@@ -3,7 +3,7 @@ import type { Meme, Page, Template, UserProfile } from "@memegen/shared";
 import { EmptyState, Field, Icon, PageHeader, Panel, SegmentedControl, Spinner, Stat, StatGroup, Text, useSkin } from "@memegen/ui";
 import { getMyActivity, getMyFavorites, getUser, getUserMemes, getUserTemplates, type PageParams } from "../api.ts";
 import { useUser } from "../auth.tsx";
-import { AiAgentsPanel } from "../components/ai.tsx";
+import { AiAgentsPanel } from "../components/ai/Settings.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
 import { TemplateGrid } from "../components/templates.tsx";

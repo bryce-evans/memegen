@@ -9,10 +9,9 @@ import {
   type Template,
   type Layer,
   type UploadLimits,
-  type User,
 } from "@memegen/shared";
 import { assetUrl, fetchAssetBlob, getAsset, getLimits, getMeme, getTemplate, listFonts } from "../../api.ts";
-import type { SavePanelProps } from "./SavePanel.tsx";
+import { defaultFontId, templateLayers, templatePanels, type EditorDraft } from "../../memeDraft.ts";
 
 /**
  * What the editor opens, from the query string (`?meme=`, `?template=`, `?newTemplate=`, `?editTemplate=`,
@@ -47,6 +46,7 @@ export interface MediaSession {
   layers: Layer[];
   fonts: Asset[];
   limits: UploadLimits;
+  initialTitle: string;
 }
 
 export interface PanelSession {
@@ -58,6 +58,7 @@ export interface PanelSession {
   /** Decoded pack images by asset id, from render's per-page image cache (`loadAssetImages`). */
   images: AssetImages;
   limits: UploadLimits;
+  initialTitle: string;
 }
 
 export type Session = MediaSession | PanelSession;
@@ -74,14 +75,6 @@ export function sourceRef(params: URLSearchParams): SourceRef | null {
   return params.has("newPanels") ? { kind: "new-panels", id: "" } : null;
 }
 
-export function defaultFontId(fonts: Asset[]): string | null {
-  return (fonts.find((f) => f.name.toLowerCase() === "impact") ?? fonts[0])?.id ?? null;
-}
-
-/** A template's text as it opens: its default layers, or the classic top/bottom boxes (in `fontId`) when it has none. */
-export function templateLayers(template: Template, fontId: string | null): Layer[] {
-  return template.defaultLayers.length ? template.defaultLayers : topBottomLayers(undefined, undefined, fontId);
-}
 
 /** Editor page titles: shown while a source loads, and as the header of the template-authoring editors. */
 export const EDITOR_TITLES: Record<SourceRef["kind"], string> = {
@@ -92,15 +85,6 @@ export const EDITOR_TITLES: Record<SourceRef["kind"], string> = {
   "new-panels": "Multi-panel Template Editor",
 };
 
-/** SavePanel's target and defaults for a meme made from a template, or re-edited (saved only by its owner). */
-export function memeSaveProps(
-  source: { kind: "template"; template: Template } | { kind: "meme"; meme: Meme },
-  user: User,
-): Pick<SavePanelProps, "canSave" | "target" | "templateTags"> {
-  return source.kind === "meme"
-    ? { canSave: source.meme.owner.id === user.id, target: { editing: source.meme }, templateTags: [] }
-    : { canSave: true, target: { templateId: source.template.id }, templateTags: source.template.tags };
-}
 
 async function loadSource({ kind, id }: SourceRef): Promise<Source | { kind: "new-panels" }> {
   if (kind === "new-panels") return { kind };
@@ -130,31 +114,30 @@ function initialLayers(source: Source, fontId: string | null, aiLayers: Layer[] 
   if (source.kind === "meme") return source.meme.layers;
   // Editing works on the stored defaults themselves (ids kept); an empty list stays empty.
   if (source.kind === "edit-template") return source.template.defaultLayers;
-  // Quick Creator: the template's layers with the agent's edit applied.
   if (aiLayers) return withFreshIds(aiLayers);
-  if (source.kind === "template" && source.template.defaultLayers.length) return withFreshIds(source.template.defaultLayers);
+  if (source.kind === "template") return withFreshIds(templateLayers(source.template, fontId));
   return topBottomLayers(undefined, undefined, fontId);
 }
 
 /** Pack and starting panel set for a multi-panel source. */
-function initialPanels(source: PanelSource): { pack: Asset[]; set: PanelSet } {
+function initialPanels(source: PanelSource, draft: EditorDraft | null): { pack: Asset[]; set: PanelSet } {
   if (source.kind === "new-panels") {
     return { pack: [], set: { layout: "vertical", grid: true, mirror: false, fontSize: PANEL_FONT_SIZE_DEFAULT, panels: [] } };
   }
   const spec = source.template.panels;
   if (!spec) throw new Error("this template has no image pack");
   if (source.kind === "meme") return { pack: spec.pack, set: source.meme.panels! };
-  // Editing works on the stored defaults (ids kept); using the template gives its panels fresh ids.
-  const panels = source.kind === "edit-template" ? spec.defaultPanels : spec.defaultPanels.map((p) => ({ ...p, id: crypto.randomUUID() }));
-  return { pack: spec.pack, set: { layout: spec.layout, grid: spec.grid, mirror: spec.mirror, fontSize: spec.fontSize, panels } };
+  const set = source.kind === "template" && draft?.kind === "panels" ? draft.panels : templatePanels(source.template);
+  if (set.panels.some((panel) => !spec.pack.some((asset) => asset.id === panel.assetId))) throw new Error("draft panel image is not in the template pack");
+  return { pack: spec.pack, set: source.kind === "edit-template" ? set : { ...set, panels: set.panels.map((p) => ({ ...p, id: crypto.randomUUID() })) } };
 }
 
 /**
  * Load fonts, limits and the source, then decode its media (or, for a multi-panel template, its pack images); the
- * decoded media is released when the session goes away (pack images stay in render's per-page cache). `aiLayers`
- * (from the Quick Creator) become the starting layers of a template or new-template source.
+ * decoded media is released when the session goes away (pack images stay in render's per-page cache).
+ * A Quick Creator draft supplies content and the user's title for a template or new-template source.
  */
-export function useEditorSession(ref: SourceRef, aiLayers: Layer[] | null = null): { session: Session | null; error: unknown } {
+export function useEditorSession(ref: SourceRef, draft: EditorDraft | null = null): { session: Session | null; error: unknown } {
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<unknown>(null);
   const { kind, id } = ref;
@@ -166,9 +149,9 @@ export function useEditorSession(ref: SourceRef, aiLayers: Layer[] | null = null
       const [fontPage, limits, loaded] = await Promise.all([listFonts(), getLimits(), loadSource({ kind, id })]);
       const panels = await panelSource(loaded);
       if (panels) {
-        const start = initialPanels(panels);
+        const start = initialPanels(panels, draft);
         const images = await loadAssetImages(start.pack.map((a) => a.id), assetUrl);
-        if (!cancelled) setSession({ type: "panels", source: panels, ...start, images, limits });
+        if (!cancelled) setSession({ type: "panels", source: panels, ...start, images, limits, initialTitle: panels.kind === "template" ? draft?.title ?? "" : "" });
         return;
       }
       if (loaded.kind === "new-panels") throw new Error("unreachable: new-panels is always a panel source");
@@ -181,7 +164,7 @@ export function useEditorSession(ref: SourceRef, aiLayers: Layer[] | null = null
       }
       media = decoded;
       const fonts = fontPage.items;
-      setSession({ type: "media", source: loaded, media, layers: initialLayers(loaded, defaultFontId(fonts), aiLayers), fonts, limits });
+      setSession({ type: "media", source: loaded, media, layers: initialLayers(loaded, defaultFontId(fonts), draft?.kind === "media" ? draft.layers : null), fonts, limits, initialTitle: loaded.kind === "template" || loaded.kind === "new-template" ? draft?.title ?? "" : "" });
     })().catch((err: unknown) => !cancelled && setError(err));
     return () => {
       cancelled = true;

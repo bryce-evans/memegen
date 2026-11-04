@@ -2,7 +2,7 @@ import { AI_PROVIDERS, type AiProviderId, type Asset, type Meme, type Template, 
 import { AI_STUB_KEY, AI_STUB_REFUSE, AI_STUB_RESULT } from "@memegen/server-kit/testing";
 import type { Locator, Page } from "@playwright/test";
 import { expect, scoped, test } from "./test.ts";
-import { apiGet, apiTemplate, apiUser, memeIdFromUrl, signIn } from "./helpers.ts";
+import { apiGet, apiTemplate, apiUpload, apiUser, memeIdFromUrl, signIn } from "./helpers.ts";
 
 /** Search the Creator for a template by its (unique) name and pick it. */
 async function pickTemplate(creator: Locator, template: Template): Promise<void> {
@@ -39,7 +39,9 @@ test("Creator: starts on a random template, its name searched and its boxes' tex
   await expect(canvas).toHaveAttribute("data-ready", "true");
   const template = await apiGet<Template>(request, `/api/templates/${await canvas.getAttribute("data-template-id")}`);
   await expect(creator.getByTestId("ai-template-search")).toHaveValue(template.name);
-  const texts = template.defaultLayers.flatMap((l) => (l.type === "text" ? [l.text.replace(/\s*\n\s*/g, " ")] : []));
+  const texts = template.kind === "multi"
+    ? template.panels!.defaultPanels.map((panel) => panel.text.replace(/\s*\n\s*/g, " "))
+    : template.defaultLayers.flatMap((l) => (l.type === "text" ? [l.text.replace(/\s*\n\s*/g, " ")] : []));
   const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const text of texts.length ? texts : ["TOP TEXT", "BOTTOM TEXT"]) await expect(creator.getByTestId("ai-describe")).toHaveAttribute("placeholder", new RegExp(`: ${escape(text)}(\\n|$)`));
   await expect(creator.getByTestId("ai-describe")).toHaveValue("");
@@ -135,6 +137,7 @@ test("Creator: AI set in the profile; the Agent Provider rewrites the template's
   const directions = "Top text: when the build passes\nBottom text: first try\ntop section: nobody:\nmod: put a party hat on it";
   await creator.getByTestId("ai-describe").fill(directions);
   await update(creator, 1);
+  await creator.getByTestId("ai-title").fill("My generated-image draft");
   await expect(page).toHaveURL(/\/create$/);
   await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(/\/create\?newTemplate=[0-9a-f-]{36}$/);
@@ -148,6 +151,11 @@ test("Creator: AI set in the profile; the Agent Provider rewrites the template's
   const assetId = new URL(page.url()).searchParams.get("newTemplate")!;
   const asset = await apiGet<Asset>(request, `/storage/assets/${assetId}`);
   expect([asset.kind, asset.width, asset.height]).toEqual(["image", AI_STUB_RESULT.width, AI_STUB_RESULT.height]);
+  await page.getByTestId("template-save").click();
+  await page.getByTestId("template-confirm").click();
+  await expect(page).toHaveURL(/\/create\?template=[0-9a-f-]{36}$/);
+  await expect(page.getByTestId("meme-title")).toHaveValue("My generated-image draft");
+  await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("when the build passes");
 
   // Without an Image Generator, the agent isn't offered UPDATE_IMAGE: the text still lands, on the template itself.
   await page.goto(`/u/${username}?tab=ai`);
@@ -188,21 +196,25 @@ test("Creator: Update with text-only directions from Claude fills the template's
   await update(creator, 1);
   await creator.getByTestId("ai-describe").fill("Bottom text: same bug");
   await update(creator, 2);
+  await creator.getByTestId("ai-title").fill("My continued caption draft");
   await creator.getByTestId("ai-canvas").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("layer-text")).toHaveCount(2);
   await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("me reading the docs");
   await expect(page.getByTestId("layer-text").nth(1)).toHaveValue("same bug");
+  await expect(page.getByTestId("meme-title")).toHaveValue("My continued caption draft");
 
   // Without an Update, Full editor opens the template with its own text boxes, whatever was typed.
   await page.goto("/create");
   await pickTemplate(creator, template);
   await creator.getByTestId("ai-describe").fill("not sent");
+  await creator.getByTestId("ai-title").fill("Title before any Update");
   await creator.getByTestId("ai-full-editor").click();
   await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
   await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
   await expect(page.getByTestId("layer-text").nth(0)).toHaveValue("TOP TEXT");
+  await expect(page.getByTestId("meme-title")).toHaveValue("Title before any Update");
 });
 
 test("Creator: Publish posts the updated meme directly, an edited image saved as a new template first; nothing posts before an Update", async ({ page, request }) => {
@@ -263,4 +275,97 @@ test("Creator: the canvas is capped in height; a template that would pass it sca
   expect(column).toBeGreaterThan(cap);
   expect(box.height).toBeCloseTo(cap, 0);
   expect(box.width).toBeCloseTo(box.height, 0);
+});
+
+test("Creator: panel defaults, cumulative caption edits, title handoff and publish retain the panel composition", async ({ page, request }) => {
+  const username = scoped("aipanels");
+  const owner = await apiUser(request, username);
+  const pack = await Promise.all(["panel-a.jpg", "panel-b.jpg"].map((file) => apiUpload(request, owner, file)));
+  const template = await apiTemplate(request, owner, {
+    name: scoped("ai-panel-defaults"),
+    panels: {
+      layout: "horizontal", grid: false, mirror: true, fontSize: 0.07,
+      packAssetIds: pack.map((asset) => asset.id),
+      defaultPanels: pack.map((asset, index) => ({ id: `panel-${index}`, assetId: asset.id, text: index === 0 ? "before" : "after" })),
+    },
+  });
+  await page.goto(`/u/${username}?tab=ai`);
+  await signIn(page, username);
+  await setAi(page, "text", { provider: "openai", key: AI_STUB_KEY });
+  await setAi(page, "image", { provider: "openai", key: AI_STUB_KEY });
+  await page.getByTestId("nav-create").click();
+  const creator = page.getByTestId("ai-creator");
+  await pickTemplate(creator, template);
+  await expect(creator.getByTestId("ai-describe")).toHaveAttribute("placeholder", "Panel 1: before\nPanel 2: after");
+  const canvas = creator.getByTestId("ai-canvas");
+  const ratio = await canvas.evaluate((node: HTMLCanvasElement) => node.width / node.height);
+  expect(ratio).toBeCloseTo(14 / 9, 1);
+  await creator.getByTestId("ai-title").fill("Panel title before Update");
+  await creator.getByTestId("ai-full-editor").click();
+  await expect(page.getByTestId("meme-title")).toHaveValue("Panel title before Update");
+  await expect(page.getByTestId("panel-text").nth(0)).toHaveValue("before");
+  await expect(page.getByTestId("layout-horizontal")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("panel-grid")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByTestId("panel-mirror")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("panel-font-size")).toHaveValue("7");
+
+  await page.goto("/create");
+  await pickTemplate(creator, template);
+  const pixels = () => canvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());
+  const original = await pixels();
+  await creator.getByTestId("ai-describe").fill("Panel 1: first caption\nPanel 2: second caption\nmod: flatten the pack");
+  await update(creator, 1);
+  await expect.poll(pixels).not.toBe(original);
+  await creator.getByTestId("ai-describe").fill("Panel 2: revised caption");
+  await update(creator, 2);
+  await creator.getByTestId("ai-title").fill("Continued panels");
+  await creator.getByTestId("ai-full-editor").click();
+  await expect(page).toHaveURL(new RegExp(`/create\\?template=${template.id}$`));
+  await expect(page.getByTestId("meme-title")).toHaveValue("Continued panels");
+  await expect(page.getByTestId("panel-text").nth(0)).toHaveValue("first caption");
+  await expect(page.getByTestId("panel-text").nth(1)).toHaveValue("revised caption");
+  await page.getByTestId("save-draft").click();
+  const continued = await apiGet<Meme>(request, `/api/memes/${await memeIdFromUrl(page)}`, owner);
+  expect(continued.panels).toMatchObject({ layout: "horizontal", grid: false, mirror: true, fontSize: 0.07 });
+  expect(continued.panels!.panels.map((panel) => [panel.assetId, panel.text])).toEqual([[pack[0]!.id, "first caption"], [pack[1]!.id, "revised caption"]]);
+  expect(continued.layers).toEqual([]);
+
+  await page.goto("/create");
+  await pickTemplate(creator, template);
+  await creator.getByTestId("ai-describe").fill("Panel 1: posted first\nPanel 2: posted second");
+  await update(creator, 1);
+  await creator.getByTestId("ai-title").fill("Published panels");
+  await creator.getByTestId("ai-publish").click();
+  const published = await apiGet<Meme>(request, `/api/memes/${await memeIdFromUrl(page)}`, owner);
+  expect(published.templateId).toBe(template.id);
+  expect(published.title).toBe("Published panels");
+  expect(published.postedAt).not.toBeNull();
+  expect(published.layers).toEqual([]);
+  expect(published.panels).toMatchObject({ layout: "horizontal", grid: false, mirror: true, fontSize: 0.07 });
+  expect(published.panels!.panels.map((panel) => [panel.assetId, panel.text])).toEqual([[pack[0]!.id, "posted first"], [pack[1]!.id, "posted second"]]);
+  expect(published.outputAsset).toMatchObject({ width: 1400, height: 900 });
+});
+
+test("Creator: caption updates and responsive resize keep the decoded GIF source", async ({ page, request }) => {
+  const username = scoped("aipreview");
+  const owner = await apiUser(request, username);
+  const template = await apiTemplate(request, owner, { name: scoped("ai-gif-preview"), file: "anim.gif" });
+  await page.goto(`/u/${username}?tab=ai`);
+  await signIn(page, username);
+  await setAi(page, "text", { provider: "openai", key: AI_STUB_KEY });
+  await page.getByTestId("nav-create").click();
+  const creator = page.getByTestId("ai-creator");
+  await pickTemplate(creator, template);
+  let sourceRequests = 0;
+  await page.route(`**/storage/assets/${template.asset.id}/content`, async (route) => {
+    sourceRequests++;
+    await route.continue();
+  });
+  await creator.getByTestId("ai-describe").fill("Top text: decoded only once");
+  await update(creator, 1);
+  const canvas = creator.getByTestId("ai-canvas");
+  const before = await canvas.evaluate((node: HTMLCanvasElement) => node.width);
+  await page.setViewportSize({ width: 700, height: 1000 });
+  await expect.poll(() => canvas.evaluate((node: HTMLCanvasElement) => node.width)).not.toBe(before);
+  expect(sourceRequests).toBe(0);
 });

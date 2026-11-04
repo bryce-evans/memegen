@@ -1,0 +1,155 @@
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ui-space-5);
+  align-items: start;
+}
+.detail-header,
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ui-space-4);
+}
+.detail-info {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+.detail-media {
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--ui-radius-media);
+  background: var(--ui-color-media-bg);
+}
+.detail-media img,
+.detail-media video {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: 680px;
+  object-fit: contain;
+}
+.detail-meta {
+  --ui-color-link: var(--ui-color-text-muted);
+  font-size: var(--ui-font-size-post-meta);
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  margin-top: 0;
+}
+.detail-byline {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* The title runs inline so the favorite star follows its last word, even when it wraps. The heading takes over the
+   h1's block margin and line box; the star's error alert is a block, so it gets its own line. */
+.detail-heading {
+  margin: 0;
+  font-size: var(--ui-font-size-post-title);
+  line-height: 1.2;
+}
+.detail-title {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+}
+/* The title's star is a bare icon in every skin: a thin outline, solid teal once favorited, never a button fill or
+   border, hovered or pressed (skins style pressed toned toggles up to 0,5,0; the doubled `:root` outranks them).
+   Middle-aligned, then raised 3px so it centers on the title's capitals rather than its lowercase letters. */
+:root:root .detail-heading .ui-button.detail-favorite {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: var(--ui-space-2);
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  padding: var(--ui-space-1);
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--ui-color-text-muted);
+  translate: 0 -3px;
+}
+:root:root .detail-heading .ui-button.detail-favorite:hover {
+  color: var(--ui-color-text);
+}
+:root:root .detail-heading .ui-button.detail-favorite[aria-pressed="true"] {
+  color: var(--ui-color-favorite);
+}
+.detail-heading .detail-favorite .ui-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: none;
+  stroke-width: 1.25;
+}
+.detail-heading .detail-favorite[aria-pressed="true"] .ui-icon {
+  fill: currentColor;
+}
+.detail-tags {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:root .detail-tags .ui-chip {
+  border-radius: var(--ui-radius-sm);
+  font-size: var(--ui-font-size-post-meta);
+  color: var(--ui-color-text-muted);
+  padding: 0 var(--ui-space-2);
+}
+.detail-links {
+  flex-shrink: 0;
+}
+
+.profile-head {
+  margin-bottom: var(--ui-space-6);
+}
+.profile-head .ui-page-header {
+  margin-bottom: var(--ui-space-3);
+}
+/* A tiered stat tile's outline takes its tier's color, doubled by an inset ring so it reads at a glance. */
+.tiered-stat[data-tier] {
+  border-color: var(--tier-color);
+  box-shadow: inset 0 0 0 var(--ui-border-width) var(--tier-color);
+}
+.tiered-stat[data-tier="bronze"] {
+  --tier-color: var(--ui-color-tier-bronze);
+}
+.tiered-stat[data-tier="silver"] {
+  --tier-color: var(--ui-color-tier-silver);
+}
+.tiered-stat[data-tier="gold"] {
+  --tier-color: var(--ui-color-tier-gold);
+}
+.tiered-stat[data-tier="platinum"] {
+  --tier-color: var(--ui-color-tier-platinum);
+}
+.tiered-stat[data-tier="diamond"] {
+  --tier-color: var(--ui-color-tier-diamond);
+}
+/* Account tabs, then the content tabs as a separate group, right under the name. */
+.profile-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-5);
+}
+.profile-stats {
+  margin: var(--ui-space-3) 0;
+}
+/* Settings: one labelled control per row, left-aligned. */
+.profile-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ui-space-5);
+  margin-bottom: var(--ui-space-4);
+}
+.profile-settings .ui-segmented {
+  align-self: flex-start;
+}
+

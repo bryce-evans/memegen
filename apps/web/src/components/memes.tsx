@@ -71,7 +71,7 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
 
 /**
  * Star toggle (filled when pressed) that saves a posted public meme, your own included, to your Favorites; hidden on
- * unposted and private memes. `className` lets a page restyle it (the meme page's bare title star).
+ * unposted and unlisted memes. `className` lets a page restyle it (the meme page's bare title star).
  */
 export function FavoriteButton({ meme, onChange, className }: { meme: Meme; onChange: (meme: Meme) => void; className?: string }) {
   const { busy, error, run } = useAction();
@@ -109,9 +109,9 @@ export function MemeBadges({ meme }: { meme: Meme }) {
           Draft
         </Badge>
       )}
-      {meme.visibility === "private" && (
-        <Badge tone="info" data-testid="private-badge">
-          Private
+      {meme.visibility === "unlisted" && (
+        <Badge tone="info" data-testid="unlisted-badge">
+          Unlisted
         </Badge>
       )}
     </>

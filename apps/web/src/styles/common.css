@@ -1,0 +1,227 @@
+/*
+ * App-specific layout only (editor stage, timeline strip, detail/profile layouts, sparkline...).
+ * Generic controls and every color/size come from @memegen/ui tokens; no hard-coded colors here.
+ */
+
+.age {
+  font-variant-numeric: tabular-nums;
+}
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin: var(--ui-space-7) 0;
+}
+.load-more-sentinel {
+  height: var(--ui-space-4);
+}
+.grow {
+  flex: 1 1 8rem;
+}
+
+.tag-item.team,
+.tag-item.team .ui-nav-item-trailing {
+  color: var(--ui-color-success);
+}
+
+/* ---- tags ----------------------------------------------------------------- */
+
+.tag-chip-base {
+  font-weight: var(--ui-font-weight-semibold);
+}
+
+.tag-input .ui-chip-group {
+  margin-top: 0;
+}
+.tag-suggest {
+  align-items: center;
+  margin-top: var(--ui-space-2);
+}
+.tag-head {
+  margin-bottom: var(--ui-space-5);
+}
+.tag-head .ui-page-header {
+  margin-bottom: var(--ui-space-3);
+}
+
+/* ---- votes ---------------------------------------------------------------- */
+
+.votes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-1);
+  margin-top: var(--ui-space-2);
+}
+.vote-controls {
+  display: contents;
+}
+.vote,
+.favorite {
+  border-radius: var(--ui-radius-pill);
+}
+/* The thumbs, and the star on cards, are circles in every skin, 2px larger than a small control: as wide as they are
+   tall, no side padding (skins pad, size, and round buttons at 0,3,0; `:root` outranks them). */
+:root :is(.votes .ui-button.vote, .meme-card-actions .ui-button.favorite) {
+  width: calc(var(--ui-control-height-sm) + 2px);
+  height: calc(var(--ui-control-height-sm) + 2px);
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+}
+/* Votes take their own colors, not the favorite's warning tone: the tone colors are redefined on the buttons
+   themselves, so every skin's toned-toggle styling (which reads them) picks these up. Google's pressed jfk-button
+   gradient is tinted from them too. */
+.votes .vote-up {
+  --ui-color-warning: var(--ui-color-upvote);
+}
+.votes .vote-down {
+  --ui-color-info: var(--ui-color-downvote);
+}
+:root[data-skin="google"] :is(.votes .vote, .meme-card-actions .favorite)[aria-pressed="true"] {
+  --g-top: color-mix(in srgb, var(--ui-button-tone) 6%, var(--ui-color-surface));
+  --g-bot: color-mix(in srgb, var(--ui-button-tone) 12%, var(--ui-color-surface));
+  --g-hover-top: var(--g-top);
+  --g-hover-bot: color-mix(in srgb, var(--ui-button-tone) 18%, var(--ui-color-surface));
+}
+/* Wide enough for a few digits so the thumbs don't move as the score changes. */
+.votes .score {
+  min-width: 2.5ch;
+  text-align: center;
+  font-weight: 700;
+}
+.votes .ui-alert {
+  flex-basis: 100%;
+  margin: var(--ui-space-2) 0 0;
+}
+.meme-card-actions,
+.detail-votes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-4);
+  margin-top: var(--ui-space-2);
+}
+.meme-card-actions .votes,
+.detail-votes .votes {
+  margin-top: 0;
+}
+.meme-card-actions > .ui-alert,
+.detail-votes > .ui-alert {
+  flex-basis: 100%;
+  margin: 0;
+}
+/* On the meme page the votes are the main action: larger thumbs (and icons) around a larger score. */
+:root .detail-votes .votes .ui-button.vote {
+  --ui-icon-size: calc(var(--ui-control-height-sm) * 0.85);
+  width: calc(var(--ui-control-height-sm) * 1.2);
+  height: calc(var(--ui-control-height-sm) * 1.2);
+}
+.detail-votes .votes {
+  gap: var(--ui-space-3);
+}
+.detail-votes .vote-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-1);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-color-surface-raised);
+}
+:root:root .detail-votes .votes .ui-button.vote {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root:root .detail-votes .votes .ui-button.vote[aria-pressed="true"] {
+  color: var(--ui-button-tone);
+}
+:root:root .detail-votes .votes .ui-button.vote:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-color-text) 10%, transparent);
+}
+:root:root .detail-votes .votes .ui-button.vote:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-color-text) 16%, transparent);
+}
+.detail-votes .votes .score {
+  font-size: calc(var(--ui-font-size-2xl) * 0.6);
+  line-height: 1;
+}
+.comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- comments ------------------------------------------------------------- */
+
+.comment-list,
+.comment-replies {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-4);
+  margin: var(--ui-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.comment-replies {
+  margin-left: var(--ui-space-5);
+  padding-left: var(--ui-space-4);
+  border-left: var(--ui-border-width) solid var(--ui-color-separator);
+}
+.comment-meta {
+  margin: 0;
+}
+.comment-body {
+  margin: var(--ui-space-1) 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.comment-actions {
+  display: flex;
+  gap: var(--ui-space-2);
+}
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ui-space-2);
+  margin: var(--ui-space-3) 0;
+}
+.comment-composer {
+  width: 100%;
+  padding: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-color-border);
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-input-bg);
+}
+.comment-composer:focus-within {
+  border-color: var(--ui-color-border-strong);
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+:root:root .comment-composer .ui-textarea {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  field-sizing: content;
+  resize: vertical;
+  padding: 0 var(--ui-space-2);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+.comment-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-2);
+}
+.comments > .comment-form {
+  margin-top: var(--ui-space-5);
+}
+

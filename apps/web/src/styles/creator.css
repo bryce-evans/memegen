@@ -1,0 +1,383 @@
+/* ---- templates ------------------------------------------------------------ */
+
+/*
+ * Create start view: four cards, top to bottom: the Creator (a canvas of the chosen template beside its form), Upload
+ * (three tiles; Template on pixel-art that plays on hover), Hot templates, then all templates.
+ */
+/*
+ * Fixed footprint: the preview is always as tall as the canvas's cap and the search results always one row tall, so
+ * picking a template, drawing it, or getting results never resizes the card or moves its buttons.
+ */
+.ai-creator-body {
+  --ai-creator-preview-height: 24rem;
+  --ai-template-thumb-width: 104px;
+  --ai-template-thumb-height: 78px;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--ui-space-6);
+  align-items: start;
+}
+.ai-creator-preview {
+  min-width: 0;
+  min-height: var(--ai-creator-preview-height);
+  display: grid;
+  place-items: center;
+}
+/* Capped: tall templates scale down to fit (TemplateCanvas draws at the fitted size), centered in the column. */
+.ai-creator-canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: var(--ai-creator-preview-height);
+  margin-inline: auto;
+  border-radius: var(--ui-radius-media);
+  background: var(--ui-color-media-bg);
+}
+/* The canvas opens the Full editor: a pointer, a slight lift on hover, and the focus ring for keyboard users. */
+.ai-creator-canvas[role="link"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+  transition: box-shadow var(--ui-duration-fast) var(--ui-easing-standard);
+}
+.ai-creator-canvas[role="link"]:not([aria-disabled="true"]):hover {
+  box-shadow: var(--ui-shadow-2);
+}
+.ai-creator-canvas:focus-visible {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+.ai-creator-form {
+  min-width: 0;
+}
+/* The missing-Agent-Provider note between the Describe title and its box: the title's look in every skin, but red
+ * throughout, its profile link included (underlined to stay a link). */
+.ai-creator .ai-creator-form .ai-no-agent.ui-field-label {
+  display: block;
+  color: var(--ui-color-danger);
+}
+.ai-no-agent a {
+  color: inherit;
+  text-decoration: underline;
+}
+/* One option row: thumbnail, gap, one name line, the row's bottom padding. */
+.ai-template-results {
+  min-height: calc(
+    var(--ai-template-thumb-height) + var(--ui-space-1) + var(--ui-font-size-sm) * var(--ui-line-height) +
+      var(--ui-space-2)
+  );
+}
+.ai-template-options {
+  display: flex;
+  gap: var(--ui-space-3);
+  overflow-x: auto;
+  padding-bottom: var(--ui-space-2);
+}
+.ai-template-option {
+  flex: 0 0 var(--ai-template-thumb-width);
+  width: var(--ai-template-thumb-width);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ui-color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.ai-template-option img,
+.ai-template-option video {
+  width: var(--ai-template-thumb-width);
+  height: var(--ai-template-thumb-height);
+  object-fit: cover;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-media-bg);
+}
+.ai-template-option[aria-pressed="true"] :is(img, video) {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-primary);
+  outline-offset: 2px;
+}
+.ai-template-option-name {
+  font-size: var(--ui-font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.add-content-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-5);
+}
+/* Upload tiles: art above a black panel with white text, in every skin; tiles in a row share a height, buttons at the bottom. */
+.add-card {
+  --ui-color-text: var(--ui-color-on-scrim);
+  --ui-color-text-muted: color-mix(in srgb, var(--ui-color-on-scrim) 72%, transparent);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-color-art-bg);
+  color: var(--ui-color-on-scrim);
+}
+.add-card-media {
+  line-height: 0;
+  overflow: hidden;
+}
+.add-card-media > video,
+.add-card-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.add-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-4);
+}
+.add-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin: 0;
+  font-size: var(--ui-font-size-md);
+}
+.add-card-body > .ui-text {
+  margin: 0;
+}
+.add-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  margin-top: auto;
+  padding-top: var(--ui-space-3);
+}
+.add-card--art .add-card-media video {
+  aspect-ratio: 16 / 9;
+  image-rendering: pixelated;
+}
+/*
+ * Multi-panel: three expanding-brain videos stacked, smallest on top. While the card is hovered (or focused) each of
+ * the top two shows for 0.3s, then comes loose: hinged on one top corner, its free side swings down as it slides out
+ * of the frame (5/9s, picking up speed like a fall); the second hinges on the other corner. The last one is left
+ * looping. Leaving the card lifts both back up together.
+ */
+.brain-stack {
+  position: relative;
+  aspect-ratio: 16 / 9;
+}
+.brain-stack .brain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--ui-duration-slow) cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.brain-stack .brain-1 {
+  z-index: 3;
+  --brain-delay: 0.3s;
+  --brain-fall: translateY(125%) rotate(28deg);
+  transform-origin: 0 0;
+}
+.brain-stack .brain-2 {
+  z-index: 2;
+  /* Its 0.3s starts once the first has fallen. */
+  --brain-delay: calc(0.3s + 5s / 9 + 0.3s);
+  --brain-fall: translateY(125%) rotate(-24deg);
+  transform-origin: 100% 0;
+}
+.add-card--brains:is(:hover, :focus-within) :is(.brain-1, .brain-2) {
+  transform: var(--brain-fall);
+  transition: transform calc(5s / 9) cubic-bezier(0.5, 0, 0.9, 0.5) var(--brain-delay);
+}
+@media (prefers-reduced-motion: reduce) {
+  .brain-stack .brain,
+  .add-card--brains:is(:hover, :focus-within) :is(.brain-1, .brain-2) {
+    transition: none;
+  }
+}
+/*
+ * New sticker: the deal-with-it glasses wait above the photo and slide down onto his eyes while the card is hovered
+ * (or focused). Their final box is measured on the photo (688×467): centered between the eyes, 13.4% of its width.
+ * Touch screens without hover show them on.
+ */
+.sticker-art {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+.sticker-art-photo {
+  position: relative;
+}
+.sticker-art .sticker-art-glasses {
+  position: absolute;
+  left: 48.6%;
+  scale: 0.9;
+  top: 14.1%;
+  width: 13.4%;
+  height: auto;
+  image-rendering: pixelated;
+  translate: 0 -500%;
+  transition: translate var(--ui-duration-slow) cubic-bezier(0.3, 0, 0.2, 1);
+}
+.add-card--sticker:is(:hover, :focus-within) .sticker-art-glasses {
+  translate: 0 0;
+}
+@media (hover: none) {
+  .sticker-art .sticker-art-glasses {
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sticker-art .sticker-art-glasses {
+    transition: none;
+  }
+}
+/*
+ * The Create start page has no main sheet: its cards float on the page in every skin. The selector outranks skins'
+ * `:root[data-skin] .ui-main` sheets and loads after them; the inline padding stays so the cards line up with the
+ * header's search.
+ */
+.ui-shell > .ui-main:has(> .create-start) {
+  min-height: 0;
+  padding-block: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+/* All templates: the search under the heading stays a comfortable width. */
+.template-start-search {
+  max-width: 28rem;
+  margin-bottom: var(--ui-space-5);
+}
+.hot-icon {
+  color: var(--ui-color-warning);
+}
+.hot-row {
+  display: flex;
+  gap: var(--ui-space-5);
+  overflow-x: auto;
+  padding-bottom: var(--ui-space-3);
+}
+.hot-card {
+  flex: 0 0 160px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+  color: var(--ui-color-text);
+}
+.hot-card:hover {
+  text-decoration: none;
+}
+.hot-card img,
+.hot-card video {
+  width: 160px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--ui-radius-media);
+  background: var(--ui-color-media-bg);
+}
+.hot-name {
+  font-weight: var(--ui-font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.template-details {
+  margin-top: var(--ui-space-5);
+}
+.template-details-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  margin-top: var(--ui-space-3);
+}
+.usage {
+  margin-top: var(--ui-space-3);
+}
+.template-duplicates {
+  display: grid;
+  gap: var(--ui-space-2);
+  margin: var(--ui-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.template-duplicates li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.template-duplicates a {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.template-duplicates img,
+.template-duplicates video {
+  flex: none;
+  width: var(--ui-space-8);
+  height: var(--ui-space-8);
+  object-fit: cover;
+  border-radius: var(--ui-radius-sm);
+}
+.sparkline {
+  display: block;
+  margin-top: var(--ui-space-2);
+  color: var(--ui-color-primary);
+  background: var(--ui-color-state-hover);
+  border-radius: var(--ui-radius-sm);
+}
+.variations {
+  display: flex;
+  gap: var(--ui-space-2);
+  overflow-x: auto;
+  margin-top: var(--ui-space-3);
+  padding-bottom: var(--ui-space-2);
+}
+.variation {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border: var(--ui-border-width) solid var(--ui-color-border);
+  border-radius: var(--ui-radius-sm);
+  overflow: hidden;
+  background: var(--ui-color-media-bg);
+}
+.variation img,
+.variation video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* AI settings: the two roles as large buttons on the left, the chosen one's form on the right. */
+.ai-settings {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
+  gap: var(--ui-space-6);
+  align-items: start;
+  margin-top: var(--ui-space-6);
+}
+/* Like the side column's menu, but the chosen role is dark with white text in every skin. */
+.ai-settings .ai-settings-role {
+  padding-block: var(--ui-space-4);
+}
+.ai-settings .ai-settings-role.is-active {
+  background-color: var(--ui-color-art-bg);
+  color: var(--ui-color-on-scrim);
+}
+
+@media (max-width: 960px) {
+  .ai-creator-body,
+  .ai-settings,
+  .add-content-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

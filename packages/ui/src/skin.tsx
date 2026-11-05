@@ -63,29 +63,21 @@ export function registerSkin(skin: Skin): void {
   for (const listener of listeners) listener();
 }
 
-/** The registered definition for `id`, e.g. to extend a built-in: `registerSkin({ ...getSkin("matte")!, components })`. */
+/** The registered definition for `id`, e.g. to extend a built-in: `registerSkin({ ...getSkin("basic")!, components })`. */
 export function getSkin(id: SkinId): Skin | undefined {
   return registry.get(id);
 }
 
 /** Built-in skins, registered (and so listed in the switcher) in this order. */
 const BUILTIN_SKINS = {
-  default: { label: "Default" },
-  apple: { label: "Apple", layout: { filters: "header" } },
-  matte: { label: "Matte" },
-  google: { label: "Google", layout: { filters: "header" } },
-  studio: { label: "Studio", layout: { filters: "header" } },
-  spectrum: {
-    label: "Spectrum",
-    layout: { filters: "header" },
-    rootClassName: "spectrum spectrum--dark spectrum--medium",
-  },
   painted: {
     label: "Painted",
     layout: { filters: "header" },
     rootClassName: "spectrum spectrum--light spectrum--medium",
     dark: { rootClassName: "spectrum spectrum--dark spectrum--medium" },
   },
+  basic: { label: "Basic" },
+  google: { label: "Google", layout: { filters: "header" } },
 } satisfies Record<string, Omit<Skin, "id">>;
 
 export type BuiltinSkinId = keyof typeof BUILTIN_SKINS;
@@ -153,7 +145,7 @@ const SkinContext = createContext<SkinContextValue | null>(null);
  */
 export function SkinProvider({
   children,
-  fallback = "default",
+  fallback = "painted",
   locked,
 }: {
   children: ReactNode;

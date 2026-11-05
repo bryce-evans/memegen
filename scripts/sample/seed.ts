@@ -1,5 +1,5 @@
 /**
- * Seeds the realistic dev dataset (scripts/sample/data.ts) into DATABASE_URL; a no-op if already seeded.
+ * Seeds the realistic dev dataset and ensures the local `bae` administrator exists, including on repeat runs.
  * Needs the jacebrowning templates imported first (`SEED_TEMPLATES_FROM`). Meme images are rendered by
  * `scripts/render/render-memes.ts` (the client renderer in headless Chromium, offline).
  *
@@ -10,6 +10,8 @@ import type { AssetStore } from "@memegen/storage";
 import { renderCaptioned, uploadRendered, type RenderedMeme } from "../render/render-memes.ts";
 import { castVotes, insertMeme, runSeed, upsertTag } from "../lib.ts";
 import { SAMPLE_MEMES, SAMPLE_TAGS, SAMPLE_USERS, type SampleMeme, type SampleUser } from "./data.ts";
+
+if (process.env.MODE !== "dev") throw new Error("Sample data seeding requires MODE=dev");
 
 async function isSeeded(sql: Sql): Promise<boolean> {
   const [row] = await sql`select 1 from users where lower(username) = ${SAMPLE_USERS[0]}`;
@@ -75,7 +77,12 @@ async function seedSample(sql: Sql, store: AssetStore): Promise<void> {
   }
 }
 
-await runSeed(isSeeded, seedSample, {
-  present: `sample data already present (user ${SAMPLE_USERS[0]} exists); nothing to do`,
-  seeded: `sample data seeded: ${SAMPLE_USERS.length} users, ${SAMPLE_MEMES.length} memes`,
+await runSeed(async (sql) => {
+  // Keep the local admin available even when sample content was seeded before this account was added.
+  await sql`insert into users (username, is_admin) values ('bae', true)
+    on conflict (lower(username)) do update set is_admin = true`;
+  return isSeeded(sql);
+}, seedSample, {
+  present: `sample data already present (user ${SAMPLE_USERS[0]} exists); local admin bae ensured`,
+  seeded: `sample data seeded: ${SAMPLE_USERS.length} sample users, admin bae, ${SAMPLE_MEMES.length} memes`,
 });

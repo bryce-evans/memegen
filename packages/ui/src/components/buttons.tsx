@@ -6,7 +6,7 @@ export type ButtonVariant = "primary" | "special" | "secondary" | "quiet" | "dan
 
 interface ButtonLook {
   /**
-   * `primary`: the one main action; `special`: a standout action on the fixed brand gradient (same in every skin);
+   * `primary`: the one main action; `special`: a standout action (Painted's brand gradient, otherwise primary);
    * `secondary`: default; `quiet`: no chrome until hover; `danger`: destructive.
    */
   variant?: ButtonVariant;
@@ -16,7 +16,7 @@ interface ButtonLook {
 }
 
 const buttonClass = ({ variant = "secondary", size = "md" }: ButtonLook, ...extra: (string | false | undefined)[]) =>
-  cx("ui-button", `ui-button--${variant}`, size === "sm" && "ui-button--sm", ...extra);
+  cx("ui-button", `ui-button--${variant}`, variant === "special" && "ui-button--primary", size === "sm" && "ui-button--sm", ...extra);
 
 const iconSlot = (icon: ReactNode) =>
   icon ? (

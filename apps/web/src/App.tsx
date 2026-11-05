@@ -36,11 +36,10 @@ import { TagPage } from "./pages/TagPage.tsx";
 import { useAction } from "./useAction.ts";
 import { FeedbackWidget } from "./components/FeedbackWidget.tsx";
 import { Report } from "./pages/Report.tsx";
-import Admin from "./pages/Admin.tsx";
 
 const BRAND = "memegen";
 /** Prod pins this skin (`?skin=` and stored choices ignored); dev lets the sign-in page's dev tools switch it. */
-const SKIN = "default";
+const SKIN = "painted";
 
 /** The header search's placeholder: one picked at random when the page loads, kept until the next load. */
 const SEARCH_PLACEHOLDERS = [
@@ -107,15 +106,6 @@ function ProfileNavItem() {
   );
 }
 
-function AdminNavItem() {
-  const user = useUser();
-  return user.isAdmin ? (
-    <NavItem as={NavLink} to="/admin" icon={<Icon name="user" />} data-testid="nav-admin">
-      Administration
-    </NavItem>
-  ) : null;
-}
-
 function SiteHeader() {
   const user = useUser();
   const { signOut } = useAuth();
@@ -138,7 +128,6 @@ function SiteHeader() {
         </Link>
       </Text>
       {narrow && <ProfileNavItem />}
-      {narrow && <AdminNavItem />}
       <Button size="sm" onClick={() => void run(signOut)} disabled={busy} data-testid="sign-out">
         Sign out
       </Button>
@@ -202,7 +191,6 @@ function SideColumn() {
         <NavList>
           <GalleryNavItems />
           <ProfileNavItem />
-          <AdminNavItem />
         </NavList>
       </SidebarSection>
       {feedKind && <GalleryFilters kind={feedKind} placement="sidebar" />}
@@ -237,7 +225,6 @@ function Root() {
         <Route path="/t/:slug" element={<TagPage />} />
         <Route path="/search" element={<Search />} />
         <Route path="/report/:kind/:id" element={<Report />} />
-        <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<EmptyState icon={<Icon name="search" />} title="Page not found." />} />
       </Routes>
     </AppShell>

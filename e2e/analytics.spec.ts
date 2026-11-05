@@ -30,8 +30,10 @@ test("admin analytics reports retained content and switches UTC ranges", async (
 
   await page.goto(`/u/${admin.username}`);
   await signIn(page, admin.username);
-  await expect(page.locator('[data-testid="profile-tab-settings"] + [data-testid="profile-tab-analytics"]')).toBeVisible();
-  await page.getByTestId("profile-tab-analytics").click();
+  await expect(page.locator('[data-testid="profile-tab-ai"] + [data-testid="profile-tab-admin"]')).toBeVisible();
+  await expect(page.getByTestId("nav-admin")).toHaveCount(0);
+  await page.getByTestId("profile-tab-admin").click();
+  await expect(page).toHaveURL(new RegExp(`/u/${admin.username}\\?tab=admin$`));
   await expect(page.getByTestId("analytics-panel")).toHaveAttribute("aria-busy", "false");
   await expect(page.getByTestId("analytics-day")).toHaveCount(30);
   const historicalRow = page.locator(`[data-testid="analytics-day"][data-date="${historicalDate}"]`);
@@ -65,6 +67,12 @@ test("admin analytics reports retained content and switches UTC ranges", async (
   await expect(page.getByTestId("analytics-day")).toHaveCount(30);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId("analytics-range-90")).toBeVisible();
+  await page.getByTestId("account-button").click();
+  await expect(page.getByTestId("nav-profile")).toBeVisible();
+  await expect(page.getByTestId("nav-admin")).toHaveCount(0);
+  await page.getByTestId("nav-profile").click();
+  await page.getByTestId("profile-tab-admin").click();
+  await expect(page.getByTestId("analytics-panel")).toHaveAttribute("aria-busy", "false");
   expect(await page.getByTestId("analytics-table-scroll").evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -83,7 +91,7 @@ test("analytics shows loading and recovers from a real authorization error", asy
       await requestGate;
       await route.continue();
     });
-    await page.getByTestId("profile-tab-analytics").click();
+    await page.getByTestId("profile-tab-admin").click();
     await expect(page.getByTestId("analytics-loading")).toBeVisible();
     await expect(page.getByTestId("analytics-panel")).toHaveAttribute("aria-busy", "true");
     const forbidden = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/admin/analytics" && response.status() === 403);
@@ -102,27 +110,30 @@ test("analytics shows loading and recovers from a real authorization error", asy
   }
 });
 
-test("analytics is absent on another profile and nonadmins cannot access it", async ({ page, request }) => {
+test("administration is limited to the admin's own profile and old analytics links fall back", async ({ page, request }) => {
   const admin = await apiUser(request, scoped("analytics-access-admin"));
   const ordinary = await apiUser(request, scoped("analytics-access-user"));
   const sql = createSql(E2E_ENV.DATABASE_URL);
   try { await sql`update users set is_admin = true where id = ${admin.id}`; } finally { await sql.end(); }
   let analyticsRequests = 0;
   page.on("request", (req) => { if (new URL(req.url()).pathname === "/api/admin/analytics") analyticsRequests++; });
-  await page.goto(`/u/${ordinary.username}?tab=analytics`);
+  await page.goto(`/u/${ordinary.username}?tab=admin`);
   await signIn(page, admin.username);
   await expect(page.getByTestId("profile-overview")).toBeVisible();
-  await expect(page.getByTestId("profile-tab-analytics")).toHaveCount(0);
-  await expect(page.getByTestId("analytics-panel")).toHaveCount(0);
-  await page.getByTestId("sign-out").click();
-  await signIn(page, ordinary.username);
-  await page.goto(`/u/${ordinary.username}?tab=analytics`);
-  await expect(page.getByTestId("profile-overview")).toBeVisible();
-  await expect(page.getByTestId("profile-tab-analytics")).toHaveCount(0);
+  await expect(page.getByTestId("profile-tab-admin")).toHaveCount(0);
   await expect(page.getByTestId("analytics-panel")).toHaveCount(0);
   await page.goto(`/u/${admin.username}?tab=analytics`);
   await expect(page.getByTestId("profile-overview")).toBeVisible();
-  await expect(page.getByTestId("profile-tab-analytics")).toHaveCount(0);
+  await expect(page.getByTestId("analytics-panel")).toHaveCount(0);
+  await page.getByTestId("sign-out").click();
+  await signIn(page, ordinary.username);
+  await page.goto(`/u/${ordinary.username}?tab=admin`);
+  await expect(page.getByTestId("profile-overview")).toBeVisible();
+  await expect(page.getByTestId("profile-tab-admin")).toHaveCount(0);
+  await expect(page.getByTestId("analytics-panel")).toHaveCount(0);
+  await page.goto(`/u/${admin.username}?tab=admin`);
+  await expect(page.getByTestId("profile-overview")).toBeVisible();
+  await expect(page.getByTestId("profile-tab-admin")).toHaveCount(0);
   expect(analyticsRequests).toBe(0);
   expect((await request.get("/api/admin/analytics", { headers: { "x-user-id": ordinary.id } })).status()).toBe(403);
 });

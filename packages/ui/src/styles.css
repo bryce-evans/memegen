@@ -1,9 +1,6 @@
-/* Entry point: tokens (default skin), component styles, then each skin's overrides. */
+/* Entry point: Basic tokens, shared components, then skin overrides. */
 @import "./tokens.css";
 @import "./components.css";
-@import "./skins/apple.css";
-@import "./skins/matte.css";
 @import "./skins/google.css";
-@import "./skins/studio.css";
-@import "./skins/spectrum.css";
+@import "./skins/painted-base.css";
 @import "./skins/painted.css";

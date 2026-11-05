@@ -1,6 +1,6 @@
 /* Meme feeds flow in justified rows instead of a grid: native aspect, never cropped, widths vary. The container is
-   the app's own div, not ui MediaGrid, because the app computes this layout (skins may restyle MediaGrid, e.g.
-   Studio's masonry). MemeGrid (justifyRows in memes.tsx) gives each card a row height (--meme-height) so every row
+   app-owned because the app computes this layout. MemeGrid (justifyRows in memes.tsx) gives each card a row height
+   (--meme-height) so every row
    fills the line at close to the target --meme-row-height, which the code reads, so keep it a plain px/rem length;
    a per-skin override (scoped like the skins' own rules) may change it. Widths are --meme-aspect × that height, and
    the card has no padding so its image is exactly that size. Before the first measurement cards sit at the target
@@ -72,6 +72,13 @@
   object-fit: contain;
 }
 
+/* Google's persistent captions and vote targets need a full card width on narrow screens. */
+@media (max-width: 760px) {
+  :root[data-skin="google"] .meme-grid[data-card-layout="below"] .meme-card.ui-card.ui-card--borderless {
+    width: 100%;
+  }
+}
+
 /* On hover: the card shrinks to its image so the overlay covers exactly the meme. Title, author, tags, votes and
    actions sit on a scrim that fades in from the bottom and slides up on hover (or keyboard focus); touch screens
    without hover always show it. */
@@ -123,22 +130,25 @@
 .meme-grid[data-card-layout="hover"] .meme-card-actions .favorite {
   --ui-color-warning: var(--ui-color-favorite);
 }
-:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):not([aria-pressed="true"]) {
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):not(:where([data-skin="google"] .vote)):not([aria-pressed="true"]) {
   border-color: transparent;
   background: none;
   box-shadow: none;
   color: var(--ui-color-on-scrim);
 }
-/* Selected: a translucent wash of the toggle's color with a matching ring, the same in every skin (skins that tint
-   from a light surface, like Google's jfk-buttons, would show a white pill). */
-:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite)[aria-pressed="true"] {
+/* Selected toggles use a translucent wash and ring; Google votes retain their neutral, unframed icons. */
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):not(:where([data-skin="google"] .vote))[aria-pressed="true"] {
   border-color: var(--ui-button-tone);
   background: color-mix(in srgb, var(--ui-button-tone) 16%, transparent);
   box-shadow: none;
   color: var(--ui-button-tone);
 }
-:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):hover:not(:disabled) {
+:root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):not(:where([data-skin="google"] .vote)):hover:not(:disabled) {
   background: color-mix(in srgb, var(--ui-color-on-scrim) 24%, transparent);
+}
+/* A lighter neutral gray keeps both outline and filled Google thumbs readable on the dark scrim. */
+:root[data-skin="google"] .meme-grid[data-card-layout="hover"] .meme-card-actions {
+  --google-vote-color: #ccc;
 }
 /* Template gallery: justified rows like the meme feeds (JustifiedTemplates in templates.tsx gives each card a width
    and media height, --template-width/--template-height, so every full row fills the line at close to the target

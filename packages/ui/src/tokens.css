@@ -1,5 +1,5 @@
 /*
- * Design tokens. `:root` is the default skin (dark, yellow accent); `skins/*.css` override these under
+ * Design tokens. `:root` is the Basic skin (dark, yellow accent); `skins/*.css` override these under
  * `:root[data-skin="<id>"]`. Components and app styles read only these custom properties.
  */
 :root {
@@ -16,9 +16,8 @@
   --ui-color-primary-hover: #ffd75c;
   --ui-color-on-primary: #1a1400;
   /*
-   * Special: a fixed brand gradient (blue → red → orange, the red at 44%) for standout actions, with a solid
-   * fallback; skins don't theme it. components.css builds the gradient from these stops so hover can slide it part of
-   * the way toward the next color along, bringing in a little yellow at the end.
+   * Brand stops for Painted's standout action gradient and optional gradient icons. components.css scopes the
+   * button gradient to Painted and slides it toward the next color on hover, bringing in yellow at the end.
    */
   --ui-color-special: #3a58b4;
   --ui-color-special-start: rgb(58 88 180);
@@ -32,8 +31,8 @@
   --ui-color-tier-gold: #e5b021;
   --ui-color-tier-platinum: #8fb8c9;
   --ui-color-tier-diamond: #3fb7e8;
-  /* Vote toggles (pressed upvote / downvote) and the meme page's favorited star, the same in every skin; the
-     `-on-scrim` votes are brighter for dark overlays. */
+  /* Vote toggles (pressed upvote / downvote) and the meme page's favorited star; Google overrides votes with gray.
+     The `-on-scrim` votes are brighter for dark overlays. */
   --ui-color-upvote: #df154e;
   --ui-color-downvote: #1e3fb8;
   --ui-color-upvote-on-scrim: rgb(248 38 91);

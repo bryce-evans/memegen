@@ -1,45 +1,18 @@
-import { z } from "zod";
-import { adminAuditQuerySchema, adminResourceKinds, adminResourcesQuerySchema, type AdminAuditEntry, type AdminResource, type AdminResourceKind } from "@memegen/shared";
+import { adminAuditQuerySchema, adminResourceKinds, type AdminAuditEntry, type AdminResourceKind } from "@memegen/shared";
 import { HttpError, idParam, page, parse, type Sql } from "@memegen/server-kit";
 import { deletionTransaction } from "@memegen/server-kit/audit";
 import { requireAdmin, type ApiApp } from "../access.ts";
 
-const resourceColumns: Record<AdminResourceKind, { label: string; owner: string }> = {
-  memes: { label: "title", owner: "owner_id" },
-  templates: { label: "name", owner: "owner_id" },
-  comments: { label: "body", owner: "author_id" },
-  tags: { label: "name", owner: "created_by" },
-  stickers: { label: "name", owner: "owner_id" },
-  assets: { label: "name", owner: "owner_id" },
-  users: { label: "username", owner: "id" },
+const resourceOwnerColumns: Record<Exclude<AdminResourceKind, "users">, string> = {
+  memes: "owner_id",
+  templates: "owner_id",
+  comments: "author_id",
+  tags: "created_by",
+  stickers: "owner_id",
+  assets: "owner_id",
 };
 
 export function register(app: ApiApp, sql: Sql): void {
-  app.get("/api/admin/resources/:kind", async (c) => {
-    requireAdmin(c);
-    const kind = parse(z.enum(adminResourceKinds), c.req.param("kind"));
-    const { search, ownerId, offset, limit } = parse(adminResourcesQuerySchema, c.req.query());
-    const columns = resourceColumns[kind];
-    const rows = await sql<{ id: string; label: string; owner_id: string | null; owner_name: string | null; created_at: Date; meme_id: string | null; slug: string | null }[]>`
-      select r.id, left(r.${sql(columns.label)}, 200) as label, r.${sql(columns.owner)} as owner_id,
-        u.username as owner_name, r.created_at,
-        ${kind === "comments" ? sql`r.meme_id` : sql`null::uuid`} as meme_id,
-        ${kind === "tags" ? sql`r.slug` : sql`null::text`} as slug
-      from ${sql(kind)} r left join users u on u.id = r.${sql(columns.owner)}
-      where (${search} = '' or r.${sql(columns.label)} ilike ${`%${search}%`} or r.id::text = ${search}
-        or u.username ilike ${`%${search}%`})
-        ${ownerId ? sql`and r.${sql(columns.owner)} = ${ownerId}` : sql``}
-      order by r.created_at desc, r.id offset ${offset} limit ${limit + 1}`;
-    const items: AdminResource[] = rows.map((r) => ({
-      id: r.id, kind, label: r.label || `Untitled ${kind}`, ownerId: r.owner_id, ownerName: r.owner_name,
-      createdAt: r.created_at.toISOString(),
-      href: kind === "memes" ? `/m/${r.id}` : kind === "templates" ? `/create?template=${r.id}`
-        : kind === "comments" ? `/m/${r.meme_id}#comments` : kind === "users" ? `/u/${encodeURIComponent(r.label)}`
-        : kind === "tags" ? `/t/${r.slug}` : kind === "assets" ? `/storage/assets/${r.id}/content` : null,
-    }));
-    return c.json(page(items, offset, limit));
-  });
-
   app.get("/api/admin/audit", async (c) => {
     requireAdmin(c);
     const { search, kind, offset, limit } = parse(adminAuditQuerySchema, c.req.query());
@@ -84,11 +57,11 @@ export function register(app: ApiApp, sql: Sql): void {
       for (const kind of adminResourceKinds) {
         if (kind === "users") continue;
         const [row] = await tx<{ total: number }[]>`
-          select count(*)::int as total from ${tx(kind)} where ${tx(resourceColumns[kind].owner)} = ${id}`;
+          select count(*)::int as total from ${tx(kind)} where ${tx(resourceOwnerColumns[kind])} = ${id}`;
         if (row!.total) blockers.push(`${row!.total} ${kind}`);
       }
       if (blockers.length) throw new HttpError(409,
-        `Account still owns ${blockers.join(", ")}. Filter resources by owner ${id}, clear those resources, then retry. No content was deleted.`);
+        `Account still owns ${blockers.join(", ")}. Delete that content through its individual administration controls, then retry. No content was deleted.`);
       await tx`delete from users where id = ${id}`;
     }, true, true);
     return c.body(null, 204);

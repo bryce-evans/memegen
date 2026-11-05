@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, test } from "node:test";
 import type { Hono } from "hono";
-import { DEFAULT_LIMITS, adminResourceKinds, type AdminAuditEntry, type AdminResource, type Page, type User } from "@memegen/shared";
+import { DEFAULT_LIMITS, type AdminAuditEntry, type Page, type User } from "@memegen/shared";
 import { HeaderAuthProvider, toUser, type Env, type Sql, type UserRow } from "@memegen/server-kit";
 import { deletionTransaction } from "@memegen/server-kit/audit";
 import { encodePng, freshTestDb } from "@memegen/server-kit/testing";
@@ -76,9 +76,8 @@ async function audit(targetId: string): Promise<AdminAuditEntry[]> {
   return ((await response.json()) as Page<AdminAuditEntry>).items;
 }
 
-test("only administrators browse resources/history or delete other users' resources", async () => {
+test("only administrators browse audit history or delete other users' resources", async () => {
   const f = await fixture();
-  for (const kind of adminResourceKinds) assert.equal((await call("GET", `/api/admin/resources/${kind}`, outsider)).status, 403);
   assert.equal((await call("GET", "/api/admin/audit", outsider)).status, 403);
   assert.equal((await api.request("/api/admin/audit")).status, 401);
   for (const path of [`/api/memes/${f.meme}`, `/api/templates/${f.template}`, `/api/comments/${f.comment}`,
@@ -123,21 +122,6 @@ test("admin clears all seven resource kinds; conflicts preserve content and neve
     assert.deepEqual(Object.keys(entries[0]!.snapshot).sort(), ["assetId", "memeId", "ownerId", "parentId"]);
   }
   assert.equal((await storage.request(`/assets/${f.asset}/content`)).status, 404);
-});
-
-test("resource browsing searches all visibility levels, filters owner, and paginates without repeats", async () => {
-  const f = await fixture();
-  const [second] = await sql<{ id: string }[]>`insert into memes (title, template_id, source_asset_id, output_asset_id, owner_id, visibility)
-    values ('Audit hidden', ${f.template}, ${f.asset}, ${f.asset}, ${owner.id}, 'unlisted') returning id`;
-  const firstResponse = await call("GET", `/api/admin/resources/memes?ownerId=${owner.id}&search=Audit&limit=1`);
-  const first = await firstResponse.json() as Page<AdminResource>;
-  assert.equal(first.nextOffset, 1);
-  const secondResponse = await call("GET", `/api/admin/resources/memes?ownerId=${owner.id}&search=Audit&limit=1&offset=1`);
-  const next = await secondResponse.json() as Page<AdminResource>;
-  assert.equal(next.nextOffset, null);
-  assert.deepEqual(new Set([...first.items, ...next.items].map((item) => item.id)), new Set([f.meme, second!.id]));
-  const empty = await call("GET", `/api/admin/resources/memes?ownerId=${outsider.id}`);
-  assert.deepEqual((await empty.json() as Page<AdminResource>).items, []);
 });
 
 test("bulk dependent deletion audits every meme and cascaded comment, and template removal audits variations", async () => {

@@ -1,22 +1,18 @@
 # @memegen/ui
 
-Skinnable React components and design tokens for the memegen web app. One component API, seven looks:
+Skinnable React components and design tokens for the memegen web app. One component API, three looks:
 
 | id | Looks like |
 |---|---|
-| `default` | memegen's dark, yellow-accent UI |
-| `apple` | Apple HIG (SF stack, translucent toolbar, segmented controls, source-list sidebar); light only |
-| `matte` | Material Design 3-inspired (tonal palette, pill buttons, nav-rail indicator, state layers) |
-| `google` | Google's internal Memegen, circa 2012 ("Kennedy": Arial 13px, jfk-buttons, red CREATE MEME) |
-| `studio` | A light creative-studio look (rounder, black CTA pills, blue selection, gradient wordmark) |
-| `spectrum` | Real Adobe Spectrum 2, styled like Firefly: `@spectrum-css/tokens` values, dark, pill buttons, accent-blue "new" action, raised content sheet |
-| `painted` | `spectrum` in Spectrum 2 light over a fixed watercolor wash with paper grain: tall frosted header (50% white + blur), translucent white surfaces instead of grays, black primary buttons and white ones for the rest, large painted-ink wordmark on a swatch of brush strokes (on the sign-in card its warm and cool under-lights drift gently, like a sign lit from below) |
+| `painted` | Default: Spectrum 2 light over a watercolor wash, translucent surfaces, painted-ink wordmark, and colorful gradient standout actions |
+| `basic` | The original dark, yellow-accent UI |
+| `google` | Material-inspired Google palette: flat blue actions, neutral surfaces, rounded controls, four-color sans-serif wordmark, and red Create action |
 
-`matte` and `studio` are light-first and follow `prefers-color-scheme: dark`; `default` and `spectrum` are dark; `apple` and `google` are light only. `painted` is light with a dark variant (`Skin.dark`): `spectrum--dark`, a flat #282828 page with a faint wash, and a darker wordmark swatch behind brighter letters.
+Basic is dark; Google is light only. Painted is light with a dark variant (`Skin.dark`): `spectrum--dark`, a flat #282828 page with a faint wash, and a darker wordmark swatch behind brighter letters.
 
 Painted dark-mode downvotes use `#4c73ff`, including votes over image scrims, to stay legible against dark surfaces.
 
-`spectrum` puts Spectrum's token classes (`spectrum spectrum--dark spectrum--medium`) on `<html>` through `Skin.rootClassName`, so `--spectrum-*` properties exist only while it is active. Its font stack prefers Adobe Clean (licensed through Adobe Fonts, so never bundled; used when installed) and falls back to the bundled Source Sans 3 (OFL, `@fontsource-variable/source-sans-3`). `painted` uses `spectrum--light` instead and shares every `spectrum.css` rule (its selectors match both ids); `painted.css` loads after it and overrides only what differs. Its wordmark prefers Radlush Extra Bold (commercial, never bundled; matched through a `local()` `@font-face` when installed) and falls back to the bundled Archivo at 900 (OFL, `@fontsource-variable/archivo`).
+Painted puts Spectrum's token classes (`spectrum spectrum--light spectrum--medium`, or `spectrum--dark` in dark mode) on `<html>` through `Skin.rootClassName`. Its shared Spectrum-based rules live in `painted-base.css`; `painted.css` adds the wash and wordmark. Spectrum is not a separate skin. The font stack prefers Adobe Clean (licensed, never bundled) and falls back to bundled Source Sans 3 (OFL). The wordmark prefers locally installed Radlush Extra Bold (commercial, never bundled) and falls back to bundled Archivo at 900 (OFL).
 
 `useSkinFavicon(letter)` keeps the page favicon in step with the skin: the letter drawn on a canvas in the skin's wordmark style (font, weight, case, color or gradient) over its page background.
 
@@ -32,14 +28,14 @@ import { SkinProvider, SkinSwitcher } from "@memegen/ui";
 </SkinProvider>;
 ```
 
-`SkinProvider` picks the skin from `?skin=<id>`, then `localStorage["memegen.skin"]`, then `fallback` (`"default"`); it persists every change to that key and sets `data-skin="<id>"` on `<html>`. Pass `locked="<id>"` to pin one skin instead: no URL or storage lookup, nothing persisted, `setSkin` ignored (the memegen app runs locked to `default`). `useSkin()` returns `{ skin, setSkin, skins, definition, layout, dark, hasDark, setDark }`. Dark mode starts off and is never stored here (the app decides where to keep it); `setDark(true)` shows the active skin's dark variant when it has one (`hasDark`): `data-theme="dark"` on `<html>`, and `Skin.dark.rootClassName` in place of `rootClassName`. Skins scope their dark CSS to `:root[data-skin="<id>"][data-theme="dark"]`.
+`SkinProvider` picks the skin from `?skin=<id>`, then `localStorage["memegen.skin"]`, then `fallback` (`"painted"`); it persists changes and sets `data-skin` on `<html>`. Removed or unknown IDs fall back to Painted. Pass `locked="<id>"` to ignore URL/storage choices and disable switching (production is locked to Painted). `useSkin()` returns `{ skin, setSkin, skins, definition, layout, dark, hasDark, setDark }`. Dark mode starts off; the app owns its persistence. `setDark(true)` applies the skin's dark variant when available, setting `data-theme="dark"` and using `Skin.dark.rootClassName`.
 
 ## How skins work
 
-1. **Tokens.** `src/tokens.css` defines every design decision as a custom property on `:root` (the default skin): color roles (`--ui-color-bg`, `-surface`, `-surface-raised`, `-text`, `-text-muted`, `-primary`, `-on-primary`, `-tonal`, `-danger`, `-success`, `-warning`, `-info`, `-border`, `-separator`, `-focus-ring`, `-link`, `-overlay`, `-media-bg`…; `--ui-color-tooltip-bg`, which must stay opaque since tooltips float over photos, so skins with translucent surfaces set a solid one, and `--ui-color-tooltip-text`, resolved at `:root` so a container that redefines `--ui-color-text` doesn't reach tooltips opened inside it; badge tiers `--ui-color-tier-bronze`/`-silver`/`-gold`/`-platinum`/`-diamond`, the same in every skin), state layers (`--ui-color-state-hover/press`), typography, shape (`--ui-radius-*`), spacing (`--ui-space-1…8`), elevation (`--ui-shadow-*`), control sizes, motion, and layout (`--ui-sidebar-width`, `--ui-grid-min`…). The shell's column gap and inline padding are tokens too (`--ui-shell-gap`, `--ui-shell-padding-start`/`-end`, and `--ui-main-padding-inline` inside `<main>`): on wide screens the header lays out on the same columns, so the wordmark sits left-aligned over the side column (at `--ui-wordmark-size`, shrunk only as needed to fit the column) and the search (`--ui-radius-search`) starts where the main content does. Skins set these tokens rather than the shell's, main's, or header's inline padding or the wordmark's `font-size`.
+1. **Tokens.** `src/tokens.css` defines Basic's base palette and shared typography, spacing, shapes, elevation, controls, motion, and layout on `:root`; skins override these properties. Components and app styles consume tokens rather than hard-coded values. Tooltip colors remain opaque over media; badge-tier colors are shared across skins. Shell padding, column gaps, main padding, wordmark size, and search radius are tokens too, keeping header and content columns aligned.
 2. **Components** (`src/components.css`) read only tokens.
-3. **Skins** (`src/skins/<id>.css`) override tokens under `:root[data-skin="<id>"]`, plus component tweaks scoped the same way where tokens are not enough (Apple's raised segmented thumb, Google's gradient jfk-buttons, Studio's masonry gallery…). Skins here style only `.ui-*` classes; an app that offers several skins puts per-skin tweaks to its own markup in the app, same scoping. Buttons are skinned through variables: `.ui-button` and its hover read `--ui-button-bg`, `-fg`, `-border`, `-hover-bg`, `-hover-border`, and variants/states (`--primary`, `--quiet`, `--danger`, `[aria-pressed]`, toned pressed) in `components.css` and in skins only reassign them (Google keeps its own `--g-*` gradient set).
-4. **Layout hints** (`Skin.layout`) let a skin move app controls without duplicating them: `filters: "sidebar" | "header"` (sort/period beside the page title). The app reads them via `useSkin().layout`.
+3. **Skins** override tokens under `:root[data-skin="<id>"]`, with scoped component tweaks where tokens are insufficient. They style only `.ui-*`; feature-specific skin rules belong in the app. Shared buttons read `--ui-button-bg`, `-fg`, `-border`, `-hover-bg`, and `-hover-border`. `special` also receives primary styling, with a gradient override only in Painted.
+4. **Layout hints** (`Skin.layout`) place filters in `"sidebar"` or `"header"`. Web defaults meme cards to below-image details for Google and hover details otherwise; an explicit per-user layout preference wins. Google votes are gray outlines, filled gray when selected, without colored pills. Its below-image mobile feed uses full-width cards so captions and votes remain visible.
 5. **Component overrides** (`Skin.components`) replace any component for one skin (below).
 
 App CSS should also use tokens only, so it follows every skin.
@@ -58,7 +54,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `NavList`, `NavItem` | vertical nav; item (`as`, default `a`) | `active`, `icon`, `trailing` (NavLink's `aria-current="page"` also marks active) |
 | `PageHeader` | `h1`/`h2` + controls row | `title`, `level`, `actions`, `titleProps` |
 | `Stack`, `Inline` | flex column / row | `gap`, `align`, `justify`, `wrap` |
-| `Button` | `<button type=button>` | `variant` (`primary`/`special`/`secondary`/`quiet`/`danger`; `special` is the fixed brand gradient, stops `--ui-color-special-start`/`-mid`/`-end`, the same in every skin; on hover it slides 35% of the way toward red → orange → `--ui-color-special-hover-end` yellow), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: color of the pressed state, kept by every skin; a pressed toned button also fills its `Icon`), `icon` |
+| `Button` | `<button type=button>` | `variant` (`primary`/`special`/`secondary`/`quiet`/`danger`; `special` uses Painted's brand gradient and normal primary styling elsewhere; Painted's hover slides the gradient toward red/orange/yellow), `size` (`sm`/`md`), `pressed` → `aria-pressed`, `tone` (`warning`/`info`: pressed color and filled icon) |
 | `IconButton` | icon-only `<button>` | `label` (aria-label + tooltip) |
 | `LinkButton` | button-looking link (`as`, default `a`) | `variant`, `size`, `icon` |
 | `FileButton` | `<label>` styled as a button around a hidden native `<input type=file>` | all input props (incl. `data-testid`) go to the input; `variant`, `size`, `icon` |
@@ -90,7 +86,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 
 ## Overriding a component for one skin
 
-`Skin.components` maps a component name (`ComponentOverrides`) to a replacement that receives exactly the original's props. Every exported component checks the active skin and renders the override if there is one. Example: use a third-party Material button for the `matte` skin only.
+`Skin.components` maps a component name (`ComponentOverrides`) to a replacement receiving the original props. Every exported component checks the active skin for an override. Example: use a third-party Material button for Google.
 
 ```tsx
 import { Button as MuiButton } from "@mui/material";
@@ -113,7 +109,7 @@ function MuiSkinButton({ variant = "secondary", size = "md", pressed, icon, clas
 }
 
 // Keep the built-in definition (label, layout hints), add the override.
-registerSkin({ ...getSkin("matte")!, components: { Button: MuiSkinButton } });
+registerSkin({ ...getSkin("google")!, components: { Button: MuiSkinButton } });
 ```
 
 Replacements must forward `data-testid`, `aria-*` and event props to the element the user interacts with, and keep native controls native where the app relies on them (`<select>`, `<input type=file>`).

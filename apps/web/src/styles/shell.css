@@ -5,6 +5,14 @@
   align-self: flex-start;
   zoom: 1.15;
 }
+/* Google's familiar red Create action is distinct from its normal blue primary actions. */
+:root[data-skin="google"] .sidebar-action.ui-button--special {
+  --ui-button-bg: #c5221f;
+  --ui-button-fg: #fff;
+  --ui-button-border: #c5221f;
+  --ui-button-hover-bg: #a50e0e;
+  --ui-button-hover-border: #a50e0e;
+}
 /* Narrow screens: the side column is one row, Create beside the Gallery dropdown, whose button matches Create's size. */
 @media (max-width: 760px) {
   .sidebar-action {

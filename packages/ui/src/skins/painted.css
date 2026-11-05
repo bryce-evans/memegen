@@ -1,7 +1,7 @@
 /*
- * painted skin: Spectrum 2 light on a watercolor backdrop. All of `spectrum.css` applies (its selectors include
- * `[data-skin="painted"]`, and `Skin.rootClassName` swaps in `spectrum--light`, so its token mapping resolves to
- * Spectrum's light values). This file, loaded after it at the same specificity, adds what differs: a painted wash
+ * Painted: Spectrum 2 light on a watercolor backdrop. `painted-base.css` supplies its component foundation,
+ * and `Skin.rootClassName` applies `spectrum--light` so the Spectrum tokens resolve to light values.
+ * This file, loaded after the foundation at the same specificity, adds what differs: a painted wash
  * with paper grain fixed behind the page, a tall frosted header (50% white, blurring what scrolls under it),
  * translucent white surfaces in place of Spectrum's light grays, black primary / white secondary buttons, and a large painted-ink wordmark
  * (a fire gradient across the word with a cool under-light at the "m").

@@ -70,20 +70,20 @@
   justify-content: center;
   border-radius: 50%;
 }
-/* Votes take their own colors, not the favorite's warning tone: the tone colors are redefined on the buttons
-   themselves, so every skin's toned-toggle styling (which reads them) picks these up. Google's pressed jfk-button
-   gradient is tinted from them too. */
+/* Votes take their own colors, not the favorite's warning tone. Google uses neutral icons instead. */
 .votes .vote-up {
   --ui-color-warning: var(--ui-color-upvote);
 }
 .votes .vote-down {
   --ui-color-info: var(--ui-color-downvote);
 }
-:root[data-skin="google"] :is(.votes .vote, .meme-card-actions .favorite)[aria-pressed="true"] {
-  --g-top: color-mix(in srgb, var(--ui-button-tone) 6%, var(--ui-color-surface));
-  --g-bot: color-mix(in srgb, var(--ui-button-tone) 12%, var(--ui-color-surface));
-  --g-hover-top: var(--g-top);
-  --g-hover-bot: color-mix(in srgb, var(--ui-button-tone) 18%, var(--ui-color-surface));
+/* Google votes communicate selection through the filled thumb alone, never a colored pill or border. */
+:root[data-skin="google"] .votes .ui-button.vote,
+:root[data-skin="google"] .votes .ui-button.vote:is(:hover, :active, [aria-pressed="true"]) {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--google-vote-color, #666);
 }
 /* Wide enough for a few digits so the thumbs don't move as the score changes. */
 .votes .score {

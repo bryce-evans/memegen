@@ -35,7 +35,12 @@ test("dev tools: the sign-in page's skin switcher restyles the app, and the choi
 }) => {
   await page.goto("/");
   const root = page.locator("html");
-  await expect(root).toHaveAttribute("data-skin", "default");
+  await expect(root).toHaveAttribute("data-skin", "painted");
+  await expect(page.getByTestId("dev-skin").locator("option")).toHaveText(["Painted", "Basic", "Google"]);
+  await page.getByTestId("dev-skin").selectOption("basic");
+  await expect(root).toHaveAttribute("data-skin", "basic");
+  await page.reload();
+  await expect(root).toHaveAttribute("data-skin", "basic");
 
   await page.getByTestId("dev-skin").selectOption("google");
   await expect(root).toHaveAttribute("data-skin", "google");
@@ -54,8 +59,8 @@ test("dark mode: a profile setting for skins with a dark variant, kept in this b
   const root = page.locator("html");
   await signIn(page, username);
 
-  // The default skin has no dark variant, so Settings has nothing to set for it.
-  await page.goto(`/u/${username}?tab=settings`);
+  // Basic has no dark variant, so Settings has nothing to set for it.
+  await page.goto(`/u/${username}?tab=settings&skin=basic`);
   await expect(page.getByTestId("profile-settings")).toBeVisible();
   await expect(page.getByTestId("dark-mode-on")).toHaveCount(0);
 
@@ -81,7 +86,7 @@ test("dark mode: a profile setting for skins with a dark variant, kept in this b
   await expect(root).not.toHaveAttribute("data-theme", "dark");
 });
 
-test("card layout: a profile setting, on hover by default, Google-style puts the info below each meme", async ({ page }) => {
+test("card layout: skin defaults yield to explicit per-user preferences across skins and reloads", async ({ page }, testInfo) => {
   const username = scoped("cardsharp");
   await page.goto("/");
   await signIn(page, username);
@@ -95,7 +100,42 @@ test("card layout: a profile setting, on hover by default, Google-style puts the
   await expect(first.getByTestId("favorite")).toHaveCount(1);
   await expect(first.getByTestId("meme-comment-count")).toHaveCount(1);
 
+  // With no preference, Google puts card details below the image; Basic still defaults to hover.
+  await page.goto("/recent?skin=basic");
+  await expect(grid).toHaveAttribute("data-card-layout", "hover");
+  await page.goto("/recent?skin=google");
+  await expect(grid).toHaveAttribute("data-card-layout", "below");
+  await expect(first.getByTestId("meme-card-media")).toBeVisible();
+  const upvote = first.getByTestId("vote-up");
+  await expect(upvote).toHaveAttribute("aria-pressed", "false");
+  await expect(upvote.locator(".ui-icon-unpressed")).toBeVisible();
+  await expect(upvote.locator("svg")).toHaveCSS("fill", "none");
+  const outlineColor = await upvote.locator("svg").evaluate((icon) => getComputedStyle(icon).color);
+  const channels = outlineColor.match(/\d+/g)!.map(Number);
+  expect(channels[0]).toBe(channels[1]);
+  expect(channels[1]).toBe(channels[2]);
+  await upvote.click();
+  await expect(upvote).toHaveAttribute("aria-pressed", "true");
+  await expect(upvote.locator(".ui-icon-pressed")).toBeVisible();
+  await expect(upvote.locator(".ui-icon-pressed path")).toHaveCSS("fill", outlineColor);
+  await upvote.click();
+  await expect(upvote).toHaveAttribute("aria-pressed", "false");
+  await page.screenshot({ path: testInfo.outputPath("google-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(first).toHaveCSS("width", await grid.evaluate((el) => `${el.clientWidth}px`));
+  await expect(first.getByTestId("meme-card-title")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("google-mobile.png") });
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   await page.goto(`/u/${username}?tab=settings`);
+  await expect(page.getByTestId("card-layout-below")).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("card-layout-hover").click();
+  await openFeed(page, { feed: "recent" });
+  await expect(grid).toHaveAttribute("data-card-layout", "hover");
+  await page.reload();
+  await expect(grid).toHaveAttribute("data-card-layout", "hover");
+
+  await page.goto(`/u/${username}?tab=settings&skin=painted`);
   await expect(page.getByTestId("card-layout-hover")).toHaveAttribute("aria-pressed", "true");
   await page.getByTestId("card-layout-below").click();
   await expect(page.getByTestId("card-layout-below")).toHaveAttribute("aria-pressed", "true");
@@ -117,6 +157,18 @@ test("card layout: a profile setting, on hover by default, Google-style puts the
   await expect(card.getByTestId("meme-age")).toHaveCount(0);
   await expect(card.getByTestId("favorite")).toHaveCount(0);
   await page.reload();
+  await expect(grid).toHaveAttribute("data-card-layout", "below");
+
+  // Explicit below remains below in Basic too, and another user still receives the skin default.
+  await page.goto("/recent?skin=basic");
+  await expect(grid).toHaveAttribute("data-card-layout", "below");
+  await page.getByTestId("sign-out").click();
+  await signIn(page, scoped("freshcards"));
+  await openFeed(page, { feed: "recent" });
+  await expect(grid).toHaveAttribute("data-card-layout", "hover");
+  await page.getByTestId("sign-out").click();
+  await signIn(page, username);
+  await openFeed(page, { feed: "recent" });
   await expect(grid).toHaveAttribute("data-card-layout", "below");
 });
 

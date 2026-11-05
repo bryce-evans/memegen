@@ -67471,9 +67471,10 @@
           "textStyle": "upper"
         }
       ],
-      "risk": 2,
+      "risk": 4,
       "rating_tags": [
-        "fashion"
+        "fashion",
+        "suggestive"
       ]
     }
   ]

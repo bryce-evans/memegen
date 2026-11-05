@@ -60,7 +60,7 @@
     </div>
     <div class="controls">
       <input type="search" id="search" data-testid="gallery-search" placeholder="Search titles, slugs, tags, rating reasons, or default captions" aria-label="Search templates">
-      <label>Layout <select id="layout" data-testid="layout-filter"><option value="">All layouts</option><option>impact</option><option>comment</option><option>subtitle</option><option>labels</option></select></label>
+      <label>Layout <select id="layout" data-testid="layout-filter"><option value="">All layouts</option><option>impact</option><option>comment</option><option>subtitle</option><option>labels</option><option>panels</option></select></label>
       <label>Risk <select id="risk" data-testid="risk-filter"><option value="safe">Work view (1–3)</option><option value="all">All ratings</option><option value="1">1 — Child appropriate</option><option value="2">2 — General audience</option><option value="3">3 — Politics / smoking</option><option value="4">4 — Language / strong themes</option><option value="5">5 — Explicit / gore</option></select></label>
       <label><input type="checkbox" id="previews" data-testid="remote-previews" checked> Load remote image previews</label>
     </div>
@@ -83,7 +83,7 @@
       'use strict';
       const $ = (id) => document.getElementById(id);
       const pageSize = 48;
-      const layouts = new Set(['impact', 'comment', 'subtitle', 'labels']);
+      const layouts = new Set(['impact', 'comment', 'subtitle', 'labels', 'panels']);
       const cardDisposals = new Set();
       let entries = [], matches = [], shown = 0, loaded = false, request = 0;
       const node = (tag, text, className) => {
@@ -96,15 +96,35 @@
         if (typeof value !== 'string') return false;
         try { return new URL(value).protocol === 'https:'; } catch { return false; }
       }
+      // Keep offline metadata browsing independent of the renderer and its module dependencies.
+      function validPanels(entry) {
+        const recipe = entry.panels;
+        if (!recipe || !['vertical', 'horizontal'].includes(recipe.layout) ||
+            (recipe.grid !== undefined && typeof recipe.grid !== 'boolean') ||
+            (recipe.mirror !== undefined && typeof recipe.mirror !== 'boolean') ||
+            (recipe.fontSize !== undefined && (!Number.isFinite(recipe.fontSize) || recipe.fontSize < 0.03 || recipe.fontSize > 0.3)) ||
+            !Array.isArray(recipe.items) || recipe.items.length < 2 || recipe.items.length > 24 ||
+            /\.(gif|mp4|mov|webm)$/i.test(new URL(entry.url).pathname)) return false;
+        return recipe.items.every(item => {
+          const crop = item?.crop;
+          return typeof item?.text === 'string' && item.text.length <= 2000 && crop &&
+            [crop.x, crop.y, crop.width, crop.height].every(Number.isFinite) &&
+            crop.x >= 0 && crop.y >= 0 && crop.width > 0 && crop.height > 0 &&
+            crop.x + crop.width <= 1 + 1e-9 && crop.y + crop.height <= 1 + 1e-9;
+        });
+      }
       function parse(text) {
         const data = JSON.parse(text);
         if (data?.version !== 1 || !Array.isArray(data.templates)) throw new Error('Expected a version 1 template manifest with a templates array.');
         for (const [index, entry] of data.templates.entries()) {
           if (!entry || typeof entry.title !== 'string' || typeof entry.slug !== 'string' ||
               !https(entry.url) || !https(entry.source) || !layouts.has(entry.layout) ||
-              !Array.isArray(entry.tags) || !entry.tags.every(tag => typeof tag === 'string') ||
-              !Array.isArray(entry.text) || !entry.text.every(box => box && typeof box.text === 'string')) {
+              !Array.isArray(entry.tags) || !entry.tags.every(tag => typeof tag === 'string')) {
             throw new Error(`Template ${index + 1} has invalid metadata or non-HTTPS links.`);
+          }
+          if (entry.layout === 'panels' ? !validPanels(entry) :
+              !Array.isArray(entry.text) || !entry.text.every(box => box && typeof box.text === 'string')) {
+            throw new Error(`Template ${index + 1} has invalid captions or panel crop recipe.`);
           }
           if (!Number.isInteger(entry.risk) || entry.risk < 1 || entry.risk > 5) {
             throw new Error(`Template ${index + 1} requires an integer risk from 1 to 5.`);
@@ -144,6 +164,21 @@
         const reasons = node('p', `Rating reasons: ${entry.rating_tags.join(' · ')}`, 'tags');
         reasons.dataset.testid = 'template-rating-tags';
         body.append(risk, reasons);
+        if (entry.layout === 'panels') {
+          const recipe = entry.panels;
+          const details = node('details');
+          details.dataset.testid = 'panel-recipe';
+          details.append(node('summary', `${recipe.items.length} panels · ${recipe.layout} · ${recipe.grid === false ? 'no grid' : 'grid'}${recipe.mirror ? ' · mirrored' : ''}`));
+          details.append(node('p', 'Source crops: left, top, width × height (% of original image).', 'muted'));
+          const crops = node('ol');
+          const percent = value => `${Number((value * 100).toFixed(2))}%`;
+          for (const item of recipe.items) {
+            const { x, y, width, height } = item.crop;
+            crops.append(node('li', `${percent(x)}, ${percent(y)} · ${percent(width)} × ${percent(height)} — ${item.text || '(empty caption)'}`));
+          }
+          details.append(crops);
+          body.append(details);
+        }
         const toggleLabel = node('label', undefined, 'placeholder-toggle');
         const toggle = node('input');
         toggle.type = 'checkbox';
@@ -234,7 +269,7 @@
           (!layout || entry.layout === layout) &&
           (!ratingTag || entry.rating_tags.includes(ratingTag)) &&
           (!templateTag || entry.tags.some(tag => tag.trim().toLowerCase() === templateTag)) &&
-          (!query || [entry.title, entry.slug, ...entry.tags, ...entry.rating_tags, ...entry.text.map(box => box.text)].join('\n').toLowerCase().includes(query)));
+          (!query || [entry.title, entry.slug, ...entry.tags, ...entry.rating_tags, ...(entry.layout === 'panels' ? entry.panels.items : entry.text).map(box => box.text)].join('\n').toLowerCase().includes(query)));
         shown = 0;
         for (const dispose of cardDisposals) dispose();
         cardDisposals.clear();

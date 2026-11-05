@@ -6,17 +6,19 @@ This directory owns the corpus of known templates: canonical images/GIFs, search
 
 | File | Responsibility |
 |---|---|
-| `MANIFEST.json` | 1,464 canonical templates, provenance/media URLs, tags, ratings, and default captions/layouts |
+| `MANIFEST.json` | 1,470 canonical templates, provenance/media URLs, tags, ratings, default captions/layouts, and panel crop recipes |
 | `REGISTRY_POLICY.json` | 243 retired identities, terminal canonical redirects, and rated search aliases |
 | `index.html` | Standalone searchable gallery with risk and tag filters |
 | `preview.ts` | Browser-only default-caption composition using the editor's shared renderer |
-| `manifest.ts` | Manifest validation and conversion to native editor layers |
+| `manifest.ts` | Manifest validation and conversion to native editor layers or panel sets |
 | `fonts.ts` | Browser-safe identities for six checkout fonts and four caption roles |
 | `registry.ts` | Risk selection, alias tags, duplicate visibility, and reseed reconciliation |
 | `download.ts` | Non-destructive download of the pinned checkout/font prerequisites |
 | `seed.ts` | Single import command: arguments/config, migration, SQL lifetime, pre/final reconciliation |
 | `import-checkout.ts` | Local font/media import, catalog root defaults, and checkout variations |
 | `import-manifest.ts` | Manifest media download, byte-deduplication, and resumable import |
+| `import-panels.ts` | Browser lifecycle and atomic native panel-pack import |
+| `panel-images.ts`, `render-panels-page.ts` | Shared browser cropping and native panel-cover export |
 | `serve.ts` | Development-only loopback gallery server |
 
 The 210 existing media-bearing checkout templates are represented by 201 `jb/` canonicals and nine aliases to online canonicals. `oldschool`, source keywords, and existing seed tags are retained on canonical entries or their rated aliases. The media-less `_test` fixture is excluded. Eight additional online duplicates resolve to checkout canonicals; distinct drawings, reactions, and panel counts remain separate.
@@ -33,9 +35,9 @@ Open **http://127.0.0.1:8088/**. Use `--port 8090` to choose another port. The s
 
 The default Work view includes ratings 1–3; choose an exact rating or All ratings to review the rest. Remote images load lazily without saving assets and can be disabled for metadata-only browsing. **Rating tag** matches an exact reason; **Template tag** offers suggestions from the entire loaded manifest and matches exact membership ignoring case and surrounding whitespace. These combine with score, layout, and text filters. Reload preserves valid selected tags and clears missing ones. HTTP manifest requests bypass cache; reload the page or choose Reload MANIFEST.json after edits.
 
-Each card has an unchecked **Show placeholder text** checkbox. Check it to render the default words directly on that image with the editor's fonts, outline, casing, rotation, and placement; comment layouts add their native white top band. GIF previews animate with their caption timing. Unchecking restores the original image. Captions remain searchable but are not listed beneath cards. The checkbox is disabled when remote image previews are off.
+Each card has an unchecked **Show placeholder text** checkbox. Check it to render the default words directly on that image with the editor's fonts, outline, casing, rotation, and placement; comment layouts add their native white top band. GIF previews animate with their caption timing. Panel recipes crop the source sheet and compose its native editable panel layout. Unchecking restores the original image. Captions remain searchable; panel cards expose crop coordinates and captions in expandable recipe details. Choose the **panels** layout filter to inspect those recipes. The checkbox is disabled when remote image previews are off.
 
-Caption rendering needs installed dependencies and the fonts from `library download`; missing fonts show an error instead of silently substituting another font. `library serve` bundles the existing browser renderer at startup without writing generated files. Restart it after changing preview code; manifest edits only require a page reload.
+Media caption rendering needs installed dependencies and the fonts from `library download`; missing fonts show an error instead of silently substituting another font. Native panel captions use the panel renderer's typography without those font files. `library serve` bundles the existing browser renderer at startup without writing generated files. Restart it after changing preview code; manifest edits only require a page reload.
 
 Alternatively, open `library/index.html` directly and select the neighboring `MANIFEST.json` for metadata and original-image browsing; rendered captions require the local server. Choose **All ratings** and the **oldschool** template tag to browse all 210 seed formats, independent of the work-safe cutoff.
 
@@ -54,7 +56,7 @@ bunx playwright install chromium
 
 `download` uses `SEED_TEMPLATES_FROM` as its destination (`demo/jacebrowning-memegen` in development). It fetches upstream revision `a8b34146192d9a8fccc9f0d57b73aa947cbdd72d`, matching the checkout media URLs in the manifest. It validates all six imported fonts and the template tree before installing a staged download. A complete existing checkout is reused without modification or a claim that its revision matches. An incomplete existing destination is refused, not overwritten. `--to PATH` selects a download destination without changing your config; set `SEED_TEMPLATES_FROM` to that path before seeding from it.
 
-`seed` imports fonts and local canonical templates/variations first, downloads missing manifest media, then runs any configured sample/starter seeds. Chromium is used by sample/starter rendering, not by catalog import. Media and fonts stay in the gitignored checkout/storage; they are not committed in this directory. Source links record provenance, not redistribution permission; review licensing for your deployment.
+`seed` imports fonts and local canonical templates/variations first, downloads missing manifest media, then runs any configured sample/starter seeds. Panel recipes require Playwright Chromium (`bunx playwright install chromium`): a lazy, reusable browser crops still-image sheets into PNG assets and renders the native JPEG cover. Sample/starter rendering also uses Chromium. Media and fonts stay in gitignored checkout/storage; they are not committed in this directory. Source links record provenance, not redistribution permission; review licensing for your deployment.
 
 `SEED_MAX_RISK=3` is the default work view. Set it to an integer from 1 to 5 to change the ceiling. An empty `SEED_TEMPLATE_MANIFEST` disables only manifest import; `SEED_TEMPLATES_FROM` independently enables local checkout import. The full manifest remains the source of builtin metadata and risk decisions.
 
@@ -78,6 +80,9 @@ Reruns preserve existing template IDs, assets, default layers, variants, and sav
 - Keep at least four distinct normalized search tags; target six to eight or more useful tags. Preserve existing tags and aliases. Include known subjects, source works/characters, cartoon style, and political context where applicable.
 - Keep `risk` and nonempty `rating_tags` explicit. Search tags and rating reasons are separate; editorial scores can override broad category guidelines.
 - Caption centers/sizes are fractions of image dimensions and boxes must fit inside the image. Fonts are `impact`, `sans`, `thin`, or `comic`; optional `start`/`end` are fractions of GIF duration. Import converts these to native seconds after probing the asset. Existing database layouts are never overwritten by a catalog edit.
+- Reserve native multi-panel packs for formats where users customize panel count, repetition, order, and layout. A sheet containing multiple frames is not sufficient: fixed-format sequences such as Anakin/Padmé stay ordinary media templates with editable captions. Pack images are reusable choices, and the default sequence is only a starting point: three or eight Galaxy Brains, or four Drake rejections and one approval, are valid compositions.
+- Native panel entries use `layout: "panels"` and a `panels` recipe containing `layout` (`vertical` or `horizontal`), `grid`, `mirror`, `fontSize`, and ordered `items`. Each item has editable `text` and `crop: { x, y, width, height }`: top-left origin and extent as fractions of the source sheet. Crops must fit inside the sheet and remain nonempty after pixel-edge rounding. Crop away old caption areas and divider gutters rather than treating the whole sheet as a panel.
+- A flat template and native panel recipe may share a source URL, but need distinct slugs. Keep flat formats for existing memes; do not alias panel identities to them. Repeated identical crops share stored assets while retaining separate editable panels. Template metadata and ordered pack membership are committed atomically; retries reuse uploaded bytes.
 - For a duplicate, retain one canonical manifest entry, move the retired metadata into policy `aliases`, and add its `duplicates` redirect. Every target must exist in the manifest, and redirects must be terminal. Preserve useful retired names/tags on the canonical when their risk permits it.
 - Review actual images before merging. Different reactions and panel arrangements are not duplicates merely because their titles match.
 
@@ -110,7 +115,9 @@ Preserve these reviewed decisions when maintaining metadata (reason tags, captio
 
 ## Layouts, fonts, and sources
 
-Layouts are `impact` (outlined captions), `comment` (one native white top-section caption), `subtitle`, and `labels`. They compile to ordinary shared editor layers, not a second renderer. Preserve per-box font, color, alignment, casing, rotation, and timing overrides. Geometry must fit inside the image; reposition source boxes minimally when curating out-of-bounds source geometry. GIF fractions become seconds after probing; still captions are unbounded.
+Media layouts are `impact` (outlined captions), `comment` (one native white top-section caption), `subtitle`, and `labels`. They compile to ordinary shared editor layers, not a second renderer. Preserve per-box font, color, alignment, casing, rotation, and timing overrides. Geometry must fit inside the image; reposition source boxes minimally when curating out-of-bounds source geometry. GIF fractions become seconds after probing; still captions are unbounded.
+
+The `panels` layout compiles to the existing native panel contract, not media text layers. Curated packs cover Meme Man's Panik/Kalm/Panik, Vince McMahon, Mr. Incredible normal/uncanny, Galaxy Brain, Drake, and Tuxedo Pooh. Their default panel counts do not constrain the user's composition; images can be reused or omitted. Imports validate still-image bytes and reject animation, enforce source/output caps, and store individual cropped assets plus a composed cover. Panel captions use the native panel renderer's typography; no catalog font download is required for these captions.
 
 The four catalog roles are `impact` → Impact, `sans` → Noto Sans Bold, `thin` → Titillium Web SemiBold, and `comic` → Kalam. The checkout also imports Titillium Web Black and Noto Sans Hebrew Bold for source aliases/variations. `fonts.ts` owns filenames, display identities, aliases, and catalog roles; preview-only synthetic asset IDs stay in `preview.ts`. Checkout's default thick caption alias is deliberately mapped to Impact.
 
@@ -120,7 +127,7 @@ Every manifest entry requires HTTPS media/provenance URLs, integer risk 1–5, a
 
 Discovery sources include [Imgflip](https://imgflip.com/memetemplates?sort=top-all-time), [Know Your Meme](https://knowyourmeme.com/photos/templates), [Meming Wiki](https://en.meming.world/wiki/Category:Images), [MagicMeme](https://magicmeme.com/meme-templates), and [MemesGuy's current](https://memesguy.com/year/2026) and [historical timelines](https://memesguy.com/year/2025). Historical MemesGuy archives span 1996–2025; culture-only listings and examples without reusable template images were excluded.
 
-Gallery previews use `manifestLayers`, `composedSize`, and `composeFrame` with real fonts. Stills draw from the loaded image without CORS fetch/readback; GIFs decode and animate in the browser. Removing a card or unchecking releases pending work/canvases/frames. Missing media or fonts retain the original with an explicit error rather than substituting a font. The server serves bytes and bundles code; it never decodes or renders media.
+Gallery media previews use `manifestLayers`, `composedSize`, and `composeFrame` with real fonts. Panel previews share `cropPanelImages` with ingestion and use `composePanels` with the native layout, grid, mirroring, and caption size. Stills draw from the loaded image without CORS fetch/readback; GIFs decode and animate in the browser. Removing a card or unchecking releases pending work/canvases/frames/cropped bitmaps. Missing media or fonts retain the original with an explicit error rather than substituting a font. The server serves bytes and bundles code; it never decodes or renders media.
 
 ## Verification
 

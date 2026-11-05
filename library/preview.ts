@@ -1,6 +1,8 @@
 import {
   composeFrame,
   composedSize,
+  composePanels,
+  panelSetGrid,
   decodeMedia,
   ensureLayerFonts,
   frameIndexAt,
@@ -9,6 +11,7 @@ import {
 } from "@memegen/render";
 import { manifestLayers, type ManifestTemplate } from "./manifest.ts";
 import { CATALOG_FONT_ROLES, catalogFontUrl } from "./fonts.ts";
+import { cropPanelImages } from "./panel-images.ts";
 
 const fonts = {
   impact: "00000000-0000-4000-8000-000000000001",
@@ -61,6 +64,7 @@ export async function createCaptionPreview(
   image.after(canvas);
   container.textContent = "Loading placeholder fonts and image…";
   let decoded: DecodedMedia | null = null;
+  let disposeCrops: (() => void) | undefined;
   let animation: number | undefined;
 
   const release = () => {
@@ -68,6 +72,8 @@ export async function createCaptionPreview(
     if (animation !== undefined) cancelAnimationFrame(animation);
     decoded?.dispose();
     decoded = null;
+    disposeCrops?.();
+    disposeCrops = undefined;
     canvas.hidden = true;
     canvas.dataset.ready = "false";
     canvas.width = 0;
@@ -82,6 +88,29 @@ export async function createCaptionPreview(
   };
 
   const start = async () => {
+    if (entry.layout === "panels") {
+      container.textContent = "Loading and cropping panel images…";
+      await waitForImage(image, signal);
+      if (signal.aborted) return;
+      // Cropping the displayed image also works for non-CORS stills; no readback or fallback.
+      const panels = await cropPanelImages(entry, image, image.naturalWidth, image.naturalHeight);
+      if (signal.aborted) {
+        panels.dispose();
+        return;
+      }
+      disposeCrops = panels.dispose;
+      const grid = panelSetGrid(panels.set, panels.images);
+      canvas.width = Math.max(1, Math.min(1200, image.naturalWidth));
+      canvas.height = Math.max(1, Math.round(canvas.width * grid.height / grid.width));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("This browser cannot create a canvas preview.");
+      composePanels(context, panels.set, panels.images, canvas.width, canvas.height);
+      canvas.dataset.ready = "true";
+      canvas.hidden = false;
+      image.hidden = true;
+      container.textContent = "";
+      return;
+    }
     let layers = manifestLayers(entry, fonts);
     try {
       await ensureLayerFonts(layers, (id) => fontUrls[id]!);

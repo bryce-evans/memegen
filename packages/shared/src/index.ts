@@ -7,6 +7,7 @@ export * from "./defaults.ts";
 export * from "./badges.ts";
 export * from "./media.ts";
 export * from "./panels.ts";
+export * from "./crops.ts";
 export * from "./section.ts";
 export * from "./ai.ts";
 export * from "./search.ts";

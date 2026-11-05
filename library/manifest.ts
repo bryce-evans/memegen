@@ -6,8 +6,11 @@ import {
   tagSlug,
   TEMPLATE_NAME_MAX_LENGTH,
   TEXT_MAX_LENGTH,
+  MAX_PACK_IMAGES,
+  panelSetSchema,
   TAG_NAME_MAX_LENGTH,
   type Layer,
+  type PanelSet,
 } from "@memegen/shared";
 import { CATALOG_FONT_ROLES, type CatalogFontRole } from "./fonts.ts";
 
@@ -48,7 +51,18 @@ export const riskSchema = z.number().int().min(1).max(5);
 export const ratingTagsSchema = z.array(z.string().min(1).max(40).regex(/^[a-z]+(?:-[a-z]+)*$/)).min(1).max(12)
   .refine((tags) => new Set(tags).size === tags.length, "rating tags must be unique");
 
-export const manifestTemplateSchema = z.object({
+/** A crop's origin and extent are fractions of the source sheet, measured from its top-left corner. */
+export const manifestCropSchema = z.object({
+  x: fraction,
+  y: fraction,
+  width: z.number().gt(0).max(1),
+  height: z.number().gt(0).max(1),
+}).strict().superRefine((crop, ctx) => {
+  if (crop.x + crop.width > 1 + 1e-9) ctx.addIssue({ code: "custom", path: ["width"], message: "crop must fit within image width" });
+  if (crop.y + crop.height > 1 + 1e-9) ctx.addIssue({ code: "custom", path: ["height"], message: "crop must fit within image height" });
+});
+
+const manifestMetadataSchema = z.object({
   slug: z.string().regex(/^(?:online\/[a-z0-9]+|jb\/[a-z0-9_-]+)$/),
   title: z.string().trim().min(1).max(TEMPLATE_NAME_MAX_LENGTH),
   url: httpsUrl,
@@ -56,11 +70,31 @@ export const manifestTemplateSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(TAG_NAME_MAX_LENGTH).refine((value) => !!tagSlug(value), "tag needs letters or digits")),
   risk: riskSchema,
   rating_tags: ratingTagsSchema,
+}).strict();
+
+const manifestMediaTemplateSchema = manifestMetadataSchema.extend({
   layout: z.enum(["impact", "comment", "subtitle", "labels"]),
   text: z.array(manifestTextSchema).min(1).max(50),
-}).strict().refine((entry) => entry.layout !== "comment" || entry.text.length === 1, {
+}).refine((entry) => entry.layout !== "comment" || entry.text.length === 1, {
   path: ["text"], message: "comment layout requires exactly one top-section caption",
 });
+
+const manifestPanelTemplateSchema = manifestMetadataSchema.extend({
+  layout: z.literal("panels"),
+  panels: panelSetSchema.omit({ panels: true }).extend({
+    items: z.array(z.object({
+      crop: manifestCropSchema,
+      text: z.string().max(TEXT_MAX_LENGTH),
+    }).strict()).min(2).max(MAX_PACK_IMAGES),
+  }).strict(),
+}).refine((entry) => !/\.(?:gif|mp4|mov|webm)$/i.test(new URL(entry.url).pathname), {
+  path: ["url"], message: "panel crops require a still-image source",
+});
+
+export const manifestTemplateSchema = z.discriminatedUnion("layout", [
+  manifestMediaTemplateSchema,
+  manifestPanelTemplateSchema,
+]);
 
 export const templateManifestSchema = z.object({
   version: z.literal(1),
@@ -71,20 +105,24 @@ export const templateManifestSchema = z.object({
   const urls = new Set<string>();
   manifest.templates.forEach((entry, index) => {
     if (slugs.has(entry.slug)) ctx.addIssue({ code: "custom", path: ["templates", index, "slug"], message: "duplicate template slug" });
-    const url = new URL(entry.url).href;
-    if (urls.has(url)) ctx.addIssue({ code: "custom", path: ["templates", index, "url"], message: "duplicate image URL" });
+    // One flat format and one native panel recipe may intentionally share a source sheet.
+    const url = `${entry.layout === "panels" ? "panels" : "media"}:${new URL(entry.url).href}`;
+    if (urls.has(url)) ctx.addIssue({ code: "custom", path: ["templates", index, "url"], message: "duplicate image URL for this template kind" });
     slugs.add(entry.slug);
     urls.add(url);
   });
 });
 
 export type ManifestTemplate = z.infer<typeof manifestTemplateSchema>;
+export type ManifestPanelTemplate = z.infer<typeof manifestPanelTemplateSchema>;
+export type ManifestCrop = z.infer<typeof manifestCropSchema>;
 export type TemplateManifest = z.infer<typeof templateManifestSchema>;
 export type ManifestFonts = Pick<Record<CatalogFontRole, string>, "impact" | "sans">
   & Partial<Record<CatalogFontRole, string>>;
 
 /** Convert catalog coordinates to native, validated editor layers. */
 export function manifestLayers(entry: ManifestTemplate, fonts: ManifestFonts, durationSec: number | null = null): Layer[] {
+  if (entry.layout === "panels") throw new Error("Panel templates use manifestPanelSet, not text layers");
   const window = (fraction: number | undefined, unbounded: number) =>
     durationSec === null || fraction === undefined || fraction === unbounded ? null : Math.round(fraction * durationSec * 1000) / 1000;
   const layers = entry.text.map((box) => {
@@ -110,4 +148,28 @@ export function manifestLayers(entry: ManifestTemplate, fonts: ManifestFonts, du
     });
   });
   return layersSchema.parse(layers);
+}
+
+/** Map the ordered crop recipe to native panel content, after assets have been cropped and assigned IDs. */
+export function manifestPanelSet(entry: ManifestPanelTemplate, assetIds: readonly string[]): PanelSet {
+  if (assetIds.length !== entry.panels.items.length) throw new Error("Every manifest panel must have a cropped asset");
+  const { items, ...style } = entry.panels;
+  return panelSetSchema.parse({
+    ...style,
+    panels: items.map((item, index) => ({ id: `panel-${index + 1}`, assetId: assetIds[index]!, text: item.text })),
+  });
+}
+
+/** Round both edges consistently so adjacent crops share a pixel boundary without stretching the source. */
+export function cropPixels(crop: ManifestCrop, width: number, height: number): ManifestCrop {
+  manifestCropSchema.parse(crop);
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1) {
+    throw new Error("Source image dimensions must be positive integers");
+  }
+  const x = Math.round(crop.x * width);
+  const y = Math.round(crop.y * height);
+  const right = Math.min(width, Math.round((crop.x + crop.width) * width));
+  const bottom = Math.min(height, Math.round((crop.y + crop.height) * height));
+  if (right <= x || bottom <= y) throw new Error("Panel crop is empty at this source resolution");
+  return { x, y, width: right - x, height: bottom - y };
 }

@@ -156,6 +156,65 @@
   gap: var(--ui-space-1);
 }
 
+/* The sheet stays local until Apply; numbered bounds are an overlay, never part of the encoded crops. */
+.sheet-cropper {
+  margin-top: var(--ui-space-3);
+}
+.sheet-cropper-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+}
+.sheet-source-name {
+  overflow-wrap: anywhere;
+}
+.sheet-canvas-wrap {
+  position: relative;
+  align-self: center;
+  width: min(100%, calc(50vh * var(--sheet-aspect, 1)));
+  background: repeating-conic-gradient(var(--ui-color-checker-a) 0% 25%, var(--ui-color-checker-b) 0% 50%) 50% / 24px 24px;
+}
+.sheet-crop-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+.sheet-crop-canvas[aria-disabled="true"] {
+  cursor: wait;
+}
+.sheet-crop-overlay {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--ui-color-primary);
+  box-shadow: inset 0 0 0 1px var(--ui-color-scrim), 0 0 0 1px var(--ui-color-scrim);
+  pointer-events: none;
+}
+.sheet-crop-overlay[data-first] {
+  border-style: solid;
+}
+.sheet-crop-overlay span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0 var(--ui-space-1);
+  background: var(--ui-color-primary);
+  color: var(--ui-color-on-primary);
+  font-size: var(--ui-font-size-xs);
+  font-weight: var(--ui-font-weight-semibold);
+  line-height: var(--ui-line-height);
+}
+.sheet-crop-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-2);
+}
+.sheet-crop-fields .ui-input {
+  min-width: 0;
+  width: 100%;
+}
+
 .timeline {
   margin-top: var(--ui-space-4);
   overflow: hidden;

@@ -102,6 +102,24 @@ test.describe("library placeholder previews", () => {
   const pixels = new Uint8Array(320 * 240 * 3);
   for (let i = 2; i < pixels.length; i += 3) pixels[i] = 255;
   const image = Buffer.from(encodePng(320, 240, pixels));
+  const sheetPixels = new Uint8Array(400 * 200 * 3).fill(255);
+  for (let y = 0; y < 200; y++) for (let x = 200; x < 400; x++) {
+    const offset = (y * 400 + x) * 3;
+    sheetPixels.set(y < 100 ? [255, 0, 0] : [0, 0, 255], offset);
+  }
+  const sheet = Buffer.from(encodePng(400, 200, sheetPixels));
+  const panelRecipe = {
+    slug: "online/croppedpanels", title: "Cropped panel sheet",
+    url: `${origin}/sheet.png`, source: "https://example.com/source",
+    tags: ["panels"], risk: 1, rating_tags: ["child-friendly"], layout: "panels",
+    panels: {
+      layout: "vertical",
+      items: [
+        { crop: { x: 0.5, y: 0, width: 0.5, height: 0.5 }, text: "FIRST CHOICE" },
+        { crop: { x: 0.5, y: 0.5, width: 0.5, height: 0.5 }, text: "SECOND CHOICE" },
+      ],
+    },
+  };
 
   test.beforeAll(async () => {
     bundle = execFileSync("bun", ["build", "library/preview.ts", "--target=browser", "--format=esm"], {
@@ -120,6 +138,7 @@ test.describe("library placeholder previews", () => {
       if (path === "/MANIFEST.json") return route.fulfill({ contentType: "application/json", body: file(entries).buffer });
       if (path === "/preview.js") return route.fulfill({ contentType: "text/javascript", body: bundle });
       if (path === "/blank.png") return route.fulfill({ contentType: "image/png", body: image });
+      if (path === "/sheet.png") return route.fulfill({ contentType: "image/png", body: sheet });
       if (path.startsWith("/fonts/")) {
         return route.fulfill({ status: missingFonts ? 503 : 200, contentType: "font/ttf", body: missingFonts ? "Download the library fonts" : font });
       }
@@ -204,6 +223,119 @@ test.describe("library placeholder previews", () => {
     expect(band.top).toEqual([255, 255, 255, 255]);
     expect(band.bottom).toEqual([0, 0, 255, 255]);
     await expect(cards.nth(1)).not.toContainText("A DEFAULT COMMENT");
+  });
+
+  test("panel recipes crop out blank source regions, render native defaults, and survive gallery toggles", async ({ page }) => {
+    await openPreview(page, [panelRecipe, caption]);
+    await page.getByTestId("layout-filter").selectOption("panels");
+    const card = page.getByTestId("template-card");
+    await expect(card).toHaveCount(1);
+    await expect(card.getByTestId("panel-recipe")).toContainText("2 panels · vertical · grid");
+    await card.getByTestId("panel-recipe").locator("summary").click();
+    await expect(card.getByTestId("panel-recipe")).toContainText("50%, 0% · 50% × 50%");
+    await expect(card.getByTestId("panel-recipe")).toContainText("FIRST CHOICE");
+    await page.getByTestId("gallery-search").fill("second choice");
+    await expect(card).toHaveCount(1);
+    await card.getByTestId("placeholder-toggle").check();
+    const canvas = card.getByTestId("placeholder-canvas");
+    await expect(canvas).toHaveAttribute("data-ready", "true");
+    await expect(card.getByTestId("template-image")).toBeHidden();
+    const rendered = await canvas.evaluate(element => {
+      const c = element as HTMLCanvasElement;
+      const context = c.getContext("2d")!;
+      const black = (y: number) => {
+        const data = context.getImageData(10, y + 10, 180, 80).data;
+        let count = 0;
+        for (let i = 0; i < data.length; i += 4) if (data[i]! < 80 && data[i + 1]! < 80 && data[i + 2]! < 80) count++;
+        return count;
+      };
+      const cells = [context.getImageData(205, 5, 190, 90).data, context.getImageData(205, 105, 190, 90).data];
+      return {
+        width: c.width, height: c.height,
+        redOnly: cells[0]!.every((value, i) => value === ([255, 0, 0, 255][i % 4])),
+        blueOnly: cells[1]!.every((value, i) => value === ([0, 0, 255, 255][i % 4])),
+        captionInk: [black(0), black(100)], divider: [...context.getImageData(200, 20, 1, 1).data],
+      };
+    });
+    expect(rendered).toMatchObject({ width: 400, height: 200, redOnly: true, blueOnly: true, divider: [0, 0, 0, 255] });
+    expect(rendered.captionInk[0]).toBeGreaterThan(50);
+    expect(rendered.captionInk[1]).toBeGreaterThan(50);
+    await card.getByTestId("placeholder-toggle").uncheck();
+    await expect(card.getByTestId("template-image")).toBeVisible();
+    await expect(canvas).toHaveCount(0);
+    await card.getByTestId("placeholder-toggle").check();
+    await expect(canvas).toHaveAttribute("data-ready", "true");
+    await page.getByTestId("gallery-search").fill("missing caption");
+    await expect(card).toHaveCount(0);
+    await page.getByTestId("gallery-search").fill("first choice");
+    await expect(card.getByTestId("template-image")).toBeVisible();
+    await expect(card.getByTestId("placeholder-toggle")).not.toBeChecked();
+    await card.getByTestId("placeholder-toggle").check();
+    await expect(canvas).toHaveAttribute("data-ready", "true");
+    await page.getByTestId("remote-previews").uncheck();
+    await expect(card.getByTestId("placeholder-toggle")).toBeDisabled();
+    await expect(canvas).toHaveCount(0);
+  });
+
+  test("panel crops render cross-origin still images without CORS or a full-sheet fallback", async ({ page }) => {
+    await page.route("https://remote-sheet.test/sheet.png", route => route.fulfill({ contentType: "image/png", body: sheet }));
+    await openPreview(page, [{ ...panelRecipe, url: "https://remote-sheet.test/sheet.png" }]);
+    await page.getByTestId("placeholder-toggle").check();
+    const canvas = page.getByTestId("placeholder-canvas");
+    await expect(canvas).toHaveAttribute("data-ready", "true");
+    await expect(canvas).toBeVisible();
+    // The source intentionally taints the canvas; inspect browser pixels rather than reading it back.
+    const screenshot = (await canvas.screenshot()).toString("base64");
+    const colors = await page.evaluate(async data => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${data}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      // object-fit contains the 2:1 composition inside the card's fixed-height media box.
+      const centerY = image.height / 2;
+      return [-0.125, 0.125].map(offset => [...context.getImageData(Math.floor(image.width * 0.75), Math.floor(centerY + image.width * offset), 1, 1).data]);
+    }, screenshot);
+    expect(colors).toEqual([[255, 0, 0, 255], [0, 0, 255, 255]]);
+    await page.getByTestId("placeholder-toggle").uncheck();
+    await expect(page.getByTestId("template-image")).toBeVisible();
+  });
+
+  test("panel metadata rejects invalid crops and preserves the loaded gallery", async ({ page }) => {
+    await openPreview(page, [panelRecipe]);
+    const invalid = {
+      ...panelRecipe,
+      panels: { ...panelRecipe.panels, items: [
+        panelRecipe.panels.items[0],
+        { ...panelRecipe.panels.items[1], crop: { x: 0.8, y: 0, width: 0.5, height: 1 } },
+      ] },
+    };
+    await page.getByTestId("manifest-file").setInputFiles(file([invalid]));
+    await expect(page.getByTestId("gallery-status")).toContainText("invalid captions or panel crop recipe");
+    await expect(page.getByTestId("template-card")).toHaveCount(1);
+    await page.getByTestId("placeholder-toggle").check();
+    await expect(page.getByTestId("placeholder-canvas")).toHaveAttribute("data-ready", "true");
+  });
+
+  test("a crop too small for its source leaves the original available and can be replaced", async ({ page }) => {
+    const tooSmall = {
+      ...panelRecipe,
+      panels: { ...panelRecipe.panels, items: [
+        panelRecipe.panels.items[0],
+        { text: "Tiny crop", crop: { x: 0, y: 0, width: 0.00001, height: 0.5 } },
+      ] },
+    };
+    await openPreview(page, [tooSmall]);
+    await page.getByTestId("placeholder-toggle").check();
+    await expect(page.getByTestId("placeholder-status")).toContainText("empty at this source resolution");
+    await expect(page.getByTestId("template-image")).toBeVisible();
+    await expect(page.getByTestId("placeholder-canvas")).toBeHidden();
+    await page.getByTestId("manifest-file").setInputFiles(file([panelRecipe]));
+    await page.getByTestId("placeholder-toggle").check();
+    await expect(page.getByTestId("placeholder-canvas")).toHaveAttribute("data-ready", "true");
   });
 
   test("missing fonts leave the original image available instead of displaying a fallback-font preview", async ({ page }) => {

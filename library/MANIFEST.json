@@ -18087,6 +18087,60 @@
       ]
     },
     {
+      "slug": "online/drakepanels",
+      "title": "Drake Hotline Bling (Panels)",
+      "url": "https://i.imgflip.com/30b1gx.jpg",
+      "source": "https://imgflip.com/meme/Drake-Hotline-Bling",
+      "tags": [
+        "drakeposting",
+        "drakepost",
+        "drake hotline approves",
+        "drake no yes",
+        "drake like dislike",
+        "drake faces",
+        "2015",
+        "drake",
+        "hotline bling",
+        "preference",
+        "rejection",
+        "approval",
+        "comparison",
+        "oldschool",
+        "multi-panel"
+      ],
+      "layout": "panels",
+      "panels": {
+        "layout": "vertical",
+        "grid": true,
+        "mirror": true,
+        "fontSize": 0.08,
+        "items": [
+          {
+            "crop": {
+              "x": 0,
+              "y": 0,
+              "width": 0.5,
+              "height": 0.5
+            },
+            "text": "Another meeting"
+          },
+          {
+            "crop": {
+              "x": 0,
+              "y": 0.5,
+              "width": 0.5,
+              "height": 0.5
+            },
+            "text": "A clear message"
+          }
+        ]
+      },
+      "risk": 2,
+      "rating_tags": [
+        "reaction"
+      ]
+    },
+    {
       "slug": "online/2178y0",
       "title": "drake yes no reverse",
       "url": "https://i.imgflip.com/2178y0.jpg",
@@ -22902,6 +22956,74 @@
           "start": 0.7
         }
       ],
+      "risk": 2,
+      "rating_tags": [
+        "general-audience"
+      ]
+    },
+    {
+      "slug": "online/galaxybrainpanels",
+      "title": "Galaxy Brain (Panels)",
+      "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/gb/default.jpg",
+      "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/gb",
+      "tags": [
+        "oldschool",
+        "galaxy brain",
+        "expanding brain",
+        "intelligence",
+        "escalation",
+        "comparison",
+        "absurdity",
+        "2017",
+        "meme template",
+        "multi-panel",
+        "big brain"
+      ],
+      "layout": "panels",
+      "panels": {
+        "layout": "vertical",
+        "grid": true,
+        "mirror": false,
+        "fontSize": 0.08,
+        "items": [
+          {
+            "crop": {
+              "x": 0.498233216,
+              "y": 0.000833333,
+              "width": 0.501766784,
+              "height": 0.246666667
+            },
+            "text": "Set a reminder"
+          },
+          {
+            "crop": {
+              "x": 0.498233216,
+              "y": 0.2525,
+              "width": 0.501766784,
+              "height": 0.251666667
+            },
+            "text": "Make a checklist"
+          },
+          {
+            "crop": {
+              "x": 0.498233216,
+              "y": 0.51,
+              "width": 0.501766784,
+              "height": 0.219166667
+            },
+            "text": "Automate the checklist"
+          },
+          {
+            "crop": {
+              "x": 0.498233216,
+              "y": 0.7425,
+              "width": 0.501766784,
+              "height": 0.2575
+            },
+            "text": "Automate remembering the checklist"
+          }
+        ]
+      },
       "risk": 2,
       "rating_tags": [
         "general-audience"
@@ -41850,6 +41972,68 @@
       ]
     },
     {
+      "slug": "online/panikkalmpanikpanels",
+      "title": "Panik Kalm Panik (Panels)",
+      "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/panik-kalm-panik/default.png",
+      "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/panik-kalm-panik",
+      "tags": [
+        "oldschool",
+        "meme man",
+        "panic",
+        "calm",
+        "reversal",
+        "anxiety",
+        "three panels",
+        "2020",
+        "panik kalm",
+        "panik kalm panik",
+        "meme man wurds",
+        "meme template",
+        "panic calm panic",
+        "multi-panel"
+      ],
+      "layout": "panels",
+      "panels": {
+        "layout": "vertical",
+        "grid": true,
+        "mirror": false,
+        "fontSize": 0.08,
+        "items": [
+          {
+            "crop": {
+              "x": 0.480662983,
+              "y": 0,
+              "width": 0.519337017,
+              "height": 0.335526316
+            },
+            "text": "A noise downstairs"
+          },
+          {
+            "crop": {
+              "x": 0.480662983,
+              "y": 0.343421053,
+              "width": 0.519337017,
+              "height": 0.331578947
+            },
+            "text": "It is just the cat"
+          },
+          {
+            "crop": {
+              "x": 0.480662983,
+              "y": 0.682894737,
+              "width": 0.519337017,
+              "height": 0.317105263
+            },
+            "text": "I do not own a cat"
+          }
+        ]
+      },
+      "risk": 2,
+      "rating_tags": [
+        "general-audience"
+      ]
+    },
+    {
       "slug": "online/mgparanoidparrot",
       "title": "Paranoid Parrot",
       "url": "https://images.memesguy.com/memes/Paranoid-Parrot_69b977d3b9624.webp",
@@ -58949,6 +59133,55 @@
       ]
     },
     {
+      "slug": "online/5mir21panels",
+      "title": "Traumatized Mr. Incredible (Panels)",
+      "url": "https://i.imgflip.com/5mir21.jpg",
+      "source": "https://imgflip.com/meme/340157305/Traumatized-Mr-Incredible",
+      "tags": [
+        "2021",
+        "the incredibles",
+        "mr incredible",
+        "bob parr",
+        "pixar",
+        "cartoon",
+        "uncanny",
+        "trauma",
+        "before and after",
+        "multi-panel"
+      ],
+      "layout": "panels",
+      "panels": {
+        "layout": "horizontal",
+        "grid": true,
+        "mirror": true,
+        "fontSize": 0.08,
+        "items": [
+          {
+            "crop": {
+              "x": 0,
+              "y": 0,
+              "width": 0.49,
+              "height": 1
+            },
+            "text": "Planning the group trip"
+          },
+          {
+            "crop": {
+              "x": 0.5,
+              "y": 0,
+              "width": 0.5,
+              "height": 1
+            },
+            "text": "Collecting the payments"
+          }
+        ]
+      },
+      "risk": 3,
+      "rating_tags": [
+        "disturbing"
+      ]
+    },
+    {
       "slug": "online/8fhy2l",
       "title": "Travis Kelce screaming",
       "url": "https://i.imgflip.com/8fhy2l.png",
@@ -59618,6 +59851,64 @@
           "angle": 0
         }
       ],
+      "risk": 2,
+      "rating_tags": [
+        "general-audience"
+      ]
+    },
+    {
+      "slug": "online/poohpanels",
+      "title": "Tuxedo Winnie the Pooh (Panels)",
+      "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/pooh/default.png",
+      "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/pooh",
+      "tags": [
+        "oldschool",
+        "winnie the pooh",
+        "disney",
+        "tuxedo",
+        "classy",
+        "comparison",
+        "fancy",
+        "2019",
+        "fancy pooh",
+        "tuxedo winnie the pooh",
+        "classy pooh bear",
+        "meme template",
+        "tuxedo pooh",
+        "winnie pooh",
+        "winnie the poo",
+        "winnie the pooh drake style",
+        "winnie the pooh elegant",
+        "winnie the pooh tux",
+        "multi-panel"
+      ],
+      "layout": "panels",
+      "panels": {
+        "layout": "vertical",
+        "grid": true,
+        "mirror": true,
+        "fontSize": 0.08,
+        "items": [
+          {
+            "crop": {
+              "x": 0,
+              "y": 0,
+              "width": 0.499722222,
+              "height": 0.499537037
+            },
+            "text": "Taking a nap"
+          },
+          {
+            "crop": {
+              "x": 0,
+              "y": 0.500462963,
+              "width": 0.499722222,
+              "height": 0.499537037
+            },
+            "text": "Strategic energy conservation"
+          }
+        ]
+      },
       "risk": 2,
       "rating_tags": [
         "general-audience"
@@ -61135,6 +61426,72 @@
           "angle": 0
         }
       ],
+      "risk": 2,
+      "rating_tags": [
+        "sports",
+        "harmless-reaction"
+      ]
+    },
+    {
+      "slug": "online/23jjd0panels",
+      "title": "Vince McMahon Reaction w/Glowing Eyes (Panels)",
+      "url": "https://i.imgflip.com/23jjd0.jpg",
+      "source": "https://imgflip.com/meme/126882756/Vince-McMahon-Reaction-wGlowing-Eyes",
+      "tags": [
+        "vince mcmahon",
+        "wwe",
+        "wrestling",
+        "glowing eyes",
+        "excitement",
+        "escalation",
+        "approval",
+        "multi-panel"
+      ],
+      "layout": "panels",
+      "panels": {
+        "layout": "vertical",
+        "grid": true,
+        "mirror": false,
+        "fontSize": 0.08,
+        "items": [
+          {
+            "crop": {
+              "x": 0.494065282,
+              "y": 0,
+              "width": 0.505934718,
+              "height": 0.242504409
+            },
+            "text": "Free Wi-Fi"
+          },
+          {
+            "crop": {
+              "x": 0.494065282,
+              "y": 0.251322751,
+              "width": 0.505934718,
+              "height": 0.231481481
+            },
+            "text": "No password"
+          },
+          {
+            "crop": {
+              "x": 0.494065282,
+              "y": 0.492063492,
+              "width": 0.505934718,
+              "height": 0.247795414
+            },
+            "text": "Full signal"
+          },
+          {
+            "crop": {
+              "x": 0.494065282,
+              "y": 0.749559083,
+              "width": 0.505934718,
+              "height": 0.250440917
+            },
+            "text": "Works on the train"
+          }
+        ]
+      },
       "risk": 2,
       "rating_tags": [
         "sports",

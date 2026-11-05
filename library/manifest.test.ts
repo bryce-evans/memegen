@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { tagSlug } from "@memegen/shared";
-import { manifestLayers, templateManifestSchema, type ManifestTemplate } from "./manifest.ts";
+import { cropPixels, manifestLayers, manifestPanelSet, templateManifestSchema, type ManifestTemplate, type ManifestPanelTemplate } from "./manifest.ts";
 
 const fonts = { impact: "00000000-0000-4000-8000-000000000001", sans: "00000000-0000-4000-8000-000000000002" };
 const entry: ManifestTemplate = {
@@ -41,7 +41,8 @@ test("F-word catalog metadata stays outside the work risk ceiling", async () => 
   const fword = /fuck|f\*+k|\b(?:wtf|stfu)\b/i;
   const approvedAbbreviations = new Set(["online/8u2b", "online/59qi"]);
   for (const template of catalog.templates) {
-    const content = [template.title, ...template.tags, ...template.text.map((box) => box.text)].join(" ");
+    const captions = template.layout === "panels" ? template.panels.items : template.text;
+    const content = [template.title, ...template.tags, ...captions.map((box) => box.text)].join(" ");
     if (!fword.test(content)) continue;
     if (approvedAbbreviations.has(template.slug) && !/fuck|f\*+k/i.test(content)) {
       assert.ok(template.rating_tags.includes("language"), `${template.slug}: abbreviated language still needs a reason`);
@@ -121,4 +122,53 @@ test("comment uses one editable top-section band rather than drawing onto the im
   assert.equal(layer.strokeWidth, 0);
   assert.equal(layer.textStyle, "none");
   assert.equal(templateManifestSchema.safeParse(manifest([{ ...comment, text: [...comment.text, ...comment.text] }])).success, false);
+});
+
+const panelEntry: ManifestPanelTemplate = {
+  slug: "online/examplepanels", title: "Example panels", url: entry.url,
+  source: entry.source, tags: ["reaction"], risk: 1, rating_tags: ["child-friendly"], layout: "panels",
+  panels: {
+    layout: "vertical", grid: true, mirror: true, fontSize: 0.08,
+    items: [
+      { crop: { x: 0.5, y: 0, width: 0.5, height: 0.5 }, text: "First" },
+      { crop: { x: 0.5, y: 0.5, width: 0.5, height: 0.5 }, text: "Second" },
+    ],
+  },
+};
+
+test("panel recipes share a flat source but reject duplicate recipes and invalid crop boundaries", () => {
+  assert.equal(templateManifestSchema.safeParse(manifest([entry, panelEntry])).success, true);
+  assert.equal(templateManifestSchema.safeParse(manifest([panelEntry, { ...panelEntry, slug: "online/duplicate" }])).success, false);
+  for (const crop of [
+    { x: -0.1, y: 0, width: 0.5, height: 0.5 },
+    { x: 0.5, y: 0, width: 0.6, height: 0.5 },
+    { x: 0, y: 0.5, width: 0.5, height: 0.6 },
+    { x: 0, y: 0, width: 0, height: 0.5 },
+  ]) {
+    const panels = { ...panelEntry.panels, items: panelEntry.panels.items.map((item) => ({ ...item, crop })) };
+    assert.equal(templateManifestSchema.safeParse(manifest([{ ...panelEntry, panels }])).success, false);
+  }
+  for (const extension of ["gif", "MP4", "webm", "mov"]) {
+    assert.equal(templateManifestSchema.safeParse(manifest([{ ...panelEntry, url: `https://example.com/sheet.${extension}?raw=1` }])).success, false);
+  }
+});
+
+test("panel crops round shared boundaries and reject crops that disappear at source resolution", () => {
+  const top = cropPixels(panelEntry.panels.items[0]!.crop, 101, 103);
+  const bottom = cropPixels(panelEntry.panels.items[1]!.crop, 101, 103);
+  assert.deepEqual(top, { x: 51, y: 0, width: 50, height: 52 });
+  assert.deepEqual(bottom, { x: 51, y: 52, width: 50, height: 51 });
+  assert.throws(() => cropPixels({ x: 0, y: 0, width: 0.001, height: 1 }, 100, 100), /empty/);
+});
+
+test("native panel sets preserve crop order, captions and layout and require every uploaded image", () => {
+  const set = manifestPanelSet(panelEntry, [fonts.sans, fonts.impact]);
+  assert.deepEqual(set, {
+    layout: "vertical", grid: true, mirror: true, fontSize: 0.08,
+    panels: [
+      { id: "panel-1", assetId: fonts.sans, text: "First" },
+      { id: "panel-2", assetId: fonts.impact, text: "Second" },
+    ],
+  });
+  assert.throws(() => manifestPanelSet(panelEntry, [fonts.sans]), /Every manifest panel/);
 });

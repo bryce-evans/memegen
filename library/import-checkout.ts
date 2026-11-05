@@ -146,6 +146,7 @@ export async function importCheckout(sql: Sql, registry: Registry, root: string,
     let skipped = 0;
     for (const dir of dirs) {
       const entry = registry.catalog.find((entry) => entry.slug === `jb/${dir}`)!;
+      if (entry.layout === "panels") continue; // Crop recipes are imported from their pinned online sheet.
       const folder = join(root, "templates", dir);
       const cfg = parseYaml(await readFile(join(folder, "config.yml"), "utf8")) as JbConfig;
       const files = (await readdir(folder)).filter((f) => MEDIA.test(f)).sort();

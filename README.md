@@ -27,6 +27,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 - **Admin moderation**: admins get a separate panel on post and template pages to edit content and tags, change visibility, and remove content; they can also delete others' comments. Before removing a template, review its related posts (including drafts and variation uses), remove individual posts or explicitly confirm removing all, then delete the template. Media assets are retained.
 - **Feedback and reports**: the bottom-right sparkle button opens Bug, Suggestion, or Hug feedback. Signed-in users can review/remove an automatic viewport screenshot and attach their own PNG/JPEG/WebP images before sending. Post/template flag buttons open a report form for sex, drugs, violence, gore, or other concerns. Both go to the deployment's email, Slack, or webhook connector.
 - **Administration**: admins can browse all posts, templates, comments, tags, stickers, assets, and accounts at `/admin`, review deletions, and read the immutable deletion audit. Referenced assets/templates and accounts that still own content require explicit cleanup first. The built-in account, your own account, and the last admin are protected. Audit records survive actor/target removal; database owners remain trusted because they can alter protections.
+- **Admin analytics**: admins get an Analytics tab beside Settings on their own profile. A 7-, 30-, or 90-day UTC table shows unique sign-ins, posts, user-added templates, new users, and comments. Site-wide totals show users, posted memes, added templates, drafts, comments, and stored asset bytes.
 
 Post pages use a compact heading with 8pt author/date/tags, muted gray tag labels, and a title 2pt larger than the skin's XL font, in a content column capped at 940px that shrinks to fit narrow screens. Images and videos fill the available width up to 940px and scale proportionally within a 680px height limit, without cropping.
 
@@ -82,6 +83,10 @@ psql "$DATABASE_URL" -c "UPDATE users SET is_admin = true WHERE lower(username) 
 ```
 
 No account becomes an admin automatically. Reload or refocus the app to refresh the panel. To revoke access, run the same update with `is_admin = false`; server authorization checks apply immediately.
+
+Analytics excludes `@memegen` from user counts and excludes its built-in templates (including variations) from template counts. Posted memes include public and unlisted posts; drafts are separate. Content metrics reflect retained records, so deleting content reduces the counts; storage includes retained assets even after their posts are removed.
+
+Unique sign-ins count a user once per UTC day after a successful login, not on session restoration or page views. Migration 021 starts this tracking; earlier dates display “—” rather than invented history. The first tracked day and the current day may be partial. Login date/user-ID records survive account deletion to preserve historical counts; the admin page exposes aggregates, not individual login records.
 
 **Security:** `AUTH_MODE=dev` deliberately permits impersonation and is only for trusted local use. Deployments must use `AUTH_MODE=oidc`; production rejects dev authentication. Admin roles remain local database permissions, not claims supplied by the identity provider.
 

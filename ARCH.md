@@ -105,6 +105,15 @@ API authoring commands own the transaction for a complete create/update/post, in
 - Delivery is synchronous and acknowledged only after the connector succeeds; failures return 502 or unconfigured 503 and preserve the browser draft. There is no queue or automatic retry, and multi-step Slack failures may leave partial delivery. Screenshots are not persisted as public assets or stored in a feedback table; retention belongs to the configured destination.
 - The always-present feedback launcher offers a small Bug/Suggestion/Hug menu. Signed-in users get an automatic pre-dialog viewport capture, with form fields, private-marked regions, API key settings, iframes, and feedback UI omitted; screenshots are previewable/removable before explicit submission. Capture failure permits manual upload/text-only feedback. Signed-out users see a sign-in requirement without capture. Post/template flag buttons open a dedicated reason/details page using the same connector.
 
+### Admin analytics uses UTC daily sign-ins and retained content
+
+- Migration 021 adds `daily_user_logins`, keyed by UTC date and user UUID, plus a singleton `analytics_metadata` row recording when login tracking was installed. Successful dev sign-ins and verified OIDC callbacks insert in their authentication transaction with conflict deduplication. Session restoration, page requests, and failed sign-ins never count; this is unique sign-ins, not daily active users.
+- Login history retains only date/UUID, not names, tokens, IPs, or request details. The UUID deliberately has no user foreign key so account deletion does not rewrite historical unique counts. No public endpoint exposes these rows; the admin API returns aggregates only.
+- `GET /api/admin/analytics?days=7|30|90` defaults to 30 inclusive UTC calendar days and returns ascending, zero-filled daily buckets plus site-wide totals in one database snapshot. It requires the current server-resolved admin role and sets `Cache-Control: no-store`; no `negativeHScore` or account secrets are returned.
+- Posts use `posted_at`, include public and unlisted posts, and exclude drafts. Templates use creation time and include variations/unlisted templates but exclude every template owned by the reserved `memegen` account. New-user/user totals exclude that account too. Comments exclude soft-deleted rows; storage totals sum all retained asset bytes, including assets left after content deletion.
+- Content metrics describe records still retained, not lifetime creation events; deletions reduce both totals and the corresponding historical content buckets. Sign-in history cannot be reconstructed before tracking began: the UI shows untracked dates as an em dash and notes that the first tracking day and today may be partial.
+- An admin sees Analytics immediately beside Settings on their own profile, with 7/30/90-day controls, totals, and a responsive daily table. Other profiles/nonadmins do not render it or request analytics; server authorization independently protects the endpoint.
+
 ### AI is a stateless proxy
 
 - The API forwards requests to the user's chosen provider with the user's own key (`X-AI-Key`) and stores nothing. Kept results re-enter as ordinary uploads, so caps, sniffing, and the template flow are unchanged.
@@ -180,6 +189,7 @@ All JSON unless noted. Errors: `{ error: string, details?: string[] }`. Shapes a
 | users | `GET /api/users`, `GET /api/users/:username`, `GET /api/users/:username/memes`, `GET /api/users/:username/templates`, `GET /api/leaderboard` |
 | templates | `GET/POST /api/templates` (`q` searches tags, names, then images), `GET /api/templates/count`, `GET /api/templates/hot`, `GET /api/templates/duplicates`, `GET/PATCH/DELETE /api/templates/:id`, `GET /api/templates/:id/usage`, `POST/PUT /api/templates/:id/tags` (`PUT` admin-only) |
 | admin | `GET/DELETE /api/admin/templates/:id/memes` (review/remove dependencies), `GET /api/admin/resources/:kind` (paginated/searchable resource browser), `GET /api/admin/audit` (read-only), `DELETE /api/admin/tags/:id`, `DELETE /api/admin/stickers/:id`, `DELETE /api/admin/users/:id` |
+| admin analytics | `GET /api/admin/analytics?days=7\|30\|90` (admin-only daily metrics and current totals; default 30 days) |
 | memes | `POST /api/memes`, `GET/PATCH/DELETE /api/memes/:id`, `POST /api/memes/:id/post`, `PUT /api/memes/:id/vote`, `PUT /api/memes/:id/favorite` |
 | comments | `GET/POST /api/memes/:id/comments`, `DELETE /api/comments/:id` |
 | gallery | `GET /api/gallery` (period, sort, tag, search) |

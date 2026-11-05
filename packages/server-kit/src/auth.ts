@@ -1,6 +1,6 @@
 import type { Context, Hono } from "hono";
 import { sessionSchema, type AuthConfig, type AuthSession, type User } from "@memegen/shared";
-import type { Sql } from "./db.ts";
+import type { Sql, TransactionSql } from "./db.ts";
 import { HttpError, parseJson } from "./http.ts";
 
 /**
@@ -57,6 +57,13 @@ export function toUser(r: UserRow): User {
   return { id: r.id, username: r.username, createdAt: r.created_at.toISOString(), isAdmin: r.is_admin };
 }
 
+/** Called only inside a successful sign-in transaction; ordinary resolves never write analytics. */
+export async function recordSuccessfulLogin(sql: TransactionSql, userId: string): Promise<void> {
+  await sql`insert into daily_user_logins (user_id)
+    select id from users where id = ${userId} and lower(username) <> 'memegen'
+    on conflict (date, user_id) do nothing`;
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** DEV ONLY: trusts the `X-User-Id` header. No authentication whatsoever. */
@@ -83,11 +90,15 @@ export class HeaderAuthProvider implements AuthProvider {
   registerRoutes(app: Hono<Env>): void {
     app.post("/api/session", async (c) => {
       const { username } = await parseJson(c, sessionSchema);
-      const [row] = await this.sql<UserRow[]>`
-        insert into users (username) values (${username})
-        on conflict (lower(username)) do update set username = users.username
-        returning id, username, created_at, is_admin`;
-      return c.json({ user: toUser(row!) });
+      const user = await this.sql.begin(async (tx) => {
+        const [row] = await tx<UserRow[]>`
+          insert into users (username) values (${username})
+          on conflict (lower(username)) do update set username = users.username
+          returning id, username, created_at, is_admin`;
+        await recordSuccessfulLogin(tx, row!.id);
+        return toUser(row!);
+      });
+      return c.json({ user });
     });
     app.delete("/api/session", (c) => c.body(null, 204));
   }

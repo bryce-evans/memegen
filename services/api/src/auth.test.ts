@@ -103,7 +103,9 @@ test("invalid, expired, and revoked opaque sessions are anonymous; current datab
   const current = await login();
   await sql`update users set is_admin = true where id = ${current.user.id}`;
   assert.equal(((await (await api.request("/api/auth/session", { headers: { cookie: current.cookie } })).json()) as AuthSession).user!.isAdmin, true);
+  assert.equal((await api.request("/api/admin/analytics", { headers: { cookie: current.cookie } })).status, 200);
   await sql`update users set is_admin = false where id = ${current.user.id}`;
+  assert.equal((await api.request("/api/admin/analytics", { headers: { cookie: current.cookie } })).status, 403);
   await sql`update auth_sessions set expires_at = now() - interval '1 second' where user_id = ${current.user.id}`;
   assert.deepEqual(await (await api.request("/api/auth/session", { headers: { cookie: current.cookie } })).json(), { user: null });
   const renewed = await login();
@@ -188,4 +190,35 @@ test("PKCE rejects a code when the saved verifier is not the original challenge 
   await sql`update auth_login_transactions set code_verifier = ${randomBytes(32).toString("base64url")}
     where state_hash = ${createHash("sha256").update(transaction.state).digest("hex")}`;
   assert.equal((await api.request(transaction.callback, { headers: { cookie: transaction.cookie } })).status, 400);
+});
+
+test("verified OIDC callbacks alone record daily unique sign-ins, not session restores or failed verification", async () => {
+  fixture.controls.subject = "analytics-login";
+  try {
+    const first = await login();
+    await login();
+    const counts = async () => {
+      const [row] = await sql<{ today: number; yesterday: number }[]>`
+        select count(*) filter (where date = (now() at time zone 'UTC')::date)::int as today,
+          count(*) filter (where date = (now() at time zone 'UTC')::date - 1)::int as yesterday
+        from daily_user_logins where user_id = ${first.user.id}`;
+      return row!;
+    };
+    assert.deepEqual(await counts(), { today: 1, yesterday: 0 });
+    await sql`update daily_user_logins set date = (now() at time zone 'UTC')::date - 1 where user_id = ${first.user.id}`;
+    for (const path of ["/api/auth/session", "/api/me", "/api/auth/session"]) {
+      assert.equal((await api.request(path, { headers: { cookie: first.cookie } })).status, 200);
+    }
+    assert.deepEqual(await counts(), { today: 0, yesterday: 1 });
+    const transaction = await beginLogin();
+    fixture.controls.invalidSignature = true;
+    assert.equal((await api.request(transaction.callback, { headers: { cookie: transaction.cookie } })).status, 400);
+    fixture.controls.invalidSignature = false;
+    assert.deepEqual(await counts(), { today: 0, yesterday: 1 });
+    await login();
+    assert.deepEqual(await counts(), { today: 1, yesterday: 1 });
+  } finally {
+    fixture.controls.subject = "fixture-user";
+    fixture.controls.invalidSignature = false;
+  }
 });

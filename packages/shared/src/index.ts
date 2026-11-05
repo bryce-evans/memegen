@@ -13,3 +13,4 @@ export * from "./ai.ts";
 export * from "./search.ts";
 export * from "./feedback.ts";
 export * from "./moderation.ts";
+export * from "./analytics.ts";

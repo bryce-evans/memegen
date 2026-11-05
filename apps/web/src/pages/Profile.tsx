@@ -4,6 +4,7 @@ import { EmptyState, Field, Icon, PageHeader, Panel, SegmentedControl, Spinner, 
 import { getMyActivity, getMyFavorites, getUser, getUserMemes, getUserTemplates, type PageParams } from "../api.ts";
 import { useUser } from "../auth.tsx";
 import { AiAgentsPanel } from "../components/ai/Settings.tsx";
+import { Analytics } from "../components/Analytics.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { MemeFeed } from "../components/memes.tsx";
 import { TemplateGrid } from "../components/templates.tsx";
@@ -14,18 +15,19 @@ import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
 /**
- * Two tab groups under the name: the account (Profile: stats and badges; Settings and API Keys, owner only), then the
+ * Two tab groups under the name: the account (Profile, owner settings/API keys, and admin analytics), then the
  * content (Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own).
  */
-const ACCOUNT_TABS = ["profile", "settings", "ai"] as const;
+const ACCOUNT_TABS = ["profile", "settings", "analytics", "ai"] as const;
 const PUBLIC_CONTENT_TABS = ["memes", "templates"] as const;
 const CONTENT_TABS = [...PUBLIC_CONTENT_TABS, "favorites", "activity"] as const;
 type ProfileTab = (typeof ACCOUNT_TABS)[number] | (typeof CONTENT_TABS)[number];
-type MemeTab = Exclude<ProfileTab, "profile" | "ai" | "settings" | "templates">;
+type MemeTab = Exclude<ProfileTab, "profile" | "ai" | "settings" | "analytics" | "templates">;
 const TAB_LABELS: Record<ProfileTab, string> = {
   profile: "Profile",
   ai: "API Keys",
   settings: "Settings",
+  analytics: "Analytics",
   memes: "Memes",
   templates: "Templates",
   favorites: "Favorites",
@@ -42,7 +44,7 @@ export function Profile() {
   const user = useUser();
   const { data: profile, error } = useAsync(username, () => getUser(username));
   const isOwner = user.username === username;
-  const accountTabs: readonly ProfileTab[] = isOwner ? ACCOUNT_TABS : ["profile"];
+  const accountTabs: readonly ProfileTab[] = isOwner ? ACCOUNT_TABS.filter((t) => t !== "analytics" || user.isAdmin) : ["profile"];
   const contentTabs: readonly ProfileTab[] = isOwner ? CONTENT_TABS : PUBLIC_CONTENT_TABS;
   const tabParam = params.get("tab");
   const tab: ProfileTab = [...accountTabs, ...contentTabs].find((t) => t === tabParam) ?? "profile";
@@ -66,6 +68,8 @@ export function Profile() {
         <AiAgentsPanel />
       ) : tab === "settings" ? (
         <ProfileSettings userId={user.id} />
+      ) : tab === "analytics" ? (
+        <Analytics />
       ) : tab === "templates" ? (
         <ProfileTemplates username={username} editable={isOwner} />
       ) : (

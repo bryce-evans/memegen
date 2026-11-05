@@ -3,7 +3,7 @@ import type { Context, Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import * as oidc from "openid-client";
 import type { User } from "@memegen/shared";
-import { HeaderAuthProvider, toUser, type AuthProvider, type Env, type UserRow } from "./auth.ts";
+import { HeaderAuthProvider, recordSuccessfulLogin, toUser, type AuthProvider, type Env, type UserRow } from "./auth.ts";
 import { authConfigFromEnv, isLoopbackUrl, type AuthSettings } from "./auth-config.ts";
 import type { Sql } from "./db.ts";
 import { HttpError, isInternal } from "./http.ts";
@@ -181,6 +181,7 @@ export class OidcAuthProvider implements AuthProvider {
         await tx`delete from auth_sessions where expires_at <= now()`;
         await tx`insert into auth_sessions (token_hash, user_id, expires_at)
           values (${tokenHash(token)}, ${identity!.user_id}, now() + ${this.settings.sessionTtlSeconds} * interval '1 second')`;
+        await recordSuccessfulLogin(tx, identity!.user_id);
       });
       this.cookie(c, this.sessionCookie, token, this.settings.sessionTtlSeconds);
       return c.redirect(authReturnTo(transaction.return_to), 302);

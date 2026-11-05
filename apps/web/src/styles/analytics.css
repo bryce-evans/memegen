@@ -6,18 +6,3 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   gap: var(--ui-space-3);
 }
-.analytics-table-scroll {
-  max-width: 100%;
-  overflow-x: auto;
-}
-.analytics-table-scroll table {
-  width: 100%;
-  white-space: nowrap;
-}
-.analytics-table-scroll th,
-.analytics-table-scroll td {
-  text-align: right;
-}
-.analytics-table-scroll th:first-child {
-  text-align: left;
-}

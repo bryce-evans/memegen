@@ -18,5 +18,6 @@ export * from "./components/display.tsx";
 export * from "./components/fields.tsx";
 export * from "./components/Icon.tsx";
 export * from "./components/layout.tsx";
+export * from "./components/LineChart.tsx";
 export * from "./components/SkinSwitcher.tsx";
 export * from "./components/Tooltip.tsx";

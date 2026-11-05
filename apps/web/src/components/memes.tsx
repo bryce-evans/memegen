@@ -71,9 +71,9 @@ export function VoteButtons({ meme, onChange }: { meme: Meme; onChange: (meme: M
 
 /**
  * Star toggle (filled when pressed) that saves a posted public meme, your own included, to your Favorites; hidden on
- * unposted and unlisted memes. `className` lets a page restyle it (the meme page's bare title star).
+ * unposted and unlisted memes. Detail pages show a text label; feed cards keep the compact icon-only control.
  */
-export function FavoriteButton({ meme, onChange, className }: { meme: Meme; onChange: (meme: Meme) => void; className?: string }) {
+export function FavoriteButton({ meme, onChange, showLabel = false }: { meme: Meme; onChange: (meme: Meme) => void; showLabel?: boolean }) {
   const { busy, error, run } = useAction();
   if (!isListed(meme)) return null;
 
@@ -87,7 +87,7 @@ export function FavoriteButton({ meme, onChange, className }: { meme: Meme; onCh
       <Button
         size="sm"
         tone="warning"
-        className={className ? `favorite ${className}` : "favorite"}
+        className="favorite"
         onClick={toggle}
         disabled={busy}
         pressed={meme.favorited}
@@ -95,7 +95,7 @@ export function FavoriteButton({ meme, onChange, className }: { meme: Meme; onCh
         title={label}
         data-testid="favorite"
         icon={<Icon name="star" />}
-      />
+      >{showLabel ? "Favorite" : null}</Button>
       {error !== null && <ErrorView error={error} />}
     </>
   );

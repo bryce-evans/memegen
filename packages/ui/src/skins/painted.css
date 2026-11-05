@@ -106,7 +106,10 @@
   padding-block: 0.1em;
   transform: scale(1.75);
   transform-origin: left center;
+  /* Scale only the painted SVG layer, leaving the text's grain and lighting unchanged. */
+  background-size: auto, auto, auto, 120% 120%;
 }
+
 
 
 @media (min-width: 761px) {

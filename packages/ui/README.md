@@ -74,6 +74,7 @@ Every component extends its root element's native props (so `data-testid`, `aria
 | `Callout` | tinted box with an accent edge (not a live region) | `tone` (as `Badge`) |
 | `Table` | `<table>` with ruled rows, muted headers (`aria-sort` marks the sorted column), tabular figures | table props |
 | `StatGroup`, `Stat` | `<dl>` row of stat tiles; one labelled figure | `label`, `value`, `hint` (label tooltip), `valueProps` (on the `<dd>`) |
+| `LineChart` | responsive SVG count plots with a shared scale, labeled series, and expandable daily values | `label`, `axisLabel`, `series[{key,label}]`, `data[{label,values}]`; null values are gaps, not zeros; date labels are displayed verbatim |
 | `Spinner`, `EmptyState` | loading row; empty placeholder | `label`; `title`, `description`, `action`, `icon` |
 | `Panel` | titled surface (`section`) | `heading`, `headingActions`, `variant` (`default`/`inset`/`flush`: the surface only, no padding or margin) |
 | `Dialog` | modal native `<dialog>` (`showModal`: inert page, focus kept inside, Escape closes) | `open`, `onClose` (Escape, close button, backdrop), `heading`, `closeLabel` |

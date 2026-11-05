@@ -167,32 +167,129 @@ test("a hug can be sent without the removed screenshot after reopening its draft
   expect(deliveries[0]).toMatchObject({ kind: "hug", message: "Thank you for making this!", screenshots: [] });
 });
 
-test("reports deliver the selected category and the correct meme or template reference", async ({ page, request }) => {
+test("flagging a post stays on the page, restores focus, and retains failed or cancelled drafts", async ({ page, request }) => {
   const username = scoped("feedback-report");
   const user = await apiUser(request, username);
-  const template = await apiTemplate(request, user, { name: "Report template context" });
-  const meme = await apiMeme(request, user, { title: "Report meme context", templateId: template.id });
+  const meme = await apiMeme(request, user, { title: "Flag post context" });
+  const path = `/m/${meme.id}`;
+  await page.goto(`${path}?private-query=not-for-feedback#private-hash`);
+  await signIn(page, username);
+  const url = page.url();
+  const button = page.getByTestId("report-button");
+  const dialog = page.getByTestId("report-dialog");
+  await button.scrollIntoViewIfNeeded();
+  const scroll = await page.evaluate(() => window.scrollY);
+  await button.click();
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(url);
+  await expect(page.getByTestId("meme-title")).toHaveText("Flag post context");
+  await expect(page.getByTestId("report-target")).toContainText(meme.id);
+  await expect(page.getByTestId("report-submit")).toBeDisabled();
+  await expect(dialog.getByTestId("dialog-close")).toBeFocused();
+  await page.getByTestId("report-reason").selectOption("violence");
+  await page.getByTestId("report-message").fill("Please review this post.");
+  await dialog.getByTestId("report-cancel").click();
+  await expect(dialog).not.toBeVisible();
+  await expect(button).toBeFocused();
+  await expect(page).toHaveURL(url);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+  expect(deliveries).toEqual([]);
+  await button.click();
+  await expect(page.getByTestId("report-reason")).toHaveValue("violence");
+  await expect(page.getByTestId("report-message")).toHaveValue("Please review this post.");
+  await dialog.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(button).toBeFocused();
+  await button.click();
+  await dialog.getByTestId("dialog-close").click();
+  await expect(dialog).not.toBeVisible();
+  await expect(button).toBeFocused();
+  await button.click();
+  status = 503;
+  await page.getByTestId("report-submit").click();
+  await expect(page.getByTestId("report-error")).toBeVisible();
+  await expect(page.getByTestId("report-reason")).toHaveValue("violence");
+  await expect(page.getByTestId("report-message")).toHaveValue("Please review this post.");
+  await expect(page.getByTestId("report-success")).toHaveCount(0);
+  await expect(page).toHaveURL(url);
+  expect(deliveries).toEqual([]);
+  status = 200;
+  await page.getByTestId("report-submit").click();
+  await expect(page.getByTestId("report-success")).toBeVisible();
+  expect(deliveries).toEqual([expect.objectContaining({
+    kind: "report", target: { kind: "meme", id: meme.id }, reason: "violence",
+    message: "Please review this post.", path, screenshots: [],
+  })]);
+  await dialog.getByTestId("report-done").click();
+  await expect(dialog).not.toBeVisible();
+  await expect(button).toBeFocused();
+  await expect(page).toHaveURL(url);
+  await expect(page.getByTestId("meme-title")).toHaveText("Flag post context");
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+  await button.click();
+  await expect(page.getByTestId("report-reason")).toHaveValue("");
+  await expect(page.getByTestId("report-message")).toHaveValue("");
+  await expect(page.getByTestId("report-submit")).toBeDisabled();
+});
+
+test("flagging a template preserves its editor and sends the template reference without screenshots", async ({ page, request }) => {
+  const username = scoped("feedback-template");
+  const user = await apiUser(request, username);
+  const template = await apiTemplate(request, user, { name: "Flag template context" });
+  await page.goto(`/create?template=${template.id}`);
+  await signIn(page, username);
+  await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+  await page.getByTestId("stage-preview").check();
+  const url = page.url();
+  const button = page.getByTestId("report-button");
+  await button.scrollIntoViewIfNeeded();
+  const scroll = await page.evaluate(() => window.scrollY);
+  await button.click();
+  const dialog = page.getByTestId("report-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(url);
+  await expect(page.getByTestId("stage-canvas")).toBeAttached();
+  await expect(page.getByTestId("report-target")).toContainText(template.id);
+  await page.getByTestId("report-reason").selectOption("other");
+  await page.getByTestId("report-submit").click();
+  await expect(page.getByTestId("report-success")).toBeVisible();
+  expect(deliveries).toEqual([expect.objectContaining({
+    kind: "report", target: { kind: "template", id: template.id }, reason: "other", message: "", path: "/create", screenshots: [],
+  })]);
+  await dialog.getByTestId("report-done").click();
+  await expect(dialog).not.toBeVisible();
+  await expect(button).toBeFocused();
+  await expect(page).toHaveURL(url);
+  await expect(page.getByTestId("stage-preview")).toBeChecked();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+});
+
+test("flag dialog handles unavailable delivery and retries availability without leaving the post", async ({ page, request }) => {
+  const username = scoped("flag-unavailable");
+  const user = await apiUser(request, username);
+  const meme = await apiMeme(request, user, { title: "Unavailable flag context" });
+  await page.route("**/api/feedback/config", (route) => route.fulfill({ status: 503, json: { error: "Unavailable" } }));
   await page.goto(`/m/${meme.id}`);
   await signIn(page, username);
-  await page.getByTestId("report-button").click();
-  await expect(page).toHaveURL(new RegExp(`/report/meme/${meme.id}$`));
-  const reasons = ["sex", "drugs", "violence", "gore", "other"] as const;
-  for (const [index, reason] of reasons.entries()) {
-    const target = index % 2 === 0 ? { kind: "meme", id: meme.id } : { kind: "template", id: template.id };
-    await page.goto(`/report/${target.kind}/${target.id}`);
-    await expect(page.getByTestId("report-target")).toContainText(target.id);
-    await page.getByTestId("report-reason").selectOption(reason);
-    if (index) await page.getByTestId("report-message").fill(`Context for ${reason}`);
-    if (index === 0) {
-      status = 503;
-      await page.getByTestId("report-submit").click();
-      await expect(page.getByTestId("report-error")).toBeVisible();
-      await expect(page.getByTestId("report-reason")).toHaveValue(reason);
-      await expect(page.getByTestId("report-success")).toHaveCount(0);
-      status = 200;
-    }
-    await page.getByTestId("report-submit").click();
-    await expect(page.getByTestId("report-success")).toBeVisible();
-    expect(deliveries[index]).toMatchObject({ kind: "report", target, reason, message: index ? `Context for ${reason}` : "", path: `/report/${target.kind}/${target.id}`, screenshots: [] });
-  }
+  const url = page.url();
+  const button = page.getByTestId("report-button");
+  const dialog = page.getByTestId("report-dialog");
+  await button.click();
+  await expect(dialog.getByTestId("report-availability-error")).toContainText("Could not check feedback availability");
+  await expect(page.getByTestId("report-submit")).toHaveCount(0);
+  await page.unroute("**/api/feedback/config");
+  await dialog.getByTestId("report-retry").click();
+  await expect(page.getByTestId("report-reason")).toBeVisible();
+  await dialog.press("Escape");
+  await page.route("**/api/feedback/config", (route) => route.fulfill({ json: { enabled: false } }));
+  await page.reload();
+  await button.click();
+  await expect(page.getByTestId("report-unavailable")).toBeVisible();
+  await expect(page.getByTestId("report-submit")).toHaveCount(0);
+  await dialog.getByTestId("dialog-close").click();
+  await expect(dialog).not.toBeVisible();
+  await expect(button).toBeFocused();
+  await expect(page).toHaveURL(url);
+  await expect(page.getByTestId("meme-title")).toHaveText("Unavailable flag context");
+  expect(deliveries).toEqual([]);
 });

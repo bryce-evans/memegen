@@ -44,49 +44,30 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
-/* The title runs inline so the favorite star follows its last word, even when it wraps. The heading takes over the
-   h1's block margin and line box; the star's error alert is a block, so it gets its own line. */
+/* Keep compact sharing controls centered on the title, independently of its metadata line. */
 .detail-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
   margin: 0;
   font-size: var(--ui-font-size-post-title);
   line-height: 1.2;
 }
 .detail-title {
-  display: inline;
+  flex: 1 1 12rem;
+  min-width: 0;
   margin: 0;
   font-size: inherit;
+  overflow-wrap: anywhere;
 }
-/* The title's star is a bare icon in every skin: a thin outline, solid teal once favorited, never a button fill or
-   border, hovered or pressed (skins style pressed toned toggles up to 0,5,0; the doubled `:root` outranks them).
-   Middle-aligned, then raised 3px so it centers on the title's capitals rather than its lowercase letters. */
-:root:root .detail-heading .ui-button.detail-favorite {
-  display: inline-flex;
+.detail-favorite-mark {
   vertical-align: middle;
   margin-left: var(--ui-space-2);
-  min-width: 0;
-  height: auto;
-  min-height: 0;
-  padding: var(--ui-space-1);
-  border-color: transparent;
-  background: none;
-  box-shadow: none;
-  color: var(--ui-color-text-muted);
-  translate: 0 -3px;
-}
-:root:root .detail-heading .ui-button.detail-favorite:hover {
-  color: var(--ui-color-text);
-}
-:root:root .detail-heading .ui-button.detail-favorite[aria-pressed="true"] {
-  color: var(--ui-color-favorite);
-}
-.detail-heading .detail-favorite .ui-icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  fill: none;
-  stroke-width: 1.25;
-}
-.detail-heading .detail-favorite[aria-pressed="true"] .ui-icon {
+  width: 1em;
+  height: 1em;
   fill: currentColor;
+  color: var(--ui-color-favorite);
 }
 .detail-tags {
   flex: 1;
@@ -153,3 +134,12 @@
   align-self: flex-start;
 }
 
+/* All profile tabs share the feeds' wide content area, including account settings and analytics. */
+.profile-page {
+  min-width: 0;
+}
+@media (min-width: 761px) {
+  .ui-shell > .ui-main:has(> .profile-page) {
+    grid-column: 2 / 4;
+  }
+}

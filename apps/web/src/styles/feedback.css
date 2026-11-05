@@ -50,13 +50,3 @@
   border-radius: var(--ui-radius-sm);
 }
 
-.report-button:hover,
-.report-button:focus-visible {
-  color: var(--ui-color-danger);
-}
-
-.report-page {
-  max-width: 44rem;
-  margin-inline: auto;
-  overflow-wrap: anywhere;
-}

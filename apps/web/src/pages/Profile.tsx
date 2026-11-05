@@ -15,7 +15,7 @@ import { useAsync } from "../useAsync.ts";
 import { usePaged } from "../usePaged.ts";
 
 /**
- * Two tab groups under the name: the account (Profile, owner settings/API keys, and administration), then the
+ * Two tab groups under the name: the account (Profile, owner settings/API keys, and admin), then the
  * content (Memes and Templates are public; Favorites and Recent activity (votes) are the owner's own).
  */
 const ACCOUNT_TABS = ["profile", "settings", "ai", "admin"] as const;
@@ -27,7 +27,7 @@ const TAB_LABELS: Record<ProfileTab, string> = {
   profile: "Profile",
   ai: "API Keys",
   settings: "Settings",
-  admin: "Administration",
+  admin: "Admin",
   memes: "Memes",
   templates: "Templates",
   favorites: "Favorites",
@@ -54,7 +54,7 @@ export function Profile() {
   if (error !== null) return <ErrorView error={error} />;
 
   return (
-    <section>
+    <section className="profile-page">
       <header className="profile-head">
         <PageHeader title={`@${username}`} />
         <nav className="profile-nav" aria-label="Profile sections">

@@ -48,7 +48,7 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   const disliked = await apiMeme(request, author, { title: scoped("Vote me down") });
   const starred = await apiMeme(request, author, { title: scoped("Star me") });
   const voter = scoped("critic");
-  // Long enough to wrap on the meme page, where the star must follow the title's last word.
+  // Favoriting a post with a wrapping title must still show its title marker.
   const own = await apiMeme(request, await apiUser(request, voter), {
     title: scoped("My own meme, with a title long enough to wrap onto a second line"),
   });
@@ -60,25 +60,29 @@ test("profile: memes, favorites (starred), then recent activity (likes and disli
   await page.goto(`/m/${disliked.id}`);
   await page.getByTestId("vote-down").click();
   await expect(page.getByTestId("vote-down")).toHaveAttribute("aria-pressed", "true");
-  // The meme page's star sits at the right of the title; clicking it favorites the meme.
   await page.goto(`/m/${starred.id}`);
   const star = page.getByTestId("favorite");
-  const title = (await page.getByTestId("meme-title").boundingBox())!;
-  const starBox = (await star.boundingBox())!;
-  expect(starBox.x).toBeGreaterThanOrEqual(title.x + title.width);
-  expect(starBox.y).toBeLessThan(title.y + title.height);
+  await expect(page.getByTestId("meme-favorite-mark")).toHaveCount(0);
+  const votes = (await page.getByTestId("vote-controls").boundingBox())!;
+  const favorite = (await star.boundingBox())!;
+  expect(favorite.x).toBeGreaterThanOrEqual(votes.x + votes.width);
   await expect(star).toHaveAttribute("aria-pressed", "false");
   await star.click();
   await expect(star).toHaveAttribute("aria-pressed", "true");
-  // Your own posted memes can be starred too. The star stays on the wrapped title's last line, not one of its own.
+  await expect(page.getByTestId("meme-title").getByTestId("meme-favorite-mark")).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("meme-favorite-mark")).toBeVisible();
+  await star.click();
+  await expect(star).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByTestId("meme-favorite-mark")).toHaveCount(0);
+  await star.click();
+  await expect(star).toHaveAttribute("aria-pressed", "true");
+  // Your own posted memes can be favorited too.
   await page.goto(`/m/${own.id}`);
   const ownStar = page.getByTestId("favorite");
-  const wrapped = (await page.getByTestId("meme-title").boundingBox())!;
-  const ownStarBox = (await ownStar.boundingBox())!;
-  expect(ownStarBox.y).toBeGreaterThan(wrapped.y + ownStarBox.height / 2);
-  expect(ownStarBox.y + ownStarBox.height / 2).toBeLessThan(wrapped.y + wrapped.height);
   await ownStar.click();
   await expect(ownStar).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("meme-title").getByTestId("meme-favorite-mark")).toBeVisible();
 
   await page.getByTestId("nav-profile").click();
   // Account tabs (Profile, Settings, AI keys) come first, apart from the content tabs.

@@ -17,7 +17,7 @@ export function TemplateAdminActions({ template, onChange }: { template: Templat
   useEffect(() => setTags(template.tags), [template.id, template.tags]);
 
   return (
-    <Panel variant="inset" heading="Only visible to admins" data-testid="template-admin-actions">
+    <Panel variant="inset" heading="Admin tools" data-testid="template-admin-actions">
       <Inline>
         <LinkButton as={Link} to={`/create?editTemplate=${template.id}`} data-testid="template-admin-edit">
           Edit template
@@ -27,7 +27,7 @@ export function TemplateAdminActions({ template, onChange }: { template: Templat
           data-testid="template-admin-visibility"
           onClick={() => run(async () => onChange(await updateTemplate(template.id, { isPublic: !template.isPublic })))}
         >
-          Make {template.isPublic ? "unlisted" : "public"}
+          {template.isPublic ? "Delist" : "Make public"}
         </Button>
       </Inline>
       <TagField

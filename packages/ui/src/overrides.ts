@@ -37,6 +37,7 @@ import type {
   StackProps,
 } from "./components/layout.tsx";
 import type { SkinSwitcherProps } from "./components/SkinSwitcher.tsx";
+import type { LineChartProps } from "./components/LineChart.tsx";
 import type { TooltipProps } from "./components/Tooltip.tsx";
 
 /**
@@ -67,6 +68,7 @@ export interface ComponentOverrides {
   IconButton: ComponentType<IconButtonProps>;
   Inline: ComponentType<InlineProps>;
   LinkButton: ComponentType<LinkButtonProps>;
+  LineChart: ComponentType<LineChartProps>;
   MediaGrid: ComponentType<MediaGridProps>;
   NavItem: ComponentType<NavItemProps>;
   NavList: ComponentType<NavListProps>;

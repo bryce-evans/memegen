@@ -332,7 +332,7 @@ function DialogBase({ open, onClose, heading, closeLabel = "Close", className, c
               {heading}
             </h2>
           )}
-          <button type="button" className="ui-dialog-close" aria-label={closeLabel} onClick={() => onCloseRef.current()}>
+          <button type="button" className="ui-dialog-close" aria-label={closeLabel} data-testid="dialog-close" onClick={() => onCloseRef.current()}>
             <Icon name="close" />
           </button>
         </div>

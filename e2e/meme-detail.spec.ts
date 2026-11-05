@@ -105,6 +105,8 @@ test("meme page: content stays in one column with public actions beside the head
     expect(comments.y + comments.height).toBeLessThan(privateActions.y);
     if (width === 1280) {
       expect(share.x).toBeGreaterThan(title.x + title.width);
+      expect(Math.abs(share.y + share.height / 2 - (title.y + title.height / 2))).toBeLessThanOrEqual(1);
+      expect(Math.abs(download.y + download.height / 2 - (title.y + title.height / 2))).toBeLessThanOrEqual(1);
       expect(template.x).toBeGreaterThan(votes.x + votes.width);
       expect(template.y).toBeLessThan(votes.y + votes.height);
       expect(votes.y).toBeLessThan(template.y + template.height);

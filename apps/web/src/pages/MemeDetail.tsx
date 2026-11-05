@@ -69,22 +69,23 @@ export function MemeDetail() {
           <div className="detail-heading">
             <h1 className="detail-title" data-testid="meme-title">
               {meme.title || "Untitled"}
+              {meme.favorited && <Icon name="star" label="Favorited" className="detail-favorite-mark" data-testid="meme-favorite-mark" />}
             </h1>
-            <FavoriteButton meme={meme} onChange={setMeme} className="detail-favorite" />
+            <Inline className="detail-links">
+              <ShareButton memeId={meme.id} />
+              <LinkButton
+                size="sm"
+                href={contentUrl(meme.outputAsset)}
+                download={`${fileSlug(meme.title)}${assetExtension(meme.outputAsset)}`}
+                icon={<Icon name="down" />}
+                data-testid="download-meme"
+              >
+                Download
+              </LinkButton>
+              <ReportButton kind="meme" id={meme.id} />
+            </Inline>
           </div>
         </div>
-        <Inline className="detail-links">
-          <ShareButton memeId={meme.id} />
-          <LinkButton
-            href={contentUrl(meme.outputAsset)}
-            download={`${fileSlug(meme.title)}${assetExtension(meme.outputAsset)}`}
-            icon={<Icon name="down" />}
-            data-testid="download-meme"
-          >
-            Download
-          </LinkButton>
-          <ReportButton kind="meme" id={meme.id} />
-        </Inline>
       </div>
       <div className="detail-media">
         <MediaView asset={meme.outputAsset} alt={meme.title || "meme"} testId="meme-media" controls />
@@ -92,6 +93,7 @@ export function MemeDetail() {
       <div className="detail-actions">
         <div className="detail-votes" data-testid="meme-votes">
           <VoteButtons meme={meme} onChange={setMeme} />
+          <FavoriteButton meme={meme} onChange={setMeme} showLabel />
         </div>
         <LinkButton as={Link} variant="quiet" to={`/create?template=${meme.templateId}`} icon={<Icon name="image" />} data-testid="use-template">
           Make one with this template
@@ -101,7 +103,7 @@ export function MemeDetail() {
         <Comments meme={meme} onCountChange={(delta) => setMeme((m) => m && { ...m, commentCount: m.commentCount + delta })} />
       </div>
       {user.isAdmin && (
-        <Panel variant="inset" heading="Only visible to admins" className="detail-owner" data-testid="admin-actions">
+        <Panel variant="inset" heading="Admin tools" className="detail-owner" data-testid="admin-actions">
           <Inline>
             {meme.postedAt === null && (
               <Button variant="primary" disabled={busy} data-testid="admin-post-meme" onClick={() => act(() => postMeme(meme.id))}>
@@ -113,7 +115,7 @@ export function MemeDetail() {
               data-testid="admin-visibility-toggle"
               onClick={() => act(() => updateMeme(meme.id, { visibility: meme.visibility === "public" ? "unlisted" : "public" }))}
             >
-              Make {meme.visibility === "public" ? "unlisted" : "public"}
+              {meme.visibility === "public" ? "Delist" : "Make public"}
             </Button>
             <Button disabled={busy} data-testid="admin-edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
               Edit
@@ -144,7 +146,7 @@ export function MemeDetail() {
                   act(() => updateMeme(meme.id, { visibility: meme.visibility === "public" ? "unlisted" : "public" }))
                 }
               >
-                Make {meme.visibility === "public" ? "unlisted" : "public"}
+                {meme.visibility === "public" ? "Delist" : "Make public"}
               </Button>
               <Button disabled={busy} data-testid="edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
                 Edit
@@ -171,6 +173,7 @@ function ShareButton({ memeId }: { memeId: string }) {
   }, [copied]);
   return (
     <Button
+      size="sm"
       icon={<Icon name={copied ? "check" : "link"} />}
       aria-live="polite"
       data-testid="share-meme"

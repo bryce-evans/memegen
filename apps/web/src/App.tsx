@@ -35,7 +35,6 @@ import { SignIn } from "./pages/SignIn.tsx";
 import { TagPage } from "./pages/TagPage.tsx";
 import { useAction } from "./useAction.ts";
 import { FeedbackWidget } from "./components/FeedbackWidget.tsx";
-import { Report } from "./pages/Report.tsx";
 
 const BRAND = "memegen";
 /** Prod pins this skin (`?skin=` and stored choices ignored); dev lets the sign-in page's dev tools switch it. */
@@ -224,7 +223,6 @@ function Root() {
         <Route path="/create" element={<Editor />} />
         <Route path="/t/:slug" element={<TagPage />} />
         <Route path="/search" element={<Search />} />
-        <Route path="/report/:kind/:id" element={<Report />} />
         <Route path="*" element={<EmptyState icon={<Icon name="search" />} title="Page not found." />} />
       </Routes>
     </AppShell>

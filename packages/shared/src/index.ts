@@ -11,3 +11,5 @@ export * from "./crops.ts";
 export * from "./section.ts";
 export * from "./ai.ts";
 export * from "./search.ts";
+export * from "./feedback.ts";
+export * from "./moderation.ts";

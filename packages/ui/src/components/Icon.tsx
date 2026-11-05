@@ -112,6 +112,7 @@ const PATHS = {
   /** Curved double-headed arrow: swap two things' places. */
   swap: <path d="M4 16a8 8 0 0 1 16 0M1 13l3 3 3-3M17 13l3 3 3-3" />,
   sparkle: <path d="M12 3.5c.6 4.2 2.6 6.4 7 7.5-4.4 1.1-6.4 3.3-7 7.5-.6-4.2-2.6-6.4-7-7.5 4.4-1.1 6.4-3.3 7-7.5z" />,
+  flag: <path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5 4-9-4-14 0" />,
   /** A solid square over the edge of another: several panels (a multi-panel template). */
   panels: (
     <>

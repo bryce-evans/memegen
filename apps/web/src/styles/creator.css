@@ -9,7 +9,7 @@
  * picking a template, drawing it, or getting results never resizes the card or moves its buttons.
  */
 .ai-creator-body {
-  --ai-creator-preview-height: 24rem;
+  --ai-creator-preview-height: 28rem;
   --ai-template-thumb-width: 104px;
   --ai-template-thumb-height: 78px;
   display: grid;

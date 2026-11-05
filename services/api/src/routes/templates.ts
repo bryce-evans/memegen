@@ -10,6 +10,7 @@ import {
   type TemplateDependents,
 } from "@memegen/shared";
 import { HttpError, idParam, page, parse, parseJson, type Sql, type TransactionSql } from "@memegen/server-kit";
+import { deletionTransaction } from "@memegen/server-kit/audit";
 import {
   loadTemplate,
   loadTemplatePack,
@@ -150,9 +151,9 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
   });
 
   app.delete("/api/templates/:id", async (c) => {
-    const { id } = await ownerOrAdminTemplate(sql, c);
+    const { user, id } = await ownerOrAdminTemplate(sql, c);
     try {
-      await sql.begin(async (tx) => {
+      await deletionTransaction(sql, user, async (tx) => {
         await lockTemplateScope(tx, id);
         // Memes keep their template; removing a root also removes its variations, never their memes.
         const [used] = await tx`select 1 from memes m join templates t on t.id = m.template_id
@@ -212,13 +213,13 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
   });
 
   app.delete("/api/admin/templates/:id/memes", async (c) => {
-    requireAdmin(c);
+    const user = requireAdmin(c);
     const { id } = parse(idParam, c.req.param());
-    await sql.begin(async (tx) => {
+    await deletionTransaction(sql, user, async (tx) => {
       await lockTemplateScope(tx, id);
       await tx`delete from memes m using templates t
         where m.template_id = t.id and (t.id = ${id} or t.parent_id = ${id})`;
-    });
+    }, true);
     return c.body(null, 204);
   });
 }

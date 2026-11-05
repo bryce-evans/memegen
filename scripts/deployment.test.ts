@@ -18,6 +18,9 @@ const production: NodeJS.ProcessEnv = {
   STORAGE_PROVIDER: "s3",
   S3_BUCKET: "media",
   SEARCH_ENABLED: "false",
+  FEEDBACK_PROVIDER: "webhook",
+  FEEDBACK_WEBHOOK_URL: "https://feedback.example.com/private-webhook-path",
+  FEEDBACK_WEBHOOK_TOKEN: "webhook-private-secret",
 };
 
 test("deployment rejects insecure production auth and missing durable storage without requiring optional AI/search", () => {
@@ -27,6 +30,13 @@ test("deployment rejects insecure production auth and missing durable storage wi
   assert.ok(issues.some((issue) => issue.includes("INTERNAL_TOKEN")));
   assert.ok(issues.some((issue) => issue.includes("LOCAL_STORAGE_DIR")));
   assert.deepEqual(deploymentIssues({ ...production, STORAGE_PROVIDER: "local", LOCAL_STORAGE_DIR: "/var/lib/memegen" }), []);
+});
+
+test("deployment requires an explicit working-mode feedback connector rather than a disabled production sink", () => {
+  for (const provider of ["", "disabled"]) {
+    assert.ok(deploymentIssues({ ...production, FEEDBACK_PROVIDER: provider }).some((issue) => issue.includes("FEEDBACK_PROVIDER")));
+  }
+  assert.ok(deploymentIssues({ ...production, FEEDBACK_WEBHOOK_URL: "" }).some((issue) => issue.includes("FEEDBACK_WEBHOOK_URL")));
 });
 
 test("S3 deployment accepts role credentials but rejects half-configured explicit credentials", () => {
@@ -45,7 +55,7 @@ test("deployment diagnostics never expose database, OIDC or storage credentials"
       .map(([key, value]) => `${key}=${value}`).join("\n"));
     const output = execFileSync("bash", ["run.sh", config, "deployment"], { encoding: "utf8" });
     assert.ok(output.includes("https://memes.example.com/api/auth/callback"));
-    for (const secret of ["db-private-secret", "oidc-private-secret", "access-private", "secret-private", production.INTERNAL_TOKEN!]) {
+    for (const secret of ["db-private-secret", "oidc-private-secret", "access-private", "secret-private", "private-webhook-path", "webhook-private-secret", production.INTERNAL_TOKEN!]) {
       assert.equal(output.includes(secret), false);
     }
   } finally {

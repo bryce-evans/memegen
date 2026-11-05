@@ -10,6 +10,7 @@ import { ErrorView, MediaView } from "./common.tsx";
 import { TagChips } from "./tags.tsx";
 import { TemplateMeta } from "./templates.tsx";
 import { TemplateAdminActions } from "./templateAdmin.tsx";
+import { ReportButton } from "./ReportButton.tsx";
 
 /**
  * Under the editor stage when a template is open: its tags, usage, variations, and permission-scoped controls.
@@ -31,7 +32,10 @@ export function TemplateDetails({
     <Panel
       heading={template.name}
       headingActions={
-        <Checkbox label="Preview" checked={preview} onChange={(e) => onPreviewChange(e.target.checked)} data-testid="stage-preview" />
+        <Inline>
+          <ReportButton kind="template" id={template.id} />
+          <Checkbox label="Preview" checked={preview} onChange={(e) => onPreviewChange(e.target.checked)} data-testid="stage-preview" />
+        </Inline>
       }
       className="template-details"
       data-testid="template-details"

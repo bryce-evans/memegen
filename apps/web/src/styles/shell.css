@@ -35,7 +35,7 @@
     grid-column: 2;
   }
 
-  .ui-shell > .ui-main:has(> .gallery-page) {
+  .ui-shell > .ui-main:has(> :is(.gallery-page, .create-start)) {
     grid-column: 2 / 4;
   }
 }

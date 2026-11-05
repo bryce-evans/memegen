@@ -1,5 +1,6 @@
 import { commentsQuerySchema, createCommentSchema } from "@memegen/shared";
 import { HttpError, idParam, page, pageSql, parse, parseJson, type Sql } from "@memegen/server-kit";
+import { deletionTransaction } from "@memegen/server-kit/audit";
 import { loadMeme, requireUser, type ApiApp } from "../access.ts";
 import { commentSelect, nest, requireListed, toComment, type CommentRow } from "../rows.ts";
 
@@ -47,7 +48,7 @@ export function register(app: ApiApp, sql: Sql): void {
   app.delete("/api/comments/:id", async (c) => {
     const user = requireUser(c);
     const { id } = parse(idParam, c.req.param());
-    await sql.begin(async (tx) => {
+    await deletionTransaction(sql, user, async (tx) => {
       const [row] = await tx<{ author_id: string; parent_id: string | null; meme_owner_id: string }[]>`
         select c.author_id, c.parent_id, m.owner_id as meme_owner_id
         from comments c join memes m on m.id = c.meme_id

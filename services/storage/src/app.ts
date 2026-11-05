@@ -110,9 +110,9 @@ export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono<En
     const row = await loadRow(id);
     if (!isInternal(c)) {
       const user = c.get("user");
-      if (!user || user.id !== row.owner_id) throw new HttpError(403, "only the owner can delete this asset");
+      if (!user || (user.id !== row.owner_id && !user.isAdmin)) throw new HttpError(403, "only the owner or an admin can delete this asset");
     }
-    await store.delete(row);
+    await store.delete(row, c.get("user"));
     return c.body(null, 204);
   });
 

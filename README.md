@@ -13,18 +13,20 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
   To build a pack from one sheet, choose **Create → Build from images → Split sheet**. Upload a still image, draw the first rectangle (or enter its pixel bounds), choose horizontal/right or vertical/down propagation, and set the gap in source pixels. Numbered previews show every complete crop; partial crops at the image edge are excluded. **Add crops to pack** uploads separate PNG images that can be reused, omitted, or reordered. Cancel uploads nothing; the original sheet stays local.
 - **Quick Creator**: start with a random template or search for one, then describe the meme. Your Agent Provider edits text/font/top-section content for media templates and captions for multi-panel templates. Panels use the template's saved default layout, order, grid, mirroring, and caption size without flattening the image pack. The optional Image Generator edits single still images only. Publish posts the result; Full editor (or clicking the preview) continues the complete draft, including your typed title, even before an AI update. Configure your own provider keys/models under your profile's API Keys tab.
 - **Gallery**: Popular (day, week, month, year, or all time) and Recent feeds, voting, threaded comments, favorites, search (posts, templates, or users), and tag pages. Feed cards open their meme when clicked anywhere and show its info over it on hover or, set under your profile's Settings tab, its title and votes below it (Google-style).
-- **Unlisted sharing**: unlisted memes and templates stay out of public discovery but open for anyone with their direct link, including drafts. Media bytes remain directly accessible. Unlisted is not confidential storage; editing and deletion still require the owner.
+- **Unlisted sharing**: unlisted memes and templates stay out of public discovery but open for anyone with their direct link, including drafts. Media bytes remain directly accessible. Unlisted is not confidential storage; editing and deletion require the owner or an admin.
 - **Keyboard**: Backspace, Delete, or Escape goes back a page (outside text fields). Leaving the editor this way with an unpublished meme asks first.
 - **Profiles and leaderboard**: a Profile tab with h-score, high score, and tiered stats (bronze to diamond: tile outlines and stars); the user's memes and templates; and, on your own profile, API Keys (Agent Provider and Image Generator) plus private Favorites and Recent activity tabs. Leaderboard tier stars are enlarged and vertically centered beside their numbers.
 - **Skins**: seven interchangeable looks from `packages/ui` (dev only. Prod is locked to `default`). `painted` has a dark mode, set per user under your profile's Settings tab and kept in your browser.
 - **Header and columns**: the painted skin uses a 56px header with about 8px of clearance above and below search. Its 120px brand slot is aligned to the left column; reduced wordmark padding allows a 1.75× logo to fill the bar without clipping. Main content is centered in the viewport; navigation occupies up to 220px in the left rail and editor controls occupy the right rail, stacking on narrow screens.
   On desktop, the visible wordmark, Create's plus icon, and navigation icons share the same left inset.
-  Desktop galleries (Popular, Recent, search results, and tags) extend through the unused right rail to show more images; individual posts stay compact and centered.
+  Desktop galleries (Popular, Recent, search results, and tags) and the Create start page extend through the unused right rail; individual posts stay compact and centered. Quick Creator allows a taller, aspect-preserving preview, and upload artwork grows proportionally with its cards.
   The desktop editor reserves a wider controls rail so Text, Image, Sticker, and Top section fit on one line; controls still stack below the workspace on narrow screens.
 - **Snapshots**: back up or restore the whole site (database and media) as one zip.
 - **Meme titles**: enter a title before saving or publishing in the editor or Quick Creator. Titles start empty; template names are never used as defaults.
 - **Post view**: a single column with author, posting date, and compact tag pills above the title, and Share/Download to the right. The media follows, then voting with “Make one with this template” to the right, comments, and the owner's “Only visible to you” controls at the bottom. Action rows wrap on narrow screens. Overflowing tags end in an ellipsis. Upvote, score, and downvote share one pill, with circular highlights when hovering over either thumb. Change tags through the owner's Edit button. Comment and reply composers start at one line and size to their text, with a handle for manual vertical resizing. Focusing the input reveals Cancel and submit buttons inside the border; Cancel clears the draft and restores the collapsed one-line composer.
 - **Admin moderation**: admins get a separate panel on post and template pages to edit content and tags, change visibility, and remove content; they can also delete others' comments. Before removing a template, review its related posts (including drafts and variation uses), remove individual posts or explicitly confirm removing all, then delete the template. Media assets are retained.
+- **Feedback and reports**: the bottom-right sparkle button opens Bug, Suggestion, or Hug feedback. Signed-in users can review/remove an automatic viewport screenshot and attach their own PNG/JPEG/WebP images before sending. Post/template flag buttons open a report form for sex, drugs, violence, gore, or other concerns. Both go to the deployment's email, Slack, or webhook connector.
+- **Administration**: admins can browse all posts, templates, comments, tags, stickers, assets, and accounts at `/admin`, review deletions, and read the immutable deletion audit. Referenced assets/templates and accounts that still own content require explicit cleanup first. The built-in account, your own account, and the last admin are protected. Audit records survive actor/target removal; database owners remain trusted because they can alter protections.
 
 Post pages use a compact heading with 8pt author/date/tags, muted gray tag labels, and a title 2pt larger than the skin's XL font, in a content column capped at 940px that shrinks to fit narrow screens. Images and videos fill the available width up to 940px and scale proportionally within a 680px height limit, without cropping.
 
@@ -120,13 +122,14 @@ Main keys (see `config/dev.env` and `config/prod.env.example` for all of them):
 - `STORAGE_PROVIDER`: `local` (files in `.data/storage`) or `s3` (`S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, …).
 - `MAX_*`: upload caps. Defaults are 20 MB per file. Longest edge: images 4096 px, GIFs 1024 px, videos 1920 px. Frames: GIFs 500, videos 1800.
 - `INTERNAL_TOKEN`: guards the API's `/internal/*` routes.
+- `FEEDBACK_PROVIDER`: `email`, `slack`, or `webhook`; required in production. `disabled` is allowed only in development. See [Feedback connector setup](#feedback-connector-setup).
 - `INTRO`: the sign-in page's intro, baked into the web build. `basic` (default) shows the card alone; `party` explodes memes, confetti, and streamers out from behind it; `nyan` flies nyan cat in a straight line from the bottom right, behind the card, and out of its top-left corner, leaving its rainbow behind.
 - `OPENAI_IMAGE_MODEL` (default `gpt-image-2`), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`): default models for the Image Generator. `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `GEMINI_TEXT_MODEL` (default `gemini-2.5-flash`), `ANTHROPIC_TEXT_MODEL` (default `claude-haiku-5-5`): default models for the Agent Provider. Users may name their own models instead. Users bring their own API keys, so the server needs none. `OPENAI_BASE_URL`/`GEMINI_BASE_URL`/`ANTHROPIC_BASE_URL` point at a proxy or gateway.
 - `SEARCH_ENABLED`: `true` runs the template search sidecar on `SEARCH_PORT` (default 4002): CLIP image embeddings in a FAISS index, so template search also matches what's in the picture and new uploads are checked for duplicates. `false` searches tags and names only, and only byte-identical duplicates are caught. The first start downloads the model (about 600 MB) into `SEARCH_DATA_DIR` (default `.data/search`), which also caches the embeddings. `SEARCH_MODEL` picks another transformers.js CLIP export; `SEARCH_URL` points the API at a sidecar on another host.
 
 ### Deployment setup
 
-**Recommended:** OIDC authentication with server-side sessions. Use Google or Auth0 for hosted identity, or Keycloak/Authentik when self-hosting. These use the same connector; no provider-specific app code is needed. There is no built-in password database or email connector to maintain.
+**Recommended:** OIDC authentication with server-side sessions. Use Google or Auth0 for hosted identity, or Keycloak/Authentik when self-hosting. These use the same connector; no provider-specific app code is needed. Authentication requires no local password database or password-recovery email service.
 
 The production template documents the choices and links to provider consoles/setup guides:
 
@@ -147,10 +150,27 @@ chmod 600 config/prod.env
 | Media | `STORAGE_PROVIDER=s3` with bucket and AWS role/default credentials or both explicit S3 credentials; optional endpoint for R2/MinIO. Alternatively, `local` with `LOCAL_STORAGE_DIR` on a durable, backed-up volume. |
 | Public HTTPS | Set `PUBLIC_ORIGIN`; terminate TLS at a reverse proxy to `WEB_PORT`. Preserve Cookie, Set-Cookie, and Origin headers. Keep API, storage, and search ports private. |
 | Internal services | Generate `INTERNAL_TOKEN` with `openssl rand -hex 32`; production requires at least 32 characters. |
+| Feedback/reports | Choose `FEEDBACK_PROVIDER=email`, `slack`, or `webhook`; configure and verify a destination before opening access. |
 | Semantic search — optional | `SEARCH_ENABLED=true` runs the local CLIP/FAISS sidecar; persist its model/cache directory. The template defaults to false. Name/tag search still works. |
 | AI — optional | Users supply OpenAI/Gemini/Anthropic keys in their profiles; no deployment-wide AI secret is required. |
 
-`deployment` is a **local configuration preflight**, not a connection or credential test. `setup` and `start` also enforce it. After configuring real services, verify SSO login/logout, an upload, and backup/restore before opening access. OIDC discovery failures stop the services rather than enabling dev login. Logout ends the local app session, not the provider's SSO session.
+`deployment` is a **local configuration preflight**, not a connection or credential test. `setup` and `start` also enforce it. After configuring real services, verify SSO login/logout, an upload, feedback receipt, and backup/restore before opening access. OIDC discovery failures stop the services rather than enabling dev login. Logout ends the local app session, not the provider's SSO session.
+
+### Feedback connector setup
+
+Setup agents must confirm the operator's destination, configure it, run the deployment preflight, and—with approval—send an identified setup message and verify receipt. Never put real credentials in committed files or chat.
+
+| Provider | Settings |
+|---|---|
+| Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `FEEDBACK_EMAIL_FROM`, `FEEDBACK_EMAIL_TO`. One sender/recipient address each. Set both `SMTP_USER` and `SMTP_PASSWORD` if authentication is required. Production uses implicit TLS (`465`, `true`) or required STARTTLS (`587`, `false`). Screenshots are MIME attachments. |
+| Slack | `FEEDBACK_SLACK_BOT_TOKEN`, `FEEDBACK_SLACK_CHANNEL`. Create/install a bot at [Slack apps](https://api.slack.com/apps), grant `chat:write` and `files:write`, and invite it to the channel. Text is posted with private screenshot uploads in its thread; incoming webhooks alone cannot upload screenshots. |
+| Webhook | `FEEDBACK_WEBHOOK_URL` and optional `FEEDBACK_WEBHOOK_TOKEN` (sent as `Authorization: Bearer …`). HTTPS is required; loopback HTTP is permitted only in development. |
+
+The webhook receives JSON: `kind`, `message`, `path`, `user: {id, username}`, `screenshots: [{name, contentType, base64}]`; reports also contain `target: {kind, id}` and `reason`. A 2xx response acknowledges delivery; a JSON response explicitly reporting `ok: false`, `success: false`, `delivered: false`, or an error is treated as failure.
+
+Submission requires sign-in and a matching browser Origin. The button remains visible on sign-in but does not capture that screen. Automatic screenshots omit form fields, API key settings, and feedback controls; other visible personal information may remain, so review before sending. Up to two screenshots, 2 MiB each, and 4,000 text characters are accepted. Screenshots are sent directly to the connector, never added to public media storage. Reports attach no screenshot automatically. Capture failures permit manual upload or text-only feedback.
+
+Delivery failures retain the draft and are not reported as success. There is no background retry queue; a failed multipart Slack delivery may already have posted text before its image upload failed. Destination retention/access controls are the operator's responsibility. In development, set `PUBLIC_ORIGIN` when using a hostname other than the default `http://localhost:WEB_PORT`.
 
 ### Existing accounts and OIDC
 

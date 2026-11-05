@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 // Pure modules only: the deployment guide must run before `bun install` creates workspace links.
 import { authConfigFromEnv } from "../packages/server-kit/src/auth-config.ts";
 import { servicePorts } from "../packages/server-kit/src/ports.ts";
+import { feedbackConfigFromEnv } from "../packages/server-kit/src/feedback-config.ts";
 
 const OPTIONS = `Deployment connectors (edit your KEY=value config; no secrets belong in the browser)
 
@@ -28,6 +29,15 @@ Required
   Public HTTPS: reverse proxy to WEB_PORT; PUBLIC_ORIGIN must match the browser origin.
     Forward Cookie, Set-Cookie and Origin unchanged. Keep API/storage/search ports private.
   Internal services: INTERNAL_TOKEN (at least 32 characters in prod; openssl rand -hex 32).
+  Feedback/reports: FEEDBACK_PROVIDER=webhook, email, or slack (required in production).
+    webhook: FEEDBACK_WEBHOOK_URL (HTTPS), optional FEEDBACK_WEBHOOK_TOKEN.
+      Receives JSON with feedback, reporter, target/reason and base64 screenshot attachments.
+    email: SMTP_HOST, SMTP_PORT (587 STARTTLS or 465 TLS), SMTP_SECURE,
+      optional SMTP_USER + SMTP_PASSWORD, FEEDBACK_EMAIL_FROM and FEEDBACK_EMAIL_TO.
+    slack: FEEDBACK_SLACK_BOT_TOKEN + FEEDBACK_SLACK_CHANNEL; invite the bot to the channel.
+      Bot scopes: chat:write and files:write. Screenshots are uploaded, not exposed as public media.
+      https://api.slack.com/apps
+    disabled is development-only. Setup agents must choose/configure a connector with the operator.
 
 Optional
   Semantic template search: SEARCH_ENABLED=true; local CLIP/FAISS sidecar, no hosted account.
@@ -53,6 +63,11 @@ export function deploymentIssues(env: NodeJS.ProcessEnv): string[] {
     authConfigFromEnv(env);
   } catch (error) {
     issues.push(error instanceof Error ? error.message : "Invalid authentication configuration");
+  }
+  try {
+    feedbackConfigFromEnv(env);
+  } catch (error) {
+    issues.push(error instanceof Error ? error.message : "Invalid feedback connector configuration");
   }
   if (env.AUTH_MODE === "oidc") {
     for (const key of ["PUBLIC_ORIGIN", "OIDC_ISSUER_URL", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET"]) {
@@ -128,9 +143,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       if (auth.mode === "oidc") console.log(`  Register redirect URI: ${auth.publicOrigin}/api/auth/callback`);
       console.log("  Database: PostgreSQL configured (connection details hidden)");
       console.log(`  Media: ${(process.env.STORAGE_PROVIDER || "local") === "s3" ? "S3-compatible bucket; verify object read/write/delete permissions" : "local files; persist and back up the storage volume"}`);
+      const feedback = feedbackConfigFromEnv(process.env);
+      console.log(`  Feedback/reports: ${feedback.provider === "disabled" ? "unavailable; configure a connector before deployment" : feedback.provider + " configured (destination and credentials hidden)"}`);
       console.log(`  Semantic search: ${process.env.SEARCH_ENABLED === "true" ? "enabled; model download and persistent cache required" : "disabled (name/tag search remains available)"}`);
       console.log("  AI: optional, each user supplies their own provider keys in Profile");
-      console.log("Configuration checks passed. Verify login, upload and backups before opening access.");
+      console.log("Configuration checks passed. Verify login, upload, feedback delivery and backups before opening access.");
     }
   }
 }

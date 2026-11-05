@@ -9,12 +9,14 @@
     "start": "node --env-file-if-exists=../../config/dev.env src/server.ts"
   },
   "dependencies": {
-    "@memegen/shared": "workspace:*",
+    "@hono/node-server": "^2.1.3",
     "@memegen/server-kit": "workspace:*",
+    "@memegen/shared": "workspace:*",
     "hono": "^4.9.0",
-    "@hono/node-server": "^2.1.3"
+    "nodemailer": "^10.3.1"
   },
   "devDependencies": {
-    "@memegen/storage": "workspace:*"
+    "@memegen/storage": "workspace:*",
+    "@types/nodemailer": "^8.0.2"
   }
 }

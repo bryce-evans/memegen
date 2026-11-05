@@ -15,7 +15,7 @@ export function CreateStart() {
   const [templateSearch, setTemplateSearch] = useState("");
 
   return (
-    <section className="editor-start create-start">
+    <section className="editor-start create-start" data-testid="create-start">
       {limits.loading && <Spinner label="Loading…" />}
       {limits.error !== null && <ErrorView error={limits.error} testId="editor-error" />}
       <AiCreator />

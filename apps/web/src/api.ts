@@ -135,7 +135,7 @@ async function send(url: string, opts: RequestOptions = {}): Promise<Response> {
   return res;
 }
 
-async function request<T>(url: string, opts: RequestOptions = {}): Promise<T> {
+export async function request<T>(url: string, opts: RequestOptions = {}): Promise<T> {
   const res = await send(url, opts);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

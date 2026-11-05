@@ -9,12 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@memegen/render": "workspace:*",
+    "@memegen/shared": "workspace:*",
+    "@memegen/ui": "workspace:*",
+    "html-to-image": "^1.11.13",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.9.0",
-    "@memegen/shared": "workspace:*",
-    "@memegen/render": "workspace:*",
-    "@memegen/ui": "workspace:*"
+    "react-router-dom": "^7.9.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

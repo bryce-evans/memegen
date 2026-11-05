@@ -11,6 +11,7 @@ import { TagField } from "../components/tagInputs.tsx";
 import { assetExtension, fileSlug } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
+import { ReportButton } from "../components/ReportButton.tsx";
 
 export function MemeDetail() {
   const { id = "" } = useParams();
@@ -82,6 +83,7 @@ export function MemeDetail() {
           >
             Download
           </LinkButton>
+          <ReportButton kind="meme" id={meme.id} />
         </Inline>
       </div>
       <div className="detail-media">

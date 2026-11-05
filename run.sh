@@ -238,8 +238,8 @@ case "$COMMAND" in
       value="${!key-}"
       if [[ "$key" =~ (TOKEN|SECRET|PASSWORD|KEY) && -n "$value" ]]; then value="****"; fi
       case "$key" in
-        DATABASE_URL|TEST_DATABASE_URL|E2E_DATABASE_URL|SNAPSHOT_TEST_DATABASE_URL)
-          # URLs can also carry credentials in query options. Do not expose any connection details.
+        DATABASE_URL|TEST_DATABASE_URL|E2E_DATABASE_URL|SNAPSHOT_TEST_DATABASE_URL|FEEDBACK_WEBHOOK_URL)
+          # Database credentials and webhook capability URLs must never appear in diagnostics.
           [[ -z "$value" ]] || value="****"
           ;;
       esac

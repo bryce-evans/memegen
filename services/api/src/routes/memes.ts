@@ -1,5 +1,6 @@
 import { createMemeSchema, favoriteSchema, updateMemeSchema, voteSchema } from "@memegen/shared";
 import { idParam, parse, parseJson, type Sql, type TransactionSql } from "@memegen/server-kit";
+import { deletionTransaction } from "@memegen/server-kit/audit";
 import {
   loadMeme,
   loadTemplate,
@@ -90,8 +91,8 @@ export function register(app: ApiApp, sql: Sql): void {
   });
 
   app.delete("/api/memes/:id", async (c) => {
-    const { id } = await ownerOrAdminMeme(sql, c);
-    await sql`delete from memes where id = ${id}`;
+    const { user, id } = await ownerOrAdminMeme(sql, c);
+    await deletionTransaction(sql, user, async (tx) => { await tx`delete from memes where id = ${id}`; });
     return c.body(null, 204);
   });
 

@@ -1,6 +1,7 @@
 /** Isolated app stack configuration, shared by Playwright and its database setup. */
 export const WEB_PORT = 5174;
 export const AI_STUB_PORT = 4102;
+export const FEEDBACK_SINK_PORT = 4104;
 const API_PORT = 4100;
 const STORAGE_PORT = 4101;
 const SEARCH_PORT = 4103;
@@ -21,6 +22,8 @@ export const E2E_ENV = {
   // Preserve prod so setup can refuse it; specs otherwise sign in through dev login.
   MODE: process.env.MODE ?? "dev",
   AUTH_MODE: "dev",
+  FEEDBACK_PROVIDER: "webhook",
+  FEEDBACK_WEBHOOK_URL: `http://127.0.0.1:${FEEDBACK_SINK_PORT}/deliver`,
   OPENAI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/openai/v1`,
   GEMINI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/gemini/v1beta`,
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/anthropic/v1`,

@@ -29,6 +29,13 @@ Rules for changing this repo. Setup and commands: [README.md](README.md). Design
 - **Assets:** `demo/` and `e2e/fixtures/` are gitignored. Never commit media or fonts.
 - **Docs:** record new design decisions in ARCH.md. Update README.md only for user-visible features or setup changes.
 
+## Deployment setup
+
+- During initial deployment setup, inspect the connector options with `deployment --options` and validate the selected configuration with `deployment` using the operator's chosen config.
+- Confirm and configure a feedback destination with the operator: email/SMTP, Slack bot/channel, or an HTTPS webhook. Never invent credentials, silently disable feedback in production, or treat a successful configuration check as proof of delivery.
+- Keep secrets out of chat and committed files. With operator approval, send a clearly identified setup feedback message and verify its receipt before opening access; local verification must continue to use `config/dev.env`, never `config/prod.env`.
+- The audit log is append-only. Do not add admin endpoints or UI controls that modify or erase audit records.
+
 ## Verification
 
 - Run everything through `./run.sh config/dev.env <command>`. Never point commands at `config/prod.env`, and never add test or mock behavior that bypasses `MODE=prod` guards.

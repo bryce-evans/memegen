@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { limitViolations, sniff, supportedTypesLabel, type Asset, type AssetKind, type Page, type UploadLimits } from "@memegen/shared";
 import { HttpError, page, pageSql, toAsset, uploadLimitsFromEnv, type AssetRow, type Sql } from "@memegen/server-kit";
+import { deletionTransaction } from "@memegen/server-kit/audit";
+import type { User } from "@memegen/shared";
 import { probe, ProbeError } from "./probe.ts";
 import { createProviders, type Providers } from "./providers/registry.ts";
 import { ObjectNotFoundError, type ByteRange, type StoredObject } from "./providers/types.ts";
@@ -99,16 +101,35 @@ export class AssetStore {
   }
 
   /** Foreign keys protect all media, layer, and font references; delete bytes only after metadata commits. */
-  async delete(row: AssetRow): Promise<void> {
+  async delete(row: AssetRow, actor: User | null = null): Promise<void> {
     try {
-      await this.sql`delete from assets where id = ${row.id}`;
+      await deletionTransaction(this.sql, actor, async (tx) => { await tx`delete from assets where id = ${row.id}`; });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code === "23503") {
-        throw new HttpError(409, "asset is in use by a template, meme, or sticker");
+        const references = actor?.isAdmin ? await this.sql<{ kind: string; id: string; label: string }[]>`
+          select 'templates' as kind, t.id, left(t.name, 100) as label from templates t
+          where t.asset_id = ${row.id}
+            or exists (select 1 from template_pack_assets p where p.template_id = t.id and p.asset_id = ${row.id})
+            or exists (select 1 from template_asset_references r where r.template_id = t.id and r.asset_id = ${row.id})
+          union all
+          select 'memes', m.id, left(m.title, 100) from memes m
+          where m.source_asset_id = ${row.id} or m.output_asset_id = ${row.id}
+            or exists (select 1 from meme_asset_references r where r.meme_id = m.id and r.asset_id = ${row.id})
+          union all
+          select 'stickers', s.id, left(s.name, 100) from stickers s where s.asset_id = ${row.id}
+          limit 25` : [];
+        throw new HttpError(409, "asset is in use by a template, meme, or sticker", references.length
+          ? ["Remove these references first: select the resource kind and search its UUID in Administration. Showing up to 25 references.",
+            ...references.map((ref) => `${ref.kind}: ${ref.id} — ${ref.label || "Untitled"}`)]
+          : []);
       }
       throw err;
     }
-    await this.providers.get(row.provider).delete(row.storage_key);
+    try {
+      await this.providers.get(row.provider).delete(row.storage_key);
+    } catch {
+      throw new HttpError(502, "Asset metadata was deleted, but stored bytes could not be removed. Contact the storage operator to remove the orphaned bytes.");
+    }
   }
 }
 

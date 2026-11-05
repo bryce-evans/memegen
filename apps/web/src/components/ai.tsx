@@ -78,7 +78,7 @@ export function AiCreator() {
   // Update's result and a nonblank title; Full editor needs neither (the template opens as is).
   const canUpdate = source !== null && agent !== null && words !== "" && words !== initial.trim();
 
-  // Set once the user searches or picks: the random starting template never replaces their choice.
+  // Focus hands control to the user before typing starts; a late random template must not change their field.
   const touched = useRef(false);
 
   function choose(template: Template) {
@@ -174,7 +174,7 @@ export function AiCreator() {
   const label = (of: Action, idle: string) => (create.busy && action === of ? step : idle);
 
   return (
-    <Panel heading="Quick Creator" className="ai-creator" data-testid="ai-creator">
+    <Panel heading="Quick Creator" className="ai-creator" data-testid="ai-creator" aria-busy={start.loading}>
       <div className="ai-creator-body">
         <div className="ai-creator-preview">
           {source ? (
@@ -193,6 +193,7 @@ export function AiCreator() {
             label="Template"
             placeholder={searchPlaceholder}
             value={search}
+            onFocus={() => { touched.current = true; }}
             onChange={(e) => {
               touched.current = true;
               setSearch(e.target.value);

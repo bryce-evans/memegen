@@ -38,7 +38,8 @@ import { usePlayback } from "./usePlayback.ts";
  * result as a meme, a new template's defaults, or an existing template's defaults.
  */
 export function MediaWorkspace({ session }: { session: MediaSession }) {
-  const { media, source, limits } = session;
+  const { media, limits } = session;
+  const [source, setSource] = useState(session.source);
   const user = useUser();
   const [fonts, setFonts] = useState<Asset[]>(session.fonts);
   const list = useLayerList(session.layers);
@@ -169,7 +170,9 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
               onUpdateLayer={updateLayer}
             />
           )}
-          {source.kind === "template" && <TemplateDetails template={source.template} preview={preview} onPreviewChange={setPreview} />}
+          {(source.kind === "template" || source.kind === "edit-template") && (
+            <TemplateDetails template={source.template} preview={preview} onPreviewChange={setPreview} onChange={(template) => setSource({ ...source, template })} />
+          )}
         </div>
         <div className="editor-side">
           <LayerPanel
@@ -211,7 +214,11 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
               content={layers}
               note={`The ${boxes} (text with its placeholder, and images) are the template's defaults. Memes already made from it keep their own layers.`}
               ready
-              save={(name) => updateTemplate(source.template.id, { name, defaultLayers: layers })}
+              save={async (name) => {
+                const template = await updateTemplate(source.template.id, { name, defaultLayers: layers });
+                setSource({ ...source, template });
+                return template;
+              }}
             />
           ) : (
             <SavePanel render={render} content={{ layers, panels: null }} limits={limits} initialTitle={session.initialTitle} {...memeSaveProps(source, user)} />

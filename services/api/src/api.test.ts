@@ -21,6 +21,7 @@ import {
   type Template,
   type Tag,
   type TemplateCount,
+  type TemplateDependents,
   type TemplateUsage,
   type User,
   type UserProfile,
@@ -962,4 +963,289 @@ test("failed posting stays a draft and retries with exactly one author vote and 
   assert.deepEqual([repeated.body.upvotes, repeated.body.myVote], [1, 1]);
   const uses = await sql<{ count: number }[]>`select count(*)::int as count from template_uses where meme_id = ${meme.id} and kind = 'posted'`;
   assert.equal(uses[0]!.count, 1);
+});
+
+async function makeAdmin(): Promise<User> {
+  const user = await signIn("moderator");
+  await sql`update users set is_admin = true where id = ${user.id}`;
+  return (await call<UserProfile>("GET", "/api/me", user)).body.user;
+}
+
+test("admin role is database-owned, cannot be spoofed, and refreshes on every session and request", async () => {
+  const response = await app.request("/api/session", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-is-admin": "true", "x-user-role": "admin" },
+    body: JSON.stringify({ username: "pretender", isAdmin: true, is_admin: true, role: "admin" }),
+  });
+  assert.equal(response.status, 200);
+  const { user } = await response.json() as { user: User };
+  assert.equal(user.isAdmin, false);
+  const path = `/api/admin/templates/${crypto.randomUUID()}/memes`;
+  const spoofed = await app.request(path, {
+    headers: { "x-user-id": user.id, "x-is-admin": "true", "x-user-role": "admin" },
+  });
+  assert.equal(spoofed.status, 403);
+  assert.equal((await call<UserProfile>("GET", "/api/me", { ...user, isAdmin: true })).body.user.isAdmin, false);
+  await sql`update users set is_admin = true where id = ${user.id}`;
+  assert.equal((await call<UserProfile>("GET", "/api/me", user)).body.user.isAdmin, true);
+  assert.equal((await signIn("PRETENDER")).isAdmin, true);
+  assert.equal((await call("GET", path, user)).status, 404);
+  await sql`update users set is_admin = false where id = ${user.id}`;
+  assert.equal((await call<UserProfile>("GET", "/api/me", user)).body.user.isAdmin, false);
+  assert.equal((await signIn("pretender")).isAdmin, false);
+  assert.equal((await call("GET", path, user)).status, 403);
+});
+
+test("ordinary users cannot moderate other owners or use admin routes even on their own templates", async () => {
+  const owner = await signIn("owner");
+  const stranger = await signIn("stranger");
+  const template = await makeTemplate(owner);
+  const meme = await makeMeme(owner, { templateId: template.id });
+  const comment = (await call<Comment>("POST", `/api/memes/${meme.id}/comments`, owner, { body: "Author comment" })).body;
+  const mutations: [string, string, unknown?][] = [
+    ["PATCH", `/api/templates/${template.id}`, { name: "Taken over", isAdmin: true }],
+    ["DELETE", `/api/templates/${template.id}`],
+    ["PATCH", `/api/memes/${meme.id}`, { title: "Taken over", tags: ["bad"], isAdmin: true }],
+    ["DELETE", `/api/memes/${meme.id}`],
+    ["POST", `/api/memes/${meme.id}/post`],
+    ["DELETE", `/api/comments/${comment.id}`],
+  ];
+  for (const [method, path, body] of mutations) {
+    assert.equal((await call(method, path, stranger, body)).status, 403, `${method} ${path}`);
+  }
+  const privileged: [string, string, unknown?][] = [
+    ["GET", `/api/admin/templates/${template.id}/memes`],
+    ["DELETE", `/api/admin/templates/${template.id}/memes`],
+    ["PUT", `/api/templates/${template.id}/tags`, { tags: ["replace"] }],
+  ];
+  for (const [method, path, body] of privileged) {
+    for (const user of [owner, stranger]) assert.equal((await call(method, path, user, body)).status, 403);
+    assert.equal((await call(method, path, null, body)).status, 401);
+  }
+  assert.equal((await call("GET", "/api/admin/templates/not-an-id/memes", stranger)).status, 403);
+  const unchanged = (await call<Meme>("GET", `/api/memes/${meme.id}`, owner)).body;
+  assert.equal(unchanged.title, meme.title);
+  assert.equal(unchanged.commentCount, 1);
+});
+
+test("admins edit any template and meme without taking authorship or bypassing output uploader checks", async () => {
+  const owner = await signIn("owner");
+  const admin = await makeAdmin();
+  const template = await makeTemplate(owner);
+  const draft = await makeMeme(owner, { templateId: template.id, post: false });
+  const layers = [newTextLayer({ text: "Moderated content" })];
+  const updatedTemplate = await call<Template>("PATCH", `/api/templates/${template.id}`, admin, {
+    name: "Moderated template", defaultLayers: layers, isPublic: false,
+  });
+  assert.equal(updatedTemplate.status, 200);
+  assert.deepEqual(updatedTemplate.body.owner, template.owner);
+  assert.deepEqual(updatedTemplate.body.defaultLayers, layers);
+  assert.equal(updatedTemplate.body.name, "Moderated template");
+  assert.equal(updatedTemplate.body.isPublic, false);
+  assert.equal((await call("PATCH", `/api/memes/${draft.id}`, admin, {
+    layers, outputAssetId: draft.outputAsset.id,
+  })).status, 403);
+  const outputAssetId = await upload(admin);
+  const edited = await call<Meme>("PATCH", `/api/memes/${draft.id}`, admin, {
+    title: "Moderated meme", layers, outputAssetId, tags: ["reviewed"],
+  });
+  assert.equal(edited.status, 200);
+  assert.deepEqual(edited.body.owner, draft.owner);
+  assert.deepEqual(edited.body.layers, layers);
+  assert.deepEqual(edited.body.tags, ["reviewed"]);
+  assert.equal(edited.body.title, "Moderated meme");
+  assert.equal(edited.body.outputAsset.id, outputAssetId);
+  const posted = await call<Meme>("POST", `/api/memes/${draft.id}/post`, admin);
+  assert.equal(posted.status, 200);
+  assert.ok(posted.body.postedAt);
+  assert.deepEqual([posted.body.upvotes, posted.body.myVote, posted.body.owner.id], [1, 0, owner.id]);
+  assert.equal((await call<Meme>("GET", `/api/memes/${draft.id}`, owner)).body.myVote, 1);
+  assert.equal((await call<Meme>("POST", `/api/memes/${draft.id}/post`, admin)).body.upvotes, 1);
+  assert.equal((await call("DELETE", `/api/memes/${draft.id}`, admin)).status, 204);
+  assert.equal((await call("GET", `/api/memes/${draft.id}`, owner)).status, 404);
+  assert.ok(await findAssetRow(sql, outputAssetId));
+  const [builtin] = await sql<{ id: string }[]>`
+    insert into templates (name, asset_id) values ('Builtin', ${await upload(owner)}) returning id`;
+  const changedBuiltin = await call<Template>("PATCH", `/api/templates/${builtin!.id}`, admin, { name: "Reviewed builtin" });
+  assert.equal(changedBuiltin.status, 200);
+  assert.equal(changedBuiltin.body.owner.username, "memegen");
+  const system = (await call<UserProfile>("GET", "/api/users/memegen", admin)).body.user;
+  assert.equal(system.isAdmin, false);
+  assert.equal((await call("DELETE", `/api/templates/${builtin!.id}`, admin)).status, 204);
+});
+
+test("admin direct-tag replacement preserves retained provenance and inherited tags and rolls back atomically", async () => {
+  const owner = await signIn("owner");
+  const contributor = await signIn("contributor");
+  const admin = await makeAdmin();
+  const parent = await makeTemplate(owner, { tags: ["inherited"] });
+  const variation = await makeTemplate(owner, { parentId: parent.id, tags: ["keep-base", "remove-base"] });
+  await call("POST", `/api/templates/${variation.id}/tags`, contributor, { tags: ["keep-community", "remove-community"] });
+  const meme = await makeMeme(owner, { templateId: variation.id });
+  const result = await call<Template>("PUT", `/api/templates/${variation.id}/tags`, admin, {
+    tags: ["keep-base", "keep-community", "admin-added"],
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.tags, ["admin-added", "keep-base", "keep-community"]);
+  assert.deepEqual(result.body.baseTags, ["keep-base"]);
+  assert.deepEqual(result.body.owner, variation.owner);
+  const provenance = await sql<{ slug: string; base: boolean; added_by: string }[]>`
+    select g.slug, tt.base, tt.added_by from template_tags tt join tags g on g.id = tt.tag_id
+    where tt.template_id = ${variation.id} order by g.slug`;
+  assert.deepEqual([...provenance], [
+    { slug: "admin-added", base: false, added_by: admin.id },
+    { slug: "keep-base", base: true, added_by: owner.id },
+    { slug: "keep-community", base: false, added_by: contributor.id },
+  ]);
+  assert.equal((await sql<{ created_by: string }[]>`select created_by from tags where slug = 'admin-added'`)[0]!.created_by, admin.id);
+  assert.deepEqual((await call<Template>("GET", `/api/templates/${parent.id}`, admin)).body.tags, ["inherited"]);
+  await rejectingWrites("template_tags", async () => {
+    assert.equal((await call("PUT", `/api/templates/${variation.id}/tags`, admin, { tags: ["rollback-admin-tag"] })).status, 400);
+    assert.deepEqual((await call<Template>("GET", `/api/templates/${variation.id}`, admin)).body.tags, result.body.tags);
+    assert.equal((await sql`select id from tags where slug = 'rollback-admin-tag'`).length, 0);
+  });
+  const cleared = await call<Template>("PUT", `/api/templates/${variation.id}/tags`, admin, { tags: [] });
+  assert.deepEqual(cleared.body.tags, []);
+  assert.deepEqual(cleared.body.baseTags, []);
+  const inherited = (await call<Page<Meme>>("GET", "/api/gallery?tag=inherited&period=all", null)).body.items;
+  assert.deepEqual(inherited.map((item) => item.id), [meme.id]);
+});
+
+test("admin comment deletion retains parent tombstones until the last reply is removed", async () => {
+  const owner = await signIn("owner");
+  const author = await signIn("author");
+  const admin = await makeAdmin();
+  const meme = await makeMeme(owner);
+  const parent = (await call<Comment>("POST", `/api/memes/${meme.id}/comments`, author, { body: "Remove me" })).body;
+  const reply = (await call<Comment>("POST", `/api/memes/${meme.id}/comments`, owner, { body: "Keep thread", parentId: parent.id })).body;
+  assert.equal((await call("DELETE", `/api/comments/${parent.id}`, admin)).status, 204);
+  const thread = (await call<Page<Comment>>("GET", `/api/memes/${meme.id}/comments`, null)).body.items;
+  assert.equal(thread[0]!.id, parent.id);
+  assert.equal(thread[0]!.deleted, true);
+  assert.equal(thread[0]!.body, "");
+  assert.deepEqual(thread[0]!.replies.map((item) => [item.id, item.body]), [[reply.id, "Keep thread"]]);
+  assert.equal((await call<Meme>("GET", `/api/memes/${meme.id}`, null)).body.commentCount, 1);
+  assert.equal((await call("DELETE", `/api/comments/${reply.id}`, admin)).status, 204);
+  assert.deepEqual((await call<Page<Comment>>("GET", `/api/memes/${meme.id}/comments`, null)).body.items, []);
+  assert.equal((await call<Meme>("GET", `/api/memes/${meme.id}`, null)).body.commentCount, 0);
+});
+
+test("template cleanup reviews every dependent deterministically, deletes explicitly, and preserves unrelated content and assets", async () => {
+  const owner = await signIn("owner");
+  const other = await signIn("other");
+  const admin = await makeAdmin();
+  const base = await makeTemplate(owner);
+  const variation = await makeTemplate(other, { parentId: base.id, isPublic: false });
+  const unrelated = await makeMeme(other, { title: "Unrelated" });
+  const direct = await makeMeme(owner, { templateId: base.id });
+  const draft = await makeMeme(other, { templateId: variation.id, post: false });
+  const unlisted = await makeMeme(other, { templateId: variation.id, visibility: "unlisted" });
+  const ids = [direct.id, draft.id, unlisted.id].sort();
+  await sql`update memes set created_at = '2025-01-01' where id in ${sql(ids)}`;
+  const path = `/api/admin/templates/${base.id}/memes`;
+  assert.equal((await call("DELETE", `/api/templates/${base.id}`, admin)).status, 409);
+  assert.equal((await call("DELETE", `/api/templates/${variation.id}`, admin)).status, 409);
+  const first = (await call<TemplateDependents>("GET", `${path}?limit=2`, admin)).body;
+  assert.equal(first.total, 3);
+  assert.deepEqual(first.items.map((item) => item.id), ids.slice(0, 2));
+  assert.equal(first.nextOffset, 2);
+  const last = (await call<TemplateDependents>("GET", `${path}?limit=2&offset=2`, admin)).body;
+  assert.equal(last.total, 3);
+  assert.deepEqual(last.items.map((item) => item.id), ids.slice(2));
+  assert.equal(last.nextOffset, null);
+  const past = (await call<TemplateDependents>("GET", `${path}?offset=10`, admin)).body;
+  assert.deepEqual(past, { items: [], total: 3, nextOffset: null });
+  const variationOnly = (await call<TemplateDependents>("GET", `/api/admin/templates/${variation.id}/memes`, admin)).body;
+  assert.deepEqual(variationOnly.items.map((item) => item.id), [draft.id, unlisted.id].sort());
+  assert.equal(variationOnly.total, 2);
+  assert.equal((await call("DELETE", `/api/memes/${direct.id}`, admin)).status, 204);
+  assert.equal((await call("DELETE", `/api/templates/${base.id}`, admin)).status, 409);
+  assert.equal((await call("DELETE", path, admin)).status, 204);
+  assert.deepEqual((await call<TemplateDependents>("GET", path, admin)).body, { items: [], total: 0, nextOffset: null });
+  assert.equal((await call("GET", `/api/templates/${base.id}`, admin)).status, 200);
+  assert.equal((await call("GET", `/api/templates/${variation.id}`, admin)).status, 200);
+  assert.equal((await call("DELETE", `/api/templates/${base.id}`, admin)).status, 204);
+  assert.equal((await call("GET", `/api/templates/${variation.id}`, admin)).status, 404);
+  assert.deepEqual((await call<Meme>("GET", `/api/memes/${unrelated.id}`, other)).body, unrelated);
+  assert.equal((await call("GET", `/api/templates/${unrelated.templateId}`, other)).status, 200);
+  for (const asset of [base.asset, variation.asset, direct.outputAsset, draft.outputAsset, unlisted.outputAsset, unrelated.outputAsset]) {
+    assert.ok(await findAssetRow(sql, asset.id), `asset metadata remains: ${asset.id}`);
+  }
+  assert.equal((await sql`select meme_id from meme_asset_references where meme_id in ${sql(ids)}`).length, 0);
+  assert.equal((await sql`select template_id from template_asset_references where template_id in ${sql([base.id, variation.id])}`).length, 0);
+  assert.equal((await call("GET", path, admin)).status, 404);
+});
+
+/** Wait for observed PostgreSQL lock contention, rather than assuming a competing request has started. */
+async function waitForBlockedBy(pid: number): Promise<void> {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const [row] = await sql<{ blocked: boolean }[]>`
+      select exists(select 1 from pg_stat_activity where ${pid} = any(pg_blocking_pids(pid))) as blocked`;
+    if (row!.blocked) return;
+  }
+  assert.fail("competing moderation operation did not reach the database lock");
+}
+
+test("bulk cleanup waits for concurrent variation creation and includes its committed memes", async () => {
+  const owner = await signIn("owner");
+  const admin = await makeAdmin();
+  const base = await makeTemplate(owner);
+  const output = await upload(owner);
+  const ready = Promise.withResolvers<number>();
+  const release = Promise.withResolvers<void>();
+  const writing = sql.begin(async (tx) => {
+    const [connection] = await tx<{ pid: number }[]>`select pg_backend_pid() as pid`;
+    const [variation] = await tx<{ id: string }[]>`
+      insert into templates (name, owner_id, parent_id, asset_id, is_public)
+      values ('Concurrent variation', ${owner.id}, ${base.id}, ${base.asset.id}, false) returning id`;
+    await tx`insert into memes (owner_id, template_id, source_asset_id, output_asset_id, title)
+      values (${owner.id}, ${variation!.id}, ${base.asset.id}, ${output}, 'Concurrent draft')`;
+    ready.resolve(connection!.pid);
+    await release.promise;
+    return variation!.id;
+  });
+  void writing.catch(ready.reject);
+  const pid = await ready.promise;
+  const deleting = call("DELETE", `/api/admin/templates/${base.id}/memes`, admin);
+  try {
+    await waitForBlockedBy(pid);
+  } finally {
+    release.resolve();
+  }
+  const variationId = await writing;
+  assert.equal((await deleting).status, 204);
+  assert.equal((await sql`select id from memes where template_id = ${variationId}`).length, 0);
+  assert.equal((await call("GET", `/api/templates/${variationId}`, admin)).status, 200);
+  assert.ok(await findAssetRow(sql, output));
+});
+
+test("a concurrent dependent save makes template deletion return 409 and retains its references", async () => {
+  const owner = await signIn("owner");
+  const admin = await makeAdmin();
+  const template = await makeTemplate(owner);
+  const output = await upload(owner);
+  const ready = Promise.withResolvers<number>();
+  const release = Promise.withResolvers<void>();
+  const writing = sql.begin(async (tx) => {
+    const [connection] = await tx<{ pid: number }[]>`select pg_backend_pid() as pid`;
+    const [meme] = await tx<{ id: string }[]>`
+      insert into memes (owner_id, template_id, source_asset_id, output_asset_id, title)
+      values (${owner.id}, ${template.id}, ${template.asset.id}, ${output}, 'Concurrent draft') returning id`;
+    ready.resolve(connection!.pid);
+    await release.promise;
+    return meme!.id;
+  });
+  void writing.catch(ready.reject);
+  const pid = await ready.promise;
+  const deleting = call("DELETE", `/api/templates/${template.id}`, admin);
+  try {
+    await waitForBlockedBy(pid);
+  } finally {
+    release.resolve();
+  }
+  const memeId = await writing;
+  assert.equal((await deleting).status, 409);
+  assert.equal((await call<Meme>("GET", `/api/memes/${memeId}`, owner)).body.templateId, template.id);
+  assert.equal((await call("GET", `/api/templates/${template.id}`, owner)).status, 200);
+  assert.ok(await findAssetRow(sql, output));
 });

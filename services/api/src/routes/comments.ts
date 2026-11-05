@@ -41,7 +41,7 @@ export function register(app: ApiApp, sql: Sql): void {
   });
 
   /**
-   * The comment's author or the meme's owner. A comment with replies becomes a placeholder (soft delete); otherwise
+   * The comment's author, the meme's owner, or an admin. A comment with replies becomes a placeholder (soft delete); otherwise
    * it is removed, along with its soft-deleted parent once that has no replies left.
    */
   app.delete("/api/comments/:id", async (c) => {
@@ -53,8 +53,8 @@ export function register(app: ApiApp, sql: Sql): void {
         from comments c join memes m on m.id = c.meme_id
         where c.id = ${id} for update of c`;
       if (!row) throw new HttpError(404, "comment not found");
-      if (row.author_id !== user.id && row.meme_owner_id !== user.id) {
-        throw new HttpError(403, "only the author or the meme's owner can delete this comment");
+      if (row.author_id !== user.id && row.meme_owner_id !== user.id && !user.isAdmin) {
+        throw new HttpError(403, "only the author, the meme's owner, or an admin can delete this comment");
       }
       // Lock the parent so concurrent reply deletions agree on whether it still has replies.
       if (row.parent_id) await tx`select 1 from comments where id = ${row.parent_id} for update`;

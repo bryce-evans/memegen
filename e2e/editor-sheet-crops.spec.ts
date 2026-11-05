@@ -35,6 +35,7 @@ async function drawFirstCrop(page: Page): Promise<void> {
   await expect(canvas).toHaveAttribute("data-ready", "true");
   await expect(canvas).toHaveAttribute("width", String(source.width));
   await expect(canvas).toHaveAttribute("height", String(source.height));
+  await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("sheet crop canvas not visible");
   const point = (x: number, y: number) => ({

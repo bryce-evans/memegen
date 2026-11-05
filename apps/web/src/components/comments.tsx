@@ -83,7 +83,7 @@ function CommentItem(props: {
   const [replying, setReplying] = useState(false);
   const { busy, error, run } = useAction();
   const isReply = comment.parentId !== null;
-  const canDelete = user.id === comment.author.id || user.id === memeOwnerId;
+  const canDelete = user.isAdmin || user.id === comment.author.id || user.id === memeOwnerId;
 
   function remove() {
     if (window.confirm("Delete this comment?")) void run(() => onDelete(comment));

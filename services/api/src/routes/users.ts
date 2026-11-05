@@ -1,5 +1,5 @@
-import { leaderboardQuerySchema, sessionSchema, userPageQuerySchema, usersQuerySchema, type User, type UserProfile } from "@memegen/shared";
-import { page, pageSql, parse, parseJson, requireInternal, toUser, type Sql, type UserRow } from "@memegen/server-kit";
+import { leaderboardQuerySchema, userPageQuerySchema, usersQuerySchema, type User, type UserProfile } from "@memegen/shared";
+import { page, pageSql, parse, requireInternal, type Sql } from "@memegen/server-kit";
 import { findUserByName, requireUser, type ApiApp } from "../access.ts";
 import {
   memeSelect,
@@ -22,24 +22,8 @@ async function profile(sql: Sql, user: User): Promise<UserProfile> {
   return { user, stats: publicStats(stats), templateCount: count!.n };
 }
 
-/** Session, profiles, the signed-in user's lists, stats, and the leaderboard. */
+/** Profiles, the signed-in user's lists, stats, and the leaderboard. */
 export function register(app: ApiApp, sql: Sql): void {
-  /** DEV login: find-or-create by username. Replace with a real AuthProvider flow. */
-  app.post("/api/session", async (c) => {
-    const { username } = await parseJson(c, sessionSchema);
-    const [row] = await sql<UserRow[]>`
-      with ins as (
-        insert into users (username) values (${username})
-        on conflict (lower(username)) do nothing
-        returning id, username, created_at
-      )
-      select * from ins
-      union all
-      select id, username, created_at from users where lower(username) = lower(${username})
-      limit 1`;
-    return c.json({ user: toUser(row!) });
-  });
-
   app.get("/api/me", async (c) => c.json(await profile(sql, requireUser(c))));
 
   /** User search (the search page's Users tab). */

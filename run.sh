@@ -18,6 +18,7 @@
 #   typecheck  check workspace dependency boundaries and TypeScript
 #   e2e      Playwright browser tests (dev only)
 #   config   print configured values (secrets masked)
+#   deployment [--options]   validate deployment config, or show connector choices and setup links
 #
 # Examples:
 #   ./run.sh config/dev.env setup && ./run.sh config/dev.env seed && ./run.sh config/dev.env dev
@@ -65,7 +66,8 @@ dev_only() {
 
 check_prod() {
   [[ "$MODE" == prod ]] || return 0
-  [[ -n "${INTERNAL_TOKEN:-}" && "$INTERNAL_TOKEN" != dev-internal-token ]] ||
+  local token="${INTERNAL_TOKEN:-}"
+  [[ ${#token} -ge 32 && "$token" != dev-internal-token ]] ||
     die "prod requires a strong INTERNAL_TOKEN (e.g. openssl rand -hex 32)"
   [[ "${SEED_SAMPLE:-false}" != true ]] || die "SEED_SAMPLE=true is not allowed in prod"
   [[ -z "${SEED_STICKERS_FROM:-}" ]] || die "SEED_STICKERS_FROM (dev test stickers) is not allowed in prod"
@@ -136,11 +138,13 @@ seed() {
   [[ "$seeded" == true ]] || echo "nothing to seed (set SEED_TEMPLATES_FROM, SEED_TEMPLATE_MANIFEST, SEED_SAMPLE=true, or SEED_STARTER=true in $CONFIG)"
 }
 
-check_prod
+# The connector guide/checklist must work on an incomplete template.
+[[ "$COMMAND" == deployment ]] || check_prod
 
 case "$COMMAND" in
   setup)
     check_tools
+    node scripts/deployment.ts
     bun install
     ensure_db "$DATABASE_URL"
     if [[ "$MODE" == dev ]]; then
@@ -207,6 +211,7 @@ case "$COMMAND" in
     bun run build
     ;;
   start)
+    node scripts/deployment.ts
     bun run build
     exec node scripts/run.ts --prod
     ;;
@@ -220,6 +225,10 @@ case "$COMMAND" in
   e2e)
     dev_only
     exec bun run test:e2e "$@"
+    ;;
+  deployment)
+    need node "https://nodejs.org, >= 24.2"
+    exec node scripts/deployment.ts "$@"
     ;;
   config)
     echo "# configured values from $CONFIG"

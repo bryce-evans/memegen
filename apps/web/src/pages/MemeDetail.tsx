@@ -7,6 +7,7 @@ import { useUser } from "../auth.tsx";
 import { Comments } from "../components/comments.tsx";
 import { ErrorView, MediaView } from "../components/common.tsx";
 import { FavoriteButton, MemeAge, MemeBadges, VoteButtons } from "../components/memes.tsx";
+import { TagField } from "../components/tagInputs.tsx";
 import { assetExtension, fileSlug } from "../media.ts";
 import { useAction } from "../useAction.ts";
 import { useAsync } from "../useAsync.ts";
@@ -18,6 +19,8 @@ export function MemeDetail() {
   const { hash } = useLocation();
   const { data: meme, error, setData: setMeme } = useAsync(id, () => getMeme(id));
   const { busy, error: actionError, run } = useAction();
+  const [adminTags, setAdminTags] = useState<string[]>([]);
+  useEffect(() => setAdminTags(meme?.tags ?? []), [meme?.id, meme?.tags]);
 
   // Router navigations don't scroll to fragments; jump to `#comments` once the page has rendered.
   const loaded = meme !== null;
@@ -25,7 +28,7 @@ export function MemeDetail() {
     if (loaded && hash) document.getElementById(hash.slice(1))?.scrollIntoView();
   }, [loaded, hash]);
 
-  /** Owner actions that return the meme's new version. */
+  /** Owner and admin actions that return the meme's new version. */
   function act(fn: () => Promise<Meme>) {
     void run(async () => setMeme(await fn()));
   }
@@ -95,6 +98,35 @@ export function MemeDetail() {
       <div className="detail-comments" data-testid="meme-comments">
         <Comments meme={meme} onCountChange={(delta) => setMeme((m) => m && { ...m, commentCount: m.commentCount + delta })} />
       </div>
+      {user.isAdmin && (
+        <Panel variant="inset" heading="Only visible to admins" className="detail-owner" data-testid="admin-actions">
+          <Inline>
+            {meme.postedAt === null && (
+              <Button variant="primary" disabled={busy} data-testid="admin-post-meme" onClick={() => act(() => postMeme(meme.id))}>
+                Post
+              </Button>
+            )}
+            <Button
+              disabled={busy}
+              data-testid="admin-visibility-toggle"
+              onClick={() => act(() => updateMeme(meme.id, { visibility: meme.visibility === "public" ? "unlisted" : "public" }))}
+            >
+              Make {meme.visibility === "public" ? "unlisted" : "public"}
+            </Button>
+            <Button disabled={busy} data-testid="admin-edit-meme" onClick={() => navigate(`/create?meme=${meme.id}`)}>
+              Edit
+            </Button>
+            <Button variant="danger" disabled={busy} data-testid="admin-delete-meme" onClick={() => remove(meme)}>
+              Delete
+            </Button>
+          </Inline>
+          <TagField value={adminTags} onChange={setAdminTags} testId="admin-meme-tags" disabled={busy} />
+          <Button disabled={busy} data-testid="admin-save-meme-tags" onClick={() => act(() => updateMeme(meme.id, { tags: adminTags }))}>
+            Save tags
+          </Button>
+          {actionError !== null && <ErrorView error={actionError} />}
+        </Panel>
+      )}
         {isOwner && (
           <Panel variant="inset" heading="Only visible to you" className="detail-owner" data-testid="owner-actions">
             <Inline>

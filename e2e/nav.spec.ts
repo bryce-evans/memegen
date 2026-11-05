@@ -194,7 +194,7 @@ test("a stored user the server no longer knows (e.g. after a DB reset) is signed
   const ghost = { id: crypto.randomUUID(), username: "ghost", createdAt: new Date().toISOString() };
   await page.context().addCookies([{ name: "memegen.user", value: encodeURIComponent(JSON.stringify(ghost)), url: baseURL! }]);
   await page.goto("/recent");
-  await expect(page.getByTestId("sign-in-page")).toBeVisible();
+  await expect(page.getByTestId("login-username")).toBeVisible();
   expect(await userCookie(page)).toBeUndefined();
 
   // Signing in again works and lands on the same feed.

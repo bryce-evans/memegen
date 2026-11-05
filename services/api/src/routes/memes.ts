@@ -4,7 +4,7 @@ import {
   loadMeme,
   loadTemplate,
   loadTemplatePack,
-  ownMeme,
+  ownerOrAdminMeme,
   requireLayerAssets,
   requireMemePanels,
   requireOwnOutput,
@@ -57,7 +57,7 @@ export function register(app: ApiApp, sql: Sql): void {
   });
 
   app.patch("/api/memes/:id", async (c) => {
-    const { user, id, meme } = await ownMeme(sql, c);
+    const { user, id, meme } = await ownerOrAdminMeme(sql, c);
     const body = await parseJson(c, updateMemeSchema);
     const changes: Record<string, unknown> = {};
     if (body.title !== undefined) changes.title = body.title;
@@ -80,17 +80,17 @@ export function register(app: ApiApp, sql: Sql): void {
   });
 
   app.post("/api/memes/:id/post", async (c) => {
-    const { user, id } = await ownMeme(sql, c);
+    const { user, id, meme } = await ownerOrAdminMeme(sql, c);
     await sql.begin(async (tx) => {
       const [posted] = await tx`
         update memes set posted_at = now(), updated_at = now() where id = ${id} and posted_at is null returning id`;
-      if (posted) await authorUpvote(tx, id, user.id);
+      if (posted) await authorUpvote(tx, id, meme.owner_id);
     });
     return c.json(toMeme(await loadMeme(sql, id, user)));
   });
 
   app.delete("/api/memes/:id", async (c) => {
-    const { id } = await ownMeme(sql, c);
+    const { id } = await ownerOrAdminMeme(sql, c);
     await sql`delete from memes where id = ${id}`;
     return c.body(null, 204);
   });

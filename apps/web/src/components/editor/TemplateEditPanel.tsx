@@ -23,11 +23,12 @@ export interface TemplateEditPanelProps {
 }
 
 /**
- * Side panel for editing an existing template (`?editTemplate=`): its name and defaults. Only the author can save;
+ * Side panel for editing an existing template (`?editTemplate=`): its name and defaults. Owners and admins can save;
  * memes already made from it keep their own content.
  */
 export function TemplateEditPanel({ template, initialContent, content, note, ready, save: write }: TemplateEditPanelProps) {
-  const canEdit = template.owner.id === useUser().id;
+  const user = useUser();
+  const canEdit = template.owner.id === user.id || user.isAdmin;
   const [name, setName] = useState(template.name);
   const [saved, setSaved] = useState(() => snapshot(template.name, initialContent));
   const { busy, error, run } = useAction();
@@ -42,7 +43,7 @@ export function TemplateEditPanel({ template, initialContent, content, note, rea
   if (!canEdit) {
     return (
       <Panel heading="Edit template" className="save-panel">
-        <Alert tone="info">Only the author of this template can edit it.</Alert>
+        <Alert tone="info">Only the author or an admin can edit this template.</Alert>
       </Panel>
     );
   }

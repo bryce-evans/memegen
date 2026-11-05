@@ -1,27 +1,32 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PERIODS, type Period, type Template } from "@memegen/shared";
-import { Checkbox, Inline, Panel, SelectField, Text } from "@memegen/ui";
+import { Checkbox, Inline, LinkButton, Panel, SelectField, Text } from "@memegen/ui";
 import { getTemplateUsage } from "../api.ts";
+import { useUser } from "../auth.tsx";
 import { PERIOD_LABELS, plural } from "../format.ts";
 import { useAsync } from "../useAsync.ts";
 import { ErrorView, MediaView } from "./common.tsx";
 import { TagChips } from "./tags.tsx";
 import { TemplateMeta } from "./templates.tsx";
+import { TemplateAdminActions } from "./templateAdmin.tsx";
 
 /**
- * Under the editor stage when a template is open: its tags, usage, and variations, read-only (making a post never
- * edits its template). The Preview box beside the title shows the stage as the finished meme.
+ * Under the editor stage when a template is open: its tags, usage, variations, and permission-scoped controls.
+ * Making a post never edits its template. The Preview box beside the title shows the stage as the finished meme.
  */
 export function TemplateDetails({
   template,
   preview,
   onPreviewChange,
+  onChange,
 }: {
   template: Template;
   preview: boolean;
   onPreviewChange: (preview: boolean) => void;
+  onChange: (template: Template) => void;
 }) {
+  const user = useUser();
   return (
     <Panel
       heading={template.name}
@@ -56,6 +61,14 @@ export function TemplateDetails({
               </Link>
             ))}
           </div>
+        </Panel>
+      )}
+      {user.isAdmin && <TemplateAdminActions template={template} onChange={onChange} />}
+      {template.owner.id === user.id && (
+        <Panel variant="inset" heading="Only visible to you" data-testid="template-owner-actions">
+          <LinkButton as={Link} to={`/create?editTemplate=${template.id}`} data-testid="template-owner-edit">
+            Edit template
+          </LinkButton>
         </Panel>
       )}
     </Panel>

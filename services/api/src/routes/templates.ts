@@ -6,23 +6,36 @@ import {
   templatesQuerySchema,
   templateUsageQuerySchema,
   updateTemplateSchema,
+  templateDependentsQuerySchema,
+  type TemplateDependents,
 } from "@memegen/shared";
-import { HttpError, idParam, parse, parseJson, type Sql } from "@memegen/server-kit";
+import { HttpError, idParam, page, parse, parseJson, type Sql, type TransactionSql } from "@memegen/server-kit";
 import {
   loadTemplate,
   loadTemplatePack,
-  ownTemplate,
+  ownerOrAdminTemplate,
+  requireAdmin,
   requireLayerAssets,
   requireMediaAsset,
   requirePackImages,
   requireUser,
   type ApiApp,
 } from "../access.ts";
-import { storedPanels } from "../rows.ts";
-import { addTemplateTags } from "../tags.ts";
+import { memeSelect, storedPanels, toMeme, type MemeRow } from "../rows.ts";
+import { addTemplateTags, replaceTemplateTags } from "../tags.ts";
 import { browseTemplates, templateCount, templateDuplicates } from "../template-queries.ts";
 import { hotTemplates, templateUsage } from "../template-usage.ts";
 import type { TemplateSearch } from "../search.ts";
+
+/**
+ * Lock the root first, then read/lock its variations in a fresh statement snapshot. Foreign-key
+ * key-share locks now block new variations and memes until the caller's transaction completes.
+ */
+async function lockTemplateScope(tx: TransactionSql, id: string): Promise<void> {
+  const [template] = await tx`select id from templates where id = ${id} for update`;
+  if (!template) throw new HttpError(404, "template not found");
+  await tx`select id from templates where parent_id = ${id} order by id for update`;
+}
 
 
 /** Template browsing and search, duplicate checks, usage stats, authoring, and community tags. */
@@ -100,7 +113,7 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
   });
 
   app.patch("/api/templates/:id", async (c) => {
-    const { user, id } = await ownTemplate(sql, c);
+    const { user, id } = await ownerOrAdminTemplate(sql, c);
     const body = await parseJson(c, updateTemplateSchema);
     const pack = await loadTemplatePack(sql, id);
     if (pack && body.defaultLayers?.length) throw new HttpError(400, "multi-panel templates have no text layers");
@@ -137,22 +150,75 @@ export function register(app: ApiApp, sql: Sql, search: TemplateSearch | null): 
   });
 
   app.delete("/api/templates/:id", async (c) => {
-    const { id } = await ownTemplate(sql, c);
-    // Memes keep their template (`on delete restrict`); deleting a parent would also take its variations.
-    const [used] = await sql`select 1 from memes m join templates t on t.id = m.template_id
-      where t.id = ${id} or t.parent_id = ${id} limit 1`;
-    if (used) throw new HttpError(409, "template is used by memes and can't be deleted");
-    await sql`delete from templates where id = ${id}`;
+    const { id } = await ownerOrAdminTemplate(sql, c);
+    try {
+      await sql.begin(async (tx) => {
+        await lockTemplateScope(tx, id);
+        // Memes keep their template; removing a root also removes its variations, never their memes.
+        const [used] = await tx`select 1 from memes m join templates t on t.id = m.template_id
+          where t.id = ${id} or t.parent_id = ${id} limit 1`;
+        if (used) throw new HttpError(409, "template is used by memes and can't be deleted");
+        await tx`delete from templates where id = ${id}`;
+      });
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "23503") {
+        throw new HttpError(409, "template is used by memes and can't be deleted");
+      }
+      throw error;
+    }
     return c.body(null, 204);
   });
 
-  /** Any signed-in user who can see the template adds (non-base) tags; nobody removes base tags. */
+  /** Any signed-in user adds non-base tags; only admins may remove direct tags. */
   app.post("/api/templates/:id/tags", async (c) => {
     const user = requireUser(c);
     const { id } = parse(idParam, c.req.param());
     const { tags } = await parseJson(c, setTagsSchema);
-    await loadTemplate(sql, id, user);
-    await sql.begin((tx) => addTemplateTags(tx, id, tags, user.id, false));
+    await sql.begin(async (tx) => {
+      // Serialize community additions with admin replacement without changing their provenance.
+      const [template] = await tx`select 1 from templates where id = ${id} for no key update`;
+      if (!template) throw new HttpError(404, "template not found");
+      await addTemplateTags(tx, id, tags, user.id, false);
+    });
     return c.json(await loadTemplate(sql, id, user));
+  });
+
+  app.put("/api/templates/:id/tags", async (c) => {
+    const user = requireAdmin(c);
+    const { id } = parse(idParam, c.req.param());
+    const { tags } = await parseJson(c, setTagsSchema);
+    await sql.begin((tx) => replaceTemplateTags(tx, id, tags, user.id));
+    return c.json(await loadTemplate(sql, id, user));
+  });
+
+  app.get("/api/admin/templates/:id/memes", async (c) => {
+    const user = requireAdmin(c);
+    const { id } = parse(idParam, c.req.param());
+    const { offset, limit } = parse(templateDependentsQuerySchema, c.req.query());
+    const dependents = await sql.begin("isolation level repeatable read read only", async (tx): Promise<TemplateDependents> => {
+      const [template] = await tx`select 1 from templates where id = ${id}`;
+      if (!template) throw new HttpError(404, "template not found");
+      const [count] = await tx<{ total: number }[]>`
+        select count(*)::int as total from memes m join templates t on t.id = m.template_id
+        where t.id = ${id} or t.parent_id = ${id}`;
+      const rows = await tx<MemeRow[]>`${memeSelect(tx, user.id)}
+        join templates t on t.id = m.template_id
+        where t.id = ${id} or t.parent_id = ${id}
+        order by m.created_at desc, m.id
+        offset ${offset} limit ${limit + 1}`;
+      return { ...page(rows.map(toMeme), offset, limit), total: count!.total };
+    });
+    return c.json(dependents);
+  });
+
+  app.delete("/api/admin/templates/:id/memes", async (c) => {
+    requireAdmin(c);
+    const { id } = parse(idParam, c.req.param());
+    await sql.begin(async (tx) => {
+      await lockTemplateScope(tx, id);
+      await tx`delete from memes m using templates t
+        where m.template_id = t.id and (t.id = ${id} or t.parent_id = ${id})`;
+    });
+    return c.body(null, 204);
   });
 }

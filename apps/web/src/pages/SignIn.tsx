@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button, Panel, SelectField, SkinSwitcher, Stack, TextField, Wordmark } from "@memegen/ui";
+import { Button, Panel, SelectField, SkinSwitcher, Spinner, Stack, Text, TextField, Wordmark } from "@memegen/ui";
 import { useAuth } from "../auth.tsx";
 import { ErrorView } from "../components/common.tsx";
 import { Intro } from "../components/Intro.tsx";
@@ -8,16 +8,28 @@ import { INTROS, type IntroKind } from "../intros.ts";
 import { DEV_MODE } from "../mode.ts";
 import { useAction } from "../useAction.ts";
 
-/** Shown at every URL while signed out; the app replaces it in place once a user is stored. */
+/** Shown at every URL while signed out; authentication never changes the requested local route. */
 export function SignIn({ brand }: { brand: string }) {
   const { intro, setIntro } = useIntroChoice();
+  const { config, loading, error, retry } = useAuth();
   return (
     <main className="sign-in-page" data-testid="sign-in-page">
       <Intro kind={intro}>
         <Panel className="sign-in" data-testid="sign-in-card">
           <Stack gap="lg" align="center">
             <Wordmark text={brand} />
-            {DEV_MODE ? <LoginForm /> : <SsoPlaceholder />}
+            {loading ? (
+              <Stack align="center" data-testid="auth-loading">
+                <Spinner />
+                <Text>Checking sign-in…</Text>
+              </Stack>
+            ) : error !== null ? (
+              <Stack gap="sm">
+                <ErrorView error={error} testId="auth-error" />
+                <Text>Unable to check authentication. Retry, or contact your administrator if this continues.</Text>
+                <Button onClick={retry} data-testid="auth-retry">Retry sign-in setup</Button>
+              </Stack>
+            ) : config?.mode === "dev" ? <LoginForm /> : config?.mode === "oidc" ? <SsoSignIn /> : null}
           </Stack>
         </Panel>
       </Intro>
@@ -80,15 +92,22 @@ function LoginForm() {
   );
 }
 
-/** Prod has no identity provider yet. */
-function SsoPlaceholder() {
+function SsoSignIn() {
+  function signIn() {
+    const { pathname, search, hash, origin } = window.location;
+    let returnTo = `${pathname}${search}${hash}`;
+    try {
+      const decoded = decodeURIComponent(returnTo);
+      if (!returnTo.startsWith("/") || decoded.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(decoded)
+        || new URL(returnTo, origin).origin !== origin) returnTo = "/";
+    } catch {
+      returnTo = "/";
+    }
+    window.location.assign(`/api/auth/login?${new URLSearchParams({ returnTo })}`);
+  }
+
   return (
-    <Button
-      variant="special"
-      size="md"
-      onClick={() => alert("placeholder signin only, use dev mode")}
-      data-testid="sso-sign-in"
-    >
+    <Button variant="special" size="md" onClick={signIn} data-testid="sso-sign-in">
       Sign in with SSO
     </Button>
   );

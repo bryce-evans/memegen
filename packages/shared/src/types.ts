@@ -91,6 +91,17 @@ export interface User {
   id: string;
   username: string;
   createdAt: string;
+  /** Server-resolved moderation role; never accepted from a session request. */
+  isAdmin: boolean;
+}
+
+export interface AuthConfig {
+  mode: "dev" | "oidc";
+  loginUrl: string | null;
+}
+
+export interface AuthSession {
+  user: User | null;
 }
 
 export interface UserStats {
@@ -169,7 +180,7 @@ export interface Template {
   useCount: number;
   /** Tag slugs placed directly on this template: its base tags plus tags users added. */
   tags: string[];
-  /** Tags set by the template's author when it was added; always kept, others can only add more. */
+  /** Author/seed tags; ordinary users can only add tags, while admins may remove any direct tag. */
   baseTags: string[];
 }
 
@@ -281,6 +292,11 @@ export type GallerySort = (typeof GALLERY_SORTS)[number];
 export interface Page<T> {
   items: T[];
   nextOffset: number | null;
+}
+
+/** Admin review of every meme using a template or its immediate variations, including drafts and unlisted posts. */
+export interface TemplateDependents extends Page<Meme> {
+  total: number;
 }
 
 // Request bodies as callers write them (defaults still optional), derived from the schemas the API validates with.

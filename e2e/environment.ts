@@ -20,6 +20,7 @@ export const E2E_ENV = {
   INTERNAL_TOKEN: "e2e-internal-token",
   // Preserve prod so setup can refuse it; specs otherwise sign in through dev login.
   MODE: process.env.MODE ?? "dev",
+  AUTH_MODE: "dev",
   OPENAI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/openai/v1`,
   GEMINI_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/gemini/v1beta`,
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${AI_STUB_PORT}/anthropic/v1`,

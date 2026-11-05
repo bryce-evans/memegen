@@ -4,6 +4,7 @@ import type {
   AiEditFields,
   AiImageFields,
   Asset,
+  AuthConfig,
   Comment,
   CreateMemeInput,
   CreateStickerInput,
@@ -20,6 +21,7 @@ import type {
   TemplateCount,
   TemplateKind,
   TemplateDuplicate,
+  TemplateDependents,
   TemplateUsage,
   Tag,
   TagKind,
@@ -32,9 +34,17 @@ import type {
   UserSummary,
 } from "@memegen/shared";
 
-/** Cookie holding the signed-in user (JSON); a year, so the dev login survives restarts. Not a credential. */
+/** Insecure dev identity only; never read or sent until the server confirms dev authentication. */
 const USER_COOKIE = "memegen.user";
 const USER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+let sessionVersion = 0;
+let authMode: AuthConfig["mode"] | null = null;
+
+export function setAuthMode(mode: AuthConfig["mode"] | null): void {
+  authMode = mode;
+  sessionVersion++;
+  if (mode === "oidc") writeCookie(USER_COOKIE, null);
+}
 
 function readCookie(name: string): string | null {
   const prefix = `${name}=`;
@@ -49,9 +59,10 @@ function writeCookie(name: string, value: string | null): void {
 }
 
 export function storedUser(): User | null {
-  const raw = readCookie(USER_COOKIE);
-  if (!raw) return null;
+  if (authMode !== "dev") return null;
   try {
+    const raw = readCookie(USER_COOKIE);
+    if (!raw) return null;
     return JSON.parse(raw) as User;
   } catch {
     writeCookie(USER_COOKIE, null);
@@ -60,12 +71,13 @@ export function storedUser(): User | null {
 }
 
 export function storeUser(user: User | null): void {
-  writeCookie(USER_COOKIE, user ? JSON.stringify(user) : null);
+  sessionVersion++;
+  if (authMode === "dev") writeCookie(USER_COOKIE, user ? JSON.stringify(user) : null);
 }
 
 let onSessionRejected: () => void = () => {};
 
-/** Called when the API rejects the stored user (e.g. the dev database was reset); AuthProvider signs out. */
+/** Called when an API request rejects the current session; AuthProvider returns to the sign-in gate. */
 export function setSessionRejectedHandler(handler: () => void): void {
   onSessionRejected = handler;
 }
@@ -86,21 +98,25 @@ interface RequestOptions {
   body?: BodyInit;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  rejectSession?: boolean;
+  cache?: RequestCache;
 }
 
 async function send(url: string, opts: RequestOptions = {}): Promise<Response> {
   const headers = new Headers(opts.headers);
   const user = storedUser();
+  const version = sessionVersion;
   if (user) headers.set("X-User-Id", user.id);
   let body = opts.body;
   if (opts.json !== undefined) {
     headers.set("Content-Type", "application/json");
     body = JSON.stringify(opts.json);
   }
-  const res = await fetch(url, { method: opts.method ?? "GET", headers, body, signal: opts.signal });
+  const res = await fetch(url, { method: opts.method ?? "GET", headers, body, signal: opts.signal, cache: opts.cache });
   if (!res.ok) {
-    // The stored user no longer exists server-side: forget it, so the app falls back to signed out.
-    if (res.status === 401 && user) {
+    // Version checks prevent a stale request from ending a newer session.
+    if (res.status === 401 && opts.rejectSession !== false && version === sessionVersion
+      && (authMode === "oidc" || (user && storedUser()?.id === user.id))) {
       storeUser(null);
       onSessionRejected();
     }
@@ -169,6 +185,21 @@ export async function fetchAssetBlob(asset: Asset, signal?: AbortSignal): Promis
 
 // ---- api ------------------------------------------------------------------
 
+export async function getAuthConfig(): Promise<AuthConfig> {
+  const config = await request<AuthConfig>("/api/auth/config", { cache: "no-store", rejectSession: false });
+  if (!config || !((config.mode === "dev" && config.loginUrl === null)
+    || (config.mode === "oidc" && config.loginUrl === "/api/auth/login"))) {
+    throw new Error("The server returned an invalid authentication configuration. Contact your administrator.");
+  }
+  return config;
+}
+
+export const getAuthSession = () =>
+  request<{ user: User | null }>("/api/auth/session", { cache: "no-store" });
+
+export const deleteSession = () =>
+  request<void>("/api/session", { method: "DELETE", rejectSession: false });
+
 export const createSession = (username: string) =>
   request<{ user: User }>("/api/session", { method: "POST", json: { username } });
 
@@ -206,11 +237,24 @@ export const createTemplate = (input: CreateTemplateInput) =>
   request<Template>("/api/templates", { method: "POST", json: input });
 
 /**
- * Owner only: rename and/or replace the defaults (text boxes, or a multi-panel template's panels together with its
- * re-rendered cover; pack images can be added, never removed). Existing memes keep their own content.
+ * Owner or admin: rename and/or replace the defaults (text boxes, or a multi-panel template's panels together
+ * with its re-rendered cover; pack images can be added, never removed). Existing memes keep their own content.
  */
 export const updateTemplate = (id: string, changes: Together<UpdateTemplateInput, "panels" | "assetId">) =>
   request<Template>(`/api/templates/${id}`, { method: "PATCH", json: changes });
+
+export const deleteTemplate = (id: string) => request<void>(`/api/templates/${id}`, { method: "DELETE" });
+
+/** Replace this template's direct base/community tag associations, not its parent's tags. Admin only. */
+export const replaceTemplateTags = (id: string, tags: string[]) =>
+  request<Template>(`/api/templates/${id}/tags`, { method: "PUT", json: { tags } });
+
+/** All posts and drafts using a template or its immediate variations, regardless of visibility. Admin only. */
+export const getTemplateDependents = (id: string, { offset, limit }: PageParams = {}) =>
+  request<TemplateDependents>(`/api/admin/templates/${id}/memes${qs({ offset, limit })}`);
+
+export const deleteTemplateDependents = (id: string) =>
+  request<void>(`/api/admin/templates/${id}/memes`, { method: "DELETE" });
 
 export const listTags = ({ q, kind, sort, limit }: { q?: string; kind?: TagKind; sort?: TagSort; limit?: number } = {}) =>
   request<Tag[]>(`/api/tags${qs({ q, kind, sort, limit })}`);

@@ -19,7 +19,7 @@ export interface SavePanelProps {
   /** What the meme stores: its layers, or a multi-panel meme's panels (with no layers). */
   content: MemeContent;
   limits: UploadLimits;
-  /** False when re-editing someone else's meme: only Download is offered. */
+  /** False when neither owner nor admin: only Download is offered. */
   canSave: boolean;
   /** Re-editing an existing meme (PATCH), or creating a new one from a template. */
   target: MemeTarget;
@@ -34,7 +34,7 @@ export function memeSaveProps(
   user: User,
 ): Pick<SavePanelProps, "canSave" | "target" | "templateTags"> {
   return source.kind === "meme"
-    ? { canSave: source.meme.owner.id === user.id, target: { editing: source.meme }, templateTags: [] }
+    ? { canSave: source.meme.owner.id === user.id || user.isAdmin, target: { editing: source.meme }, templateTags: [] }
     : { canSave: true, target: { templateId: source.template.id }, templateTags: source.template.tags };
 }
 
@@ -161,7 +161,7 @@ export function SavePanel(props: SavePanelProps) {
       {notice && <Text tone="muted">{notice}</Text>}
       {error !== null && <ErrorView error={error} testId="editor-error" />}
 
-      {!canSave && <Alert tone="info">Only the owner can save changes to this meme.</Alert>}
+      {!canSave && <Alert tone="info">Only the owner or an admin can save changes to this meme.</Alert>}
     </Panel>
   );
 }

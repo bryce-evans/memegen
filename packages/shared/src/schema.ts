@@ -250,6 +250,9 @@ export function pageQuerySchema(defaultLimit = 24, maxLimit = 100) {
 /** A user's memes, templates, activity, and favorites. */
 export const userPageQuerySchema = pageQuerySchema();
 
+/** Admin review of memes using a template, including variations, drafts, and unlisted posts. */
+export const templateDependentsQuerySchema = pageQuerySchema();
+
 /** Largest `limit` storage's `GET /assets` takes; the editor's font list asks for this many. */
 export const ASSETS_QUERY_MAX_LIMIT = 200;
 

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { installAuth, installErrorHandler, uploadLimitsFromEnv, type AuthProvider, type Env, type Sql } from "@memegen/server-kit";
+import { installAuth, installErrorHandler, registerAuthRoutes, uploadLimitsFromEnv, type AuthProvider, type Env, type Sql } from "@memegen/server-kit";
 import type { ApiApp } from "./access.ts";
 import { createAiProviders, type AiProviders } from "./ai/registry.ts";
 import * as ai from "./routes/ai.ts";
@@ -24,6 +24,7 @@ export function createApiApp(
   const app = new Hono<Env>();
   installErrorHandler(app);
   installAuth(app, auth);
+  registerAuthRoutes(app, auth);
 
   for (const routes of [users, tags, memes, comments, gallery, stickers]) routes.register(app, sql);
   templates.register(app, sql, search);

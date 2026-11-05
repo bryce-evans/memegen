@@ -13,9 +13,15 @@ export function requireUser(c: Context<Env>): User {
   return user;
 }
 
+export function requireAdmin(c: Context<Env>): User {
+  const user = requireUser(c);
+  if (!user.isAdmin) throw new HttpError(403, "admin access required");
+  return user;
+}
+
 export async function findUserByName(sql: Sql, username: string): Promise<User> {
   const [row] = await sql<UserRow[]>`
-    select id, username, created_at from users where lower(username) = lower(${username})`;
+    select id, username, created_at, is_admin from users where lower(username) = lower(${username})`;
   if (!row) throw new HttpError(404, "user not found");
   return toUser(row);
 }
@@ -28,12 +34,12 @@ export async function loadMeme(sql: Sql, id: string, viewer: User | null): Promi
   return row;
 }
 
-/** The signed-in user and the `:id` meme they own; 403 for anyone else's. */
-export async function ownMeme(sql: Sql, c: Context<Env>): Promise<{ user: User; id: string; meme: MemeRow }> {
+/** The signed-in owner or an admin and the `:id` meme they may moderate. */
+export async function ownerOrAdminMeme(sql: Sql, c: Context<Env>): Promise<{ user: User; id: string; meme: MemeRow }> {
   const user = requireUser(c);
   const { id } = parse(idParam, c.req.param());
   const meme = await loadMeme(sql, id, user);
-  if (meme.owner_id !== user.id) throw new HttpError(403, "only the owner can change this meme");
+  if (meme.owner_id !== user.id && !user.isAdmin) throw new HttpError(403, "only the owner or an admin can change this meme");
   return { user, id, meme };
 }
 
@@ -46,13 +52,13 @@ export async function loadTemplate(sql: Sql, id: string, viewer: User | null): P
   return template;
 }
 
-/** The signed-in user and the `:id` template they own; 403 for anyone else's. */
-export async function ownTemplate(sql: Sql, c: Context<Env>): Promise<{ user: User; id: string }> {
+/** The signed-in owner or an admin and the `:id` template they may moderate. */
+export async function ownerOrAdminTemplate(sql: Sql, c: Context<Env>): Promise<{ user: User; id: string }> {
   const user = requireUser(c);
   const { id } = parse(idParam, c.req.param());
   const [row] = await sql<{ owner_id: string }[]>`select owner_id from templates where id = ${id}`;
   if (!row) throw new HttpError(404, "template not found");
-  if (row.owner_id !== user.id) throw new HttpError(403, "only the owner can change this template");
+  if (row.owner_id !== user.id && !user.isAdmin) throw new HttpError(403, "only the owner or an admin can change this template");
   return { user, id };
 }
 

@@ -21,6 +21,7 @@ import {
 } from "@memegen/ui";
 import { AuthProvider, useAuth, useUser } from "./auth.tsx";
 import { GalleryFilters, feedKindFor } from "./components/feed.tsx";
+import { ErrorView } from "./components/common.tsx";
 import { TagSidebar } from "./components/tagNav.tsx";
 import { useBackHotkeys } from "./backHotkeys.ts";
 import { useStoredDarkMode } from "./darkMode.ts";
@@ -32,6 +33,7 @@ import { MemeDetail } from "./pages/MemeDetail.tsx";
 import { Profile } from "./pages/Profile.tsx";
 import { SignIn } from "./pages/SignIn.tsx";
 import { TagPage } from "./pages/TagPage.tsx";
+import { useAction } from "./useAction.ts";
 
 const BRAND = "memegen";
 /** Prod pins this skin (`?skin=` and stored choices ignored); dev lets the sign-in page's dev tools switch it. */
@@ -106,6 +108,7 @@ function SiteHeader() {
   const user = useUser();
   const { signOut } = useAuth();
   const narrow = useNarrowScreen();
+  const { busy, error, run } = useAction();
   return (
     <Header
       brand={
@@ -123,9 +126,10 @@ function SiteHeader() {
         </Link>
       </Text>
       {narrow && <ProfileNavItem />}
-      <Button size="sm" onClick={signOut} data-testid="sign-out">
+      <Button size="sm" onClick={() => void run(signOut)} disabled={busy} data-testid="sign-out">
         Sign out
       </Button>
+      {error !== null && <ErrorView error={error} testId="sign-out-error" />}
     </Header>
   );
 }
@@ -195,7 +199,7 @@ function SideColumn() {
 
 /** Signed out, every URL shows the sign-in page; signing in renders the app at that same URL. */
 function Root() {
-  const { user } = useAuth();
+  const { user, error, retry } = useAuth();
   // The tab icon is the wordmark's first letter, drawn in the skin's wordmark style.
   useSkinFavicon(BRAND[0]!);
   useStoredDarkMode(user?.id ?? null);
@@ -203,6 +207,12 @@ function Root() {
   if (!user) return <SignIn brand={BRAND} />;
   return (
     <AppShell header={<SiteHeader />} sidebar={<SideColumn />}>
+      {error !== null && (
+        <>
+          <ErrorView error={error} testId="auth-refresh-error" />
+          <Button onClick={retry} data-testid="auth-refresh-retry">Retry authentication</Button>
+        </>
+      )}
       <Routes>
         <Route path="/" element={<Popular />} />
         <Route path="/recent" element={<Recent />} />

@@ -298,6 +298,39 @@
   gap: var(--ui-space-2) var(--ui-space-3);
   margin-top: var(--ui-space-3);
 }
+.template-removal-review {
+  margin-top: var(--ui-space-4);
+}
+.template-dependents {
+  display: grid;
+  gap: var(--ui-space-3);
+  padding: 0;
+  list-style: none;
+}
+.template-dependent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3) 0;
+  border-bottom: var(--ui-border-width) solid var(--ui-color-separator);
+}
+.template-dependent-media {
+  flex: 0 0 64px;
+}
+.template-dependent-media img,
+.template-dependent-media video {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: var(--ui-radius-sm);
+}
+.template-dependent-info {
+  flex: 1 1 10rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .usage {
   margin-top: var(--ui-space-3);
 }

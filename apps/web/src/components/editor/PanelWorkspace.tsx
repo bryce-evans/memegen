@@ -33,7 +33,8 @@ function templateInputOf(set: PanelSet, pack: Asset[]): PanelTemplateInput {
  * defaults.
  */
 export function PanelWorkspace({ session }: { session: PanelSession }) {
-  const { source, limits } = session;
+  const { limits } = session;
+  const [source, setSource] = useState(session.source);
   const user = useUser();
   const [set, setSet] = useState<PanelSet>(session.set);
   const [pack, setPack] = useState<Asset[]>(session.pack);
@@ -91,7 +92,9 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
       <section className="editor">
         <div className="editor-main">
           <PanelStage set={set} images={images} selectedId={selectedId} onSelect={setSelectedId} preview={preview} />
-          {source.kind === "template" && <TemplateDetails template={source.template} preview={preview} onPreviewChange={setPreview} />}
+          {(source.kind === "template" || source.kind === "edit-template") && (
+            <TemplateDetails template={source.template} preview={preview} onPreviewChange={setPreview} onChange={(template) => setSource({ ...source, template })} />
+          )}
         </div>
         <div className="editor-side">
           {authoring && (
@@ -145,7 +148,9 @@ export function PanelWorkspace({ session }: { session: PanelSession }) {
               ready={panels.length > 0}
               save={async (name) => {
                 const cover = await uploadCover(name);
-                return updateTemplate(source.template.id, { name, panels: templateInput, assetId: cover.id });
+                const template = await updateTemplate(source.template.id, { name, panels: templateInput, assetId: cover.id });
+                setSource({ ...source, template });
+                return template;
               }}
             />
           ) : (

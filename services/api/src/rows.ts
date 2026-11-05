@@ -97,7 +97,7 @@ export interface MemeRow {
  * order, and may rely on the aliases `m` (memes), `u` (owner), and `v` (the viewer's vote; its
  * columns are null when they haven't voted).
  */
-export function memeSelect(sql: Sql, viewerId: string | null) {
+export function memeSelect(sql: Sql | TransactionSql, viewerId: string | null) {
   return sql`
     select m.id, m.title, m.owner_id, u.username as owner_username, m.template_id,
       row_to_json(sa.*) as source_asset, row_to_json(oa.*) as output_asset,

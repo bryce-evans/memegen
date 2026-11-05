@@ -28,7 +28,7 @@ export type Source =
   | { kind: "template"; template: Template }
   /** Uploaded media becoming a new template ("Template Editor"); its text boxes become the defaults. */
   | { kind: "new-template"; asset: Asset }
-  /** An existing template's own text boxes, edited by its author and saved back as its defaults. */
+  /** An existing template's own text boxes, edited by its author or an admin and saved back as its defaults. */
   | { kind: "edit-template"; template: Template }
   | { kind: "meme"; meme: Meme };
 

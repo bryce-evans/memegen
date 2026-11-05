@@ -24,6 +24,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 - **Snapshots**: back up or restore the whole site (database and media) as one zip.
 - **Meme titles**: enter a title before saving or publishing in the editor or Quick Creator. Titles start empty; template names are never used as defaults.
 - **Post view**: a single column with author, posting date, and compact tag pills above the title, and Share/Download to the right. The media follows, then voting with “Make one with this template” to the right, comments, and the owner's “Only visible to you” controls at the bottom. Action rows wrap on narrow screens. Overflowing tags end in an ellipsis. Upvote, score, and downvote share one pill, with circular highlights when hovering over either thumb. Change tags through the owner's Edit button. Comment and reply composers start at one line and size to their text, with a handle for manual vertical resizing. Focusing the input reveals Cancel and submit buttons inside the border; Cancel clears the draft and restores the collapsed one-line composer.
+- **Admin moderation**: admins get a separate panel on post and template pages to edit content and tags, change visibility, and remove content; they can also delete others' comments. Before removing a template, review its related posts (including drafts and variation uses), remove individual posts or explicitly confirm removing all, then delete the template. Media assets are retained.
 
 Post pages use a compact heading with 8pt author/date/tags, muted gray tag labels, and a title 2pt larger than the skin's XL font, in a content column capped at 940px that shrinks to fit narrow screens. Images and videos fill the available width up to 940px and scale proportionally within a 680px height limit, without cropping.
 
@@ -70,13 +71,25 @@ Open http://localhost:5173 and sign in with any username (there are no passwords
 
 In dev, a **Dev tools** panel on the sign-in page switches skins and previews the sign-in intros (kept in your browser).
 
+### Admin access
+
+Apply migrations, sign in once to create the account, then have a trusted database operator grant its role using the target database's connection URL:
+
+```sh
+psql "$DATABASE_URL" -c "UPDATE users SET is_admin = true WHERE lower(username) = lower('YOUR_USERNAME');"
+```
+
+No account becomes an admin automatically. Reload or refocus the app to refresh the panel. To revoke access, run the same update with `is_admin = false`; server authorization checks apply immediately.
+
+**Security:** `AUTH_MODE=dev` deliberately permits impersonation and is only for trusted local use. Deployments must use `AUTH_MODE=oidc`; production rejects dev authentication. Admin roles remain local database permissions, not claims supplied by the identity provider.
+
 ## Commands
 
 Everything runs through `./run.sh <config> <command>`:
 
 | Command | What it does |
 |---|---|
-| `setup` | `bun install`, create missing databases, migrate |
+| `setup` | validate deployment settings, `bun install`, create missing databases, migrate |
 | `migrate` | apply pending migrations |
 | `seed` | import templates and the configured datasets (see [Seeding](#seeding)) |
 | `reset` | wipe the database and local storage, then `seed` *(dev only)* |
@@ -88,17 +101,21 @@ Everything runs through `./run.sh <config> <command>`:
 | `typecheck` | check runtime import boundaries and TypeScript |
 | `test` / `e2e` | unit/integration tests / Playwright browser tests *(dev only)* |
 | `config` | print configured keys, secrets and database URL credentials masked |
+| `deployment [--options]` | validate local deployment settings, or show connector choices and setup links; no connector network calls or secret output |
 
 ## Configs
 
 Configs are plain `KEY=value` files:
 
 - `config/dev.env` (committed): local Postgres, local file storage, sample data.
-- `config/prod.env` (gitignored, copied from `config/prod.env.example`): real data. `MODE=prod` refuses dev-only commands and sample data, and requires a strong `INTERNAL_TOKEN` and a real `DATABASE_URL`.
+- `config/prod.env` (gitignored, copied from `config/prod.env.example`): real data. `MODE=prod` refuses dev-only commands and sample data, and requires OIDC, HTTPS, a strong `INTERNAL_TOKEN`, and a real `DATABASE_URL`.
 - `config/starter.env` (committed): builds the starter-content snapshot in its own database.
 
 Main keys (see `config/dev.env` and `config/prod.env.example` for all of them):
 
+- `AUTH_MODE`: `oidc` for deployment; `dev` for trusted local username login only. `dev` is rejected outside `MODE=dev`. The sign-in screen reads this choice from the server, not the web build.
+- `PUBLIC_ORIGIN`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`: required for OIDC. Use a confidential web client with discovery and authorization code + PKCE; keep its secret server-side. `PUBLIC_ORIGIN` is the browser-facing HTTPS origin, without a path. Loopback HTTP is allowed only in development.
+- `AUTH_SESSION_TTL_SECONDS`: absolute session lifetime, default 604800 (7 days), range 1–2592000. Sessions use HttpOnly cookies and hashed database tokens; logout revokes the current session immediately.
 - `WEB_PORT`, `API_PORT`, `STORAGE_PORT`: the web app proxies `/api` and `/storage` to these. Set `API_URL`/`STORAGE_URL` only when the services run on other hosts.
 - `STORAGE_PROVIDER`: `local` (files in `.data/storage`) or `s3` (`S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, …).
 - `MAX_*`: upload caps. Defaults are 20 MB per file. Longest edge: images 4096 px, GIFs 1024 px, videos 1920 px. Frames: GIFs 500, videos 1800.
@@ -107,16 +124,48 @@ Main keys (see `config/dev.env` and `config/prod.env.example` for all of them):
 - `OPENAI_IMAGE_MODEL` (default `gpt-image-2`), `GEMINI_IMAGE_MODEL` (default `gemini-nano-banana-2.1`): default models for the Image Generator. `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `GEMINI_TEXT_MODEL` (default `gemini-2.5-flash`), `ANTHROPIC_TEXT_MODEL` (default `claude-haiku-5-5`): default models for the Agent Provider. Users may name their own models instead. Users bring their own API keys, so the server needs none. `OPENAI_BASE_URL`/`GEMINI_BASE_URL`/`ANTHROPIC_BASE_URL` point at a proxy or gateway.
 - `SEARCH_ENABLED`: `true` runs the template search sidecar on `SEARCH_PORT` (default 4002): CLIP image embeddings in a FAISS index, so template search also matches what's in the picture and new uploads are checked for duplicates. `false` searches tags and names only, and only byte-identical duplicates are caught. The first start downloads the model (about 600 MB) into `SEARCH_DATA_DIR` (default `.data/search`), which also caches the embeddings. `SEARCH_MODEL` picks another transformers.js CLIP export; `SEARCH_URL` points the API at a sidecar on another host.
 
-### Production
+### Deployment setup
+
+**Recommended:** OIDC authentication with server-side sessions. Use Google or Auth0 for hosted identity, or Keycloak/Authentik when self-hosting. These use the same connector; no provider-specific app code is needed. There is no built-in password database or email connector to maintain.
+
+The production template documents the choices and links to provider consoles/setup guides:
 
 ```sh
-cp config/prod.env.example config/prod.env   # set DATABASE_URL, INTERNAL_TOKEN, S3_*
+cp config/prod.env.example config/prod.env
+chmod 600 config/prod.env
+./run.sh config/prod.env deployment --options
+# Edit config/prod.env with the connectors below.
+./run.sh config/prod.env deployment
 ./run.sh config/prod.env setup
 ./run.sh config/prod.env start
 ```
 
-> [!WARNING]
-> Sign-in is still a placeholder: prod shows a "Sign in with SSO" button that does nothing yet, and the API trusts a user-id header. Put a real `AuthProvider` in place before exposing prod to untrusted users.
+| Connector | Required setup |
+|---|---|
+| PostgreSQL | Dedicated database, `DATABASE_URL`, and backups. |
+| Identity | `AUTH_MODE=oidc`; confidential OIDC web client, issuer URL, client ID, and secret. Register **exactly** `PUBLIC_ORIGIN/api/auth/callback` as its redirect URI and enable `openid`. Configure allowed users/groups and MFA at the provider. |
+| Media | `STORAGE_PROVIDER=s3` with bucket and AWS role/default credentials or both explicit S3 credentials; optional endpoint for R2/MinIO. Alternatively, `local` with `LOCAL_STORAGE_DIR` on a durable, backed-up volume. |
+| Public HTTPS | Set `PUBLIC_ORIGIN`; terminate TLS at a reverse proxy to `WEB_PORT`. Preserve Cookie, Set-Cookie, and Origin headers. Keep API, storage, and search ports private. |
+| Internal services | Generate `INTERNAL_TOKEN` with `openssl rand -hex 32`; production requires at least 32 characters. |
+| Semantic search — optional | `SEARCH_ENABLED=true` runs the local CLIP/FAISS sidecar; persist its model/cache directory. The template defaults to false. Name/tag search still works. |
+| AI — optional | Users supply OpenAI/Gemini/Anthropic keys in their profiles; no deployment-wide AI secret is required. |
+
+`deployment` is a **local configuration preflight**, not a connection or credential test. `setup` and `start` also enforce it. After configuring real services, verify SSO login/logout, an upload, and backup/restore before opening access. OIDC discovery failures stop the services rather than enabling dev login. Logout ends the local app session, not the provider's SSO session.
+
+### Existing accounts and OIDC
+
+Provider **issuer + subject** identifies an account. New identities get a unique `member_…` username and no admin permissions. Existing usernames/emails are never auto-linked, because development accounts did not prove ownership.
+
+To preserve an existing account, a trusted operator must verify the person's issuer/subject through the identity provider, then create the mapping **before their first OIDC login**, using the target database:
+
+```sql
+INSERT INTO auth_identities (issuer, subject, user_id)
+SELECT 'EXACT_VERIFIED_ISSUER', 'VERIFIED_SUBJECT', id
+FROM users WHERE lower(username) = lower('EXISTING_USERNAME')
+RETURNING user_id;
+```
+
+Confirm exactly one row was returned. A mapping conflict requires investigation; do not overwrite an existing identity by matching names or emails. Admins require the same identity verification before linking. To revoke all app sessions for a user, delete their rows from `auth_sessions`; changing `users.is_admin` takes effect on the next request. Snapshot restores also restore sessions, so invalidate session/login-transaction rows when restoring into another deployment.
 
 ## Seeding
 

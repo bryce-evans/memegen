@@ -5,7 +5,7 @@ import { DEFAULT_INTRO, INTROS } from './src/intros.ts'
 // The services' URLs default to their ports on this host; set API_URL/STORAGE_URL only for split hosts.
 const apiUrl = process.env.API_URL || `http://localhost:${process.env.API_PORT || 4000}`
 const storageUrl = process.env.STORAGE_URL || `http://localhost:${process.env.STORAGE_PORT || 4001}`
-// run.sh exports MODE from the config; anything else (a bare `vite build`) gets prod, which has no dev login.
+// MODE controls dev tools, not authentication; login mode comes from the API at runtime.
 const appMode = process.env.MODE === 'dev' ? 'dev' : 'prod'
 // The sign-in intro; a typo fails the build rather than silently falling back.
 const intro = process.env.INTRO || DEFAULT_INTRO

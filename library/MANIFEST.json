@@ -7053,6 +7053,9 @@
       "url": "https://i.imgflip.com/o63vh.jpg",
       "source": "https://imgflip.com/meme/40595741/Black-guy-confused",
       "tags": [
+        "2014",
+        "Confused Nick Young",
+        "NBA",
         "nick young",
         "swaggy p",
         "basketball",
@@ -7418,26 +7421,34 @@
       ]
     },
     {
-      "slug": "online/cpyet",
-      "title": "Blank ",
-      "url": "https://i.imgflip.com/cpyet.jpg",
-      "source": "https://imgflip.com/meme/21366389/Blank",
+      "slug": "online/blank",
+      "title": "Blank",
+      "url": "https://dummyimage.com/2048x2048/ffffff/ffffff.jpg",
+      "source": "https://dummyimage.com/",
       "tags": [
-        "blank canvas",
+        "blank",
         "white background",
+        "blank canvas",
         "text only",
         "empty space",
         "minimalism",
         "custom caption"
       ],
-      "layout": "comment",
+      "layout": "labels",
       "text": [
         {
-          "text": "A complete list of things I remembered when I walked into this room:",
+          "text": "",
           "x": 0.5,
           "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
+          "maxWidth": 0.9,
+          "maxHeight": 0.9,
+          "fontSize": 0.065,
+          "font": "sans",
+          "color": "#000000",
+          "strokeColor": "#ffffff",
+          "strokeWidth": 0,
+          "align": "center",
+          "textStyle": "none"
         }
       ],
       "risk": 1,
@@ -7865,34 +7876,6 @@
           "align": "center",
           "textStyle": "none",
           "angle": 0
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "blank-template"
-      ]
-    },
-    {
-      "slug": "online/nf4h4",
-      "title": "blank black",
-      "url": "https://i.imgflip.com/nf4h4.jpg",
-      "source": "https://imgflip.com/meme/39336808/blank-black",
-      "tags": [
-        "black background",
-        "blank canvas",
-        "text only",
-        "darkness",
-        "empty space",
-        "minimalism"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "Me looking for my black socks in the laundry before sunrise",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
         }
       ],
       "risk": 1,
@@ -8369,39 +8352,6 @@
       ]
     },
     {
-      "slug": "online/319g4i",
-      "title": "Blank Transparent Square",
-      "url": "https://i.imgflip.com/319g4i.png",
-      "source": "https://imgflip.com/meme/Blank-Transparent-Square",
-      "tags": [
-        "empty canvas",
-        "blank background",
-        "blank white background",
-        "blank black background",
-        "blank colored background",
-        "white blank",
-        "black blank",
-        "transparency",
-        "square canvas",
-        "empty space",
-        "custom design"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "My carefully planned shortcut to an invisible parking space",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "blank-template"
-      ]
-    },
-    {
       "slug": "online/1bggw6",
       "title": "Blank Trophy",
       "url": "https://i.imgflip.com/1bggw6.jpg",
@@ -8445,34 +8395,6 @@
           "align": "center",
           "textStyle": "upper",
           "angle": 0
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "blank-template"
-      ]
-    },
-    {
-      "slug": "online/b6xvw",
-      "title": "Blank White Template",
-      "url": "https://i.imgflip.com/b6xvw.jpg",
-      "source": "https://imgflip.com/meme/18799628/Blank-White-Template",
-      "tags": [
-        "white background",
-        "blank canvas",
-        "text only",
-        "empty space",
-        "minimalism",
-        "custom caption"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "My brain when someone says 'tell us a fun fact about yourself'",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
         }
       ],
       "risk": 1,
@@ -9871,68 +9793,20 @@
       ]
     },
     {
-      "slug": "jb/kermit",
-      "title": "But That's None of My Business",
-      "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/kermit/default.jpg",
-      "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/kermit",
-      "tags": [
-        "oldschool",
-        "the muppets",
-        "kermit the frog",
-        "tea",
-        "gossip",
-        "judgment",
-        "none of my business",
-        "2014",
-        "but that's none of my business",
-        "kermit drinking lipton iced tea",
-        "meme template",
-        "online-9sw43"
-      ],
-      "layout": "impact",
-      "text": [
-        {
-          "text": "",
-          "x": 0.5,
-          "y": 0.1,
-          "maxWidth": 1,
-          "maxHeight": 0.2,
-          "fontSize": 0.1111111111111111,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        },
-        {
-          "text": "but that's none of my business",
-          "x": 0.5,
-          "y": 0.9,
-          "maxWidth": 1,
-          "maxHeight": 0.2,
-          "fontSize": 0.1111111111111111,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        }
-      ],
-      "risk": 2,
-      "rating_tags": [
-        "general-audience"
-      ]
-    },
-    {
       "slug": "online/ph0di",
       "title": "But That's None Of My Business (Neutral)",
       "url": "https://i.imgflip.com/ph0di.jpg",
       "source": "https://imgflip.com/meme/But-Thats-None-Of-My-Business-Neutral",
       "tags": [
+        "oldschool",
+        "none of my business",
+        "2014",
+        "but that's none of my business",
+        "kermit drinking lipton iced tea",
+        "meme template",
+        "online-9sw43",
+        "sarcasm",
+        "Kermit sipping tea",
         "kermit the frog",
         "kermit drinking iced tea",
         "the muppets",
@@ -9952,7 +9826,7 @@
           "maxHeight": 1
         }
       ],
-      "risk": 1,
+      "risk": 2,
       "rating_tags": [
         "child-friendly"
       ]
@@ -12365,6 +12239,10 @@
       "url": "https://i.imgflip.com/1hqk.jpg",
       "source": "https://imgflip.com/meme/Chubby-Bubbles-Girl",
       "tags": [
+        "child",
+        "yellow jacket",
+        "phone",
+        "girl running",
         "chubbles",
         "yellow jacket girl",
         "girl",
@@ -12907,45 +12785,6 @@
       "risk": 3,
       "rating_tags": [
         "politics"
-      ]
-    },
-    {
-      "slug": "online/mwcoloneltoad",
-      "title": "Colonel Toad",
-      "url": "https://en.meming.world/images/en/5/50/Colonel_Toad.jpg",
-      "source": "https://en.meming.world/wiki/Colonel_Toad",
-      "tags": [
-        "colonel toad",
-        "2021",
-        "2011",
-        "2017",
-        "toad",
-        "frog",
-        "sitting",
-        "amphibian",
-        "waiting",
-        "composure"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "Me waiting for the waiter after practicing 'just water' in my head",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1,
-          "font": "sans",
-          "color": "#000000",
-          "strokeColor": "#ffffff",
-          "strokeWidth": 0,
-          "align": "left",
-          "textStyle": "none"
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "animal",
-        "child-friendly"
       ]
     },
     {
@@ -17812,34 +17651,6 @@
       ]
     },
     {
-      "slug": "online/2m43dp",
-      "title": "Double Long Black Template",
-      "url": "https://i.imgflip.com/2m43dp.jpg",
-      "source": "https://imgflip.com/meme/158074909/Double-Long-Black-Template",
-      "tags": [
-        "black background",
-        "blank canvas",
-        "wide layout",
-        "text only",
-        "empty space",
-        "minimalism"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "A live feed of the inside of my closed laptop",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "blank-template"
-      ]
-    },
-    {
       "slug": "online/mwdoublesodapour",
       "title": "Double Soda Pour",
       "url": "https://en.meming.world/images/en/c/c9/Double_Soda_Pour.jpg",
@@ -18081,60 +17892,6 @@
           "angle": 0
         }
       ],
-      "risk": 2,
-      "rating_tags": [
-        "reaction"
-      ]
-    },
-    {
-      "slug": "online/drakepanels",
-      "title": "Drake Hotline Bling (Panels)",
-      "url": "https://i.imgflip.com/30b1gx.jpg",
-      "source": "https://imgflip.com/meme/Drake-Hotline-Bling",
-      "tags": [
-        "drakeposting",
-        "drakepost",
-        "drake hotline approves",
-        "drake no yes",
-        "drake like dislike",
-        "drake faces",
-        "2015",
-        "drake",
-        "hotline bling",
-        "preference",
-        "rejection",
-        "approval",
-        "comparison",
-        "oldschool",
-        "multi-panel"
-      ],
-      "layout": "panels",
-      "panels": {
-        "layout": "vertical",
-        "grid": true,
-        "mirror": true,
-        "fontSize": 0.08,
-        "items": [
-          {
-            "crop": {
-              "x": 0,
-              "y": 0,
-              "width": 0.5,
-              "height": 0.5
-            },
-            "text": "Another meeting"
-          },
-          {
-            "crop": {
-              "x": 0,
-              "y": 0.5,
-              "width": 0.5,
-              "height": 0.5
-            },
-            "text": "A clear message"
-          }
-        ]
-      },
       "risk": 2,
       "rating_tags": [
         "reaction"
@@ -20155,73 +19912,6 @@
       ]
     },
     {
-      "slug": "online/24rhyz",
-      "title": "Expanding brain 3 panels",
-      "url": "https://i.imgflip.com/24rhyz.jpg",
-      "source": "https://imgflip.com/meme/128933819/Expanding-brain-3-panels",
-      "tags": [
-        "brain",
-        "galaxy brain",
-        "intelligence",
-        "escalation",
-        "enlightenment",
-        "comparison"
-      ],
-      "layout": "impact",
-      "text": [
-        {
-          "text": "Set an alarm",
-          "x": 0.25,
-          "y": 0.1726,
-          "maxWidth": 0.4796,
-          "maxHeight": 0.3257,
-          "fontSize": 0.0556,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        },
-        {
-          "text": "Set five alarms",
-          "x": 0.2429,
-          "y": 0.4936,
-          "maxWidth": 0.4694,
-          "maxHeight": 0.2791,
-          "fontSize": 0.0556,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        },
-        {
-          "text": "Go to bed on time",
-          "x": 0.2418,
-          "y": 0.8309,
-          "maxWidth": 0.4673,
-          "maxHeight": 0.3179,
-          "fontSize": 0.0556,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "educational",
-        "mild-humor"
-      ]
-    },
-    {
       "slug": "jb/dbg",
       "title": "Expectation vs. Reality",
       "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/dbg/default.jpg",
@@ -20855,59 +20545,6 @@
       "risk": 4,
       "rating_tags": [
         "language"
-      ]
-    },
-    {
-      "slug": "jb/sadfrog",
-      "title": "Feels Bad Man",
-      "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/sadfrog/default.jpg",
-      "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/sadfrog",
-      "tags": [
-        "oldschool",
-        "sad frog",
-        "pepe the frog",
-        "matt furie",
-        "boys club",
-        "sadness",
-        "disappointment",
-        "cartoon"
-      ],
-      "layout": "impact",
-      "text": [
-        {
-          "text": "",
-          "x": 0.5,
-          "y": 0.1,
-          "maxWidth": 1,
-          "maxHeight": 0.2,
-          "fontSize": 0.1111111111111111,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        },
-        {
-          "text": "feels bad man",
-          "x": 0.5,
-          "y": 0.9,
-          "maxWidth": 1,
-          "maxHeight": 0.2,
-          "fontSize": 0.1111111111111111,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        }
-      ],
-      "risk": 2,
-      "rating_tags": [
-        "general-audience"
       ]
     },
     {
@@ -22873,100 +22510,18 @@
       ]
     },
     {
-      "slug": "jb/gb",
-      "title": "Galaxy Brain",
-      "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/gb/default.jpg",
-      "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/gb",
-      "tags": [
-        "oldschool",
-        "galaxy brain",
-        "expanding brain",
-        "intelligence",
-        "escalation",
-        "comparison",
-        "absurdity",
-        "2017",
-        "meme template",
-        "online-1jwhww"
-      ],
-      "layout": "impact",
-      "text": [
-        {
-          "text": "Who",
-          "x": 0.245,
-          "y": 0.1225,
-          "maxWidth": 0.49,
-          "maxHeight": 0.245,
-          "fontSize": 0.1111111111111111,
-          "font": "thin",
-          "color": "#000000",
-          "strokeColor": "#ffffff80",
-          "strokeWidth": 0.03,
-          "align": "center",
-          "textStyle": "none",
-          "angle": 0,
-          "start": 0.1
-        },
-        {
-          "text": "Whom",
-          "x": 0.245,
-          "y": 0.378,
-          "maxWidth": 0.49,
-          "maxHeight": 0.246,
-          "fontSize": 0.1111111111111111,
-          "font": "thin",
-          "color": "#000000",
-          "strokeColor": "#ffffff80",
-          "strokeWidth": 0.03,
-          "align": "center",
-          "textStyle": "none",
-          "angle": 0,
-          "start": 0.3
-        },
-        {
-          "text": "Whom'st",
-          "x": 0.2445,
-          "y": 0.622,
-          "maxWidth": 0.489,
-          "maxHeight": 0.224,
-          "fontSize": 0.1111111111111111,
-          "font": "thin",
-          "color": "#000000",
-          "strokeColor": "#ffffff80",
-          "strokeWidth": 0.03,
-          "align": "center",
-          "textStyle": "none",
-          "angle": 0,
-          "start": 0.5
-        },
-        {
-          "text": "Whomst'd",
-          "x": 0.245,
-          "y": 0.8725,
-          "maxWidth": 0.49,
-          "maxHeight": 0.255,
-          "fontSize": 0.1111111111111111,
-          "font": "thin",
-          "color": "#000000",
-          "strokeColor": "#ffffff80",
-          "strokeWidth": 0.03,
-          "align": "center",
-          "textStyle": "none",
-          "angle": 0,
-          "start": 0.7
-        }
-      ],
-      "risk": 2,
-      "rating_tags": [
-        "general-audience"
-      ]
-    },
-    {
       "slug": "online/galaxybrainpanels",
       "title": "Galaxy Brain (Panels)",
       "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/gb/default.jpg",
       "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/gb",
       "tags": [
+        "brain",
+        "enlightenment",
+        "Expanding brain 3 panels",
+        "online-1jwhww",
+        "expanding brain (3 brains)",
+        "cosmic",
+        "Galaxy Brain (3 brains)",
         "oldschool",
         "galaxy brain",
         "expanding brain",
@@ -23027,75 +22582,6 @@
       "risk": 2,
       "rating_tags": [
         "general-audience"
-      ]
-    },
-    {
-      "slug": "online/2n589r",
-      "title": "Galaxy Brain (3 brains)",
-      "url": "https://i.imgflip.com/2n589r.jpg",
-      "source": "https://imgflip.com/meme/159807519/Galaxy-Brain-3-brains",
-      "tags": [
-        "Galaxy Brain",
-        "expanding brain",
-        "expanding brain (3 brains)",
-        "brain",
-        "intelligence",
-        "enlightenment",
-        "escalation",
-        "cosmic",
-        "comparison"
-      ],
-      "layout": "impact",
-      "text": [
-        {
-          "text": "Write down the password",
-          "x": 0.2633,
-          "y": 0.1627,
-          "maxWidth": 0.5061,
-          "maxHeight": 0.3045,
-          "fontSize": 0.0356,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        },
-        {
-          "text": "Use a password manager",
-          "x": 0.2582,
-          "y": 0.4959,
-          "maxWidth": 0.5163,
-          "maxHeight": 0.2835,
-          "fontSize": 0.0356,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        },
-        {
-          "text": "Remember which password manager",
-          "x": 0.2592,
-          "y": 0.833,
-          "maxWidth": 0.5184,
-          "maxHeight": 0.3128,
-          "fontSize": 0.0356,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "upper",
-          "angle": 0
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "mild-humor"
       ]
     },
     {
@@ -23246,6 +22732,13 @@
       "url": "https://i.imgflip.com/56p56k.jpg",
       "source": "https://imgflip.com/meme/313581692/Gentlemen-it-is-with-great-pleasure-to-inform-you-that",
       "tags": [
+        "colonel toad",
+        "2021",
+        "2011",
+        "2017",
+        "amphibian",
+        "waiting",
+        "composure",
         "frog",
         "sitting",
         "suit",
@@ -23745,34 +23238,6 @@
       "risk": 2,
       "rating_tags": [
         "mild-humor"
-      ]
-    },
-    {
-      "slug": "online/d6pto",
-      "title": "girl running",
-      "url": "https://i.imgflip.com/d6pto.jpg",
-      "source": "https://imgflip.com/meme/22148412/girl-running",
-      "tags": [
-        "child",
-        "yellow jacket",
-        "running",
-        "escape",
-        "excitement",
-        "phone"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "Me when I hear the toaster pop from upstairs",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "child-friendly"
       ]
     },
     {
@@ -32399,35 +31864,6 @@
       ]
     },
     {
-      "slug": "online/ho51n",
-      "title": "Kermit sipping tea",
-      "url": "https://i.imgflip.com/ho51n.jpg",
-      "source": "https://imgflip.com/meme/29679755/Kermit-sipping-tea",
-      "tags": [
-        "Kermit the Frog",
-        "The Muppets",
-        "tea",
-        "gossip",
-        "sarcasm",
-        "judgment"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "They said the meeting would be short. Anyway, I brought the large mug.",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "child-friendly",
-        "puppet"
-      ]
-    },
-    {
       "slug": "online/lukr1",
       "title": "kermit window",
       "url": "https://i.imgflip.com/lukr1.jpg",
@@ -32605,34 +32041,6 @@
       "risk": 2,
       "rating_tags": [
         "general-audience"
-      ]
-    },
-    {
-      "slug": "online/1mt1s",
-      "title": "khan",
-      "url": "https://i.imgflip.com/1mt1s.jpg",
-      "source": "https://imgflip.com/meme/2743696/khan",
-      "tags": [
-        "Star Trek",
-        "The Wrath of Khan",
-        "James T Kirk",
-        "William Shatner",
-        "Khan Noonien Singh",
-        "shouting"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "When the printer runs out of ink halfway through the final page",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 2,
-      "rating_tags": [
-        "movie-reaction"
       ]
     },
     {
@@ -37666,67 +37074,6 @@
       ]
     },
     {
-      "slug": "jb/spongebob",
-      "title": "Mocking Spongebob",
-      "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/spongebob/default.jpg",
-      "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/spongebob",
-      "tags": [
-        "oldschool",
-        "spongebob squarepants",
-        "mocking",
-        "sarcasm",
-        "imitation",
-        "cartoon",
-        "repeating words",
-        "magicmeme",
-        "bob leponge",
-        "bob leponge meme",
-        "bob lponge",
-        "classic",
-        "meme template",
-        "online-1p9wjx",
-        "online-mm234",
-        "spongebob stupid"
-      ],
-      "layout": "impact",
-      "text": [
-        {
-          "text": "BF: I don't even know her like that",
-          "x": 0.5,
-          "y": 0.1,
-          "maxWidth": 1,
-          "maxHeight": 0.2,
-          "fontSize": 0.1111111111111111,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "none",
-          "angle": 0
-        },
-        {
-          "text": "Me: i DoN'T eVeN KnOw HeR lIkE tHaT",
-          "x": 0.5,
-          "y": 0.9,
-          "maxWidth": 1,
-          "maxHeight": 0.2,
-          "fontSize": 0.1111111111111111,
-          "font": "impact",
-          "color": "#ffffff",
-          "strokeColor": "#000000",
-          "strokeWidth": 0.06,
-          "align": "center",
-          "textStyle": "mock",
-          "angle": 0
-        }
-      ],
-      "risk": 2,
-      "rating_tags": [
-        "general-audience"
-      ]
-    },
-    {
       "slug": "online/mgmodernproblemsrequiremodernsolutions",
       "title": "Modern Problems Require Modern Solutions",
       "url": "https://images.memesguy.com/memes/Modern-Problems-Require-Modern-Solutions_69e657f308236.webp",
@@ -39394,37 +38741,6 @@
       "risk": 2,
       "rating_tags": [
         "mild-humor"
-      ]
-    },
-    {
-      "slug": "online/oqii0",
-      "title": "Nick Young",
-      "url": "https://i.imgflip.com/oqii0.jpg",
-      "source": "https://imgflip.com/meme/41547816/Nick-Young",
-      "tags": [
-        "2014",
-        "Confused Nick Young",
-        "Nick Young",
-        "NBA",
-        "basketball",
-        "confusion",
-        "question marks",
-        "disbelief"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "When the recipe says \"leftover fries\"",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "child-friendly",
-        "reaction"
       ]
     },
     {
@@ -41264,6 +40580,7 @@
       "url": "https://i.imgflip.com/89bvo.jpg",
       "source": "https://imgflip.com/meme/13872228/Oliver-Twist-Please-Sir",
       "tags": [
+        "Please sir may I have some more",
         "Oliver Twist",
         "Oliver",
         "Mark Lester",
@@ -42632,6 +41949,12 @@
       "url": "https://images.memesguy.com/memes/Pepe-the-Frog_69b8260a22773.webp",
       "source": "https://memesguy.com/meme/pepe-the-frog",
       "tags": [
+        "oldschool",
+        "sad frog",
+        "sadness",
+        "disappointment",
+        "Feels Bad Man",
+        "sad pepe (feels bad man)",
         "Pepe the Frog",
         "Pepe",
         "Matt Furie",
@@ -43981,34 +43304,6 @@
       "rating_tags": [
         "politics",
         "language"
-      ]
-    },
-    {
-      "slug": "online/nffky",
-      "title": "Please sir may I have some more",
-      "url": "https://i.imgflip.com/nffky.jpg",
-      "source": "https://imgflip.com/meme/39351202/Please-sir-may-I-have-some-more",
-      "tags": [
-        "Oliver Twist",
-        "Oliver",
-        "Mark Lester",
-        "begging",
-        "food",
-        "request"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "Me asking the spreadsheet for one more column after promising it was finished",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 2,
-      "rating_tags": [
-        "movie-reaction"
       ]
     },
     {
@@ -46333,6 +45628,8 @@
       "url": "https://raw.githubusercontent.com/jacebrowning/memegen/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/rollsafe/default.jpg",
       "source": "https://github.com/jacebrowning/memegen/tree/a8b34146192d9a8fccc9f0d57b73aa947cbdd72d/templates/rollsafe",
       "tags": [
+        "reece simpson",
+        "clever idea",
         "oldschool",
         "roll safe",
         "kayode ewumi",
@@ -47436,41 +46733,6 @@
       "risk": 2,
       "rating_tags": [
         "television-reaction"
-      ]
-    },
-    {
-      "slug": "online/mgsadpepe",
-      "title": "Sad Pepe (Feels Bad Man)",
-      "url": "https://images.memesguy.com/memes/Sad-Pepe-Feels-Bad-Man_689951b0ad405.webp",
-      "source": "https://memesguy.com/meme/sad-pepe",
-      "tags": [
-        "sad pepe (feels bad man)",
-        "pepe",
-        "feels bad man",
-        "sad frog",
-        "disappointment",
-        "2008",
-        "cartoon",
-        "pepe the frog",
-        "boys club",
-        "matt furie",
-        "sadness"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "When the fun part of the weekend is over",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1,
-          "font": "sans"
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "cartoon",
-        "harmless-reaction"
       ]
     },
     {
@@ -52925,6 +52187,10 @@
       "url": "https://i.imgflip.com/g9odq.jpg",
       "source": "https://imgflip.com/meme/27325358/Star-Trek-Kirk-Khan",
       "tags": [
+        "Star Trek",
+        "The Wrath of Khan",
+        "Khan Noonien Singh",
+        "shouting",
         "star trek ii the wrath of khan",
         "james t kirk",
         "william shatner",
@@ -57362,35 +56628,6 @@
       ]
     },
     {
-      "slug": "online/1jqcf8",
-      "title": "Thinking Black Guy",
-      "url": "https://i.imgflip.com/1jqcf8.jpg",
-      "source": "https://imgflip.com/meme/93608036/Thinking-Black-Guy",
-      "tags": [
-        "roll safe",
-        "kayode ewumi",
-        "reece simpson",
-        "hood documentary",
-        "thinking",
-        "clever idea",
-        "bad advice"
-      ],
-      "layout": "comment",
-      "text": [
-        {
-          "text": "Can't lose the remote if I never leave the couch",
-          "x": 0.5,
-          "y": 0.5,
-          "maxWidth": 0.92,
-          "maxHeight": 1
-        }
-      ],
-      "risk": 1,
-      "rating_tags": [
-        "harmless-reaction"
-      ]
-    },
-    {
       "slug": "online/mwthinkingmonkey",
       "title": "Thinking Monkey",
       "url": "https://en.meming.world/images/en/7/7a/Thinking_Monkey.jpg",
@@ -59138,6 +58375,13 @@
       "url": "https://i.imgflip.com/5mir21.jpg",
       "source": "https://imgflip.com/meme/340157305/Traumatized-Mr-Incredible",
       "tags": [
+        "mr incredible becoming uncanny",
+        "mr incredible becoming canny",
+        "canny",
+        "happy",
+        "sunglasses",
+        "rainbow",
+        "phases",
         "2021",
         "the incredibles",
         "mr incredible",
@@ -59155,6 +58399,73 @@
         "grid": true,
         "mirror": true,
         "fontSize": 0.08,
+        "additionalImages": [
+          {
+            "name": "Canny Phase 1 — Realistic",
+            "url": "https://static.wikia.nocookie.net/the-canny-incredible/images/c/c8/Phase_2_.webp/revision/latest?cb=20231126191221",
+            "source": "https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny?file=Phase_2_.webp"
+          },
+          {
+            "name": "Canny Phase 2 — Normal",
+            "url": "https://static.wikia.nocookie.net/the-canny-incredible/images/1/17/Image_phase_1_mr_incredible_becoming_uncanny_by_abbysek_dex8liy-fullview.jpg/revision/latest?cb=20230830150538",
+            "source": "https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny?file=Image_phase_1_mr_incredible_becoming_uncanny_by_abbysek_dex8liy-fullview.jpg"
+          },
+          {
+            "name": "Canny Phase 3",
+            "url": "https://static.wikia.nocookie.net/the-canny-incredible/images/e/e7/Phase_3.jpeg/revision/latest?cb=20230830134722",
+            "source": "https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny?file=Phase_3.jpeg"
+          },
+          {
+            "name": "Canny Phase 4",
+            "url": "https://static.wikia.nocookie.net/the-canny-incredible/images/b/b1/Phase_4.png/revision/latest?cb=20230830134830",
+            "source": "https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny?file=Phase_4.png"
+          },
+          {
+            "name": "Canny Phase 5",
+            "url": "https://static.wikia.nocookie.net/the-canny-incredible/images/5/50/Phase_5.png/revision/latest?cb=20230830134900",
+            "source": "https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny?file=Phase_5.png"
+          },
+          {
+            "name": "Canny Phase 6",
+            "url": "https://static.wikia.nocookie.net/the-canny-incredible/images/5/59/Phase_6.png/revision/latest?cb=20230830135006",
+            "source": "https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny?file=Phase_6.png"
+          },
+          {
+            "name": "Canny Phase 7",
+            "url": "https://static.wikia.nocookie.net/the-canny-incredible/images/0/05/Phase_7.png/revision/latest?cb=20230830135326",
+            "source": "https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny?file=Phase_7.png"
+          },
+          {
+            "name": "Uncanny Phase 2",
+            "url": "https://static.wikia.nocookie.net/the-uncanny-incredible/images/2/26/Phase_2.jpg/revision/latest?cb=20240714013123",
+            "source": "https://the-uncanny-incredible.fandom.com/wiki/Phase_2"
+          },
+          {
+            "name": "Uncanny Phase 3 — Gatito",
+            "url": "https://static.wikia.nocookie.net/the-uncanny-incredible/images/c/c3/Phase3Better.jpg/revision/latest?cb=20240329010920",
+            "source": "https://the-uncanny-incredible.fandom.com/wiki/Phase_3"
+          },
+          {
+            "name": "Uncanny Phase 4",
+            "url": "https://static.wikia.nocookie.net/the-uncanny-incredible/images/d/db/Default_phase_4_image..jpg/revision/latest?cb=20240630025841",
+            "source": "https://the-uncanny-incredible.fandom.com/wiki/Phase_4"
+          },
+          {
+            "name": "Uncanny Phase 5",
+            "url": "https://static.wikia.nocookie.net/the-uncanny-incredible/images/0/07/Phase_5_OG_Version_Fixed.png/revision/latest?cb=20240630030111",
+            "source": "https://the-uncanny-incredible.fandom.com/wiki/Phase_5"
+          },
+          {
+            "name": "Uncanny Phase 6",
+            "url": "https://static.wikia.nocookie.net/the-uncanny-incredible/images/5/59/Phase_6.png/revision/latest?cb=20240912034305",
+            "source": "https://the-uncanny-incredible.fandom.com/wiki/Phase_6"
+          },
+          {
+            "name": "Uncanny Phase 9 — Gatito skull",
+            "url": "https://static.wikia.nocookie.net/the-uncanny-incredible/images/6/60/Ezgif-frame-001.png/revision/latest?cb=20240827173843",
+            "source": "https://the-uncanny-incredible.fandom.com/wiki/Phase_9"
+          }
+        ],
         "items": [
           {
             "crop": {
@@ -59223,6 +58534,21 @@
       "url": "https://i.imgflip.com/1p5q26.jpg",
       "source": "https://imgflip.com/meme/102723630/triggerpaul",
       "tags": [
+        "oldschool",
+        "mocking",
+        "sarcasm",
+        "imitation",
+        "repeating words",
+        "magicmeme",
+        "bob leponge",
+        "bob leponge meme",
+        "bob lponge",
+        "classic",
+        "meme template",
+        "online-1p9wjx",
+        "online-mm234",
+        "spongebob stupid",
+        "Mocking Spongebob",
         "spongebob squarepants",
         "spongebob",
         "cartoon",
@@ -59241,7 +58567,7 @@
           "maxHeight": 1
         }
       ],
-      "risk": 1,
+      "risk": 2,
       "rating_tags": [
         "cartoon",
         "harmless-reaction"
@@ -60822,6 +60148,61 @@
           "maxWidth": 0.42,
           "maxHeight": 0.22,
           "fontSize": 0.06,
+          "font": "sans",
+          "color": "#ffffff",
+          "strokeColor": "#000000",
+          "strokeWidth": 0.045,
+          "align": "center",
+          "textStyle": "none"
+        }
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "weapon",
+        "cartoon"
+      ]
+    },
+    {
+      "slug": "online/mwunsheathingthesword2panel",
+      "title": "Unsheathing the Sword (2 panel)",
+      "url": "https://en.meming.world/images/en/9/98/Unsheathing_the_Sword_%282_panel%29.jpg",
+      "source": "https://en.meming.world/wiki/File:Unsheathing_the_Sword_(2_panel).jpg",
+      "tags": [
+        "unsheathing the sword",
+        "sword sheath",
+        "gurren lagann",
+        "kamina",
+        "anime",
+        "cartoon",
+        "sword",
+        "katana",
+        "escalation",
+        "two panels",
+        "object labels"
+      ],
+      "layout": "labels",
+      "text": [
+        {
+          "text": "My first argument",
+          "x": 0.5,
+          "y": 0.55,
+          "maxWidth": 0.8,
+          "maxHeight": 0.12,
+          "fontSize": 0.05,
+          "font": "sans",
+          "color": "#ffffff",
+          "strokeColor": "#000000",
+          "strokeWidth": 0.045,
+          "align": "center",
+          "textStyle": "none"
+        },
+        {
+          "text": "The evidence I saved",
+          "x": 0.5,
+          "y": 0.93,
+          "maxWidth": 0.8,
+          "maxHeight": 0.12,
+          "fontSize": 0.05,
           "font": "sans",
           "color": "#ffffff",
           "strokeColor": "#000000",

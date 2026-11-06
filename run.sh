@@ -176,7 +176,11 @@ case "$COMMAND" in
         need node "https://nodejs.org, >= 24.2"
         exec node library/serve.ts "$@"
         ;;
-      *) die "usage: ./run.sh <config> library download [--to PATH] | library serve [--port N]" ;;
+      duplicates)
+        shift
+        exec node library/duplicates.ts "$@"
+        ;;
+      *) die "usage: ./run.sh <config> library download [--to PATH] | library serve [--port N] | library duplicates" ;;
     esac
     ;;
   reset)

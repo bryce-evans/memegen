@@ -1,6 +1,6 @@
 /**
  * Starter content for a new deployment: work-appropriate example memes, all published by the reserved `memegen`
- * account, on the jacebrowning templates (by slug). Pure data; `seed.ts` renders and writes it. No users, votes,
+ * account, on curated built-in templates (by slug). Pure data; `seed.ts` renders and writes it. No users, votes,
  * or comments: real people add those. Ship it as a snapshot (`--label starter`, see README "Snapshots").
  */
 
@@ -26,7 +26,7 @@ export const STARTER_MEMES: StarterMeme[] = [
   { title: "Bring your own image", template: "jb/fry", captions: ["Not sure if there's a template for this", "or if I should just upload my own"], ageHours: 5 },
   { title: "Templates everywhere", template: "jb/buzz", captions: ["Templates", "templates everywhere"], ageHours: 8 },
   { title: "Captions required", template: "jb/mordor", captions: ["One does not simply", "post a meme without a caption"], ageHours: 12 },
-  { title: "Tag your team", template: "jb/kermit", captions: ["Tag your team's memes so everyone can find them", "but that's none of my business"], ageHours: 20 },
+  { title: "Tag your team", template: "online/ph0di", captions: ["Tag your team's memes so everyone can find them — but that's none of my business"], ageHours: 20 },
   { title: "First post", template: "jb/success", captions: ["Picked a template, added text", "first meme posted"], ageHours: 30 },
   { title: "Standups", template: "jb/cmm", captions: ["Standups are better with a meme"], ageHours: 48 },
 ];

@@ -4,10 +4,11 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, test } from "node:test";
+import sharp from "sharp";
 import { searchConfig, type Sql } from "@memegen/server-kit";
 import { encodePng, freshTestDb } from "@memegen/server-kit/testing";
 import { DUPLICATE_MIN_SIMILARITY, TemplateCatalog, type FetchAsset } from "./catalog.ts";
-import { Clip } from "./clip.ts";
+import { Clip, dot } from "./clip.ts";
 
 // The real CLIP model (downloaded into SEARCH_DATA_DIR on first use, shared with dev), against the test database.
 let sql: Sql;
@@ -102,6 +103,14 @@ test("similar: a resized, re-encoded copy finds its template; different pictures
     [rings],
   );
   assert.ok(hits[0]!.score >= DUPLICATE_MIN_SIMILARITY && hits[0]!.score <= 1);
+});
+
+test("grayscale-alpha templates match their RGB copy in CLIP", async () => {
+  const grayAlpha = await sharp(picture("rings", 224)).toColourspace("b-w").ensureAlpha().png().toBuffer();
+  assert.equal((await sharp(grayAlpha).metadata()).channels, 2);
+  const rgb = await sharp(grayAlpha).toColourspace("srgb").removeAlpha().png().toBuffer();
+  const model = await clip;
+  assert.ok(dot(await model.embedImage(grayAlpha), await model.embedImage(rgb)) > 0.999);
 });
 
 test("the index follows the templates table: new templates appear, deleted ones go, videos are skipped", async () => {

@@ -2,6 +2,86 @@
   "version": 1,
   "duplicates": [
     {
+      "slug": "online/drakepanels",
+      "canonicalSlug": "online/30b1gx"
+    },
+    {
+      "slug": "online/cpyet",
+      "canonicalSlug": "online/blank"
+    },
+    {
+      "slug": "online/b6xvw",
+      "canonicalSlug": "online/blank"
+    },
+    {
+      "slug": "online/319g4i",
+      "canonicalSlug": "online/blank"
+    },
+    {
+      "slug": "online/2m43dp",
+      "canonicalSlug": "online/blank"
+    },
+    {
+      "slug": "online/nf4h4",
+      "canonicalSlug": "online/blank"
+    },
+    {
+      "slug": "jb/gb",
+      "canonicalSlug": "online/galaxybrainpanels"
+    },
+    {
+      "slug": "online/24rhyz",
+      "canonicalSlug": "online/galaxybrainpanels"
+    },
+    {
+      "slug": "online/2n589r",
+      "canonicalSlug": "online/galaxybrainpanels"
+    },
+    {
+      "slug": "jb/sadfrog",
+      "canonicalSlug": "online/mgpepethefrog"
+    },
+    {
+      "slug": "online/mgsadpepe",
+      "canonicalSlug": "online/mgpepethefrog"
+    },
+    {
+      "slug": "online/mwcoloneltoad",
+      "canonicalSlug": "online/56p56k"
+    },
+    {
+      "slug": "online/nffky",
+      "canonicalSlug": "online/89bvo"
+    },
+    {
+      "slug": "jb/spongebob",
+      "canonicalSlug": "online/1p5q26"
+    },
+    {
+      "slug": "online/1jqcf8",
+      "canonicalSlug": "jb/rollsafe"
+    },
+    {
+      "slug": "online/1mt1s",
+      "canonicalSlug": "online/g9odq"
+    },
+    {
+      "slug": "online/oqii0",
+      "canonicalSlug": "online/o63vh"
+    },
+    {
+      "slug": "jb/kermit",
+      "canonicalSlug": "online/ph0di"
+    },
+    {
+      "slug": "online/ho51n",
+      "canonicalSlug": "online/ph0di"
+    },
+    {
+      "slug": "online/d6pto",
+      "canonicalSlug": "online/1hqk"
+    },
+    {
       "slug": "jb/ams",
       "canonicalSlug": "online/86vlk"
     },
@@ -191,7 +271,7 @@
     },
     {
       "slug": "online/1jwhww",
-      "canonicalSlug": "jb/gb"
+      "canonicalSlug": "online/galaxybrainpanels"
     },
     {
       "slug": "online/1n7w77",
@@ -199,11 +279,11 @@
     },
     {
       "slug": "online/1otk96",
-      "canonicalSlug": "jb/spongebob"
+      "canonicalSlug": "online/1p5q26"
     },
     {
       "slug": "online/1p9wjx",
-      "canonicalSlug": "jb/spongebob"
+      "canonicalSlug": "online/1p5q26"
     },
     {
       "slug": "online/1s8ffi",
@@ -671,11 +751,11 @@
     },
     {
       "slug": "online/4vk78l",
-      "canonicalSlug": "online/mwcoloneltoad"
+      "canonicalSlug": "online/56p56k"
     },
     {
       "slug": "online/53bkvv",
-      "canonicalSlug": "online/mwcoloneltoad"
+      "canonicalSlug": "online/56p56k"
     },
     {
       "slug": "online/54d9lj",
@@ -775,7 +855,7 @@
     },
     {
       "slug": "online/9sw43",
-      "canonicalSlug": "jb/kermit"
+      "canonicalSlug": "online/ph0di"
     },
     {
       "slug": "online/aork",
@@ -931,7 +1011,7 @@
     },
     {
       "slug": "online/mm234",
-      "canonicalSlug": "jb/spongebob"
+      "canonicalSlug": "online/1p5q26"
     },
     {
       "slug": "online/mm618",
@@ -975,6 +1055,382 @@
     }
   ],
   "aliases": [
+    {
+      "slug": "online/drakepanels",
+      "title": "Drake Hotline Bling (Panels)",
+      "tags": [
+        "drakeposting",
+        "drakepost",
+        "drake hotline approves",
+        "drake no yes",
+        "drake like dislike",
+        "drake faces",
+        "2015",
+        "drake",
+        "hotline bling",
+        "preference",
+        "rejection",
+        "approval",
+        "comparison",
+        "oldschool",
+        "multi-panel"
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "reaction"
+      ]
+    },
+    {
+      "slug": "online/cpyet",
+      "title": "Blank ",
+      "tags": [
+        "blank canvas",
+        "white background",
+        "text only",
+        "empty space",
+        "minimalism",
+        "custom caption"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "blank-template"
+      ]
+    },
+    {
+      "slug": "online/nf4h4",
+      "title": "blank black",
+      "tags": [
+        "black background",
+        "blank canvas",
+        "text only",
+        "darkness",
+        "empty space",
+        "minimalism"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "blank-template"
+      ]
+    },
+    {
+      "slug": "online/319g4i",
+      "title": "Blank Transparent Square",
+      "tags": [
+        "empty canvas",
+        "blank background",
+        "blank white background",
+        "blank black background",
+        "blank colored background",
+        "white blank",
+        "black blank",
+        "transparency",
+        "square canvas",
+        "empty space",
+        "custom design"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "blank-template"
+      ]
+    },
+    {
+      "slug": "online/b6xvw",
+      "title": "Blank White Template",
+      "tags": [
+        "white background",
+        "blank canvas",
+        "text only",
+        "empty space",
+        "minimalism",
+        "custom caption"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "blank-template"
+      ]
+    },
+    {
+      "slug": "jb/kermit",
+      "title": "But That's None of My Business",
+      "tags": [
+        "oldschool",
+        "the muppets",
+        "kermit the frog",
+        "tea",
+        "gossip",
+        "judgment",
+        "none of my business",
+        "2014",
+        "but that's none of my business",
+        "kermit drinking lipton iced tea",
+        "meme template",
+        "online-9sw43"
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "general-audience"
+      ]
+    },
+    {
+      "slug": "online/mwcoloneltoad",
+      "title": "Colonel Toad",
+      "tags": [
+        "colonel toad",
+        "2021",
+        "2011",
+        "2017",
+        "toad",
+        "frog",
+        "sitting",
+        "amphibian",
+        "waiting",
+        "composure"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "animal",
+        "child-friendly"
+      ]
+    },
+    {
+      "slug": "online/2m43dp",
+      "title": "Double Long Black Template",
+      "tags": [
+        "black background",
+        "blank canvas",
+        "wide layout",
+        "text only",
+        "empty space",
+        "minimalism"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "blank-template"
+      ]
+    },
+    {
+      "slug": "online/24rhyz",
+      "title": "Expanding brain 3 panels",
+      "tags": [
+        "brain",
+        "galaxy brain",
+        "intelligence",
+        "escalation",
+        "enlightenment",
+        "comparison"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "educational",
+        "mild-humor"
+      ]
+    },
+    {
+      "slug": "jb/sadfrog",
+      "title": "Feels Bad Man",
+      "tags": [
+        "oldschool",
+        "sad frog",
+        "pepe the frog",
+        "matt furie",
+        "boys club",
+        "sadness",
+        "disappointment",
+        "cartoon"
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "general-audience"
+      ]
+    },
+    {
+      "slug": "jb/gb",
+      "title": "Galaxy Brain",
+      "tags": [
+        "oldschool",
+        "galaxy brain",
+        "expanding brain",
+        "intelligence",
+        "escalation",
+        "comparison",
+        "absurdity",
+        "2017",
+        "meme template",
+        "online-1jwhww"
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "general-audience"
+      ]
+    },
+    {
+      "slug": "online/2n589r",
+      "title": "Galaxy Brain (3 brains)",
+      "tags": [
+        "Galaxy Brain",
+        "expanding brain",
+        "expanding brain (3 brains)",
+        "brain",
+        "intelligence",
+        "enlightenment",
+        "escalation",
+        "cosmic",
+        "comparison"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "mild-humor"
+      ]
+    },
+    {
+      "slug": "online/d6pto",
+      "title": "girl running",
+      "tags": [
+        "child",
+        "yellow jacket",
+        "running",
+        "escape",
+        "excitement",
+        "phone"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "child-friendly"
+      ]
+    },
+    {
+      "slug": "online/ho51n",
+      "title": "Kermit sipping tea",
+      "tags": [
+        "Kermit the Frog",
+        "The Muppets",
+        "tea",
+        "gossip",
+        "sarcasm",
+        "judgment"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "child-friendly",
+        "puppet"
+      ]
+    },
+    {
+      "slug": "online/1mt1s",
+      "title": "khan",
+      "tags": [
+        "Star Trek",
+        "The Wrath of Khan",
+        "James T Kirk",
+        "William Shatner",
+        "Khan Noonien Singh",
+        "shouting"
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "movie-reaction"
+      ]
+    },
+    {
+      "slug": "jb/spongebob",
+      "title": "Mocking Spongebob",
+      "tags": [
+        "oldschool",
+        "spongebob squarepants",
+        "mocking",
+        "sarcasm",
+        "imitation",
+        "cartoon",
+        "repeating words",
+        "magicmeme",
+        "bob leponge",
+        "bob leponge meme",
+        "bob lponge",
+        "classic",
+        "meme template",
+        "online-1p9wjx",
+        "online-mm234",
+        "spongebob stupid"
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "general-audience"
+      ]
+    },
+    {
+      "slug": "online/oqii0",
+      "title": "Nick Young",
+      "tags": [
+        "2014",
+        "Confused Nick Young",
+        "Nick Young",
+        "NBA",
+        "basketball",
+        "confusion",
+        "question marks",
+        "disbelief"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "child-friendly",
+        "reaction"
+      ]
+    },
+    {
+      "slug": "online/nffky",
+      "title": "Please sir may I have some more",
+      "tags": [
+        "Oliver Twist",
+        "Oliver",
+        "Mark Lester",
+        "begging",
+        "food",
+        "request"
+      ],
+      "risk": 2,
+      "rating_tags": [
+        "movie-reaction"
+      ]
+    },
+    {
+      "slug": "online/mgsadpepe",
+      "title": "Sad Pepe (Feels Bad Man)",
+      "tags": [
+        "sad pepe (feels bad man)",
+        "pepe",
+        "feels bad man",
+        "sad frog",
+        "disappointment",
+        "2008",
+        "cartoon",
+        "pepe the frog",
+        "boys club",
+        "matt furie",
+        "sadness"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "cartoon",
+        "harmless-reaction"
+      ]
+    },
+    {
+      "slug": "online/1jqcf8",
+      "title": "Thinking Black Guy",
+      "tags": [
+        "roll safe",
+        "kayode ewumi",
+        "reece simpson",
+        "hood documentary",
+        "thinking",
+        "clever idea",
+        "bad advice"
+      ],
+      "risk": 1,
+      "rating_tags": [
+        "harmless-reaction"
+      ]
+    },
     {
       "slug": "jb/ams",
       "title": "Awkward Moment Seal",

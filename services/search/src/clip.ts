@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import sharp from "sharp";
 import {
   AutoProcessor,
   AutoTokenizer,
@@ -65,7 +66,12 @@ export class Clip {
 
   /** A still image or a GIF (its first frame). */
   async embedImage(bytes: Uint8Array): Promise<Float32Array> {
-    const image = await RawImage.fromBlob(new Blob([bytes as Uint8Array<ArrayBuffer>]));
+    // Decode to RGB explicitly: the upstream loader tries to restore unsupported
+    // grayscale+alpha (two-channel) input after sharp expands it to RGBA.
+    const { data, info } = await sharp(bytes).rotate().toColourspace("srgb").removeAlpha().raw()
+      .toBuffer({ resolveWithObject: true });
+    const image = new RawImage(new Uint8ClampedArray(data.buffer, data.byteOffset, data.byteLength),
+      info.width, info.height, 3);
     const { image_embeds } = await this.vision(await this.processor(image));
     return normalize(image_embeds.data as Float32Array);
   }

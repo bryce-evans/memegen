@@ -110,6 +110,7 @@
         "@memegen/shared": "workspace:*",
         "faiss-node": "^0.5.1",
         "hono": "^4.9.0",
+        "sharp": "^0.35.5",
       },
     },
     "services/storage": {

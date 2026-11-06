@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { tagSlug } from "@memegen/shared";
+import { MAX_PACK_IMAGES, tagSlug } from "@memegen/shared";
 import { cropPixels, manifestLayers, manifestPanelSet, templateManifestSchema, type ManifestTemplate, type ManifestPanelTemplate } from "./manifest.ts";
 
 const fonts = { impact: "00000000-0000-4000-8000-000000000001", sans: "00000000-0000-4000-8000-000000000002" };
@@ -153,6 +153,29 @@ test("panel recipes share a flat source but reject duplicate recipes and invalid
   }
 });
 
+test("additional pack images require named HTTPS still sources and unique download identities within capacity", () => {
+  const image = { name: "Alternative", url: "https://example.com/alternative.png", source: "https://example.com/gallery" };
+  const withImages = (additionalImages: unknown[]) => ({
+    ...manifest([]), templates: [{ ...panelEntry, panels: { ...panelEntry.panels, additionalImages } }],
+  });
+  assert.equal(templateManifestSchema.safeParse(withImages([image, { ...image, url: "https://example.com/other.png" }])).success, true,
+    "multiple images may cite the same provenance page");
+  for (const change of [
+    { name: "" }, { name: "   " }, { name: "x".repeat(121) },
+    { url: "http://example.com/alternative.png" }, { source: "http://example.com/gallery" },
+    { url: "not a URL" }, { source: "not a URL" },
+    { url: "https://example.com/alternative.GIF?raw=1" }, { url: "https://example.com/alternative.webm" },
+  ]) {
+    assert.equal(templateManifestSchema.safeParse(withImages([{ ...image, ...change }])).success, false);
+  }
+  assert.equal(templateManifestSchema.safeParse(withImages([image, { ...image, url: `${image.url}#same-bytes` }])).success, false);
+  const atCapacity = Array.from({ length: MAX_PACK_IMAGES - panelEntry.panels.items.length }, (_, index) => ({
+    ...image, name: `Choice ${index}`, url: `https://example.com/choice-${index}.png`,
+  }));
+  assert.equal(templateManifestSchema.safeParse(withImages(atCapacity)).success, true);
+  assert.equal(templateManifestSchema.safeParse(withImages([...atCapacity, image])).success, false);
+});
+
 test("panel crops round shared boundaries and reject crops that disappear at source resolution", () => {
   const top = cropPixels(panelEntry.panels.items[0]!.crop, 101, 103);
   const bottom = cropPixels(panelEntry.panels.items[1]!.crop, 101, 103);
@@ -162,7 +185,10 @@ test("panel crops round shared boundaries and reject crops that disappear at sou
 });
 
 test("native panel sets preserve crop order, captions and layout and require every uploaded image", () => {
-  const set = manifestPanelSet(panelEntry, [fonts.sans, fonts.impact]);
+  const set = manifestPanelSet({
+    ...panelEntry,
+    panels: { ...panelEntry.panels, additionalImages: [{ name: "Alternative", url: "https://example.com/alternative.png", source: "https://example.com/gallery" }] },
+  }, [fonts.sans, fonts.impact]);
   assert.deepEqual(set, {
     layout: "vertical", grid: true, mirror: true, fontSize: 0.08,
     panels: [

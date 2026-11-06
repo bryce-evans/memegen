@@ -118,6 +118,9 @@ test.describe("library placeholder previews", () => {
         { crop: { x: 0.5, y: 0, width: 0.5, height: 0.5 }, text: "FIRST CHOICE" },
         { crop: { x: 0.5, y: 0.5, width: 0.5, height: 0.5 }, text: "SECOND CHOICE" },
       ],
+      additionalImages: [
+        { name: "Extra choice", url: `${origin}/blank.png`, source: "https://example.com/extra" },
+      ],
     },
   };
 
@@ -230,10 +233,11 @@ test.describe("library placeholder previews", () => {
     await page.getByTestId("layout-filter").selectOption("panels");
     const card = page.getByTestId("template-card");
     await expect(card).toHaveCount(1);
-    await expect(card.getByTestId("panel-recipe")).toContainText("2 panels · vertical · grid");
-    await card.getByTestId("panel-recipe").locator("summary").click();
+    await card.getByTestId("panel-recipe-summary").click();
     await expect(card.getByTestId("panel-recipe")).toContainText("50%, 0% · 50% × 50%");
     await expect(card.getByTestId("panel-recipe")).toContainText("FIRST CHOICE");
+    await expect(card.getByTestId("additional-image-source")).toHaveAttribute("href", "https://example.com/extra");
+    await expect(card.getByTestId("additional-image-original")).toHaveAttribute("href", `${origin}/blank.png`);
     await page.getByTestId("gallery-search").fill("second choice");
     await expect(card).toHaveCount(1);
     await card.getByTestId("placeholder-toggle").check();

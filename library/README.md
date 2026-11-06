@@ -6,8 +6,8 @@ This directory owns the corpus of known templates: canonical images/GIFs, search
 
 | File | Responsibility |
 |---|---|
-| `MANIFEST.json` | 1,470 canonical templates, provenance/media URLs, tags, ratings, default captions/layouts, and panel crop recipes |
-| `REGISTRY_POLICY.json` | 243 retired identities, terminal canonical redirects, and rated search aliases |
+| `MANIFEST.json` | 1,452 canonical templates, provenance/media URLs, tags, ratings, default captions/layouts, and panel crop recipes |
+| `REGISTRY_POLICY.json` | 263 retired identities, terminal canonical redirects, and rated search aliases |
 | `index.html` | Standalone searchable gallery with risk and tag filters |
 | `preview.ts` | Browser-only default-caption composition using the editor's shared renderer |
 | `manifest.ts` | Manifest validation and conversion to native editor layers or panel sets |
@@ -19,9 +19,10 @@ This directory owns the corpus of known templates: canonical images/GIFs, search
 | `import-manifest.ts` | Manifest media download, byte-deduplication, and resumable import |
 | `import-panels.ts` | Browser lifecycle and atomic native panel-pack import |
 | `panel-images.ts`, `render-panels-page.ts` | Shared browser cropping and native panel-cover export |
+| `duplicates.ts` | Read-only CLIP indexing and near-duplicate audit of seeded templates |
 | `serve.ts` | Development-only loopback gallery server |
 
-The 210 existing media-bearing checkout templates are represented by 201 `jb/` canonicals and nine aliases to online canonicals. `oldschool`, source keywords, and existing seed tags are retained on canonical entries or their rated aliases. The media-less `_test` fixture is excluded. Eight additional online duplicates resolve to checkout canonicals; distinct drawings, reactions, and panel counts remain separate.
+The 210 existing media-bearing checkout templates are represented by 197 `jb/` canonicals and 13 aliases to online canonicals. `oldschool`, source keywords, and existing seed tags are retained on canonical entries or their rated aliases. The media-less `_test` fixture is excluded. Retired checkout and online identities resolve directly to canonical entries; CLIP similarity alone never authorizes retirement.
 
 ## Browse without seeding
 
@@ -72,7 +73,17 @@ The runner invokes `library/seed.ts` once. With the environment already loaded, 
 
 Reruns preserve existing template IDs, assets, default layers, variants, and saved memes. They add catalog tags and update builtin visibility: retired duplicates and over-ceiling templates become unlisted, not deleted; direct links to records and media remain openable. Higher-risk alias metadata cannot annotate a lower-risk canonical. Successful imports survive download failures; a failed run exits unsuccessfully, and the next run resumes completed entries without downloading them again.
 
+Panel-pack reseeds append missing `additionalImages` without replacing the cover, default panel sequence, existing membership/order, or saved memes. Each original is cached by its normalized download URL (excluding the fragment), recorded as a SHA-256 marker in its asset filename. Changing that URL adds an immutable choice; changing its display name or provenance page does not replace an already imported asset. Concurrent imports serialize publication, and interrupted imports reuse completed uploads.
+
 `seed --limit N` bounds each source's template loop independently. With either source enabled, reconciliation still runs across existing managed templates, even with `--limit 0`; checkout fonts are still imported, so it is not a dry run. Sample/starter steps also follow their normal configured behavior.
+
+### Review seeded near-duplicates
+
+With storage running, run `./run.sh config/dev.env library duplicates`. This synchronizes the existing CLIP cache/index, checks every seeded image/GIF (including unlisted roots and variations), and writes `.data/search/seed-duplicates.json`. GIFs use their first frame; unsupported media and missing embeddings are reported explicitly. Missing embeddings fail the command.
+
+The report retains pairs with cosine similarity ≥ 0.97, byte-equality, visibility, and same-family flags. Console output highlights public cross-family candidates; the JSON includes unlisted and same-family matches too. Scores are rounded to three decimals by the search service. A score of 1.000 is not proof of byte equality: blank backgrounds, crops, and different panel arrangements can match closely. Review images before changing the registry; this command never merges, unlists, or deletes anything.
+
+The reviewed consolidation keeps the highest pixel-count image in each accepted duplicate group. Retired names/tags remain searchable aliases, with no redirect chains. Kermit and Mocking SpongeBob retain risk 2 when absorbing their checkout identities. The special `online/blank` canonical is a 2048×2048 pure-white JPEG with an empty editable black text box and no caption band; it replaces the old solid-black, transparent, and smaller white canvases. Its deterministic source uses identical white foreground/background colors, not an embedded placeholder label.
 
 ## Maintain the corpus
 
@@ -82,7 +93,9 @@ Reruns preserve existing template IDs, assets, default layers, variants, and sav
 - Caption centers/sizes are fractions of image dimensions and boxes must fit inside the image. Fonts are `impact`, `sans`, `thin`, or `comic`; optional `start`/`end` are fractions of GIF duration. Import converts these to native seconds after probing the asset. Existing database layouts are never overwritten by a catalog edit.
 - Reserve native multi-panel packs for formats where users customize panel count, repetition, order, and layout. A sheet containing multiple frames is not sufficient: fixed-format sequences such as Anakin/Padmé stay ordinary media templates with editable captions. Pack images are reusable choices, and the default sequence is only a starting point: three or eight Galaxy Brains, or four Drake rejections and one approval, are valid compositions.
 - Native panel entries use `layout: "panels"` and a `panels` recipe containing `layout` (`vertical` or `horizontal`), `grid`, `mirror`, `fontSize`, and ordered `items`. Each item has editable `text` and `crop: { x, y, width, height }`: top-left origin and extent as fractions of the source sheet. Crops must fit inside the sheet and remain nonempty after pixel-edge rounding. Crop away old caption areas and divider gutters rather than treating the whole sheet as a panel.
-- A flat template and native panel recipe may share a source URL, but need distinct slugs. Keep flat formats for existing memes; do not alias panel identities to them. Repeated identical crops share stored assets while retaining separate editable panels. Template metadata and ordered pack membership are committed atomically; retries reuse uploaded bytes.
+- Optional `panels.additionalImages` lists standalone reusable choices as `{ name, url, source }`, with HTTPS original-image and provenance URLs. These do not add default panels or alter the sheet preview. The inspector lists their source links separately. Originals are browser-validated as still images and stored without re-encoding, using their actual detected format; default crops plus additional choices must fit the 24-image pack cap.
+- A flat template and native panel recipe may share a source URL, but need distinct slugs. When one format supersedes another, retire its catalog identity while retaining its database row, assets, defaults, and existing memes. Never convert saved templates between flat and panel content in place. Repeated identical crops share stored assets while retaining separate editable panels. Template metadata and ordered pack membership are committed atomically; retries reuse uploaded bytes.
+- Unsheathing the Sword (2 panel) remains a separate fixed-image template from the original single frame; its second frame reveals more blade, with one editable caption per frame.
 - For a duplicate, retain one canonical manifest entry, move the retired metadata into policy `aliases`, and add its `duplicates` redirect. Every target must exist in the manifest, and redirects must be terminal. Preserve useful retired names/tags on the canonical when their risk permits it.
 - Review actual images before merging. Different reactions and panel arrangements are not duplicates merely because their titles match.
 
@@ -118,7 +131,13 @@ Preserve these reviewed decisions when maintaining metadata (reason tags, captio
 
 Media layouts are `impact` (outlined captions), `comment` (one native white top-section caption), `subtitle`, and `labels`. They compile to ordinary shared editor layers, not a second renderer. Preserve per-box font, color, alignment, casing, rotation, and timing overrides. Geometry must fit inside the image; reposition source boxes minimally when curating out-of-bounds source geometry. GIF fractions become seconds after probing; still captions are unbounded.
 
-The `panels` layout compiles to the existing native panel contract, not media text layers. Curated packs cover Meme Man's Panik/Kalm/Panik, Vince McMahon, Mr. Incredible normal/uncanny, Galaxy Brain, Drake, and Tuxedo Pooh. Their default panel counts do not constrain the user's composition; images can be reused or omitted. Imports validate still-image bytes and reject animation, enforce source/output caps, and store individual cropped assets plus a composed cover. Panel captions use the native panel renderer's typography; no catalog font download is required for these captions.
+The `panels` layout compiles to the existing native panel contract, not media text layers. Curated packs cover Meme Man's Panik/Kalm/Panik, Vince McMahon, Mr. Incredible normal/uncanny, Galaxy Brain, and Tuxedo Pooh. Their default panel counts do not constrain the user's composition; images can be reused or omitted. Imports validate still-image bytes and reject animation, enforce source/output caps, and store individual cropped assets plus a composed cover. Panel captions use the native panel renderer's typography; no catalog font download is required for these captions.
+
+Galaxy Brain's sole listed canonical is `online/galaxybrainpanels`, with four independently cropped brain images. Its normalized crop recipe uses `panel-images.ts` / `cropPixels`, shared by gallery preview and seed import. Users can omit, repeat, reorder, or add panels rather than choosing a fixed three- or four-frame sheet. The retired `jb/gb`, `online/24rhyz`, and `online/2n589r` formats (and previous aliases) resolve directly to this pack for discovery; existing flat memes retain their original assets.
+
+Mr. Incredible's `online/5mir21panels` pack contains 15 choices: its two original crops, Canny phases 1–7, and Uncanny phases 2–6 and 9. The original two-panel default remains unchanged. Image provenance is recorded per choice from the [Canny wiki](https://the-canny-incredible.fandom.com/wiki/Mr._Incredible_Becoming_Canny) and [Uncanny wiki](https://the-uncanny-incredible.fandom.com/wiki/Phase_4). The [Phase 9 skull variant](https://the-uncanny-incredible.fandom.com/wiki/Phase_9) credits a Shutterstock source; public wiki availability does not clear redistribution rights.
+
+The built-in Drake Hotline Bling (Panels) entry is retired in favor of the existing Drake template. Reseeding unlists only the managed retired entry; user-created Drake packs and existing panel memes remain untouched.
 
 The four catalog roles are `impact` → Impact, `sans` → Noto Sans Bold, `thin` → Titillium Web SemiBold, and `comic` → Kalam. The checkout also imports Titillium Web Black and Noto Sans Hebrew Bold for source aliases/variations. `fonts.ts` owns filenames, display identities, aliases, and catalog roles; preview-only synthetic asset IDs stay in `preview.ts`. Checkout's default thick caption alias is deliberately mapped to Impact.
 

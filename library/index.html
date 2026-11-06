@@ -105,6 +105,18 @@
             (recipe.fontSize !== undefined && (!Number.isFinite(recipe.fontSize) || recipe.fontSize < 0.03 || recipe.fontSize > 0.3)) ||
             !Array.isArray(recipe.items) || recipe.items.length < 2 || recipe.items.length > 24 ||
             /\.(gif|mp4|mov|webm)$/i.test(new URL(entry.url).pathname)) return false;
+        const additional = recipe.additionalImages === undefined ? [] : recipe.additionalImages;
+        if (!Array.isArray(additional) || recipe.items.length + additional.length > 24) return false;
+        const urls = new Set();
+        for (const image of additional) {
+          if (!image || typeof image.name !== 'string' || !image.name.trim() || image.name.trim().length > 120 ||
+              !https(image.url) || !https(image.source) ||
+              /\.(gif|mp4|mov|webm)$/i.test(new URL(image.url).pathname)) return false;
+          const url = new URL(image.url);
+          url.hash = '';
+          if (urls.has(url.href)) return false;
+          urls.add(url.href);
+        }
         return recipe.items.every(item => {
           const crop = item?.crop;
           return typeof item?.text === 'string' && item.text.length <= 2000 && crop &&
@@ -168,7 +180,9 @@
           const recipe = entry.panels;
           const details = node('details');
           details.dataset.testid = 'panel-recipe';
-          details.append(node('summary', `${recipe.items.length} panels · ${recipe.layout} · ${recipe.grid === false ? 'no grid' : 'grid'}${recipe.mirror ? ' · mirrored' : ''}`));
+          const summary = node('summary', `${recipe.items.length} default panels · ${recipe.layout} · ${recipe.grid === false ? 'no grid' : 'grid'}${recipe.mirror ? ' · mirrored' : ''}`);
+          summary.dataset.testid = 'panel-recipe-summary';
+          details.append(summary);
           details.append(node('p', 'Source crops: left, top, width × height (% of original image).', 'muted'));
           const crops = node('ol');
           const percent = value => `${Number((value * 100).toFixed(2))}%`;
@@ -177,6 +191,29 @@
             crops.append(node('li', `${percent(x)}, ${percent(y)} · ${percent(width)} × ${percent(height)} — ${item.text || '(empty caption)'}`));
           }
           details.append(crops);
+          if (recipe.additionalImages?.length) {
+            details.append(node('p', `${recipe.additionalImages.length} additional pack images — optional choices, not default panels.`, 'muted'));
+            const additional = node('ul');
+            additional.dataset.testid = 'additional-images';
+            for (const image of recipe.additionalImages) {
+              const item = node('li', image.name);
+              const links = node('div', undefined, 'links');
+              for (const [label, url, testid] of [
+                ['Source page', image.source, 'additional-image-source'],
+                ['Original image', image.url, 'additional-image-original'],
+              ]) {
+                const link = node('a', label);
+                link.dataset.testid = testid;
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                links.append(link);
+              }
+              item.append(links);
+              additional.append(item);
+            }
+            details.append(additional);
+          }
           body.append(details);
         }
         const toggleLabel = node('label', undefined, 'placeholder-toggle');

@@ -94,15 +94,28 @@ async function searchNames(q: string, user: User | null, extra = ""): Promise<st
   return (await call<Page<Template>>(`/api/templates?q=${encodeURIComponent(q)}${extra}`, user)).body.items.map((t) => t.name);
 }
 
-test("template search ranks tag matches, then name matches, then image matches, each template once", async () => {
+test("template search refines words across names and tags before falling back to images", async () => {
   const alice = await signIn("alice");
-  const tagged = await makeTemplate(alice, "Such Wow", { tags: ["dogs"] });
-  const named = await makeTemplate(alice, "Hot Dog");
-  const pictured = await makeTemplate(alice, "Cheems");
-  await makeTemplate(alice, "Unrelated");
-  // The sidecar ranks the named template first; text matches still lead, and nothing repeats.
-  textHits = [hit(named, 4), hit(pictured, 3), hit(tagged, 2.5)];
-  assert.deepEqual(await searchNames("dog", alice), ["Such Wow", "Hot Dog", "Cheems"]);
+  const target = await makeTemplate(alice, "Homer backing into the bushes", { tags: ["simpsons", "hedges"] });
+  const others = [];
+  for (let i = 0; i < 12; i++) {
+    others.push(await makeTemplate(alice, `Homer reaction ${i}`, { tags: ["simpsons"] }));
+  }
+  textHits = [...others.map((t) => hit(t, 4)), hit(target, 2.5)];
+  assert.deepEqual(await searchNames("simpsons bushes", alice, "&limit=5"), [target.name]);
+  assert.deepEqual(await searchNames("hedges homer", alice, "&limit=5"), [target.name]);
+  assert.deepEqual(await searchNames("  HOMER backing into the bushes  ", alice, "&limit=5"), [target.name]);
+  assert.equal((await searchNames("simpsons", alice)).length, 13);
+});
+
+test("exact names lead phrase and tag matches within the first five results", async () => {
+  const alice = await signIn("alice");
+  const exact = await makeTemplate(alice, "Homer bushes");
+  for (let i = 0; i < 6; i++) {
+    await makeTemplate(alice, `Homer bushes variation ${i}`);
+    await makeTemplate(alice, `Reaction ${i}`, { tags: ["homer", "bushes"] });
+  }
+  assert.equal((await searchNames("homer bushes", alice, "&limit=5"))[0], exact.name);
 });
 
 test("image matches respect visibility and filters, and a variation's match finds its parent", async () => {
@@ -126,16 +139,16 @@ test("image matches respect visibility and filters, and a variation's match find
   assert.deepEqual(await searchNames("pet", bob), ["Doge"]);
 });
 
-test("template search pages across text and image matches", async () => {
+test("template search pages across semantic fallback matches without duplicates", async () => {
   const alice = await signIn("alice");
   const a = await makeTemplate(alice, "Dog A");
   const b = await makeTemplate(alice, "Dog B");
   const c = await makeTemplate(alice, "Pup");
-  textHits = [hit(c), hit(a)];
-  const first = await call<Page<Template>>("/api/templates?q=dog&limit=2", alice);
+  textHits = [hit(b), hit(a), hit(c), hit(a)];
+  const first = await call<Page<Template>>("/api/templates?q=pet&limit=2", alice);
   assert.deepEqual(first.body.items.map((t) => t.id), [b.id, a.id]);
   assert.equal(first.body.nextOffset, 2);
-  const second = await call<Page<Template>>("/api/templates?q=dog&limit=2&offset=2", alice);
+  const second = await call<Page<Template>>("/api/templates?q=pet&limit=2&offset=2", alice);
   assert.deepEqual(second.body.items.map((t) => t.id), [c.id]);
   assert.equal(second.body.nextOffset, null);
 });

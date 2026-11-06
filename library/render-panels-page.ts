@@ -34,7 +34,7 @@ interface ImageDecoderMetadata {
   close(): void;
 }
 
-async function renderPanelRecipe({ entry, limits }: PanelRenderRequest): Promise<PanelRenderOutput> {
+async function decodePanelSource(limits: UploadLimits): Promise<ImageBitmap> {
   const response = await fetch("/source");
   if (!response.ok) throw new Error(`panel source: ${response.status}`);
   const blob = await response.blob();
@@ -51,9 +51,22 @@ async function renderPanelRecipe({ entry, limits }: PanelRenderRequest): Promise
     decoder.close();
   }
   const image = await createImageBitmap(blob);
+  const errors = limitViolations(blob.size, { kind: "image", width: image.width, height: image.height, frameCount: 1 }, limits);
+  if (errors.length) {
+    image.close();
+    throw new Error(errors.join("; "));
+  }
+  return image;
+}
+
+async function validatePanelSource(limits: UploadLimits): Promise<void> {
+  const image = await decodePanelSource(limits);
+  image.close();
+}
+
+async function renderPanelRecipe({ entry, limits }: PanelRenderRequest): Promise<PanelRenderOutput> {
+  const image = await decodePanelSource(limits);
   try {
-    const errors = limitViolations(blob.size, { kind: "image", width: image.width, height: image.height, frameCount: 1 }, limits);
-    if (errors.length) throw new Error(errors.join("; "));
     const cropped = await cropPanelImages(entry, image, image.width, image.height);
     try {
       const crops: PanelImageOutput[] = [];
@@ -76,5 +89,7 @@ async function renderPanelRecipe({ entry, limits }: PanelRenderRequest): Promise
 
 declare global {
   var renderPanelRecipe: (request: PanelRenderRequest) => Promise<PanelRenderOutput>;
+  var validatePanelSource: (limits: UploadLimits) => Promise<void>;
 }
 globalThis.renderPanelRecipe = renderPanelRecipe;
+globalThis.validatePanelSource = validatePanelSource;

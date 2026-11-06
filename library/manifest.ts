@@ -14,7 +14,7 @@ import {
 } from "@memegen/shared";
 import { CATALOG_FONT_ROLES, type CatalogFontRole } from "./fonts.ts";
 
-const httpsUrl = z.url().refine((value) => new URL(value).protocol === "https:", "URL must use HTTPS");
+const httpsUrl = z.url().refine((value) => URL.canParse(value) && new URL(value).protocol === "https:", "URL must use HTTPS");
 const fraction = z.number().min(0).max(1);
 const color = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/);
 
@@ -79,6 +79,12 @@ const manifestMediaTemplateSchema = manifestMetadataSchema.extend({
   path: ["text"], message: "comment layout requires exactly one top-section caption",
 });
 
+const manifestAdditionalImageSchema = z.object({
+  name: z.string().trim().min(1).max(TEMPLATE_NAME_MAX_LENGTH),
+  url: httpsUrl.refine((value) => !URL.canParse(value) || !/\.(?:gif|mp4|mov|webm)$/i.test(new URL(value).pathname), "pack images require a still-image source"),
+  source: httpsUrl,
+}).strict();
+
 const manifestPanelTemplateSchema = manifestMetadataSchema.extend({
   layout: z.literal("panels"),
   panels: panelSetSchema.omit({ panels: true }).extend({
@@ -86,9 +92,25 @@ const manifestPanelTemplateSchema = manifestMetadataSchema.extend({
       crop: manifestCropSchema,
       text: z.string().max(TEXT_MAX_LENGTH),
     }).strict()).min(2).max(MAX_PACK_IMAGES),
+    additionalImages: z.array(manifestAdditionalImageSchema).max(MAX_PACK_IMAGES).optional(),
   }).strict(),
 }).refine((entry) => !/\.(?:gif|mp4|mov|webm)$/i.test(new URL(entry.url).pathname), {
   path: ["url"], message: "panel crops require a still-image source",
+}).superRefine((entry, ctx) => {
+  const images = entry.panels.additionalImages ?? [];
+  if (entry.panels.items.length + images.length > MAX_PACK_IMAGES) {
+    ctx.addIssue({ code: "custom", path: ["panels", "additionalImages"], message: `pack may contain at most ${MAX_PACK_IMAGES} images, including default crops` });
+  }
+  const identities = new Set<string>();
+  images.forEach((image, index) => {
+    if (!URL.canParse(image.url)) return;
+    const url = new URL(image.url);
+    url.hash = "";
+    if (identities.has(url.href)) {
+      ctx.addIssue({ code: "custom", path: ["panels", "additionalImages", index, "url"], message: "duplicate additional image URL" });
+    }
+    identities.add(url.href);
+  });
 });
 
 export const manifestTemplateSchema = z.discriminatedUnion("layout", [
@@ -115,6 +137,7 @@ export const templateManifestSchema = z.object({
 
 export type ManifestTemplate = z.infer<typeof manifestTemplateSchema>;
 export type ManifestPanelTemplate = z.infer<typeof manifestPanelTemplateSchema>;
+export type ManifestAdditionalImage = z.infer<typeof manifestAdditionalImageSchema>;
 export type ManifestCrop = z.infer<typeof manifestCropSchema>;
 export type TemplateManifest = z.infer<typeof templateManifestSchema>;
 export type ManifestFonts = Pick<Record<CatalogFontRole, string>, "impact" | "sans">
@@ -153,7 +176,7 @@ export function manifestLayers(entry: ManifestTemplate, fonts: ManifestFonts, du
 /** Map the ordered crop recipe to native panel content, after assets have been cropped and assigned IDs. */
 export function manifestPanelSet(entry: ManifestPanelTemplate, assetIds: readonly string[]): PanelSet {
   if (assetIds.length !== entry.panels.items.length) throw new Error("Every manifest panel must have a cropped asset");
-  const { items, ...style } = entry.panels;
+  const { items, additionalImages: _, ...style } = entry.panels;
   return panelSetSchema.parse({
     ...style,
     panels: items.map((item, index) => ({ id: `panel-${index + 1}`, assetId: assetIds[index]!, text: item.text })),

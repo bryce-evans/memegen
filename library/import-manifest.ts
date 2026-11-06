@@ -33,18 +33,19 @@ export async function importManifest(sql: Sql, registry: Registry, limit: number
         const existingRisk = existing?.slug ? registryRisk(registry, existing.slug) : undefined;
         if (existing && (entry.layout === "panels" || existingRisk !== undefined && entry.risk <= existingRisk)) {
           if (existing.slug !== entry.slug) await addRegistryAliases(sql, existing.id, entry);
+          if (entry.layout === "panels") await importPanelTemplate(sql, store, renderer, entry);
           present++;
+          continue;
+        }
+        if (entry.layout === "panels") {
+          await importPanelTemplate(sql, store, renderer, entry);
+          created++;
+          console.log(`panels ${entry.slug} — ${entry.title}`);
           continue;
         }
         const response = await fetch(entry.url);
         if (!response.ok) throw new Error(`download returned HTTP ${response.status} (${entry.url})`);
         const data = new Uint8Array(await response.arrayBuffer());
-        if (entry.layout === "panels") {
-          await importPanelTemplate(sql, store, renderer, entry, data);
-          created++;
-          console.log(`panels ${entry.slug} — ${entry.title}`);
-          continue;
-        }
         if (!fonts) {
           const names = LIBRARY_FONTS.filter((font) => font.role).map((font) => font.name);
           const rows = await sql<{ id: string; name: string }[]>`

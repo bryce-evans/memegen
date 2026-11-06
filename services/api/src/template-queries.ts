@@ -16,20 +16,24 @@ async function templateRows(sql: Sql, ids: string[], viewerId: string | null): P
 
 /** API owns eligibility and root grouping; the sidecar only ranks the supplied candidates. */
 async function searchTemplateIds(sql: Sql, search: TemplateSearch | null, q: string, listed: SqlFragment, viewerId: string | null) {
-  const tagged = sql`exists (select 1 from template_tag_matches x join tags g on g.id = x.tag_id
-    where x.template_id = t.id and ${tagMatches(sql, q, "g")})`;
+  const query = q.trim();
+  const terms = [...new Set(query.split(/\s+/).filter(Boolean))];
+  const matches = terms.map((term) => sql`(t.name ilike ${containsPattern(term)} or exists (
+    select 1 from template_tag_matches x join tags g on g.id = x.tag_id
+    where x.template_id = t.id and ${tagMatches(sql, term, "g")}))`);
+  const allTerms = matches.reduce((combined, match) => sql`${combined} and ${match}`, sql`true`);
   const text = await sql<{ id: string }[]>`select t.id from templates t
-    where ${listed} and (${tagged} or t.name ilike ${containsPattern(q)})
-    order by ${tagged} desc, t.created_at desc, t.id`;
+    where ${listed} and ${allTerms}
+    order by (lower(t.name) = lower(${query})) desc,
+      (t.name ilike ${containsPattern(query)}) desc, t.created_at desc, t.id`;
   const ids = new Set(text.map((r) => r.id));
-  if (!search) return [...ids];
+  // Semantic suggestions are a fallback, not an OR that broadens a precise text query.
+  if (ids.size || !search || !terms.length) return [...ids];
   const candidates = await sql<SearchCandidate[]>`
     select h.id as "templateId", t.id as "groupId"
     from templates h join templates t on t.id = coalesce(h.parent_id, h.id)
     where ${templateVisibleTo(sql, viewerId, "h")} and ${listed}`;
-  // Text matches already lead the result; don't let them consume visual-only root slots.
-  const visualCandidates = candidates.filter((candidate) => !ids.has(candidate.groupId));
-  const hits = visualCandidates.length ? await search.text(q, VISUAL_SEARCH_LIMIT, visualCandidates) : [];
+  const hits = candidates.length ? await search.text(q, VISUAL_SEARCH_LIMIT, candidates) : [];
   if (hits.length) {
     // A visibility/filter change during the request must not turn a candidate into an authorization grant.
     const roots = await sql<{ hit: string; id: string }[]>`

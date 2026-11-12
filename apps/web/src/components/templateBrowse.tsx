@@ -96,7 +96,7 @@ export function HotTemplates() {
       {items?.length === 0 && <EmptyState icon={<Icon name="flame" />} title="No templates used in this period yet." />}
       {items && items.length > 0 && (
         <div className="hot-row">
-          {items.map(({ template, uses, posts }) => (
+          {items.map(({ template, posts }) => (
             <Link
               key={template.id}
               to={`/create?template=${template.id}`}
@@ -107,8 +107,8 @@ export function HotTemplates() {
             >
               <MediaView asset={template.asset} alt={template.name} />
               <span className="hot-name">{template.name}</span>
-              <Text as="span" size="sm" tone="muted">
-                <span data-testid="hot-uses">{uses}</span> {uses === 1 ? "use" : "uses"} · {posts} posted
+              <Text as="span" size="sm" tone="muted" aria-label={`${posts} ${posts === 1 ? "post" : "posts"}`}>
+                <span data-testid="hot-posts">{posts}</span> <Icon name="flame" className="hot-icon" />
               </Text>
             </Link>
           ))}

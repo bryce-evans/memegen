@@ -144,3 +144,71 @@ test("templates: another user's tags show beside the author's base tags, which s
   await expect(tagChip(details, "reaction")).toBeVisible();
   await expect(tagChip(details, "reaction")).not.toHaveAttribute("data-base", "true");
 });
+
+for (const key of ["Backspace", "Delete"]) {
+  test(`tags: ${key} selects before removing each tag and ignores held keys`, async ({ page, request }) => {
+    const user = await apiUser(request, scoped("tag-keyboard"));
+    const template = await apiTemplate(request, user, { name: scoped("Tag keyboard"), tags: ["inherited"] });
+    await page.goto(`/create?template=${template.id}`);
+    await signIn(page, user.username);
+    await expect(page.getByTestId("stage-canvas")).toHaveAttribute("data-ready", "true");
+    const input = page.getByTestId("meme-tags");
+    const first = inputTagChip(page, "first");
+    const last = inputTagChip(page, "last");
+    await input.fill("first,last");
+    await input.press("Enter");
+
+    await page.keyboard.down(key);
+    await expect(last).toHaveAttribute("data-selected", "true");
+    await page.keyboard.down(key);
+    await page.keyboard.down(key);
+    await page.keyboard.up(key);
+    await expect(last).toBeVisible();
+    await expect(first).toHaveAttribute("data-selected", "false");
+
+    // Typing cancels selection; deleting that text must not remove a tag.
+    await input.fill("x");
+    await expect(last).toHaveAttribute("data-selected", "false");
+    await input.press("End");
+    await input.press("Backspace");
+    await expect(input).toHaveValue("");
+    await expect(last).toHaveAttribute("data-selected", "false");
+    await input.press(key);
+    await expect(last).toHaveAttribute("data-selected", "true");
+
+    // Blurring and clicking back both require a fresh selection.
+    await page.getByTestId("meme-title").click();
+    await expect(last).toHaveAttribute("data-selected", "false");
+    await input.click();
+    await input.press(key);
+    await expect(last).toHaveAttribute("data-selected", "true");
+    await input.press("ArrowLeft");
+    await expect(last).toHaveAttribute("data-selected", "false");
+    await input.press(key);
+    await expect(last).toHaveAttribute("data-selected", "true");
+    await input.click();
+    await expect(last).toHaveAttribute("data-selected", "false");
+    await input.press(key);
+    await expect(last).toHaveAttribute("data-selected", "true");
+
+    await page.keyboard.down(key);
+    await expect(last).toHaveCount(0);
+    await page.keyboard.down(key);
+    await page.keyboard.down(key);
+    await page.keyboard.up(key);
+    await expect(first).toHaveAttribute("data-selected", "false");
+    await input.press(key);
+    await expect(first).toHaveAttribute("data-selected", "true");
+    await input.press(key);
+    await expect(first).toHaveCount(0);
+    await input.press(key);
+    await input.press(key);
+    await expect(tagChip(page.getByTestId("template-details"), "inherited")).toBeVisible();
+
+    // Ordinary entry and the explicit remove button still work afterward.
+    await input.fill("restored");
+    await input.press("Enter");
+    await inputTagChip(page, "restored").getByTestId("tag-input-chip-remove").click();
+    await expect(inputTagChip(page, "restored")).toHaveCount(0);
+  });
+}

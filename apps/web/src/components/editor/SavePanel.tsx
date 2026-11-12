@@ -93,13 +93,12 @@ export function SavePanel(props: SavePanelProps) {
   return (
     <Panel heading={editingMeme && canSave ? "Save changes" : "Save"} className="save-panel">
       <TextField
-        label="Title"
+        label="Title (required)"
         value={title}
         maxLength={MEME_TITLE_MAX_LENGTH}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Add a title"
         required
-        description={canSave && untitled ? "A title is required to save or post." : undefined}
         disabled={busy}
         data-testid="meme-title"
       />

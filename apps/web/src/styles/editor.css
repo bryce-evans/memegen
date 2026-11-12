@@ -378,6 +378,28 @@
 .layer-row.selected .layer-row-text {
   border-color: var(--ui-color-primary);
 }
+.layer-style-presets {
+  margin-top: var(--ui-space-2);
+}
+.layer-style-preset {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: var(--ui-space-1);
+  border-radius: var(--ui-radius-sm);
+}
+.layer-style-sample {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-color-on-scrim);
+  font-size: var(--ui-font-size-xl);
+  font-weight: var(--ui-font-weight-regular);
+  line-height: 1;
+  paint-order: stroke fill;
+}
 .layer-window {
   margin-top: var(--ui-space-3);
 }

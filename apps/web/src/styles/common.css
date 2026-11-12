@@ -59,6 +59,9 @@
 .favorite {
   border-radius: var(--ui-radius-pill);
 }
+.favorite {
+  --ui-color-warning: var(--ui-color-favorite);
+}
 /* The thumbs, and the star on cards, are circles in every skin, 2px larger than a small control: as wide as they are
    tall, no side padding (skins pad, size, and round buttons at 0,3,0; `:root` outranks them). */
 :root :is(.votes .ui-button.vote, .meme-card-actions .ui-button.favorite) {

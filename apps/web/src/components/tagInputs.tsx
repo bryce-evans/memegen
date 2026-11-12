@@ -1,9 +1,10 @@
-import { useId, useState, type Dispatch, type KeyboardEvent, type SetStateAction } from "react";
+import { useEffect, useId, useState, type Dispatch, type KeyboardEvent, type SetStateAction } from "react";
 import { MAX_TAGS, tagSlug, type Tag } from "@memegen/shared";
 import { Chip, ChipGroup, Field, Text, TextField } from "@memegen/ui";
 import { listTags } from "../api.ts";
 import { useAsync } from "../useAsync.ts";
 import { useDebounced } from "../useDebounced.ts";
+import "./tagInputs.css";
 
 /** Debounced `/api/tags?q=` lookup; an empty query (or a failed lookup) → no suggestions. */
 function useTagSuggestions(query: string, limit = 8): Tag[] {
@@ -28,27 +29,44 @@ function TagInput(props: {
 }) {
   const { value, onChange, suggestions = [], testId, disabled } = props;
   const [text, setText] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const listId = useId();
   const lookup = useTagSuggestions(text.split(",").pop() ?? "");
 
+  useEffect(() => {
+    setSelectedTag(null);
+  }, [value, disabled]);
+
   function commit(raw: string) {
+    setSelectedTag(null);
     const added = raw.split(",").map(tagSlug).filter(Boolean);
     if (added.length) onChange([...new Set([...value, ...added])].slice(0, MAX_TAGS));
     setText("");
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if ((e.key === "Backspace" || e.key === "Delete") && text === "") {
+      e.preventDefault();
+      if (e.repeat || e.nativeEvent.isComposing || disabled) return;
+      const lastTag = value.at(-1);
+      if (lastTag && selectedTag === lastTag) {
+        setSelectedTag(null);
+        onChange(value.slice(0, -1));
+      } else {
+        setSelectedTag(lastTag ?? null);
+      }
+      return;
+    }
+    setSelectedTag(null);
     if (e.key === "Enter") {
       e.preventDefault();
       commit(text);
-    } else if (e.key === "Backspace" && text === "" && value.length) {
-      onChange(value.slice(0, -1));
     }
   }
 
   const offered = suggestions.filter((s) => !value.includes(s));
   return (
-    <div className="tag-input">
+    <div className="tag-input" onPointerDown={() => setSelectedTag(null)}>
       {value.length > 0 && (
         <ChipGroup>
           {value.map((slug) => (
@@ -56,10 +74,14 @@ function TagInput(props: {
               key={slug}
               data-testid="tag-input-chip"
               data-tag={slug}
+              data-selected={selectedTag === slug}
               removeLabel={`Remove ${slug}`}
               removeDisabled={disabled}
               removeTestId="tag-input-chip-remove"
-              onRemove={() => onChange(value.filter((t) => t !== slug))}
+              onRemove={() => {
+                setSelectedTag(null);
+                onChange(value.filter((t) => t !== slug));
+              }}
             >
               #{slug}
             </Chip>
@@ -73,6 +95,7 @@ function TagInput(props: {
         placeholder="add tags (comma or Enter)"
         data-testid={testId}
         onChange={(e) => {
+          setSelectedTag(null);
           const next = e.target.value;
           if (next.includes(",")) {
             const parts = next.split(",");
@@ -81,7 +104,10 @@ function TagInput(props: {
           } else setText(next);
         }}
         onKeyDown={onKeyDown}
-        onBlur={() => text.trim() && commit(text)}
+        onBlur={() => {
+          setSelectedTag(null);
+          if (text.trim()) commit(text);
+        }}
       />
       <datalist id={listId}>
         {lookup.map((t) => (

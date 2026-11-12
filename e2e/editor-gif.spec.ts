@@ -29,6 +29,8 @@ test("gif: every frame on the timeline, keyframed animation, start window, GIF e
   await expect(page.getByTestId("keyframe-item")).toHaveCount(1);
   await timelineFrame(page, 11).click();
   await expect(page.getByTestId("current-frame")).toHaveText("12 / 12");
+  // Timeline clicks can scroll the top caption underneath the sticky header.
+  await page.getByTestId("layer-box").first().evaluate((element) => element.scrollIntoView({ block: "center" }));
   await dragLayer(page, 0, 0, 40);
   await expect(page.getByTestId("keyframe-item")).toHaveCount(2);
 

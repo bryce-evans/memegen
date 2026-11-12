@@ -9,6 +9,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
   Template search matches every word across names and tags, with exact names first. Adding words refines text matches; picture-based suggestions appear only when no text matches exist.
   **Blank** starts from a 2048×2048 pure-white JPEG with empty editable text, replacing the separate black, transparent, and smaller white canvas templates.
 - **Editor**: text boxes that wrap and shrink to fit (drag their corners to resize, the handle above to rotate; ⌘⌫ in a box's text removes it), custom fonts, image layers (upload or paste a screenshot), and a shared sticker library.
+  Four text-style swatches apply uppercase Impact, yellow captions, thin-outlined white sans serif, or unoutlined black text. The pencil opens all advanced settings without changing the caption or its placement.
 - **Animation**: for GIFs and videos, a frame-by-frame timeline with per-layer visibility windows, keyframes, and a live loop preview. Exports are GIF or MP4, and MP4s keep their audio.
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
 - **Multi-panel templates**: reusable image packs for customizing panel count, repetition, order, and layout—not simply images containing multiple frames. Use three Galaxy Brains or eight, or repeat a pack image before switching to the next reaction. Packs include Panik/Kalm/Panik, Vince McMahon, Mr. Incredible, Galaxy Brain, and Tuxedo Pooh; their images are cropped from reviewed online source sheets or imported as individual stills during seeding. Fixed-format sequences such as Anakin/Padmé remain ordinary image templates with editable captions.
@@ -19,6 +20,7 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
 - **Gallery**: Popular (day, week, month, year, or all time) and Recent feeds, voting, threaded comments, favorites, search (posts, templates, or users), and tag pages. Feed cards open their meme when clicked anywhere and show its info over it on hover or, set under your profile's Settings tab, its title and votes below it (Google-style).
 - **Unlisted sharing**: unlisted memes and templates stay out of public discovery but open for anyone with their direct link, including drafts. Media bytes remain directly accessible. Unlisted is not confidential storage; editing and deletion require the owner or an admin.
 - **Keyboard**: Backspace, Delete, or Escape goes back a page (outside text fields). Leaving the editor this way with an unpublished meme asks first.
+  In an empty tag field, Backspace or Delete first highlights the last tag; a second press removes it. Each tag requires its own two presses, and holding the key does not keep deleting tags.
 - **Profiles and leaderboard**: a Profile tab with h-score, high score, and tiered stats (bronze to diamond: tile outlines and stars); the user's memes and templates; and, on your own profile, API Keys (Agent Provider and Image Generator) plus private Favorites and Recent activity tabs. Leaderboard tier stars are enlarged and vertically centered beside their numbers.
 - **Skins**: Painted (default), Basic (the original dark, yellow-accent look), and Google from `packages/ui`. Dev tools can switch skins; production is locked to Painted. Only Painted uses colorful gradient action buttons and offers per-user dark mode. Google uses flat Material-inspired controls, neutral gray outline/filled vote icons, and below-image card details by default; an explicit card-layout preference still wins.
 - **Header and columns**: the painted skin uses a 56px header with about 8px of clearance above and below search. Its 120px brand slot is aligned to the left column; reduced wordmark padding allows a 1.75× logo to fill the bar without clipping. Main content is centered in the viewport; navigation occupies up to 220px in the left rail and editor controls occupy the right rail, stacking on narrow screens.
@@ -277,6 +279,8 @@ ffmpeg -f lavfi -i color=c=magenta:size=120x80 -frames:v 1 sticker.png
 ffmpeg -f lavfi -i mandelbrot=size=640x480 -frames:v 1 dup.png
 ffmpeg -i dup.png -q:v 4 dup.jpg
 cp ../../demo/jacebrowning-memegen/fonts/TitilliumWeb-Black.ttf .
+cp ../../demo/jacebrowning-memegen/fonts/Impact.ttf .
+cp ../../demo/jacebrowning-memegen/fonts/NotoSans-Bold.ttf .
 cp "../../demo/jacebrowning-memegen/fonts/SIL Open Font License.txt" OFL.txt
 cd ../..
 ```

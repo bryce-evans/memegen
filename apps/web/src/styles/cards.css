@@ -127,9 +127,6 @@
   --ui-color-upvote: var(--ui-color-upvote-on-scrim);
   --ui-color-downvote: var(--ui-color-downvote-on-scrim);
 }
-.meme-grid[data-card-layout="hover"] .meme-card-actions .favorite {
-  --ui-color-warning: var(--ui-color-favorite);
-}
 :root:root .meme-grid[data-card-layout="hover"] .meme-card-actions .ui-button:is(.vote, .favorite):not(:where([data-skin="google"] .vote)):not([aria-pressed="true"]) {
   border-color: transparent;
   background: none;

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { fitTextBox, type DecodedMedia } from "@memegen/render";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fitTextBox, loadFont, type DecodedMedia } from "@memegen/render";
 import {
   canMoveLayer,
+  fontFamilyFor,
   IMAGE_ACCEPT,
   IMAGE_WIDTH_MAX,
   IMAGE_WIDTH_MIN,
@@ -46,6 +47,7 @@ import {
   TextField,
 } from "@memegen/ui";
 import { assetUrl } from "../../api.ts";
+import { ErrorView } from "../common.tsx";
 import { AnimationPanel, WindowFields } from "./AnimationPanel.tsx";
 import { FontField } from "./FontField.tsx";
 import { PlacementFields } from "./PlacementFields.tsx";
@@ -85,14 +87,39 @@ export interface LayerPanelProps {
 
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
+type PresetStyle = Pick<TextLayer, "fontAssetId" | "color" | "strokeColor" | "strokeWidth" | "textStyle">;
+
+const STYLE_PRESETS = [
+  { id: "impact", label: "Impact uppercase", sample: "AA", font: "Impact", color: "#ffffff", strokeWidth: 0.08, textStyle: "upper" },
+  { id: "caption", label: "Yellow caption", sample: "Aa", font: "Noto Sans Bold", color: "#f5f2a6", strokeWidth: 0.05, textStyle: "none" },
+  { id: "white", label: "White sans serif with thin outline", sample: "Aa", font: "Noto Sans Bold", color: "#ffffff", strokeWidth: 0.05, textStyle: "none" },
+  { id: "black", label: "Black sans serif without outline", sample: "Aa", font: "Noto Sans Bold", color: "#000000", strokeWidth: 0, textStyle: "none" },
+] as const;
+
 export function LayerPanel(props: LayerPanelProps) {
   const { nameable, media, layers, selectedId, frame, fonts, addingImage, editText, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onPlace, onSeek, onFontUploaded } =
     props;
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickingSticker, setPickingSticker] = useState(false);
+  const [presetFontError, setPresetFontError] = useState<unknown>(null);
+  const presets = useMemo(() => STYLE_PRESETS.map((preset) => {
+    const fontAssetId = fonts.find((font) => font.name.toLowerCase() === preset.font.toLowerCase())?.id ?? null;
+    const style: PresetStyle = { fontAssetId, color: preset.color, strokeColor: "#000000", strokeWidth: preset.strokeWidth, textStyle: preset.textStyle };
+    return { ...preset, style, available: preset.id !== "impact" || fontAssetId !== null };
+  }), [fonts]);
   const textFields = useRef(new Map<string, HTMLTextAreaElement>());
   const topSection = topSectionLayer(layers);
   const labels = layerLabels(layers);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPresetFontError(null);
+    const ids = new Set(presets.flatMap(({ style }) => style.fontAssetId ? [style.fontAssetId] : []));
+    void Promise.all([...ids].map((id) => loadFont(id, assetUrl(id)))).catch((error: unknown) => {
+      if (!cancelled) setPresetFontError(error);
+    });
+    return () => { cancelled = true; };
+  }, [presets]);
 
   useEffect(() => {
     const field = editText && textFields.current.get(editText.id);
@@ -148,6 +175,22 @@ export function LayerPanel(props: LayerPanelProps) {
           // The top section's text is pinned as layer 0 (`canMoveLayer`).
           const pinned = layer === topSection;
           const name = labels[i]!;
+          const settingsToggle = (
+            <IconButton
+              size="sm"
+              variant="quiet"
+              label={open ? "Hide layer settings" : "Edit layer settings"}
+              aria-expanded={open}
+              aria-controls={settingsId}
+              data-testid="layer-settings-toggle"
+              onClick={() => {
+                setOpenId(open ? null : layer.id);
+                onSelect(layer.id);
+              }}
+            >
+              <Icon name="edit" />
+            </IconButton>
+          );
           return (
             <li
               key={layer.id}
@@ -179,20 +222,7 @@ export function LayerPanel(props: LayerPanelProps) {
                     )}
                     <div className="layer-card-actions">
                       {layer.keyframes.length > 0 && <Badge>anim</Badge>}
-                      <IconButton
-                        size="sm"
-                        variant="quiet"
-                        label={open ? "Hide layer settings" : "Edit layer settings"}
-                        aria-expanded={open}
-                        aria-controls={settingsId}
-                        data-testid="layer-settings-toggle"
-                        onClick={() => {
-                          setOpenId(open ? null : layer.id);
-                          onSelect(layer.id);
-                        }}
-                      >
-                        <Icon name="edit" />
-                      </IconButton>
+                      {layer.type === "image" && settingsToggle}
                       <IconButton
                         size="sm"
                         variant="quiet"
@@ -256,6 +286,38 @@ export function LayerPanel(props: LayerPanelProps) {
                     <img className="layer-image-thumb" src={assetUrl(layer.assetId)} alt="" />
                   </Button>
                 )}
+                {layer.type === "text" && (
+                  <Inline className="layer-style-presets" gap="xs" wrap={false} role="group" aria-label={`${name} text style`}>
+                    {presets.map(({ id, label, sample, style, available }) => (
+                      <Button
+                        key={id}
+                        className="layer-style-preset"
+                        aria-label={label}
+                        title={available ? label : "Upload the Impact font in advanced settings to use this style"}
+                        data-testid={`layer-preset-${id}`}
+                        disabled={!available}
+                        pressed={available && Object.entries(style).every(([key, value]) => layer[key as keyof PresetStyle] === value)}
+                        onClick={() => {
+                          onSelect(layer.id);
+                          onUpdate(layer.id, (current) => current.type === "text" ? { ...current, ...style } : current);
+                        }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="layer-style-sample"
+                          style={{
+                            fontFamily: style.fontAssetId ? `"${fontFamilyFor(style.fontAssetId)}"` : "sans-serif",
+                            color: style.color,
+                            WebkitTextStroke: `${style.strokeWidth}em ${style.strokeColor}`,
+                          }}
+                        >
+                          {sample}
+                        </span>
+                      </Button>
+                    ))}
+                    {settingsToggle}
+                  </Inline>
+                )}
                 {/* GIF/video: the selected layer (focusing its text selects it) shows when it starts and stops; the
                     settings' Animation panel shows the same rows, so they appear here only while it is closed. */}
                 {media.kind !== "image" && layer.id === selectedId && !open && (
@@ -293,6 +355,7 @@ export function LayerPanel(props: LayerPanelProps) {
           );
         })}
       </ol>
+      {presetFontError !== null && <ErrorView error={presetFontError} testId="preset-font-error" />}
       {layers.length === 0 && <Text tone="muted">No layers. Add text or an image (or paste one) to start.</Text>}
     </Panel>
   );
@@ -372,11 +435,12 @@ function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; o
       />
 
       <div className="field-row">
-        <ColorField label="Color" value={layer.color.slice(0, 7)} onChange={(e) => set({ color: e.target.value })} />
-        <ColorField label="Outline" value={layer.strokeColor.slice(0, 7)} onChange={(e) => set({ strokeColor: e.target.value })} />
+        <ColorField label="Color" data-testid="layer-color" value={layer.color.slice(0, 7)} onChange={(e) => set({ color: e.target.value })} />
+        <ColorField label="Outline" data-testid="layer-stroke-color" value={layer.strokeColor.slice(0, 7)} onChange={(e) => set({ strokeColor: e.target.value })} />
         <Slider
           label={`Outline width ${Math.round(layer.strokeWidth * 100)}%`}
           className="grow"
+          data-testid="layer-stroke-width"
           min={0}
           max={30}
           step={1}

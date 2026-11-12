@@ -287,8 +287,10 @@ textarea {
 .ui-nav-item[aria-current="page"],
 .ui-segmented--vertical .ui-segmented-option[aria-pressed="true"] {
   color: var(--ui-color-text);
-  box-shadow: inset 3px 0 0 var(--ui-color-primary);
   font-weight: var(--ui-font-weight-semibold);
+}
+.ui-segmented--vertical .ui-segmented-option[aria-pressed="true"] {
+  box-shadow: inset 3px 0 0 var(--ui-color-primary);
 }
 .ui-nav-item {
   display: flex;

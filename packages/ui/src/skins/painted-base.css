@@ -160,7 +160,6 @@
 :root[data-skin="painted"] .ui-nav-item.is-active,
 :root[data-skin="painted"] .ui-nav-item[aria-current="page"] {
   background-color: var(--spectrum-gray-200);
-  box-shadow: inset 2px 0 0 var(--spectrum-gray-900);
   color: var(--spectrum-gray-900);
   font-weight: var(--spectrum-bold-font-weight);
 }

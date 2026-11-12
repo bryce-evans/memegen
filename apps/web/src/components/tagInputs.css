@@ -1,0 +1,4 @@
+.tag-input .ui-chip[data-selected="true"] {
+  outline: var(--ui-focus-ring-width) solid var(--ui-color-focus-ring);
+  outline-offset: var(--ui-focus-ring-offset);
+}

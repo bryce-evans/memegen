@@ -10,7 +10,7 @@ export interface LayerState {
 }
 
 /** What placement and animation need from a layer; text and image layers both have it. */
-export type AnimatedLayer = Pick<Layer, "x" | "y" | "opacity" | "start" | "end" | "keyframes">;
+export type AnimatedLayer = Pick<Layer, "type" | "x" | "y" | "opacity" | "start" | "end" | "keyframes">;
 
 /** Linear interpolation of one keyframe channel; clamps outside the keyframe range. */
 export function interpolate(keyframes: readonly Keyframe[], t: number, key: "x" | "y" | "opacity"): number {
@@ -34,12 +34,12 @@ export function isVisibleAt(layer: Pick<Layer, "start" | "end">, t: number): boo
 export function layerStateAt(layer: AnimatedLayer, t: number): LayerState {
   const visible = isVisibleAt(layer, t);
   if (layer.keyframes.length === 0) {
-    return { x: layer.x, y: layer.y, opacity: layer.opacity, visible };
+    return { x: layer.x, y: layer.y, opacity: layer.type === "text" ? 1 : layer.opacity, visible };
   }
   return {
     x: interpolate(layer.keyframes, t, "x"),
     y: interpolate(layer.keyframes, t, "y"),
-    opacity: interpolate(layer.keyframes, t, "opacity"),
+    opacity: layer.type === "text" ? 1 : interpolate(layer.keyframes, t, "opacity"),
     visible,
   };
 }
@@ -62,14 +62,14 @@ export function clampAnchor(v: number, above = 0): number {
 export type Placement = Partial<Pick<Keyframe, "x" | "y" | "opacity">>;
 
 /**
- * Move/fade a layer at time `t`: static layers change their anchor, animated ones get a keyframe at `t`. `above` is
+ * Move a layer (or fade an image) at time `t`: static layers change their anchor, animated ones get a keyframe at `t`. `above` is
  * how much canvas sits above the layer's area, in area heights (see `layerAbove`).
  */
 export function placeAt<L extends AnimatedLayer>(layer: L, t: number, patch: Placement, above = 0): L {
   const state = layerStateAt(layer, t);
   const x = patch.x === undefined ? state.x : clampAnchor(patch.x);
   const y = patch.y === undefined ? state.y : clampAnchor(patch.y, above);
-  const opacity = patch.opacity ?? state.opacity;
+  const opacity = layer.type === "text" ? 1 : patch.opacity ?? state.opacity;
   if (layer.keyframes.length === 0) return { ...layer, x, y, opacity };
   return { ...layer, keyframes: upsertKeyframe(layer.keyframes, { t, x, y, opacity }) };
 }
@@ -100,7 +100,7 @@ export function addKeyframeAt<L extends AnimatedLayer>(layer: L, t: number): L {
 export function removeKeyframe<L extends AnimatedLayer>(layer: L, index: number): L {
   const kf = layer.keyframes[index];
   if (!kf) return layer;
-  if (layer.keyframes.length === 1) return { ...layer, keyframes: [], x: kf.x, y: kf.y, opacity: kf.opacity };
+  if (layer.keyframes.length === 1) return { ...layer, keyframes: [], x: kf.x, y: kf.y, opacity: layer.type === "text" ? 1 : kf.opacity };
   return { ...layer, keyframes: layer.keyframes.filter((_, i) => i !== index) };
 }
 

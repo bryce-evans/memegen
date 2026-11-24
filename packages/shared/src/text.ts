@@ -103,7 +103,9 @@ function wrapLines(ctx: TextContext, text: string, maxW: number): string[] {
 
 function measure(ctx: TextContext, layer: TextLayer, text: string, fontPx: number, boxW: number): TextLayout {
   // The top section's text defaults to Arial; every other layer to the fallback family.
-  const font = cssFont(layer.fontAssetId, fontPx, layer.topSection ? TOP_SECTION_FONT_FAMILY : FALLBACK_FONT_FAMILY);
+  const font = layer.fontAssetId === null && layer.systemFont
+    ? `${layer.systemFont === "arial-bold" ? "bold " : ""}${fontPx}px Arial, Helvetica, sans-serif`
+    : cssFont(layer.fontAssetId, fontPx, layer.topSection ? TOP_SECTION_FONT_FAMILY : FALLBACK_FONT_FAMILY);
   ctx.font = font;
   const strokePx = layer.strokeWidth * fontPx;
   const pad = Math.ceil(strokePx) + 1;
@@ -135,7 +137,7 @@ export function layoutText(ctx: TextContext, layer: TextLayer, mediaW: number, m
   for (;;) {
     const layout = measure(ctx, layer, text, fontPx, boxW);
     if ((layout.width <= boxW && layout.height <= boxH) || fontPx <= MIN_FONT_PX) {
-      return { ...layout, overflow: layout.width > boxW || layout.height > boxH };
+      return { ...layout, width: Math.max(boxW, layout.width), overflow: layout.width > boxW || layout.height > boxH };
     }
     fontPx = Math.max(MIN_FONT_PX, Math.floor(fontPx * 0.92));
   }
@@ -151,7 +153,7 @@ export function growTextBox(ctx: TextContext, layer: TextLayer, mediaW: number, 
   if (layer.topSection) return layer;
   const fontPx = Math.max(MIN_FONT_PX, Math.round(layer.fontSize * mediaH));
   const needed = measure(ctx, layer, applyTextStyle(layer.text, layer.textStyle), fontPx, layer.maxWidth * mediaW).height / mediaH;
-  // Whole percent, rounded up: the box height slider shows percents, and the text must still fit after rounding.
+  // Round upward to a whole percent so the grown box has room for the full line height.
   const maxHeight = Math.min(TEXT_BOX_MAX, Math.max(layer.maxHeight, Math.ceil(needed * 100) / 100));
   if (maxHeight === layer.maxHeight) return layer;
   const was = layer.maxHeight / 2;

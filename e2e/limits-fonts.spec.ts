@@ -1,6 +1,7 @@
 import { expect, scoped, test } from "./test.ts";
 import { readFileSync } from "node:fs";
 import { editFixture, fixture, signIn, stagePixels } from "./helpers.ts";
+import { E2E_ENV } from "./environment.ts";
 
 test("upload caps are enforced before upload, with the reason shown", async ({ page }) => {
   await page.goto("/");
@@ -14,19 +15,29 @@ test("upload caps are enforced before upload, with the reason shown", async ({ p
   await expect(page).toHaveURL(/\/create$/); // never reached the Template Editor
 });
 
-test("custom font upload becomes selectable and changes the render", async ({ page, request }) => {
-  const fontName = scoped("My Font");
-  await editFixture(page, request, scoped("typographer"), "still.png");
-  await page.getByTestId("layer-item").first().getByTestId("layer-settings-toggle").click();
-
-  await page.getByTestId("font-upload").setInputFiles({
-    name: `${fontName}.ttf`,
+test("user font uploads are rejected while built-in fonts remain selectable", async ({ page, request }) => {
+  const fontName = scoped("Built-in Font");
+  const font = {
+    name: "TitilliumWeb-Black.ttf",
     mimeType: "font/ttf",
     buffer: readFileSync(fixture("TitilliumWeb-Black.ttf")),
+  };
+  const seeded = await request.post(`${E2E_ENV.STORAGE_URL}/assets`, {
+    headers: { "x-internal-token": E2E_ENV.INTERNAL_TOKEN },
+    multipart: { file: font, name: fontName },
   });
+  expect(seeded.status()).toBe(201);
+  await editFixture(page, request, scoped("typographer"), "still.png");
+  const rejected = await page.request.post("/storage/assets", {
+    multipart: { file: { ...font, name: "disguised.png", mimeType: "image/png" } },
+  });
+  expect(rejected.status()).toBe(403);
+  expect(await rejected.json()).toEqual({ error: "font uploads are not allowed" });
+  await page.getByTestId("layer-item").first().getByTestId("layer-settings-toggle").click();
+  await expect(page.getByTestId("font-upload")).toHaveCount(0);
   const option = page.getByTestId("layer-font").getByTestId("font-option").filter({ hasText: fontName });
   await expect(option).toHaveCount(1);
-  // Baseline on the fallback family; the uploaded font must visibly change the text.
+  // Baseline on the fallback family; the built-in font must visibly change the text.
   await page.getByTestId("layer-font").selectOption("");
   const before = await stagePixels(page);
   await page.getByTestId("layer-font").selectOption({ label: (await option.textContent())! });

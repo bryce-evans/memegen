@@ -93,6 +93,41 @@ test("upload rejects files over the byte cap and unknown types", async () => {
   assert.equal((await upload(new TextEncoder().encode("just some text, not media"), "x.txt")).status, 415);
 });
 
+test("public uploads reject every font signature regardless of filename or claimed MIME", async () => {
+  const signatures = [
+    new Uint8Array([0, 1, 0, 0]),
+    ...["true", "OTTO", "ttcf", "wOFF", "wOF2"].map((tag) => new TextEncoder().encode(tag)),
+  ];
+  const [user] = await sql<{ id: string }[]>`insert into users (username) values ('font-uploader') returning id`;
+  for (const signature of signatures) {
+    const data = new Uint8Array(12);
+    data.set(signature);
+    const identities: Record<string, string>[] = [{}, { "x-user-id": user!.id }, { "x-internal-token": "invalid-token" }];
+    for (const headers of identities) {
+      const form = new FormData();
+      form.set("file", new File([data as BlobPart], "image.png", { type: "image/png" }));
+      const response = await app.request("/assets", { method: "POST", body: form, headers });
+      assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), { error: "font uploads are not allowed" });
+    }
+  }
+  const rows = await sql<{ count: number }[]>`select count(*)::int as count from assets where filename = 'image.png' and kind = 'font'`;
+  assert.equal(rows[0]!.count, 0);
+});
+
+test("internal font ingestion remains listable and serves the original bytes", async () => {
+  const data = new Uint8Array(12);
+  data.set([0, 1, 0, 0]);
+  const font = await store.uploadOnce({ data, filename: "builtin.ttf", name: "Built-in", ownerId: null });
+  assert.equal(font.kind, "font");
+  assert.equal((await store.uploadOnce({ data, filename: "builtin.ttf", ownerId: null })).id, font.id);
+  const listing = await app.request("/assets?kind=font");
+  assert.ok((await listing.json() as { items: Asset[] }).items.some((asset) => asset.id === font.id));
+  const content = await app.request(font.contentPath);
+  assert.equal(content.headers.get("content-type"), "font/ttf");
+  assert.deepEqual(new Uint8Array(await content.arrayBuffer()), data);
+});
+
 test("content supports byte ranges", async () => {
   const asset = (await (await upload(encodePng(10, 10), "r.png")).json()) as Asset;
   const res = await app.request(asset.contentPath, { headers: { range: "bytes=1-3" } });

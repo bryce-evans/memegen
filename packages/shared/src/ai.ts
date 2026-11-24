@@ -148,6 +148,8 @@ export function applyAiEdit(layers: readonly Layer[], edit: AiEdit): Layer[] {
   return layers.map((l) => {
     const add = l.type === "text" ? texts.get(l.id) : undefined;
     if (!add || l.type !== "text") return l;
-    return add.style ? { ...l, text: add.text, fontAssetId: add.style.fontId } : { ...l, text: add.text };
+    if (!add.style) return { ...l, text: add.text };
+    const { systemFont: _systemFont, ...layer } = l;
+    return { ...layer, text: add.text, fontAssetId: add.style.fontId };
   });
 }

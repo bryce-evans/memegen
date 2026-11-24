@@ -18,11 +18,11 @@ export function newTextLayer(partial: Partial<Omit<TextLayer, "type">> = {}): Te
     angle: 0,
     x: 0.5,
     y: 0.1,
-    opacity: 1,
     start: null,
     end: null,
-    keyframes: [],
     ...partial,
+    opacity: 1,
+    keyframes: partial.keyframes?.map((keyframe) => keyframe.opacity === 1 ? keyframe : { ...keyframe, opacity: 1 }) ?? [],
   };
 }
 

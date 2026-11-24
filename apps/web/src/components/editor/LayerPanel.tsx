@@ -13,8 +13,6 @@ import {
   LAYER_NAME_MAX_LENGTH,
   resizeImage,
   TEXT_ALIGNS,
-  TEXT_BOX_MAX,
-  TEXT_BOX_MIN,
   TEXT_MAX_LENGTH,
   TEXT_STYLES,
   TOP_SECTION_HEIGHT_MAX,
@@ -80,31 +78,33 @@ export interface LayerPanelProps {
   /** Move/fade a layer at the current frame (the editor clamps, allowing for the top section's band). */
   onPlace: (id: string, patch: Placement) => void;
   onSeek: (frame: number) => void;
-  onFontUploaded: (layerId: string, font: Asset) => void;
   /** Focus this text layer's text field, caret at the end (its stage box was pressed); each request is a new object. */
   editText: { id: string } | null;
 }
 
 const STYLE_LABELS: Record<TextStyle, string> = { upper: "UPPER", lower: "lower", none: "As typed", mock: "mOcK" };
 
-type PresetStyle = Pick<TextLayer, "fontAssetId" | "color" | "strokeColor" | "strokeWidth" | "textStyle">;
+type PresetStyle = Pick<TextLayer, "fontAssetId" | "systemFont" | "color" | "strokeColor" | "strokeWidth" | "textStyle">;
 
 const STYLE_PRESETS = [
   { id: "impact", label: "Impact uppercase", sample: "AA", font: "Impact", color: "#ffffff", strokeWidth: 0.08, textStyle: "upper" },
-  { id: "caption", label: "Yellow caption", sample: "Aa", font: "Noto Sans Bold", color: "#f5f2a6", strokeWidth: 0.05, textStyle: "none" },
+  { id: "caption", label: "Yellow caption", sample: "Aa", font: "Arial Bold", color: "#f5f2a6", strokeWidth: 0.05, textStyle: "none" },
+  { id: "bright-yellow", label: "Bright yellow Arial", sample: "Aa", font: "Arial Bold", color: "#ffff00", strokeWidth: 0.05, textStyle: "none" },
+  { id: "greentext", label: "4chan greentext", sample: ">A", font: "Arial", color: "#789922", strokeWidth: 0, textStyle: "none" },
   { id: "white", label: "White sans serif with thin outline", sample: "Aa", font: "Noto Sans Bold", color: "#ffffff", strokeWidth: 0.05, textStyle: "none" },
   { id: "black", label: "Black sans serif without outline", sample: "Aa", font: "Noto Sans Bold", color: "#000000", strokeWidth: 0, textStyle: "none" },
 ] as const;
 
 export function LayerPanel(props: LayerPanelProps) {
-  const { nameable, media, layers, selectedId, frame, fonts, addingImage, editText, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onPlace, onSeek, onFontUploaded } =
+  const { nameable, media, layers, selectedId, frame, fonts, addingImage, editText, onSelect, onAdd, onAddImage, onAddSticker, onRemove, onMoveOrder, onTopSection, onUpdate, onPlace, onSeek } =
     props;
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickingSticker, setPickingSticker] = useState(false);
   const [presetFontError, setPresetFontError] = useState<unknown>(null);
   const presets = useMemo(() => STYLE_PRESETS.map((preset) => {
-    const fontAssetId = fonts.find((font) => font.name.toLowerCase() === preset.font.toLowerCase())?.id ?? null;
-    const style: PresetStyle = { fontAssetId, color: preset.color, strokeColor: "#000000", strokeWidth: preset.strokeWidth, textStyle: preset.textStyle };
+    const systemFont = preset.font === "Arial Bold" ? "arial-bold" : preset.font === "Arial" ? "arial" : undefined;
+    const fontAssetId = systemFont ? null : fonts.find((font) => font.name.toLowerCase() === preset.font.toLowerCase())?.id ?? null;
+    const style: PresetStyle = { fontAssetId, systemFont, color: preset.color, strokeColor: "#000000", strokeWidth: preset.strokeWidth, textStyle: preset.textStyle };
     return { ...preset, style, available: preset.id !== "impact" || fontAssetId !== null };
   }), [fonts]);
   const textFields = useRef(new Map<string, HTMLTextAreaElement>());
@@ -222,7 +222,7 @@ export function LayerPanel(props: LayerPanelProps) {
                     )}
                     <div className="layer-card-actions">
                       {layer.keyframes.length > 0 && <Badge>anim</Badge>}
-                      {layer.type === "image" && settingsToggle}
+                      {settingsToggle}
                       <IconButton
                         size="sm"
                         variant="quiet"
@@ -286,38 +286,6 @@ export function LayerPanel(props: LayerPanelProps) {
                     <img className="layer-image-thumb" src={assetUrl(layer.assetId)} alt="" />
                   </Button>
                 )}
-                {layer.type === "text" && (
-                  <Inline className="layer-style-presets" gap="xs" wrap={false} role="group" aria-label={`${name} text style`}>
-                    {presets.map(({ id, label, sample, style, available }) => (
-                      <Button
-                        key={id}
-                        className="layer-style-preset"
-                        aria-label={label}
-                        title={available ? label : "Upload the Impact font in advanced settings to use this style"}
-                        data-testid={`layer-preset-${id}`}
-                        disabled={!available}
-                        pressed={available && Object.entries(style).every(([key, value]) => layer[key as keyof PresetStyle] === value)}
-                        onClick={() => {
-                          onSelect(layer.id);
-                          onUpdate(layer.id, (current) => current.type === "text" ? { ...current, ...style } : current);
-                        }}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="layer-style-sample"
-                          style={{
-                            fontFamily: style.fontAssetId ? `"${fontFamilyFor(style.fontAssetId)}"` : "sans-serif",
-                            color: style.color,
-                            WebkitTextStroke: `${style.strokeWidth}em ${style.strokeColor}`,
-                          }}
-                        >
-                          {sample}
-                        </span>
-                      </Button>
-                    ))}
-                    {settingsToggle}
-                  </Inline>
-                )}
                 {/* GIF/video: the selected layer (focusing its text selects it) shows when it starts and stops; the
                     settings' Animation panel shows the same rows, so they appear here only while it is closed. */}
                 {media.kind !== "image" && layer.id === selectedId && !open && (
@@ -327,6 +295,40 @@ export function LayerPanel(props: LayerPanelProps) {
                 )}
                 {open && (
                   <div id={settingsId} className="layer-settings" data-testid="layer-settings">
+                    {layer.type === "text" && (
+                      <Field as="div" label="Quick Styles">
+                      <Inline className="layer-style-presets" gap="xs" wrap={false} role="group" aria-label={`${name} text style`}>
+                        {presets.map(({ id, label, sample, style, available }) => (
+                          <Button
+                            key={id}
+                            className="layer-style-preset"
+                            aria-label={label}
+                            title={available ? label : "The Impact font is not installed"}
+                            data-testid={`layer-preset-${id}`}
+                            disabled={!available}
+                            pressed={available && Object.entries(style).every(([key, value]) => layer[key as keyof PresetStyle] === value)}
+                            onClick={() => {
+                              onSelect(layer.id);
+                              onUpdate(layer.id, (current) => current.type === "text" ? { ...current, ...style } : current);
+                            }}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="layer-style-sample"
+                              style={{
+                                fontFamily: style.systemFont ? "Arial, Helvetica, sans-serif" : style.fontAssetId ? `"${fontFamilyFor(style.fontAssetId)}"` : "sans-serif",
+                                fontWeight: style.systemFont === "arial-bold" ? "bold" : undefined,
+                                color: style.color,
+                                WebkitTextStroke: `${style.strokeWidth}em ${style.strokeColor}`,
+                              }}
+                            >
+                              {sample}
+                            </span>
+                          </Button>
+                        ))}
+                      </Inline>
+                      </Field>
+                    )}
                     {layer.type === "text" ? (
                       <TextLayerSettings
                         layer={layer}
@@ -336,7 +338,6 @@ export function LayerPanel(props: LayerPanelProps) {
                         onChange={(update) => onUpdate(layer.id, update)}
                         onPlace={(patch) => onPlace(layer.id, patch)}
                         onSeek={onSeek}
-                        onFontUploaded={(font) => onFontUploaded(layer.id, font)}
                       />
                     ) : (
                       <ImageLayerSettings
@@ -393,14 +394,48 @@ function CommonSettings({ layer, media, frame, onChange, onPlace, onSeek }: Sett
   );
 }
 
-/** Everything about a text layer except its text: font, size, colors, layout, then the shared settings. */
-function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; onFontUploaded: (font: Asset) => void }) {
-  const { layer, media, fonts, onChange, onFontUploaded } = props;
+/** Essential typography; placement, box size, and rotation are edited directly on the canvas. */
+function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[] }) {
+  const { layer, media, fonts, onChange, frame, onSeek } = props;
   const set = (patch: Partial<TextLayer>) => onChange((l) => (l.type === "text" ? { ...l, ...patch } : l));
   const section = layer.topSection;
 
   return (
     <div className="layer-settings-fields">
+      <div className="layer-typography-row">
+        <FontField
+          value={layer.fontAssetId ?? layer.systemFont ?? null}
+          fonts={fonts}
+          fallbackLabel={section ? "Arial" : undefined}
+          onChange={(font) => set(font === "arial-bold" || font === "arial" ? { fontAssetId: null, systemFont: font } : { fontAssetId: font, systemFont: undefined })}
+        />
+        <SelectField
+          label="Case"
+          data-testid="layer-style"
+          value={layer.textStyle}
+          onChange={(e) => set({ textStyle: e.target.value as TextStyle })}
+        >
+          {TEXT_STYLES.map((s) => (
+            <option key={s} value={s}>
+              {STYLE_LABELS[s]}
+            </option>
+          ))}
+        </SelectField>
+        <Field as="div" label="Align">
+          <SegmentedControl
+            aria-label="Align"
+            size="sm"
+            value={layer.align}
+            onChange={(align) => set({ align })}
+            options={TEXT_ALIGNS.map((a) => ({
+              value: a,
+              label: <Icon name={`align-${a}`} label={`Align ${a}`} />,
+              title: `Align ${a}`,
+              testId: `layer-align-${a}`,
+            }))}
+          />
+        </Field>
+      </div>
       {section && (
         <Slider
           label={`Top section height ${Math.round(section.height * 100)}% of the width (each extra line adds its height)`}
@@ -412,17 +447,10 @@ function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; o
           onChange={(e) => set({ topSection: { height: Number(e.target.value) / 100 } })}
         />
       )}
-      <FontField
-        value={layer.fontAssetId}
-        fonts={fonts}
-        fallbackLabel={section ? "Arial" : undefined}
-        onChange={(fontAssetId) => set({ fontAssetId })}
-        onUploaded={onFontUploaded}
-      />
 
       {/* Text shrinks to fit its box, so raising the max size also grows the box tall enough to show it. */}
       <Slider
-        label={`Max size ${(layer.fontSize * 100).toFixed(1)}% of ${section ? "the top section's height" : "height"}`}
+        label="Text size"
         min={1}
         max={50}
         step={0.5}
@@ -438,7 +466,7 @@ function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; o
         <ColorField label="Color" data-testid="layer-color" value={layer.color.slice(0, 7)} onChange={(e) => set({ color: e.target.value })} />
         <ColorField label="Outline" data-testid="layer-stroke-color" value={layer.strokeColor.slice(0, 7)} onChange={(e) => set({ strokeColor: e.target.value })} />
         <Slider
-          label={`Outline width ${Math.round(layer.strokeWidth * 100)}%`}
+          label="Outline width"
           className="grow"
           data-testid="layer-stroke-width"
           min={0}
@@ -449,55 +477,7 @@ function TextLayerSettings(props: SettingsProps<TextLayer> & { fonts: Asset[]; o
         />
       </div>
 
-      <div className="field-row">
-        <Field as="div" label="Align">
-          <SegmentedControl
-            aria-label="Align"
-            size="sm"
-            value={layer.align}
-            onChange={(align) => set({ align })}
-            options={TEXT_ALIGNS.map((a) => ({ value: a, label: a }))}
-          />
-        </Field>
-        <SelectField
-          label="Case"
-          className="grow"
-          data-testid="layer-style"
-          value={layer.textStyle}
-          onChange={(e) => set({ textStyle: e.target.value as TextStyle })}
-        >
-          {TEXT_STYLES.map((s) => (
-            <option key={s} value={s}>
-              {STYLE_LABELS[s]}
-            </option>
-          ))}
-        </SelectField>
-      </div>
-
-      <div className="field-row">
-        <Slider
-          label={`Box width ${Math.round(layer.maxWidth * 100)}%`}
-          className="grow"
-          min={Math.round(TEXT_BOX_MIN * 100)}
-          max={Math.round(TEXT_BOX_MAX * 100)}
-          step={1}
-          value={Math.round(layer.maxWidth * 100)}
-          data-testid="text-box-width"
-          onChange={(e) => set({ maxWidth: Number(e.target.value) / 100 })}
-        />
-        <Slider
-          label={`Box height ${Math.round(layer.maxHeight * 100)}%`}
-          className="grow"
-          min={Math.round(TEXT_BOX_MIN * 100)}
-          max={Math.round(TEXT_BOX_MAX * 100)}
-          step={1}
-          value={Math.round(layer.maxHeight * 100)}
-          data-testid="text-box-height"
-          onChange={(e) => set({ maxHeight: Number(e.target.value) / 100 })}
-        />
-      </div>
-
-      <CommonSettings {...props} />
+      {media.kind !== "image" && <AnimationPanel layer={layer} media={media} frame={frame} onChange={onChange} onSeek={onSeek} />}
     </div>
   );
 }

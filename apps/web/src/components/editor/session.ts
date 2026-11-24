@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { decodeMedia, loadAssetImages, type AssetImages, type DecodedMedia } from "@memegen/render";
 import {
   PANEL_FONT_SIZE_DEFAULT,
+  layersSchema,
   topBottomLayers,
   type Asset,
   type Meme,
@@ -164,7 +165,7 @@ export function useEditorSession(ref: SourceRef, draft: EditorDraft | null = nul
       }
       media = decoded;
       const fonts = fontPage.items;
-      setSession({ type: "media", source: loaded, media, layers: initialLayers(loaded, defaultFontId(fonts), draft?.kind === "media" ? draft.layers : null), fonts, limits, initialTitle: loaded.kind === "template" || loaded.kind === "new-template" ? draft?.title ?? "" : "" });
+      setSession({ type: "media", source: loaded, media, layers: layersSchema.parse(initialLayers(loaded, defaultFontId(fonts), draft?.kind === "media" ? draft.layers : null)), fonts, limits, initialTitle: loaded.kind === "template" || loaded.kind === "new-template" ? draft?.title ?? "" : "" });
     })().catch((err: unknown) => !cancelled && setError(err));
     return () => {
       cancelled = true;

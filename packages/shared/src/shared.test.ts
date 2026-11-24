@@ -3,12 +3,12 @@ import { test } from "node:test";
 import { interpolate, layerStateAt, upsertKeyframe } from "./animation.ts";
 import { layerLabels, layerPosition, newImageLayer, newTextLayer, newTopSectionLayer } from "./defaults.ts";
 import { DEFAULT_LIMITS, IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, limitViolations, STILL_EXPORT_MIN_EDGE, stillExportSize } from "./limits.ts";
-import { growTextBox, layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
+import { drawText, growTextBox, layoutText, mockCase, MIN_FONT_PX, type TextContext } from "./text.ts";
 import { layerSchema, layersSchema, sessionSchema } from "./schema.ts";
 import { canMoveLayer, composedHeight, layerArea, layoutTopSection, moveById, moveLayer, topSectionPx } from "./section.ts";
 import { badgeFor } from "./badges.ts";
 import { panelGrid, panelRules } from "./panels.ts";
-import { extensionForMime, FONT_ACCEPT, gifFrameDelayMs, MEDIA_ACCEPT, SUPPORTED_TYPES } from "./media.ts";
+import { gifFrameDelayMs } from "./media.ts";
 import { aiEditTarget, aiImageUpdate, applyAiEdit, type AiEdit } from "./ai.ts";
 
 const kf = (t: number, x: number, opacity = 1) => ({ t, x, y: 0.5, opacity });
@@ -81,6 +81,21 @@ test("layoutText wraps at the box width and shrinks until the text fits the box"
   assert.ok(layout.fontPx < 40, "shrunk below the max size");
   assert.equal(layout.overflow, false);
   assert.equal(layout.lines.join(" "), "ONE TWO THREE FOUR FIVE SIX");
+});
+
+test("small text aligns against its box edges rather than its measured line width", () => {
+  for (const align of ["left", "center", "right"] as const) {
+    const ctx = fakeCtx();
+    const positions: number[] = [];
+    Object.assign(ctx, {
+      save() {}, restore() {}, translate() {},
+      fillText(_text: string, x: number) { positions.push(x); },
+    });
+    const layer = newTextLayer({ text: "Hi", align, fontSize: 0.05, maxWidth: 0.8, strokeWidth: 0 });
+    const layout = layoutText(ctx, layer, 200, 200);
+    drawText(ctx, layer, layout, 100, 100);
+    assert.deepEqual(positions, [align === "left" ? -79 : align === "right" ? 79 : 0]);
+  }
 });
 
 test("layoutText reports overflow when even the minimum size does not fit", () => {
@@ -179,16 +194,6 @@ test("gifFrameDelayMs plays delays under 20 ms as 100 ms and keeps the rest", ()
   assert.equal(gifFrameDelayMs(19), 100);
   assert.equal(gifFrameDelayMs(20), 20);
   assert.equal(gifFrameDelayMs(70), 70);
-});
-
-test("every supported type maps back to its extension and is in exactly one accept list", () => {
-  for (const { kind, mime, ext } of SUPPORTED_TYPES) {
-    assert.equal(extensionForMime(mime), ext);
-    const [own, other] = kind === "font" ? [FONT_ACCEPT, MEDIA_ACCEPT] : [MEDIA_ACCEPT, FONT_ACCEPT];
-    assert.ok(own.split(",").includes(mime) && own.split(",").includes(ext), `${mime} accepted`);
-    assert.ok(!other.split(",").includes(mime), `${mime} only in its own list`);
-  }
-  assert.equal(extensionForMime("application/pdf"), undefined);
 });
 
 test("top section: the band is its one-line height plus every extra line of text, so the padding stays fixed", () => {

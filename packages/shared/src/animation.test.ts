@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addKeyframeAt, clearAnimation, placeAt, removeKeyframe, resizeImage, rotateTo, setWindow } from "./animation.ts";
+import { addKeyframeAt, clearAnimation, layerStateAt, placeAt, removeKeyframe, resizeImage, rotateTo, setWindow } from "./animation.ts";
 import { newImageLayer, newTextLayer } from "./defaults.ts";
 import { IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN } from "./limits.ts";
 import { ANCHOR_Y_MIN } from "./section.ts";
-import { imageLayerSchema, textLayerSchema } from "./schema.ts";
+import { imageLayerSchema, layersSchema, textLayerSchema } from "./schema.ts";
 
 const kf = (t: number, x: number, y = 0.5, opacity = 1) => ({ t, x, y, opacity });
 
@@ -38,19 +38,19 @@ test("rotateTo wraps any angle into -180..<180, the slider's range", () => {
 });
 
 test("placeAt on an animated layer upserts a keyframe at t from the interpolated state, leaving static fields", () => {
-  const layer = newTextLayer({ x: 0.1, keyframes: [kf(0, 0), kf(2, 1, 0.5, 0)] });
+  const layer = newImageLayer(crypto.randomUUID(), { x: 0.1, keyframes: [kf(0, 0), kf(2, 1, 0.5, 0)] });
   const out = placeAt(layer, 1, { y: 9 });
   assert.equal(out.x, 0.1);
   assert.deepEqual(out.keyframes, [kf(0, 0), kf(1, 0.5, 1.5, 0.5), kf(2, 1, 0.5, 0)]);
 });
 
 test("addKeyframeAt on a static layer keyframes its current position", () => {
-  const out = addKeyframeAt(newTextLayer({ x: 0.2, y: 0.3, opacity: 0.4 }), 1.5);
+  const out = addKeyframeAt(newImageLayer(crypto.randomUUID(), { x: 0.2, y: 0.3, opacity: 0.4 }), 1.5);
   assert.deepEqual(out.keyframes, [kf(1.5, 0.2, 0.3, 0.4)]);
 });
 
 test("removing the last keyframe keeps its state as the static position", () => {
-  const layer = newTextLayer({ x: 0.5, y: 0.5, opacity: 1, keyframes: [kf(1, 0.9, 0.2, 0.3)] });
+  const layer = newImageLayer(crypto.randomUUID(), { x: 0.5, y: 0.5, opacity: 1, keyframes: [kf(1, 0.9, 0.2, 0.3)] });
   const out = removeKeyframe(layer, 0);
   assert.deepEqual(out.keyframes, []);
   assert.deepEqual([out.x, out.y, out.opacity], [0.9, 0.2, 0.3]);
@@ -73,4 +73,35 @@ test("setWindow clears the opposite edge instead of inverting the window", () =>
   assert.deepEqual(setWindow(layer, "end", 0.5), { ...layer, start: null, end: 0.5 });
   assert.deepEqual(setWindow(layer, "start", 2), { ...layer, start: 2, end: 2 });
   assert.deepEqual(setWindow(layer, "end", null), { ...layer, end: null });
+});
+
+test("legacy text fades are opaque at every frame while image fades still interpolate", () => {
+  const text = { ...newTextLayer(), opacity: 0.2, keyframes: [kf(1, 0.2, 0.3, 0), kf(3, 0.8, 0.7, 0.4)] };
+  const image = newImageLayer(crypto.randomUUID(), { opacity: text.opacity, keyframes: text.keyframes });
+  assert.equal(layerStateAt({ ...text, keyframes: [] }, 0).opacity, 1);
+  assert.equal(layerStateAt({ ...image, keyframes: [] }, 0).opacity, 0.2);
+  for (const [t, x, y, opacity] of [[0, 0.2, 0.3, 0], [2, 0.5, 0.5, 0.2], [4, 0.8, 0.7, 0.4]]) {
+    assert.deepEqual(layerStateAt(text, t!), { x, y, opacity: 1, visible: true });
+    assert.deepEqual(layerStateAt(image, t!), { x, y, opacity, visible: true });
+  }
+});
+
+test("loading and saving layers removes text fades without changing image opacity or animation", () => {
+  const text = { ...newTextLayer(), opacity: 0.2, keyframes: [kf(1, 0.2, 0.3, 0), kf(3, 0.8, 0.7, 0.4)] };
+  const image = newImageLayer(crypto.randomUUID(), { opacity: text.opacity, keyframes: text.keyframes });
+  const [savedText, savedImage] = layersSchema.parse([text, image]);
+  assert.deepEqual(savedText, { ...text, opacity: 1, keyframes: [kf(1, 0.2, 0.3), kf(3, 0.8, 0.7)] });
+  assert.deepEqual(savedImage, image);
+});
+
+test("text creation and animation edits cannot introduce opacity", () => {
+  const created = newTextLayer({ opacity: 0.2, keyframes: [kf(1, 0.2, 0.3, 0)] });
+  assert.equal(created.opacity, 1);
+  assert.deepEqual(created.keyframes, [kf(1, 0.2, 0.3)]);
+  const legacy = { ...created, opacity: 0.2, keyframes: [kf(1, 0.2, 0.3, 0)] };
+  assert.equal(placeAt({ ...legacy, keyframes: [] }, 0, { opacity: 0 }).opacity, 1);
+  assert.deepEqual(placeAt(legacy, 1, { opacity: 0 }).keyframes, [kf(1, 0.2, 0.3)]);
+  assert.deepEqual(addKeyframeAt(legacy, 1).keyframes, [kf(1, 0.2, 0.3)]);
+  assert.equal(removeKeyframe(legacy, 0).opacity, 1);
+  assert.equal(clearAnimation(legacy, 1).opacity, 1);
 });

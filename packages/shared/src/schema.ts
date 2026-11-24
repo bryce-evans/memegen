@@ -87,12 +87,19 @@ const layerFields = {
   keyframes: z.array(keyframeSchema).max(2000),
 };
 
+/** Older text layers may contain fades; reading or saving them makes text fully opaque. */
+const textOpacity = layerFields.opacity.transform(() => 1);
+
 export const textLayerSchema = z.object({
   type: z.literal("text"),
   ...layerFields,
+  opacity: textOpacity,
+  keyframes: z.array(keyframeSchema.extend({ opacity: textOpacity })).max(2000),
   text: z.string().max(TEXT_MAX_LENGTH),
-  /** Font asset; null uses the fallback family. */
+  /** Font asset; null uses the selected system font or fallback family. */
   fontAssetId: z.uuid().nullable(),
+  /** Uses the device's Arial fonts without distributing proprietary font assets. */
+  systemFont: z.enum(["arial", "arial-bold"]).optional(),
   /** Max font size as a fraction of media height; text shrinks to fit the box. */
   fontSize: z.number().gt(0).max(1),
   color,

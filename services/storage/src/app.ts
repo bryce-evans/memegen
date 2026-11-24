@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { assetsQuerySchema } from "@memegen/shared";
+import { assetsQuerySchema, sniff } from "@memegen/shared";
 import {
   findAssetRow,
   HttpError,
@@ -55,8 +55,12 @@ export function createStorageApp(store: AssetStore, auth: AuthProvider): Hono<En
     const file = body.file;
     if (!(file instanceof File)) throw new HttpError(400, "multipart field `file` is required");
     const name = typeof body.name === "string" ? body.name : undefined;
+    const data = new Uint8Array(await file.arrayBuffer());
+    if (sniff(data)?.kind === "font" && !isInternal(c)) {
+      throw new HttpError(403, "font uploads are not allowed");
+    }
     const asset = await store.upload({
-      data: new Uint8Array(await file.arrayBuffer()),
+      data,
       filename: file.name || "upload",
       name,
       ownerId: user?.id ?? null,

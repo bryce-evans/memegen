@@ -411,6 +411,15 @@
   padding-top: var(--ui-space-3);
   border-top: var(--ui-border-width) solid var(--ui-color-separator);
 }
+.layer-typography-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) auto;
+  align-items: start;
+  gap: var(--ui-space-2);
+}
+.layer-typography-row > * {
+  min-width: 0;
+}
 .field-row {
   display: flex;
   flex-wrap: wrap;

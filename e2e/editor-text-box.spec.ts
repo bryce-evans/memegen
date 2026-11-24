@@ -7,14 +7,12 @@ test("text boxes: raising the max size grows the box to show it; corner handles 
   const layer = page.getByTestId("layer-item").first();
   const textBox = page.getByTestId("layer-box").first();
   await layer.getByTestId("layer-settings-toggle").click();
-  const height = layer.getByTestId("text-box-height");
-  const width = layer.getByTestId("text-box-width");
-  await expect(height).toHaveValue("20");
+  await expect(layer.getByTestId("text-box-height")).toHaveCount(0);
+  await expect(layer.getByTestId("text-box-width")).toHaveCount(0);
 
   // Text shrinks to fit its box, so a larger max size would change nothing unless the box grows with it.
   const small = (await textBox.boundingBox())!;
   await layer.getByTestId("layer-font-size").fill("20");
-  await expect.poll(async () => Number(await height.inputValue())).toBeGreaterThan(20);
   await expect.poll(async () => (await textBox.boundingBox())!.height).toBeGreaterThan(small.height * 1.5);
 
   // The selected text layer shows its box with corner handles; dragging one resizes the box about the opposite corner.
@@ -33,8 +31,8 @@ test("text boxes: raising the max size grows the box to show it; corner handles 
   expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1.5);
   expect(Math.abs(after.width - before.width / 2)).toBeLessThanOrEqual(2);
   expect(Math.abs(after.height - (before.height + 40))).toBeLessThanOrEqual(2);
-  expect(Math.abs(Number(await width.inputValue()) - 48)).toBeLessThanOrEqual(1); // about half of 96%
-  const boxHeight = Number(await height.inputValue()) / 100;
+  const stage = (await page.getByTestId("stage-canvas").boundingBox())!;
+  const boxHeight = after.height / stage.height;
 
   await page.getByTestId("meme-title").fill("E2E text box");
   await page.getByTestId("save-draft").click();
@@ -62,7 +60,10 @@ test("text boxes: the selected box's handle rotates it; ⌘⌫ removes the box r
   await page.mouse.down();
   await page.mouse.move(mid.x + 150, mid.y, { steps: 5 }); // from straight above the center to its right: +90°
   await page.mouse.up();
-  await expect.poll(async () => Math.abs(Number(await layer.getByTestId("layer-angle").inputValue()) - 90)).toBeLessThanOrEqual(1);
+  await expect.poll(async () => {
+    const rotated = (await textBox.boundingBox())!;
+    return Math.abs(rotated.height - box.width);
+  }).toBeLessThanOrEqual(2);
 
   // Pressing the box focuses its text; ⌘⌫ there removes the whole layer.
   await textBox.click();

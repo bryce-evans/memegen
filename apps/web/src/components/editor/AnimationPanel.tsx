@@ -39,8 +39,8 @@ export function AnimationPanel({ layer, media, frame, onChange, onSeek }: Animat
               return (
                 <li key={k.t} data-testid="keyframe-item" className={kfFrame === frame ? "current" : undefined}>
                   <span>
-                    {k.t.toFixed(2)}s (#{kfFrame + 1}) · x {Math.round(k.x * 100)}% · y {Math.round(k.y * 100)}% · α{" "}
-                    {Math.round(k.opacity * 100)}%
+                    {k.t.toFixed(2)}s (#{kfFrame + 1}) · x {Math.round(k.x * 100)}% · y {Math.round(k.y * 100)}%
+                    {layer.type === "image" && <> · α {Math.round(k.opacity * 100)}%</>}
                   </span>
                   <Button size="sm" variant="quiet" onClick={() => onSeek(kfFrame)}>
                     Go

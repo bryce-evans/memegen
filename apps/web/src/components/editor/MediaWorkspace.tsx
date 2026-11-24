@@ -9,12 +9,11 @@ import {
   resizeImage,
   resizeTextBox,
   rotateTo,
-  type Asset,
   type Placement,
   type Sticker,
 } from "@memegen/shared";
 import { Alert, PageHeader } from "@memegen/ui";
-import { assetUrl, createTemplate, listFonts, updateTemplate, uploadAsset } from "../../api.ts";
+import { assetUrl, createTemplate, updateTemplate, uploadAsset } from "../../api.ts";
 import { useUser } from "../../auth.tsx";
 import { plural } from "../../format.ts";
 import { nameFromFile, precheckStillImage } from "../../media.ts";
@@ -41,7 +40,7 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
   const { media, limits } = session;
   const [source, setSource] = useState(session.source);
   const user = useUser();
-  const [fonts, setFonts] = useState<Asset[]>(session.fonts);
+  const fonts = session.fonts;
   const list = useLayerList(session.layers);
   const { layers, selectedId, update: updateLayer, select } = list;
   const assets = useLayerAssets(layers);
@@ -106,15 +105,6 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
   }, []);
-
-  async function fontUploaded(layerId: string, font: Asset) {
-    try {
-      setFonts((await listFonts()).items);
-    } catch {
-      setFonts((fs) => [...fs, font]);
-    }
-    updateLayer(layerId, (l) => (l.type === "text" ? { ...l, fontAssetId: font.id } : l));
-  }
 
   async function render(signal: AbortSignal, progress: RenderProgress) {
     progress("Loading fonts and images", null);
@@ -194,7 +184,6 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
             onUpdate={updateLayer}
             onPlace={placeLayer}
             onSeek={playback.seek}
-            onFontUploaded={fontUploaded}
           />
           {animated && <PreviewPanel media={media} layers={layers} images={assets.images} />}
           {source.kind === "new-template" ? (
@@ -210,7 +199,7 @@ export function MediaWorkspace({ session }: { session: MediaSession }) {
           ) : source.kind === "edit-template" ? (
             <TemplateEditPanel
               template={source.template}
-              initialContent={source.template.defaultLayers}
+              initialContent={session.layers}
               content={layers}
               note={`The ${boxes} (text with its placeholder, and images) are the template's defaults. Memes already made from it keep their own layers.`}
               ready

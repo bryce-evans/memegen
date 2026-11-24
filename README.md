@@ -8,8 +8,10 @@ A self-hosted meme generator with a public gallery. Pick a template (or bring yo
   Template cards open directly when selected, with usage count and flame beside the title and a rounded hover highlight.
   Template search matches every word across names and tags, with exact names first. Adding words refines text matches; picture-based suggestions appear only when no text matches exist.
   **Blank** starts from a 2048×2048 pure-white JPEG with empty editable text, replacing the separate black, transparent, and smaller white canvas templates.
-- **Editor**: text boxes that wrap and shrink to fit (drag their corners to resize, the handle above to rotate; ⌘⌫ in a box's text removes it), custom fonts, image layers (upload or paste a screenshot), and a shared sticker library.
-  Four text-style swatches apply uppercase Impact, yellow captions, thin-outlined white sans serif, or unoutlined black text. The pencil opens all advanced settings without changing the caption or its placement.
+- **Editor**: text boxes that wrap and shrink to fit (drag to move, drag corners to resize, the handle above to rotate; ⌘⌫ in a box's text removes it), built-in fonts, image layers (upload or paste a screenshot), and a shared sticker library.
+  The pencil beside the layer-order arrows opens editing controls. **Quick Styles** at the top offers uppercase Impact, pale-yellow captions, saturated-yellow Arial Bold, 4chan greentext (regular Arial, `#789922`, no outline), thin-outlined white sans serif, and unoutlined black text. Font, Case, and Align share the next row, followed by text size, color, and outline controls. Text is always fully opaque; placement and box geometry are adjusted directly on the canvas instead of numeric controls.
+  Alignment uses familiar left, center, and right text-line icons, with hover labels.
+  Arial and Arial Bold are system-font options, with Helvetica/sans-serif fallbacks where unavailable; no Arial font files are distributed. Kalam is no longer selectable for new styling; existing captions using it still render.
 - **Animation**: for GIFs and videos, a frame-by-frame timeline with per-layer visibility windows, keyframes, and a live loop preview. Exports are GIF or MP4, and MP4s keep their audio.
 - **Caption memes**: a top-section toggle adds a white band with its own text above the media.
 - **Multi-panel templates**: reusable image packs for customizing panel count, repetition, order, and layout—not simply images containing multiple frames. Use three Galaxy Brains or eight, or repeat a pack image before switching to the next reaction. Packs include Panik/Kalm/Panik, Vince McMahon, Mr. Incredible, Galaxy Brain, and Tuxedo Pooh; their images are cropped from reviewed online source sheets or imported as individual stills during seeding. Fixed-format sequences such as Anakin/Padmé remain ordinary image templates with editable captions.
@@ -287,4 +289,4 @@ cd ../..
 
 ## Fonts and licensing
 
-The seed imports Impact (licensed for this project) and the SIL OFL fonts Titillium Web, Noto Sans, Noto Sans Hebrew, and Kalam. It skips the proprietary Segoe UI, Tahoma, and HG Mincho. Users can upload their own fonts in the editor.
+The seed imports Impact (licensed for this project) and the SIL OFL fonts Titillium Web, Noto Sans, Noto Sans Hebrew, and Kalam. It skips the proprietary Segoe UI, Tahoma, and HG Mincho. Fonts are supplied by the installation; user font uploads are not allowed.

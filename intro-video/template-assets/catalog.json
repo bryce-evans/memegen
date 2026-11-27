@@ -1,0 +1,41 @@
+{
+  "count": 1386,
+  "templates": [
+    {
+      "name": "Doge",
+      "templateId": "488ca6c1-8a5a-4e98-9a09-a262b319ca7a",
+      "mime": "image/jpeg",
+      "file": "template-assets/0.img"
+    },
+    {
+      "name": "Drake Hotline Bling",
+      "templateId": "8516b178-d63f-484e-9742-68ba1cad84d5",
+      "mime": "image/jpeg",
+      "file": "template-assets/1.img"
+    },
+    {
+      "name": "Distracted Boyfriend",
+      "templateId": "dda2f06c-7f79-41af-b336-6818689ba716",
+      "mime": "image/jpeg",
+      "file": "template-assets/2.img"
+    },
+    {
+      "name": "Success Kid",
+      "templateId": "2da63d3d-6d69-44a3-a629-f14fd62ee247",
+      "mime": "image/jpeg",
+      "file": "template-assets/3.img"
+    },
+    {
+      "name": "Disaster Girl",
+      "templateId": "142eef37-6576-4e6f-bb3f-34b70231e161",
+      "mime": "image/jpeg",
+      "file": "template-assets/4.img"
+    },
+    {
+      "name": "This Is Fine",
+      "templateId": "a2a4b05e-0e40-4a1a-be5d-cfc61aaebcbf",
+      "mime": "image/jpeg",
+      "file": "template-assets/5.img"
+    }
+  ]
+}

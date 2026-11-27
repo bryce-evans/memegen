@@ -1,0 +1,15 @@
+{
+  "title": "Golden Bossa Breeze",
+  "channel": "Vinyl Tropical",
+  "url": "https://www.youtube.com/watch?v=ARy8taX9Pek",
+  "videoTitle": "Café do Brasil 🇧🇷 – Samba Bossa Nova Jazz Lounge | Vintage Brazilian Instrumental Music",
+  "chapter": {
+    "start_time": 0,
+    "title": "Golden Bossa Breeze",
+    "end_time": 287
+  },
+  "usage": "User-requested personal-use edit; redistribution rights not verified.",
+  "audioFile": "music/golden-bossa-breeze.mp3",
+  "acquiredFrom": "User-supplied local MP3; restore separately at audioFile before rendering.",
+  "note": "User-supplied local MP3 replaces the rejected YouTube download."
+}

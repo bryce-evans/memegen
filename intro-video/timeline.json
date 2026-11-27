@@ -1,0 +1,18 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration": 41.8,
+  "endHold": 1.5,
+  "scenes": [
+    {"id":"01-hook","motionDuration":3.1,"duration":3.1,"endHold":0,"kind":"title","eyebrow":"DOGE HAS A PLAN","title":"I should do something<br><em>productive.</em>"},
+    {"id":"02-counterpoint","motionDuration":1.4,"duration":2.9,"source":"raw/02-counterpoint-create.mp4","title":"Counterpoint: I could go to memegen"},
+    {"id":"02b-templates","motionDuration":2,"duration":3,"endHold":1,"kind":"browse","title":"Choose from over 1,000 templates","caption":"or add your own!"},
+    {"id":"04-create","motionDuration":4.8,"duration":6.3,"source":"raw/03-create-clean.mp4","sourceDuration":8,"speed":0.6,"title":"much creativity. very original.","caption":"Add your deeply original observation."},
+    {"id":"05-reveal","motionDuration":3,"duration":4.5,"kind":"meme","title":"wait. this is about me."},
+    {"id":"06-post","motionDuration":3,"duration":4.5,"source":"raw/04-post.mp4","start":0.5,"title":"wow. published author.","caption":"Hang that art in the gallery!"},
+    {"id":"08-slack-dm","motionDuration":5,"duration":6.5,"kind":"dm","title":"doge slides into the DMs."},
+    {"id":"11-popular","motionDuration":5,"duration":6.5,"source":"raw/09-popular.mp4","title":"much quality content!"},
+    {"id":"12-party","motionDuration":3,"duration":4.5,"source":"raw/08-party.mp4","start":0.25,"title":""}
+  ]
+}

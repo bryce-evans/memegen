@@ -11,3 +11,22 @@ playwright-report
 # Demo assets (fonts, templates, fixture media): kept locally, not committed
 demo/
 e2e/fixtures/
+
+# Intro-video production sources only; media, renders, logs, and archives stay local.
+/intro-video/*
+!/intro-video/generate-graphics.ts
+!/intro-video/generate-audio.ts
+!/intro-video/render-video.ts
+!/intro-video/timeline.json
+!/intro-video/production.json
+!/intro-video/template-assets/
+/intro-video/template-assets/*
+!/intro-video/template-assets/catalog.json
+!/intro-video/thumbnails/
+/intro-video/thumbnails/*
+!/intro-video/thumbnails/template-assets/
+/intro-video/thumbnails/template-assets/*
+!/intro-video/thumbnails/template-assets/catalog.json
+!/intro-video/music/
+/intro-video/music/*
+!/intro-video/music/golden-bossa-breeze-source.json

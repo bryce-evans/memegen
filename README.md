@@ -2,6 +2,10 @@
 
 A self-hosted meme generator with a public gallery. Pick a template (or bring your own image, GIF, or video), place and animate text, then save, post, and vote.
 
+[![Watch the memegen intro — Doge discovers memegen](docs/videos/memegen-intro.png)](docs/videos/memegen-intro.mp4?raw=true)
+
+[Watch the 42-second intro](docs/videos/memegen-intro.mp4?raw=true)
+
 ## Features
 
 - **Templates**: the checked-in [library](library/README.md) combines canonical checkout and online formats in one [manifest](library/MANIFEST.json), with 1–5 content-risk scores, search tags, and default captions. Work settings include ratings 1–3 and exclude 4–5. Search by tag, name, or what's in the picture ("dog" finds doge), filter by kind, see what's hot, and check each template's usage chart. Uploading an image that's already a template lists existing matches before you save.
@@ -48,7 +52,7 @@ All rendering happens in the browser. The servers only store, validate, and inde
 - Git (for the pinned library prerequisite download)
 - PostgreSQL 14+ with its client tools (`psql`, `createdb`, `pg_dump`, `pg_restore`, at least as new as the server)
 - To export video memes: a Chromium-based browser, Safari 17+, or Firefox 130+ (WebCodecs). Images and GIFs work in any browser.
-- ffmpeg (only for the e2e tests)
+- ffmpeg and ffprobe (for the e2e tests and optional intro-video production)
 
 ## Quick start
 
@@ -247,6 +251,52 @@ A snapshot is one zip holding the whole database and every image, GIF, video, an
 - Loads only go into a clean system (empty, or freshly set up), so they never overwrite real data.
 - Every file is checksummed. A missing or corrupt asset fails the save or load.
 - Snapshots go to `.data/snapshots/` (gitignored) and can hold user data, so keep them out of git.
+
+## Intro video
+
+[`intro-video/`](intro-video/) contains the Bun scripts and JSON inputs for the promotional video. Within that directory, Git includes only the three production scripts, `timeline.json`, `production.json`, the two template catalogs, and music-source metadata. An explicit `.gitignore` allowlist excludes all media, rendered HTML, intermediate frames, logs, and historical versions.
+
+**Keep a separate backup of the source media.** A fresh Git checkout alone cannot reproduce the video. Restore these inputs under `intro-video/`, preserving their paths:
+
+- `raw/`: the recorded app clips referenced by `timeline.json`, plus `meme.png` and `fren.png`.
+- `template-assets/` and `thumbnails/template-assets/`: image files listed in their tracked `catalog.json` files. Local template IDs are provenance, not portable download links.
+- `music/golden-bossa-breeze.mp3`: the user-supplied soundtrack; its provenance is in `music/golden-bossa-breeze-source.json`.
+
+After installing workspace dependencies with `bun install`, install Playwright Chromium with `bunx playwright install chromium` and ensure `ffmpeg` and `ffprobe` are on PATH. The graphics use bundled workspace fonts, with local Radlush Extra Bold preferred when installed; matching the original typography requires that same local font. No running application or database is needed to render from restored inputs.
+
+Run the complete pipeline from the repository root:
+
+```sh
+bun intro-video/generate-graphics.ts
+bun intro-video/generate-graphics.ts --thumbnails
+bun intro-video/generate-audio.ts
+bun intro-video/render-video.ts --assemble
+```
+
+The outputs are `intro-video/memegen-intro.mp4` and `intro-video/thumbnails/doge-discovers-memegen.png`. The thumbnail is the video's actual first frame as well as embedded cover art. Edit `timeline.json` for scene order, timing, and captions; `generate-graphics.ts` for composition and animation; and the thumbnail catalog for its image selection. The scripts render existing recordings; they do not recapture app interactions or acquire missing media. Production details and source-rights notes are in `production.json`. Repository database snapshots do not back up these production media files.
+
+### Published README video
+
+The approved export is published separately at `docs/videos/memegen-intro.mp4`. `.gitattributes` stores MP4s in that directory through [Git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-git-large-file-storage), keeping their bytes out of normal Git history. The small `docs/videos/memegen-intro.png` preview is stored in regular Git so the README image works without downloading LFS objects. The README uses a clickable preview, not an inline GitHub video player.
+
+Install Git LFS before adding or pushing a new export. To initialize it for this clone and retrieve the published video:
+
+```sh
+git lfs install --local
+git lfs pull --include="docs/videos/*.mp4"
+```
+
+After reviewing a new render, refresh the published video and preview from the repository root:
+
+```sh
+cp intro-video/memegen-intro.mp4 docs/videos/memegen-intro.mp4
+ffmpeg -hide_banner -loglevel error -y \
+  -i intro-video/thumbnails/doge-discovers-memegen.png \
+  -vf scale=960:-1 -frames:v 1 -c:v png -compression_level 9 \
+  docs/videos/memegen-intro.png
+```
+
+Commit `.gitattributes`, the published video, its preview, and the README together. The LFS pre-push hook uploads the video object; do not bypass it. GitHub LFS storage and bandwidth limits apply. Source recordings, music, and intermediate renders remain ignored; publishing this export does not grant redistribution rights to its third-party media.
 
 ## Tests
 

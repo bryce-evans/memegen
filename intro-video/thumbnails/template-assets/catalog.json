@@ -1,0 +1,154 @@
+{
+  "source": "Local memegen template originals and sourced blank images for the intro backdrop, without rendered caption layers",
+  "templates": [
+    {
+      "name": "Kermit Sipping Tea",
+      "file": "thumbnails/template-assets/kermit-tea.img",
+      "mime": "image/jpeg",
+      "source": "https://imgflip.com/meme/But-Thats-None-Of-My-Business-Neutral",
+      "url": "https://i.imgflip.com/ph0di.jpg"
+    },
+    {
+      "name": "Distracted Boyfriend",
+      "templateId": "dda2f06c-7f79-41af-b336-6818689ba716",
+      "file": "thumbnails/template-assets/03.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Success Kid",
+      "templateId": "2da63d3d-6d69-44a3-a629-f14fd62ee247",
+      "file": "thumbnails/template-assets/04.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Disaster Girl",
+      "templateId": "142eef37-6576-4e6f-bb3f-34b70231e161",
+      "file": "thumbnails/template-assets/05.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Skeptical Third World Kid",
+      "templateId": "81beed29-adbb-4e79-aa16-e1b22a42db64",
+      "file": "thumbnails/template-assets/07.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "One Does Not Simply Walk into Mordor",
+      "templateId": "79d254e1-15a3-42c8-8855-9d1191e03941",
+      "file": "thumbnails/template-assets/08.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Philosoraptor",
+      "templateId": "1baa357e-355b-443a-b572-3f4336bdedaf",
+      "file": "thumbnails/template-assets/09.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Bad Luck Brian",
+      "templateId": "b9d6b481-3c9a-413e-8edc-cdacadb25ae1",
+      "file": "thumbnails/template-assets/10.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Socially Awkward Penguin",
+      "templateId": "304e2da2-7ec1-455d-b917-828dffe5ba5e",
+      "file": "thumbnails/template-assets/14.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Grumpy Cat",
+      "templateId": "9bed43c1-f487-431a-8a3b-f48d0d30a819",
+      "file": "thumbnails/template-assets/15.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Leonardo Dicaprio Cheers",
+      "templateId": "8caf097a-c6b3-4746-b374-53d4f7fff0e7",
+      "file": "thumbnails/template-assets/16.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Monkey looking away",
+      "templateId": "122ff4ea-c2c5-44fe-8f73-eb3e28870f08",
+      "file": "thumbnails/template-assets/17.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Waiting Skeleton",
+      "templateId": "39fe9acb-d90c-42d0-aee8-565e9d4937de",
+      "file": "thumbnails/template-assets/18.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Bernie Sanders In a Chair",
+      "templateId": "34131ce7-fe2c-4e69-a2e3-ed7883931a86",
+      "file": "thumbnails/template-assets/19.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Futurama Fry",
+      "templateId": "d579fae5-d59e-4b5e-b4e2-ec2063814782",
+      "file": "thumbnails/template-assets/20.img",
+      "mime": "image/png"
+    },
+    {
+      "name": "Y U NO Guy",
+      "templateId": "53668657-73c4-4b38-b162-527f2142bb8c",
+      "file": "thumbnails/template-assets/21.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Forever Alone",
+      "templateId": "47550426-e09d-44c9-9317-0d3acfe7ed91",
+      "file": "thumbnails/template-assets/22.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Scumbag Steve",
+      "templateId": "52c101ce-a88e-4e0d-b4b1-082ffe236da6",
+      "file": "thumbnails/template-assets/24.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Condescending Wonka",
+      "templateId": "4ff909f9-2ae5-486f-8d71-8ff55ba9a05c",
+      "file": "thumbnails/template-assets/25.img",
+      "mime": "image/jpeg"
+    },
+    {
+      "name": "Side Eyeing Chloe",
+      "templateId": "2a07f565-9b10-4eeb-9617-c16de425bdc4",
+      "file": "thumbnails/template-assets/27.img",
+      "mime": "image/webp"
+    },
+    {
+      "name": "Slowpoke",
+      "file": "thumbnails/template-assets/slowpoke.img",
+      "mime": "image/jpeg",
+      "source": "https://imgflip.com/meme/Slowpoke",
+      "url": "https://i.imgflip.com/1bh6.jpg"
+    },
+    {
+      "name": "Capybara",
+      "file": "thumbnails/template-assets/capybara.img",
+      "mime": "image/jpeg",
+      "source": "https://imgflip.com/memegenerator/70662204/Anonymous-Capybara",
+      "url": "https://i.imgflip.com/162jb0.jpg"
+    },
+    {
+      "name": "Laughing Leo",
+      "file": "thumbnails/template-assets/laughing-leo.img",
+      "mime": "image/png",
+      "source": "https://imgflip.com/meme/Laughing-Leo",
+      "url": "https://i.imgflip.com/4acd7j.png"
+    },
+    {
+      "name": "Imagination SpongeBob",
+      "file": "thumbnails/template-assets/imagination-spongebob.img",
+      "mime": "image/jpeg",
+      "source": "https://imgflip.com/meme/Imagination-Spongebob",
+      "url": "https://i.imgflip.com/3i7p.jpg"
+    }
+  ]
+}

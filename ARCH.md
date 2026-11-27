@@ -40,7 +40,10 @@ flowchart LR
 | `db/migrations` | Postgres | Append-only schema, applied in filename order | — |
 | `scripts/` | Node/Bun | `run.sh` supervisor, seeds, snapshots, prod web server | all |
 | `library/` | tooling + browser inspector | Built-in corpus, reviewed registry policy, ingestion, font descriptors, standalone preview | shared, server-kit; render in browser only |
+| `intro-video/` | offline Bun + Chromium + FFmpeg | Promotional video graphics, soundtrack, and assembly; source-only Git allowlist with separately backed-up media | web row layout, UI skin assets, recorded footage |
 | `e2e/` | Playwright | Browser specs against isolated DB and ports | — |
+
+The README links to approved distribution assets in `docs/videos/`: MP4s use Git LFS, while the PNG preview uses regular Git for direct README rendering. These published copies are refreshed explicitly after review; production media and intermediate outputs under `intro-video/` remain ignored and require separate backups.
 
 Dependency rules:
 

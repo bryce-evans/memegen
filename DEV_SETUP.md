@@ -78,9 +78,11 @@ bunx playwright install chromium          # used to build panel templates and sa
 
 On Linux, Playwright may also require system libraries; use `bunx playwright install --with-deps chromium` if needed. Allow time for initial downloads and seeding.
 
-`seed` imports the configured catalog and sample posts. Re-running it preserves existing imports and IDs. Source availability does not establish redistribution rights; see [library guidance](library/README.md). Local uploads are stored in `.data/storage`; downloaded template sources are under `demo/`.
+The repository includes [`library/MANIFEST.json`](library/MANIFEST.json), a catalog of **1,400+ templates**; their media files are downloaded separately. `library download` retrieves the pinned upstream template originals and fonts. `seed` fetches remaining manifest media, imports templates allowed by the content filter, and creates sample community content. The default `SEED_MAX_RISK=3` imports ratings 1–3, not the entire catalog.
 
-## 5. Launch and try it
+Re-running `seed` preserves existing imports and IDs. Source availability does not establish redistribution rights; see [library guidance](library/README.md). Local uploads are stored in `.data/storage`; downloaded template sources are under `demo/`.
+
+## 5. Run the development server
 
 ```sh
 ./run.sh config/dev.env dev
@@ -88,9 +90,7 @@ On Linux, Playwright may also require system libraries; use `bunx playwright ins
 
 Open **http://localhost:5173** and sign in with any username—development has no passwords. With the default sample seed, **bae** is an admin.
 
-1. Choose **Create**, select a template, and add text.
-2. Give the meme a title, then download it or publish it to the gallery.
-3. Optionally add your provider key under **Profile → API Keys** to use Quick Creator's AI features.
+Bun manages workspace dependencies; the project runner launches the Node.js services and web development server together. Use the runner rather than starting each service separately.
 
 The runner starts web (`5173`), API (`4000`), storage (`4001`), and optional search (`4002`). Keep the terminal running; press **Ctrl+C** to stop. For a subsequent session, start Postgres and run the same `dev` command—no reseed is needed.
 

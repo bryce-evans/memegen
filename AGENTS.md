@@ -27,7 +27,7 @@ Rules for changing this repo. Clone-to-server setup and tests: [DEV_SETUP.md](DE
 - **Secret stat:** `negativeHScore` is internal-only. Never return it from `/api/*`.
 - **Auth:** routes get the user only through `AuthProvider` (`c.get("user")`). Never read `X-User-Id` directly.
 - **Assets:** `demo/` and `e2e/fixtures/` are gitignored. Never commit media or fonts.
-- **Docs:** keep README.md a concise feature overview with 3–5 high-level setup bullets. Put setup steps and test instructions in DEV_SETUP.md, deployment/maintenance details in docs/OPERATIONS.md, and new design decisions in ARCH.md.
+- **Docs:** keep README.md a scannable 2–3 minute introduction with highlighted features, versioned requirements, and the main clone/setup/download/seed/server commands. Put platform-specific setup, troubleshooting, and tests in DEV_SETUP.md, deployment/maintenance details in docs/OPERATIONS.md, and new design decisions in ARCH.md.
 
 ## Deployment setup
 

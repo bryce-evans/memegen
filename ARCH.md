@@ -1,6 +1,6 @@
 # memegen architecture
 
-High-level system design: modules, how they connect, and the decisions that shape them. Setup and commands: [README.md](README.md). Rules for changing the repo: [AGENTS.md](AGENTS.md). Exact types live in `packages/shared`; this doc names them but does not repeat them.
+High-level system design: modules, how they connect, and the decisions that shape them. Setup and tests: [DEV_SETUP.md](DEV_SETUP.md). Deployment and maintenance: [docs/OPERATIONS.md](docs/OPERATIONS.md). Rules for changing the repo: [AGENTS.md](AGENTS.md). Exact types live in `packages/shared`; this doc names them but does not repeat them.
 
 ## System overview
 

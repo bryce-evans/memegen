@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules for changing this repo. Setup and commands: [README.md](README.md). Design, data model, and API contracts: [ARCH.md](ARCH.md). Read ARCH.md before changing behavior.
+Rules for changing this repo. Clone-to-server setup and tests: [DEV_SETUP.md](DEV_SETUP.md). Deployment and maintenance: [docs/OPERATIONS.md](docs/OPERATIONS.md). Design, data model, and API contracts: [ARCH.md](ARCH.md). Read ARCH.md before changing behavior.
 
 ## Layout
 
@@ -27,7 +27,7 @@ Rules for changing this repo. Setup and commands: [README.md](README.md). Design
 - **Secret stat:** `negativeHScore` is internal-only. Never return it from `/api/*`.
 - **Auth:** routes get the user only through `AuthProvider` (`c.get("user")`). Never read `X-User-Id` directly.
 - **Assets:** `demo/` and `e2e/fixtures/` are gitignored. Never commit media or fonts.
-- **Docs:** record new design decisions in ARCH.md. Update README.md only for user-visible features or setup changes.
+- **Docs:** keep README.md a concise feature overview with 3–5 high-level setup bullets. Put setup steps and test instructions in DEV_SETUP.md, deployment/maintenance details in docs/OPERATIONS.md, and new design decisions in ARCH.md.
 
 ## Deployment setup
 
@@ -40,7 +40,7 @@ Rules for changing this repo. Setup and commands: [README.md](README.md). Design
 
 - Run everything through `./run.sh config/dev.env <command>`. Never point commands at `config/prod.env`, and never add test or mock behavior that bypasses `MODE=prod` guards.
 - Always: `bun run typecheck` and `./run.sh config/dev.env test` (serial; recreates `memegen_test`).
-- UI or render changes: `./run.sh config/dev.env e2e`. Missing fixtures: recreate them with the commands in README "Tests".
+- UI or render changes: `./run.sh config/dev.env e2e`. Missing fixtures: recreate them with the commands in [DEV_SETUP.md](DEV_SETUP.md#create-browser-test-fixtures).
 - New UI flows get an e2e spec, or extend an existing one. New UI ships with `data-testid`s for anything a spec drives.
 
 ### e2e conventions

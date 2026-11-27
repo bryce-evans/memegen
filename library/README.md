@@ -46,7 +46,7 @@ The offline gallery is an inspector, not an import validator: its lightweight me
 
 ## Download and initialize
 
-Prerequisites: Bun, Node.js 24.2+, Git, and a running PostgreSQL instance configured in `config/dev.env`. See the root [README](../README.md#requirements).
+Prerequisites: Bun, Node.js 24.2+, Git, and a running PostgreSQL instance configured in `config/dev.env`. See [development setup](../DEV_SETUP.md#requirements).
 
 ```sh
 ./run.sh config/dev.env setup
